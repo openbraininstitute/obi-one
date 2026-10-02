@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import bluepysnap as snap
+import libsonata
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
 from bluecellulab.reports.utils import (
@@ -260,16 +260,16 @@ def run_bluecellulab(
 def _distribute_cells(
     config_data: dict[str, Any], simulation_config: str | Path, rank: int, size: int
 ) -> tuple[int, list[tuple[str, int]]]:
-    node_set_name = config_data.get("node_set", "All")
-
-    # Resolve the node set to concrete (population, node_id) pairs via SONATA. The node
+    # Resolve the node set to concrete (population, node_id) pairs via libsonata. The node
     # set may be defined symbolically (e.g. by population, mtype or synapse_class) or as
     # a compound reference -- so it cannot be assumed to carry an explicit "node_id"
     # list -- and it may live in the circuit's node sets or in the simulation's own
-    # node_sets_file. snap.Simulation exposes the merged node sets and resolves the
-    # circuit referenced by the config ("network") and its manifest variables.
-    simulation = snap.Simulation(str(simulation_config))
-    ids_per_population = resolve_simulation_node_set_ids(simulation, node_set_name)
+    # node_sets_file. libsonata.SimulationConfig resolves the circuit referenced by the
+    # config ("network") and its manifest variables, and the circuit + simulation node
+    # sets are merged for resolution.
+    simulation_config_obj = libsonata.SimulationConfig.from_file(str(simulation_config))
+    node_set_name = simulation_config_obj.node_set or config_data.get("node_set", "All")
+    ids_per_population = resolve_simulation_node_set_ids(simulation_config_obj, node_set_name)
 
     # Flatten to a deterministically ordered list of (population, node_id) pairs so the
     # distribution across ranks is reproducible regardless of population iteration order.

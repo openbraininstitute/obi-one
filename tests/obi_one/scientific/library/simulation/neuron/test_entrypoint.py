@@ -6,7 +6,23 @@ import pytest
 from obi_one.scientific.library.simulation.neuron import entrypoint as test_module
 from obi_one.types import SimulationBackend
 
-from tests.obi_one.scientific.library.simulation.neuron._fakes import FakeSimulation
+from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
+
+
+def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set=None, **kwargs):
+    """Patch entrypoint's libsonata.SimulationConfig and the node-set resolver."""
+    simulation_config, node_sets, circuit_config = make_fake_resolution(
+        per_node_set, node_set=node_set, **kwargs
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron."
+        "entrypoint.libsonata.SimulationConfig.from_file",
+        lambda _path: simulation_config,
+    )
+    monkeypatch.setattr(
+        "obi_one.utils.circuit._merged_simulation_node_sets",
+        lambda _sim_cfg: (node_sets, circuit_config),
+    )
 
 
 def test_get_instantiate_gids_params_defaults():
@@ -118,8 +134,7 @@ def test_distribute_cells_splits_ids_across_ranks(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
-    simulation = FakeSimulation({"All": {"popA": list(range(10))}})
-    monkeypatch.setattr(test_module.snap, "Simulation", lambda _config: simulation)
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": list(range(10))}}, node_set="All")
 
     config_data = {"node_set": "All"}
     n0, rank0 = test_module._distribute_cells(config_data, cfg, 0, 3)
@@ -136,8 +151,11 @@ def test_distribute_cells_symbolic_multipopulation(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
-    simulation = FakeSimulation({"Excitatory": {"popA": [1, 2, 3], "popB": [10, 20]}})
-    monkeypatch.setattr(test_module.snap, "Simulation", lambda _config: simulation)
+    _patch_node_set_resolution(
+        monkeypatch,
+        {"Excitatory": {"popA": [1, 2, 3], "popB": [10, 20]}},
+        node_set="Excitatory",
+    )
 
     config_data = {"node_set": "Excitatory"}
     n0, rank0 = test_module._distribute_cells(config_data, cfg, 0, 2)
@@ -158,8 +176,12 @@ def test_distribute_cells_simulation_only_node_set(monkeypatch, tmp_path):
     cfg.write_text("{}")
 
     # Resolves only in popA; popB exists in the circuit but the node set does not apply.
-    simulation = FakeSimulation({"MySimOnlySet": {"popA": [4, 5]}}, extra_populations=["popB"])
-    monkeypatch.setattr(test_module.snap, "Simulation", lambda _config: simulation)
+    _patch_node_set_resolution(
+        monkeypatch,
+        {"MySimOnlySet": {"popA": [4, 5]}},
+        node_set="MySimOnlySet",
+        extra_populations=["popB"],
+    )
 
     n, cells = test_module._distribute_cells({"node_set": "MySimOnlySet"}, cfg, 0, 1)
     assert n == 2
@@ -170,8 +192,7 @@ def test_distribute_cells_missing_nodeset_raises(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.json"
     cfg.write_text("{}")
 
-    simulation = FakeSimulation({"All": {"popA": [1]}})
-    monkeypatch.setattr(test_module.snap, "Simulation", lambda _config: simulation)
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1]}}, node_set="Missing")
 
     with pytest.raises(KeyError, match="Node set 'Missing' not found"):
         test_module._distribute_cells({"node_set": "Missing"}, cfg, 0, 1)

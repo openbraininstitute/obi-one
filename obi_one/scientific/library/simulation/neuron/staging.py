@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-import bluepysnap as snap
+import libsonata
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
@@ -114,16 +114,16 @@ def get_simulation_parameters(
     """Return simulation parameters."""
     config_data = load_json(simulation_config_file)
 
-    node_set_name = config_data.get("node_set", "All")
-
-    # Resolve the node set to concrete cells via SONATA rather than reading the raw
+    # Resolve the node set to concrete cells via libsonata rather than reading the raw
     # node sets file. The node set may be defined symbolically (e.g. by population,
     # mtype or synapse_class) or as a compound reference -- in which case it has no
     # explicit "node_id" list -- and it may live in the circuit's node sets or in the
-    # simulation's own node_sets_file. snap.Simulation exposes the merged node sets and
-    # resolves the referenced circuit ("network") and manifest variables.
-    simulation = snap.Simulation(str(simulation_config_file))
-    num_cells = count_cells_in_simulation_node_set(simulation, node_set_name)
+    # simulation's own node_sets_file. libsonata.SimulationConfig resolves the referenced
+    # circuit ("network") and manifest variables, and the circuit + simulation node sets
+    # are merged for resolution.
+    simulation_config = libsonata.SimulationConfig.from_file(str(simulation_config_file))
+    node_set_name = simulation_config.node_set or "All"
+    num_cells = count_cells_in_simulation_node_set(simulation_config, node_set_name)
 
     tstop = config_data["run"]["tstop"]
 

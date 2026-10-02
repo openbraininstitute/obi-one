@@ -12,13 +12,32 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
 )
 from obi_one.types import SimulationBackend
 
-from tests.obi_one.scientific.library.simulation.neuron._fakes import FakeSimulation
+from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
 
 
 def _touch(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("dummy")
     return path
+
+
+def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set, **kwargs):
+    """Patch staging's libsonata.SimulationConfig and the node-set resolver.
+
+    Returns the fake SimulationConfig so callers can assert on it if needed.
+    """
+    simulation_config, node_sets, circuit_config = make_fake_resolution(
+        per_node_set, node_set=node_set, **kwargs
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.libsonata.SimulationConfig.from_file",
+        lambda _path: simulation_config,
+    )
+    monkeypatch.setattr(
+        "obi_one.utils.circuit._merged_simulation_node_sets",
+        lambda _sim_cfg: (node_sets, circuit_config),
+    )
+    return simulation_config
 
 
 def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
@@ -164,12 +183,8 @@ def test_get_simulation_parameters_success(
     monkeypatch.setattr(
         "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
     )
-    # Resolve the node set through a fake SONATA simulation instead of reading node_id lists.
-    simulation = FakeSimulation({"All": {"popA": [1, 2, 3]}})
-    monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
-        lambda _config: simulation,
-    )
+    # Resolve the node set via libsonata (fake) instead of reading node_id lists.
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set="All")
 
     params = test_module.get_simulation_parameters(
         simulation_backend=simulation_backend,
@@ -194,10 +209,10 @@ def test_get_simulation_parameters_symbolic_node_set(monkeypatch, tmp_path):
         MagicMock(return_value={"node_set": "Excitatory", "run": {"tstop": 50}}),
     )
     # "Excitatory" resolves across two populations, 5 cells total.
-    simulation = FakeSimulation({"Excitatory": {"popA": [1, 2, 3], "popB": [10, 20]}})
-    monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
-        lambda _config: simulation,
+    _patch_node_set_resolution(
+        monkeypatch,
+        {"Excitatory": {"popA": [1, 2, 3], "popB": [10, 20]}},
+        node_set="Excitatory",
     )
 
     params = test_module.get_simulation_parameters(
@@ -219,10 +234,11 @@ def test_get_simulation_parameters_simulation_only_node_set(monkeypatch, tmp_pat
         MagicMock(return_value={"node_set": "MySimOnlySet", "run": {"tstop": 50}}),
     )
     # "MySimOnlySet" only resolves in popA; popB has it absent (does not apply there).
-    simulation = FakeSimulation({"MySimOnlySet": {"popA": [7, 8]}}, extra_populations=["popB"])
-    monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
-        lambda _config: simulation,
+    _patch_node_set_resolution(
+        monkeypatch,
+        {"MySimOnlySet": {"popA": [7, 8]}},
+        node_set="MySimOnlySet",
+        extra_populations=["popB"],
     )
 
     params = test_module.get_simulation_parameters(
@@ -242,11 +258,7 @@ def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
         "obi_one.scientific.library.simulation.neuron.staging.load_json",
         MagicMock(return_value={"node_set": "Foo", "run": {"tstop": 100}}),
     )
-    simulation = FakeSimulation({"All": {"popA": [1, 2, 3]}})
-    monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
-        lambda _config: simulation,
-    )
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set="Foo")
 
     with pytest.raises(KeyError, match="Node set 'Foo' not found"):
         test_module.get_simulation_parameters(

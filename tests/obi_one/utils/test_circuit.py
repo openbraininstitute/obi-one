@@ -4,7 +4,7 @@ import json
 import shutil
 from unittest.mock import MagicMock, patch
 
-import bluepysnap as snap
+import libsonata
 import pytest
 from entitysdk import types
 from PIL import Image
@@ -26,7 +26,7 @@ from obi_one.utils.circuit import (
     run_validation,
 )
 
-from tests.obi_one.scientific.library.simulation.neuron._fakes import FakeSimulation
+from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
@@ -632,6 +632,7 @@ class TestNodeSetResolution:
 
         ``extra_node_sets`` are written to the simulation's own node_sets_file to
         exercise simulation-level node sets that are not defined in the circuit.
+        Returns a ``libsonata.SimulationConfig``.
         """
         sim_node_sets = dict(extra_node_sets or {})
         node_sets_path = tmp_path / "node_sets.json"
@@ -647,7 +648,7 @@ class TestNodeSetResolution:
         }
         sim_cfg_path = tmp_path / "simulation_config.json"
         sim_cfg_path.write_text(json.dumps(sim_cfg))
-        return snap.Simulation(str(sim_cfg_path))
+        return libsonata.SimulationConfig.from_file(str(sim_cfg_path))
 
     def test_count_resolved_id_node_set(self, tmp_path, circuit_config):
         # "All" is a compound node set (list of mtypes) in the circuit.
@@ -675,7 +676,10 @@ class TestNodeSetResolution:
             node_set="MySimOnlySet",
             extra_node_sets={"MySimOnlySet": {"synapse_class": "EXC"}},
         )
-        assert "MySimOnlySet" not in sim.circuit.node_sets.content
+        circuit_ns = libsonata.NodeSets.from_file(
+            libsonata.CircuitConfig.from_file(sim.network).node_sets_path
+        )
+        assert "MySimOnlySet" not in circuit_ns.names
         assert count_cells_in_simulation_node_set(sim, "MySimOnlySet") == 9
 
     def test_resolve_returns_ids_per_population(self, tmp_path, circuit_config):
@@ -690,13 +694,18 @@ class TestNodeSetResolution:
         with pytest.raises(KeyError, match="Node set 'DoesNotExist' not found"):
             count_cells_in_simulation_node_set(sim, "DoesNotExist")
 
-    def test_population_that_raises_is_skipped(self):
-        # If get_ids raises BluepySnapError for a population, that population is
+    def test_population_that_raises_is_skipped(self, monkeypatch):
+        # If materialize raises SonataError for a population, that population is
         # skipped and resolution continues with the others.
-        sim = FakeSimulation(
+        simulation_config, node_sets, circuit_config = make_fake_resolution(
             {"MySet": {"popA": [1, 2, 3]}},
+            node_set="MySet",
             raising_populations=["popB"],
         )
-        resolved = resolve_simulation_node_set_ids(sim, "MySet")
+        monkeypatch.setattr(
+            "obi_one.utils.circuit._merged_simulation_node_sets",
+            lambda _sim_cfg: (node_sets, circuit_config),
+        )
+        resolved = resolve_simulation_node_set_ids(simulation_config, "MySet")
         assert resolved == {"popA": [1, 2, 3]}
-        assert count_cells_in_simulation_node_set(sim, "MySet") == 3
+        assert count_cells_in_simulation_node_set(simulation_config, "MySet") == 3

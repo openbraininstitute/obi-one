@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import bluepysnap as snap
 import bluepysnap.circuit_validation
+import libsonata
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.path import NamedPath
@@ -90,22 +91,46 @@ def fix_node_sets_file(circuit_path: Path) -> None:
         json.dump(nset_dict, f, indent=2)
 
 
+def _merged_simulation_node_sets(
+    simulation_config: libsonata.SimulationConfig,
+) -> tuple[libsonata.NodeSets, libsonata.CircuitConfig]:
+    """Return the merged (circuit + simulation) node sets and the circuit config.
+
+    A SONATA simulation config references a circuit (``network``) and may declare its
+    own ``node_sets_file``. The simulation node sets are overlaid on top of the
+    circuit's (the simulation definitions take precedence), matching SONATA's
+    resolution semantics.
+    """
+    circuit_config = libsonata.CircuitConfig.from_file(simulation_config.network)
+
+    circuit_node_sets_path = circuit_config.node_sets_path
+    node_sets = (
+        libsonata.NodeSets.from_file(circuit_node_sets_path)
+        if circuit_node_sets_path
+        else libsonata.NodeSets.from_string("{}")
+    )
+
+    if simulation_config.node_sets_file:
+        node_sets.update(libsonata.NodeSets.from_file(simulation_config.node_sets_file))
+
+    return node_sets, circuit_config
+
+
 def resolve_simulation_node_set_ids(
-    simulation: snap.Simulation, node_set_name: str
+    simulation_config: libsonata.SimulationConfig, node_set_name: str
 ) -> dict[str, np.ndarray]:
     """Resolve a simulation's node set to concrete node IDs per population.
 
     The node set named in a SONATA simulation config may be defined either in the
     circuit's node sets or in the simulation's own ``node_sets_file`` (the latter
-    takes precedence). ``snap.Simulation.node_sets`` exposes the *merged* view, so
-    resolving through it handles both cases. It also handles every node set
-    definition shape -- symbolic (e.g. ``{"synapse_class": "EXC"}``,
+    takes precedence). Both are merged and resolved via libsonata, which handles every
+    node set definition shape -- symbolic (e.g. ``{"synapse_class": "EXC"}``,
     ``{"mtype": "L1_DAC"}``), compound references (e.g. ``["All"]``) and explicit
     ``{"population": ..., "node_id": [...]}`` lists -- rather than assuming the raw
     node sets file entry already contains a ``"node_id"`` list.
 
     Args:
-        simulation: The SONATA simulation (``snap.Simulation``) to resolve against.
+        simulation_config: The SONATA simulation config (``libsonata.SimulationConfig``).
         node_set_name: Name of the node set referenced by the simulation config.
 
     Returns:
@@ -116,29 +141,28 @@ def resolve_simulation_node_set_ids(
         KeyError: If ``node_set_name`` is defined in neither the circuit nor the
             simulation node sets.
     """
-    node_sets = simulation.node_sets
-    if node_set_name not in node_sets:
+    node_sets, circuit_config = _merged_simulation_node_sets(simulation_config)
+
+    if node_set_name not in node_sets.names:
         msg = f"Node set '{node_set_name}' not found in node sets file"
         raise KeyError(msg)
 
-    node_set = node_sets[node_set_name]
-    circuit = simulation.circuit
-
     ids_per_population: dict[str, np.ndarray] = {}
-    for npop in circuit.nodes.population_names:
+    for pop_name in circuit_config.node_populations:
+        node_population = circuit_config.node_population(pop_name)
         try:
-            node_ids = node_set.get_ids(
-                circuit.nodes[npop].to_libsonata, raise_missing_property=False
-            )
-        except BluepySnapError:
-            # Node set does not apply to this population (e.g. missing attribute)
+            selection = node_sets.materialize(node_set_name, node_population)
+        except libsonata.SonataError:
+            # Node set does not apply to this population (e.g. missing attribute).
             continue
-        if len(node_ids) > 0:
-            ids_per_population[npop] = node_ids
+        if selection.flat_size > 0:
+            ids_per_population[pop_name] = selection.flatten()
     return ids_per_population
 
 
-def count_cells_in_simulation_node_set(simulation: snap.Simulation, node_set_name: str) -> int:
+def count_cells_in_simulation_node_set(
+    simulation_config: libsonata.SimulationConfig, node_set_name: str
+) -> int:
     """Count the cells selected by a simulation's node set across all populations.
 
     Resolves the node set via :func:`resolve_simulation_node_set_ids` (merged
@@ -146,7 +170,8 @@ def count_cells_in_simulation_node_set(simulation: snap.Simulation, node_set_nam
     if the node set is defined in neither.
     """
     return sum(
-        len(ids) for ids in resolve_simulation_node_set_ids(simulation, node_set_name).values()
+        len(ids)
+        for ids in resolve_simulation_node_set_ids(simulation_config, node_set_name).values()
     )
 
 

@@ -1,61 +1,70 @@
 """Shared test doubles for simulation/neuron node set resolution tests.
 
-These model the subset of the ``bluepysnap`` API that the node set resolution
+These model the subset of the ``libsonata`` API that the node set resolution
 helpers rely on:
 
-- ``Simulation.node_sets`` -- the *merged* circuit + simulation node sets, keyed
-  by name; ``name in node_sets`` and ``node_sets[name]`` must work.
-- ``NodeSet.get_ids(population, raise_missing_property=...)`` -- resolve to IDs
-  for a single population, raising ``BluepySnapError`` when the node set does not
-  apply to that population.
-- ``Simulation.circuit.nodes.population_names`` and
-  ``Simulation.circuit.nodes[pop].to_libsonata`` -- the per-population stores
-  passed to ``get_ids``.
+- ``SimulationConfig`` -- exposes ``network`` (circuit config path), ``node_set``
+  and ``node_sets_file``. In the helpers only ``node_set`` is read directly; the
+  merged node sets and circuit come from the resolver, so the fake wires those in.
+- ``CircuitConfig`` -- ``node_populations`` and ``node_population(name)``.
+- ``NodeSets`` -- ``names`` and ``materialize(name, node_population)`` returning a
+  ``Selection``; raises ``SonataError`` when the node set does not apply to a
+  population.
+- ``Selection`` -- ``flat_size`` and ``flatten()``.
+
+The fake ``SimulationConfig`` is accepted directly by
+``resolve_simulation_node_set_ids`` / ``count_cells_in_simulation_node_set``
+because those read ``simulation_config.node_set`` and otherwise go through the
+patched ``_merged_simulation_node_sets`` (see the test helpers that patch it).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bluepysnap import BluepySnapError
+from libsonata import SonataError
 
 _MISSING = object()
 
 
-class _FakeNodeSet:
-    """A single node set resolving to explicit IDs per population."""
+@dataclass
+class _FakeSelection:
+    _ids: list[int]
 
-    def __init__(
-        self,
-        name: str,
-        ids_by_population: dict[str, list[int]],
-        raising_populations: frozenset[str] = frozenset(),
-    ):
-        self._name = name
-        self._ids_by_population = ids_by_population
-        self._raising_populations = raising_populations
+    @property
+    def flat_size(self) -> int:
+        return len(self._ids)
 
-    def get_ids(self, population, *, raise_missing_property: bool = True):
-        # ``population`` is the per-population store; our fake store carries its name.
-        pop_name = population.name
-        if pop_name in self._raising_populations:
-            # Model a population for which get_ids raises regardless of the
-            # raise_missing_property flag (e.g. an unexpected SONATA error).
-            msg = f"Node set '{self._name}' failed to resolve in population '{pop_name}'"
-            raise BluepySnapError(msg)
-        ids = self._ids_by_population.get(pop_name, _MISSING)
-        if ids is _MISSING:
-            # Node set does not apply to this population. The real bluepysnap raises
-            # BluepySnapError here when raise_missing_property is True; mirror that.
-            if raise_missing_property:
-                msg = f"Node set '{self._name}' does not resolve in population '{pop_name}'"
-                raise BluepySnapError(msg)
-            return []
-        return list(ids)
+    def flatten(self) -> list[int]:
+        return list(self._ids)
 
 
-class _FakeNodeSets:
-    """Merged node sets view: name -> {population -> [node_id, ...]}."""
+@dataclass
+class _FakeNodePopulation:
+    name: str
+
+
+class FakeCircuitConfig:
+    """Models ``libsonata.CircuitConfig`` for node population enumeration."""
+
+    def __init__(self, population_names: list[str]):
+        self._pops = {name: _FakeNodePopulation(name) for name in population_names}
+
+    @property
+    def node_populations(self) -> set[str]:
+        return set(self._pops)
+
+    def node_population(self, name: str) -> _FakeNodePopulation:
+        return self._pops[name]
+
+
+class FakeNodeSets:
+    """Models ``libsonata.NodeSets``: name -> {population -> [node_id, ...]}.
+
+    ``raising_populations`` lets a test force ``materialize`` to raise
+    ``SonataError`` for a population regardless of membership, to exercise the
+    defensive skip in the resolver.
+    """
 
     def __init__(
         self,
@@ -65,68 +74,51 @@ class _FakeNodeSets:
         self._per_node_set = per_node_set
         self._raising_populations = raising_populations
 
-    def __contains__(self, name: str) -> bool:
-        return name in self._per_node_set
+    @property
+    def names(self) -> set[str]:
+        return set(self._per_node_set)
 
-    def __iter__(self):
-        return iter(self._per_node_set)
-
-    def __getitem__(self, name: str) -> _FakeNodeSet:
-        return _FakeNodeSet(name, self._per_node_set[name], self._raising_populations)
+    def materialize(self, name: str, node_population: _FakeNodePopulation) -> _FakeSelection:
+        pop_name = node_population.name
+        if pop_name in self._raising_populations:
+            msg = f"Node set '{name}' failed to resolve in population '{pop_name}'"
+            raise SonataError(msg)
+        ids = self._per_node_set.get(name, {}).get(pop_name, _MISSING)
+        if ids is _MISSING:
+            # Node set does not apply to this population (e.g. missing attribute);
+            # libsonata raises SonataError in this case.
+            msg = f"Node set '{name}' does not resolve in population '{pop_name}'"
+            raise SonataError(msg)
+        return _FakeSelection(list(ids))
 
 
 @dataclass
-class _FakePopulationStore:
-    name: str
+class FakeSimulationConfig:
+    """Models the attributes of ``libsonata.SimulationConfig`` read by the helpers."""
+
+    node_set: str | None = None
+    network: str = "circuit_config.json"
+    node_sets_file: str = "node_sets.json"
 
 
-class _FakeNodePopulation:
-    def __init__(self, name: str):
-        self.to_libsonata = _FakePopulationStore(name)
+def make_fake_resolution(
+    per_node_set: dict[str, dict[str, list[int]]],
+    *,
+    node_set: str | None = None,
+    extra_populations: list[str] | None = None,
+    raising_populations: list[str] | None = None,
+) -> tuple[FakeSimulationConfig, FakeNodeSets, FakeCircuitConfig]:
+    """Build a fake (SimulationConfig, NodeSets, CircuitConfig) triple.
 
-
-class _FakeNodes:
-    def __init__(self, population_names: list[str]):
-        self._pops = {name: _FakeNodePopulation(name) for name in population_names}
-
-    @property
-    def population_names(self):
-        return list(self._pops)
-
-    def __getitem__(self, name: str):
-        return self._pops[name]
-
-
-class _FakeCircuit:
-    def __init__(self, population_names: list[str]):
-        self.nodes = _FakeNodes(population_names)
-
-
-class FakeSimulation:
-    """Minimal stand-in for a ``snap.Simulation`` for node set resolution tests.
-
-    Args:
-        per_node_set: node set name -> {population name -> [node_id, ...]}. The set
-            of populations is derived from the union of populations referenced by the
-            node sets, plus any ``extra_populations`` (to exercise populations in
-            which a node set does not resolve).
-        extra_populations: additional circuit populations in which the node set does
-            not resolve (``get_ids`` returns no ids there).
-        raising_populations: populations for which ``get_ids`` raises
-            ``BluepySnapError`` regardless of ``raise_missing_property`` (to exercise
-            the defensive skip in the resolver).
+    The populations are the union of those referenced by the node sets plus any
+    ``extra_populations`` / ``raising_populations`` (to exercise populations in
+    which a node set does not resolve or raises).
     """
-
-    def __init__(
-        self,
-        per_node_set: dict[str, dict[str, list[int]]],
-        *,
-        extra_populations: list[str] | None = None,
-        raising_populations: list[str] | None = None,
-    ):
-        populations = set(extra_populations or [])
-        populations.update(raising_populations or [])
-        for by_pop in per_node_set.values():
-            populations.update(by_pop)
-        self.circuit = _FakeCircuit(sorted(populations))
-        self.node_sets = _FakeNodeSets(per_node_set, frozenset(raising_populations or []))
+    populations = set(extra_populations or [])
+    populations.update(raising_populations or [])
+    for by_pop in per_node_set.values():
+        populations.update(by_pop)
+    circuit_config = FakeCircuitConfig(sorted(populations))
+    node_sets = FakeNodeSets(per_node_set, frozenset(raising_populations or []))
+    simulation_config = FakeSimulationConfig(node_set=node_set)
+    return simulation_config, node_sets, circuit_config
