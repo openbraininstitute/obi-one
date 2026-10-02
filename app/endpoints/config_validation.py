@@ -9,6 +9,10 @@ from pydantic import BaseModel
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.validator import run_grid_scan_validation
+from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
@@ -24,6 +28,9 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
+from obi_one.scientific.tasks.synapse_parameterization.config import (
+    SynapseParameterizationScanConfig,
+)
 
 if TYPE_CHECKING:
     from obi_one.core.scan_config import ScanConfig
@@ -49,6 +56,13 @@ class SharedStatePartial(BaseModel):
     # Build > Ion Channel. Distinct from ion_channel_model_simulation_config above, which
     # simulates an existing model; this one fits a new model from experimental traces.
     ion_channel_fitting_config: IonChannelFittingScanConfig | None = None
+    me_model_synaptic_model_placement_config: MEModelSynapticModelPlacementScanConfig | None = (
+        None
+    )
+    create_extracellular_recording_array_config: (
+        CreateExtracellularRecordingArrayScanConfig | None
+    ) = None
+    synapse_parameterization_config: SynapseParameterizationScanConfig | None = None
 
 
 class ConfigValidationRequest(BaseModel):
@@ -75,6 +89,12 @@ _VALIDATION_CONFIG: dict[str, bool] = {
     # validation is no stricter than generation. Generation still resolves the input recording
     # against the database; only the fitting task itself (NWB download, nrnivmodl) is skipped.
     "ion_channel_fitting_config": False,
+    # Same reasoning as ion_channel_fitting_config above: these all do real I/O/compute
+    # (circuit registration, mod-file writes/compilation, electrode-weight computation)
+    # that generation already skips validity on; structural validation only.
+    "me_model_synaptic_model_placement_config": False,
+    "create_extracellular_recording_array_config": False,
+    "synapse_parameterization_config": False,
 }
 
 
