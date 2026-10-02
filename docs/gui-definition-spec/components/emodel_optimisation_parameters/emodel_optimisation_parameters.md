@@ -75,3 +75,5 @@ The self-validation performed by the Python models (not the UI schema) still app
 - Fixed and bounds values use `OptimizationValue`.
 - Parameter distributions must be declared by the external `distance_dependent_distributions`
   field or be a standard distribution.
+- Standard distribution blocks set a readable `title` (shown in the UI) with the formula in the description; the class name stays the `type` discriminator.
+- `linear_hdpas` has no obi-one block; it has the same formula as `linear_hd_apic`, so use `LinearHDApicDistanceDependentDistribution` (title "Linear increase (Ih)").

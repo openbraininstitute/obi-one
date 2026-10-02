@@ -87,6 +87,7 @@ distribution):
 
 ```py
 class CustomDistanceDependentDistribution(DistanceDependentDistribution):
+    title: ClassVar[str] = "Custom formula"
     function: str = Field(
         min_length=1,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,

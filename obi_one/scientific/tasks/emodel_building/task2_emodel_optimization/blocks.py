@@ -422,7 +422,11 @@ def _distance_placeholder_error(
 
 
 class DistanceDependentDistribution(Block):
-    """A BluePyEModel distance-dependent parameter transformation."""
+    """Scales a parameter along the dendrites as a function of distance from the soma.
+
+    Formulas in subclass docstrings use ``x`` = path distance from soma (um) and
+    ``v`` = optimised value at soma.
+    """
 
     _runtime_placeholders: ClassVar[frozenset[str]] = frozenset()
 
@@ -438,8 +442,7 @@ class DistanceDependentDistribution(Block):
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description=(
-            "Expression using {value} and {distance}; custom expressions may also use "
-            "placeholders defined by the corresponding parameter configuration."
+            "Python expression of {value} and {distance}, plus any names listed in parameters."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE},
     )
@@ -513,13 +516,18 @@ class DistanceDependentDistribution(Block):
 
 
 class UniformDistanceDependentDistribution(DistanceDependentDistribution):
-    """Default uniform distance distribution used by EMC files."""
+    """Constant value on all sections; the default for EMC parameters.
+
+    Formula: ``v``.
+    """
+
+    title: ClassVar[str] = "Uniform (constant)"
 
     name: str = Field(
         default="uniform",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: None = Field(
@@ -532,13 +540,18 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
 
 
 class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
-    """Standard exponential distance distribution used by SSCX and thalamus EMC files."""
+    """Exponential rise with distance; used by SSCX and thalamus models.
+
+    Formula: ``v * (-0.8696 + 2.087 * exp(0.0031 * x))``.
+    """
+
+    title: ClassVar[str] = "Exponential increase (SSCX/thalamus)"
 
     name: str = Field(
         default="exp",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -552,7 +565,9 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
 
 
 class StepDistanceDependentDistribution(DistanceDependentDistribution):
-    """Step distance distribution used by detailed SSCX models.
+    """Calcium hot-spot step on the apical dendrite; used by detailed SSCX models.
+
+    Formula: ``v`` for ``step_begin < x < step_end``, else ``0.1 * v``.
 
     ``{step_begin}`` and ``{step_end}`` are not user-declared placeholders.
     BluePyEModel's ``define_distributions()`` special-cases the name ``step`` and
@@ -561,13 +576,14 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
     ``parameters``; they must remain in the function string verbatim.
     """
 
+    title: ClassVar[str] = "Step: Ca hot-spot"
     _runtime_placeholders: ClassVar[frozenset[str]] = frozenset({"step_begin", "step_end"})
 
     name: str = Field(
         default="step",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -582,13 +598,18 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
 
 
 class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistribution):
-    """Exponential dendritic sodium distance distribution used by hippocampus models."""
+    """Exponential decay of dendritic Na with distance; used by hippocampus models.
+
+    Formula: ``v * exp(-x / 50)``.
+    """
+
+    title: ClassVar[str] = "Exponential decay, dendritic Na (hippocampus)"
 
     name: str = Field(
         default="exp_na_dend",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -602,13 +623,19 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
 
 
 class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
-    """Linear h-current apical distance distribution used by hippocampus models."""
+    """Linear rise of Ih (hd) with distance; used by hippocampus (rat and mouse) models.
+
+    Replaces BluePyEModel ``linear_hd_apic`` and ``linear_hdpas`` (same formula).
+    Formula: ``v * (1 + 0.03 * x)``.
+    """
+
+    title: ClassVar[str] = "Linear increase (Ih)"
 
     name: str = Field(
         default="linear_hd_apic",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -622,13 +649,18 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
 
 
 class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution):
-    """Sigmoid potassium A-current apical distance distribution."""
+    """Sigmoid rise of apical KA with distance; used by hippocampus models.
+
+    Formula: ``v * 15 / (1 + exp((300 - x) / 50))``.
+    """
+
+    title: ClassVar[str] = "Sigmoid increase, apical KA (hippocampus)"
 
     name: str = Field(
         default="sigmoid_kad_apic",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -642,13 +674,18 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
 
 
 class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution):
-    """Linear passive reversal-potential apical distance distribution."""
+    """Linear drop of apical e_pas with distance (additive); used by hippocampus models.
+
+    Formula: ``v - x / 30``.
+    """
+
+    title: ClassVar[str] = "Linear decrease, apical e_pas (additive)"
 
     name: str = Field(
         default="linear_e_pas_apic",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -661,34 +698,19 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
     )
 
 
-class LinearHDPasDistanceDependentDistribution(DistanceDependentDistribution):
-    """Linear h-current passive distance distribution used by mouse models."""
-
-    name: str = Field(
-        default="linear_hdpas",
-        frozen=True,
-        title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    function: str = Field(
-        default="(1. + 3./100. * {distance})*{value}",
-        frozen=True,
-        max_length=MAX_DISTANCE_FUNCTION_LENGTH,
-        title="Distance function",
-        description="Expression using {value} and {distance}.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
-    )
-
-
 class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
-    """Sigmoid potassium A-current distance distribution used by mouse models."""
+    """Sigmoid rise of KA with distance; used by mouse hippocampus models.
+
+    Formula: ``v * 15 / (1 + exp((150 - x) / 10))``.
+    """
+
+    title: ClassVar[str] = "Sigmoid increase, KA (mouse)"
 
     name: str = Field(
         default="sigmoid_kad",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -702,13 +724,18 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
 
 
 class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution):
-    """Sigmoid potassium D-type apical distance distribution used by mouse models."""
+    """Sigmoid drop of apical KD with distance; used by mouse hippocampus models.
+
+    Formula: ``v * 15 / (1 + exp((x - 50) / 50))``.
+    """
+
+    title: ClassVar[str] = "Sigmoid decrease, apical KD (mouse)"
 
     name: str = Field(
         default="sigmoid_kdbm_apic",
         frozen=True,
         title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
+        description="Fixed BluePyEModel distribution name.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     function: str = Field(
@@ -722,9 +749,12 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
 
 
 class CustomDistanceDependentDistribution(DistanceDependentDistribution):
-    """User-defined distance-dependent distribution for the optimization workflow."""
+    """User-defined distribution for any parameter.
 
-    title: ClassVar[str] = "Custom Distance-Dependent Distribution"
+    Formula: the user expression in ``{value}``, ``{distance}`` and declared parameters.
+    """
+
+    title: ClassVar[str] = "Custom formula"
     function: str = Field(
         min_length=1,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
@@ -742,7 +772,6 @@ DistanceDependentDistributionUnion = Annotated[
     | LinearHDApicDistanceDependentDistribution
     | SigmoidKADApicDistanceDependentDistribution
     | LinearEPasApicDistanceDependentDistribution
-    | LinearHDPasDistanceDependentDistribution
     | SigmoidKADDistanceDependentDistribution
     | SigmoidKDBMApicDistanceDependentDistribution
     | CustomDistanceDependentDistribution,

@@ -75,11 +75,6 @@ class TestDistanceDependentDistributions:
                 "({value}-5.*{distance}/150.)",
             ),
             (
-                obi.LinearHDPasDistanceDependentDistribution,
-                "linear_hdpas",
-                "(1. + 3./100. * {distance})*{value}",
-            ),
-            (
                 obi.SigmoidKADDistanceDependentDistribution,
                 "sigmoid_kad",
                 "(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
