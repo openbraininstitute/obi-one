@@ -12,6 +12,8 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
 )
 from obi_one.types import SimulationBackend
 
+from tests.obi_one.scientific.library.simulation.neuron._fakes import FakeSimulation
+
 
 def _touch(path):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -130,12 +132,15 @@ def test_get_simulation_parameters_success(
         else neurodamus_mechanism_build
     )
 
-    mock_load_json.side_effect = [
-        {"node_sets_file": "nodes.json", "node_set": "All", "run": {"tstop": 100}},
-        {"All": {"node_id": [1, 2, 3]}},
-    ]
+    mock_load_json.return_value = {"node_set": "All", "run": {"tstop": 100}}
     monkeypatch.setattr(
         "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
+    )
+    # Resolve the node set through a fake SONATA simulation instead of reading node_id lists.
+    simulation = FakeSimulation({"All": {"popA": [1, 2, 3]}})
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
+        lambda _config: simulation,
     )
 
     params = test_module.get_simulation_parameters(
@@ -151,17 +156,68 @@ def test_get_simulation_parameters_success(
     assert params.mechanism_build == mechanism_build
 
 
-def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
-    mock_load_json = MagicMock()
+def test_get_simulation_parameters_symbolic_node_set(monkeypatch, tmp_path):
+    """A symbolic node set (no explicit node_id list) must still be counted."""
     simulation_config_file = tmp_path / "config.json"
     mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
-    mock_load_json.side_effect = [
-        {"node_sets_file": "nodes.json", "node_set": "Foo", "run": {"tstop": 100}},
-        {"All": {"node_id": [1, 2, 3]}},
-    ]
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"node_set": "Excitatory", "run": {"tstop": 50}}),
+    )
+    # "Excitatory" resolves across two populations, 5 cells total.
+    simulation = FakeSimulation({"Excitatory": {"popA": [1, 2, 3], "popB": [10, 20]}})
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
+        lambda _config: simulation,
+    )
+
+    params = test_module.get_simulation_parameters(
+        simulation_backend=SimulationBackend.bluecellulab,
+        simulation_config_file=simulation_config_file,
+        mechanism_build=mechanism_build,
+    )
+
+    assert params.number_of_cells == 5
+
+
+def test_get_simulation_parameters_simulation_only_node_set(monkeypatch, tmp_path):
+    """A node set defined only in the simulation node_sets_file (not the circuit)."""
+    simulation_config_file = tmp_path / "config.json"
+    mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"node_set": "MySimOnlySet", "run": {"tstop": 50}}),
+    )
+    # "MySimOnlySet" only resolves in popA; popB has it absent (does not apply there).
+    simulation = FakeSimulation({"MySimOnlySet": {"popA": [7, 8]}}, extra_populations=["popB"])
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
+        lambda _config: simulation,
+    )
+
+    params = test_module.get_simulation_parameters(
+        simulation_backend=SimulationBackend.bluecellulab,
+        simulation_config_file=simulation_config_file,
+        mechanism_build=mechanism_build,
+    )
+
+    assert params.number_of_cells == 2
+
+
+def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
+    simulation_config_file = tmp_path / "config.json"
+    mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"node_set": "Foo", "run": {"tstop": 100}}),
+    )
+    simulation = FakeSimulation({"All": {"popA": [1, 2, 3]}})
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.snap.Simulation",
+        lambda _config: simulation,
     )
 
     with pytest.raises(KeyError, match="Node set 'Foo' not found"):

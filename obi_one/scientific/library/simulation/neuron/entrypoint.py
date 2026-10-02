@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import bluepysnap as snap
 from bluecellulab import CircuitSimulation
 from bluecellulab.reports.manager import ReportManager
 from bluecellulab.reports.utils import (
@@ -25,6 +26,7 @@ from bluecellulab.reports.utils import (
 from neuron import h
 
 from obi_one.types import SimulationBackend
+from obi_one.utils.circuit import resolve_simulation_node_set_ids
 from obi_one.utils.io import load_json
 
 logger = logging.getLogger(__name__)
@@ -258,20 +260,26 @@ def run_bluecellulab(
 def _distribute_cells(
     config_data: dict[str, Any], simulation_config: str | Path, rank: int, size: int
 ) -> tuple[int, list[tuple[str, int]]]:
-    base_dir = Path(simulation_config).parent
-    node_sets_file = base_dir / config_data["node_sets_file"]
-
-    node_set_data = load_json(node_sets_file)
-
     node_set_name = config_data.get("node_set", "All")
-    if node_set_name not in node_set_data:
-        err_msg = f"Node set '{node_set_name}' not found in node sets file"
-        raise KeyError(err_msg)
 
-    population: str = node_set_data[node_set_name]["population"]
-    all_node_ids: list[int] = node_set_data[node_set_name]["node_id"]
+    # Resolve the node set to concrete (population, node_id) pairs via SONATA. The node
+    # set may be defined symbolically (e.g. by population, mtype or synapse_class) or as
+    # a compound reference -- so it cannot be assumed to carry an explicit "node_id"
+    # list -- and it may live in the circuit's node sets or in the simulation's own
+    # node_sets_file. snap.Simulation exposes the merged node sets and resolves the
+    # circuit referenced by the config ("network") and its manifest variables.
+    simulation = snap.Simulation(str(simulation_config))
+    ids_per_population = resolve_simulation_node_set_ids(simulation, node_set_name)
 
-    num_nodes = len(all_node_ids)
+    # Flatten to a deterministically ordered list of (population, node_id) pairs so the
+    # distribution across ranks is reproducible regardless of population iteration order.
+    all_cells: list[tuple[str, int]] = [
+        (population, int(node_id))
+        for population in sorted(ids_per_population)
+        for node_id in ids_per_population[population]
+    ]
+
+    num_nodes = len(all_cells)
     nodes_per_rank, remainder = divmod(num_nodes, size)
 
     start_idx = rank * nodes_per_rank + min(rank, remainder)
@@ -279,10 +287,10 @@ def _distribute_cells(
         nodes_per_rank += 1
     end_idx = start_idx + nodes_per_rank
 
-    rank_node_ids = all_node_ids[start_idx:end_idx]
-    logger.info("Rank %d node IDs: %s", rank, rank_node_ids)
+    rank_cells = all_cells[start_idx:end_idx]
+    logger.info("Rank %d cells: %s", rank, rank_cells)
 
-    return num_nodes, [(population, i) for i in rank_node_ids]
+    return num_nodes, rank_cells
 
 
 def _gather_results(

@@ -90,6 +90,66 @@ def fix_node_sets_file(circuit_path: Path) -> None:
         json.dump(nset_dict, f, indent=2)
 
 
+def resolve_simulation_node_set_ids(
+    simulation: snap.Simulation, node_set_name: str
+) -> dict[str, np.ndarray]:
+    """Resolve a simulation's node set to concrete node IDs per population.
+
+    The node set named in a SONATA simulation config may be defined either in the
+    circuit's node sets or in the simulation's own ``node_sets_file`` (the latter
+    takes precedence). ``snap.Simulation.node_sets`` exposes the *merged* view, so
+    resolving through it handles both cases. It also handles every node set
+    definition shape -- symbolic (e.g. ``{"synapse_class": "EXC"}``,
+    ``{"mtype": "L1_DAC"}``), compound references (e.g. ``["All"]``) and explicit
+    ``{"population": ..., "node_id": [...]}`` lists -- rather than assuming the raw
+    node sets file entry already contains a ``"node_id"`` list.
+
+    Args:
+        simulation: The SONATA simulation (``snap.Simulation``) to resolve against.
+        node_set_name: Name of the node set referenced by the simulation config.
+
+    Returns:
+        Mapping of population name -> array of node IDs selected by the node set.
+        Populations in which the node set resolves to no cells are omitted.
+
+    Raises:
+        KeyError: If ``node_set_name`` is defined in neither the circuit nor the
+            simulation node sets.
+    """
+    node_sets = simulation.node_sets
+    if node_set_name not in node_sets:
+        msg = f"Node set '{node_set_name}' not found in node sets file"
+        raise KeyError(msg)
+
+    node_set = node_sets[node_set_name]
+    circuit = simulation.circuit
+
+    ids_per_population: dict[str, np.ndarray] = {}
+    for npop in circuit.nodes.population_names:
+        try:
+            node_ids = node_set.get_ids(
+                circuit.nodes[npop].to_libsonata, raise_missing_property=False
+            )
+        except BluepySnapError:
+            # Node set does not apply to this population (e.g. missing attribute)
+            continue
+        if len(node_ids) > 0:
+            ids_per_population[npop] = node_ids
+    return ids_per_population
+
+
+def count_cells_in_simulation_node_set(simulation: snap.Simulation, node_set_name: str) -> int:
+    """Count the cells selected by a simulation's node set across all populations.
+
+    Resolves the node set via :func:`resolve_simulation_node_set_ids` (merged
+    circuit + simulation node sets, any definition shape). Propagates ``KeyError``
+    if the node set is defined in neither.
+    """
+    return sum(
+        len(ids) for ids in resolve_simulation_node_set_ids(simulation, node_set_name).values()
+    )
+
+
 def get_circuit_size(
     c: Circuit, scale_override: types.CircuitScale | None = None
 ) -> tuple[types.CircuitScale, int, int, int]:
