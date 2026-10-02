@@ -116,8 +116,9 @@ def submit_circuit_asset_generation_job(
 ) -> UUID | None:
     """Submit a circuit asset-generation job to the launch-system.
 
-    Stages the circuit and generates compressed SONATA + connectivity matrices.
-    Visualization assets are expected to already exist from registration.
+    Stages the circuit and generates the compressed SONATA circuit, connectivity
+    matrices and plots, and the overview / sim-designer images (skipping any image the
+    user already uploaded at registration time).
 
     Args:
         ls_client: Launch-system HTTP client (authenticated).
