@@ -8,8 +8,11 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID
+
+if TYPE_CHECKING:
+    import os
 
 import entitysdk
 from entitysdk import MultipartDirectoryUploadTransferConfig
@@ -230,7 +233,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         raise RuntimeError(msg)
 
     figures_dir = coord_root / "figures"
-    figure_files: dict[Path, Path] = {}
+    figure_files: dict[os.PathLike, os.PathLike] = {}
     if figures_dir.exists():
         figure_files = {
             p.relative_to(figures_dir): p for p in sorted(figures_dir.rglob("*")) if p.is_file()
@@ -285,7 +288,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     db_client.upload_directory(
         entity_id=task_result.id,
         entity_type=TaskResult,
-        paths=dict(figure_files),
+        paths=figure_files,
         name="analysis_figures",
         label=AssetLabel.emodel_analysis_figures,
         transfer_config=MultipartDirectoryUploadTransferConfig(),

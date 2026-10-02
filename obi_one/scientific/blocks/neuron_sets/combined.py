@@ -224,7 +224,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -241,7 +241,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
-    ] = Field(
+    ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
@@ -274,7 +274,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -291,7 +291,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
-    ] = Field(
+    ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
@@ -322,7 +322,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -339,7 +339,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
-    ] = Field(
+    ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
@@ -372,7 +372,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -389,7 +389,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
-    ] = Field(
+    ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",
@@ -420,7 +420,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         },
     }
 
-    base_neuron_set: ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
+    base_neuron_set: ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Base neuron set to be combined.",
@@ -437,7 +437,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
             Literal[SetOperation.UNION, SetOperation.INTERSECT, SetOperation.DIFF],
         ],
         ...,
-    ] = Field(
+    ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
         title="Combine With",
         description="Neuron sets and set operations to combine with the base neuron set.",

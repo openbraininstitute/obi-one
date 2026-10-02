@@ -37,6 +37,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.register import (
     register_output,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
+    ResolvedNeuron,
     resolve_neuron,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.util import (
@@ -88,7 +89,7 @@ class EMSynapseMappingTask(Task):
 
         # Resolve all neurons: morphology, provenance, ME model
         L.info("Resolving neurons...")
-        resolved_neurons = []
+        resolved_neurons: list[ResolvedNeuron] = []
         pt_root_id_names: dict[int, str] = {}
 
         mechanisms_placed = None

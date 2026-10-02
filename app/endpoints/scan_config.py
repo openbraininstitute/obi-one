@@ -103,7 +103,7 @@ def create_endpoint_for_scan_config(
                     form=form,
                     # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
                     #        / "grid_scan", => ERA001 Found commented-out code
-                    output_root=tdir,  # ty:ignore[invalid-argument-type]
+                    output_root=tdir,
                     coordinate_directory_option="ZERO_INDEX",
                 )
                 grid_scan.execute(db_client=db_client)
