@@ -5,7 +5,9 @@ import pandas as pd
 from pydantic import Field, PositiveInt
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one.scientific.blocks.morphology_locations.base import (
+    GeneratedMorphologyLocationsBlock,
+)
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
     generate_neurite_locations_on,
@@ -14,7 +16,7 @@ from obi_one.scientific.library.morphology_locations import (
 _MIN_PD_SD = 0.1
 
 
-class RandomMorphologyLocations(MorphologyLocationsBlock):
+class RandomMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Uniformly distributed random locations."""
 
     title: ClassVar[str] = "Random Morphology Locations"
@@ -41,7 +43,7 @@ class RandomMorphologyLocations(MorphologyLocationsBlock):
                 raise ValueError(msg)
 
 
-class RandomGroupedMorphologyLocations(MorphologyLocationsBlock):
+class RandomGroupedMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Completely random locations, but grouped into abstract groups."""
 
     title: ClassVar[str] = "Random Grouped Morphology Locations"

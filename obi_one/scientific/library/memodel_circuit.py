@@ -1,9 +1,7 @@
-import json
 import logging
 from typing import Self
 
 import entitysdk.client
-import entitysdk.exception
 from entitysdk.models import MEModel
 from pydantic import BaseModel, model_validator
 
@@ -91,26 +89,28 @@ def _build_mechanism_variables_by_ion_channel_response(
     }
 
 
-def try_get_mechanism_variables(
+def get_memodel_mechanism_variables(
     db_client: entitysdk.client.Client,
     entity_id: str,
-) -> dict[str, IonChannelVariables] | None:
-    """Try to fetch mechanism variables if entity_id refers to an MEModel.
+) -> dict[str, IonChannelVariables]:
+    """Fetch mechanism variables for an MEModel entity.
 
-    Returns None if the entity is not an MEModel or if fetching fails.
-    Catches all exceptions so callers can safely treat this as optional data.
+    This helper is strict: it assumes the caller already knows the entity is
+    an MEModel and lets entity-fetch, asset-download, and parsing errors
+    propagate to the caller so they can be mapped to explicit HTTP error
+    responses rather than silently returning None.
+
+    Args:
+        db_client: entitysdk client used to fetch the MEModel and its assets.
+        entity_id: ID of the MEModel entity.
+
+    Returns:
+        Mapping of ion channel name to its variables, in the same shape used
+        by both the MEModel and Circuit neuronal-manipulation endpoints.
     """
-    try:
-        memodel = db_client.get_entity(entity_id=entity_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
-    except entitysdk.exception.EntitySDKError:
-        return None
-
-    try:
-        variables, channel_mapping = get_mechanism_variables(db_client, memodel)
-        return _build_mechanism_variables_by_ion_channel_response(variables, channel_mapping)
-    except (entitysdk.exception.EntitySDKError, json.JSONDecodeError, KeyError, AttributeError):
-        L.warning("Failed to fetch mechanism variables for entity %s", entity_id, exc_info=True)
-        return None
+    memodel = db_client.get_entity(entity_id=entity_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
+    variables, channel_mapping = get_mechanism_variables(db_client, memodel)
+    return _build_mechanism_variables_by_ion_channel_response(variables, channel_mapping)
 
 
 class MEModelCircuit(Circuit):

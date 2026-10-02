@@ -12,6 +12,7 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.utils.io import compressed_archive_filename
 
 L = logging.getLogger(__name__)
 
@@ -33,11 +34,19 @@ class FolderCompressionScanConfig(ScanConfig):
         file_name: str | list[str | None] | None = "compressed"
         archive_name: str | None = None
 
+        @property
+        def output_filename(self) -> str:
+            """Archive filename, e.g. "circuit.tar.gz"."""
+            return compressed_archive_filename(self.file_name, self.file_format)  # ty:ignore[invalid-argument-type]
+
     initialize: Initialize
 
 
 class FolderCompressionSingleConfig(FolderCompressionScanConfig, SingleConfigMixin):
-    pass
+    @property
+    def output_path(self) -> Path:
+        """Full path where the compressed archive is written."""
+        return Path(self.coordinate_output_root) / self.initialize.output_filename
 
 
 class FolderCompressionTask(Task):
@@ -66,10 +75,7 @@ class FolderCompressionTask(Task):
             )
             raise ValueError(msg)
 
-        output_file = (
-            Path(self.config.coordinate_output_root)
-            / f"{self.config.initialize.file_name}.{self.config.initialize.file_format}"
-        )
+        output_file = self.config.output_path
         if Path(output_file).exists():
             msg = f"Output file '{output_file}' already exists!"
             raise ValueError(msg)

@@ -4,9 +4,12 @@ from enum import StrEnum
 class SchemaKey(StrEnum):
     ACCEPTED_INPUT_TYPES = "accepted_input_types"
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
+    DEFAULT_BLOCK_REFERENCE_LABEL = "default_block_reference_label"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
     DESCRIPTION_BY_KEY = "description_by_key"
+    EFEL_DOC_ANCHOR = "efel_doc_anchor"
     EFEL_DOC_BASE_URL = "efel_doc_base_url"
+    EFEL_FEATURE_CATEGORY = "efel_feature_category"
     EFEL_FEATURE_IMAGE = "efel_feature_image"
     EFEL_FIGURES_BASE_URL = "efel_figures_base_url"
     ENTITY_QUERY = "entity_query"
@@ -16,6 +19,14 @@ class SchemaKey(StrEnum):
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
     LATEX_EQUATION = "latex_equation"
+    SAMPLED_PARAMETER = "sampled_parameter"
+    # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
+    # sampled - the column it becomes. It is declared because a field's own name need not match
+    # it: `delay_distribution` supplies `delay`.
+    PARAMETER_DOMAIN = "parameter_domain"
+    # Note: PARAMETER_DOMAIN is the range a sampled value for this field is allowed to take,
+    # whatever distribution is chosen for it. It is checked against the values a distribution
+    # actually draws - not by pydantic, which only ever sees the reference to the distribution.
     PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
     # Note: PARAMETER_ORDER_PRIORITY is not used by the UI,
     # rather the Block class uses this to order the properties in the generated openapi.json schema,
@@ -27,8 +38,28 @@ class SchemaKey(StrEnum):
     PROPERTY = "property"
     PROPERTY_ENDPOINTS = "property_endpoints"
     PROPERTY_GROUP = "property_group"
+    PROPERTY_SOURCE_FIELD = "property_source_field"
+    REFERENCE_TAG = "reference_tag"
+    # Note: REFERENCE_TAG names what a block reference field is for, so a task can say what the
+    # field means when it is left unset. See ReferenceTag.
+    REFERENCE_TAG_DEFAULTS = "reference_tag_defaults"
+    # Note: REFERENCE_TAG_DEFAULTS sits on a ScanConfig and gives, for each reference tag, what a
+    # field carrying that tag resolves to when left unset: {"name": ..., "block": ...} - the name
+    # the block is registered under once the config is filled, and the serialized block itself,
+    # so the UI can both label the field and read the values behind that label. Unlike
+    # DEFAULT_BLOCK_REFERENCE_LABELS, which is keyed by reference type and also decides whether a
+    # field is shown at all, this is keyed by tag, so two fields of the same type that mean
+    # different things get their own answer.
+    # NOTE ON MERGING #947: that branch defines this value as a bare name string. Here it is the
+    # object above, so the two definitions have to be reconciled rather than one taking the
+    # other - core-web-app reads `.name` off it.
     REFERENCE_TYPES = "reference_types"
     SINGULAR_NAME = "singular_name"
+    STRICTLY_INCREASING = "strictly_increasing"
+    # Note: STRICTLY_INCREASING is a validation keyword, not UI metadata: on an array it requires
+    # every item to be greater than the one before it. JSON Schema has no keyword to compare items
+    # with each other, so the frontend registers this one with its schema validator (ajv).
+    TASK_RESULT_TYPE = "task_result_type"
     TITLE_BY_KEY = "title_by_key"
     UI_ELEMENT = "ui_element"
     UI_ENABLED = "ui_enabled"
@@ -40,12 +71,19 @@ class SchemaKey(StrEnum):
 
 
 class UIElement(StrEnum):
+    AXON_MODIFIER = "axon_modifier"
     BLOCK_DICTIONARY = "block_dictionary"
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
+    DISTANCE_FUNCTION_INPUT = "distance_function_input"
+    DISTANCE_FUNCTION_INPUT_NULLABLE = "distance_function_input_nullable"
+    EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
+    DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
+    ETYPE_SELECTOR = "etype_selector"
+    FLOAT_INPUT = "float_input"
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
@@ -58,17 +96,24 @@ class UIElement(StrEnum):
     MODEL_IDENTIFIER = "model_identifier"
     MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
+    MODEL_IDENTIFIER_GROUPED = "model_identifier_grouped"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
+    MORPHOLOGY_LOCATION_SELECTION = "morphology_location_selection"
     MORPHOLOGY_SECTION_TYPE_SELECTION = "morphology_section_type_selection"
     NEURON_IDS = "neuron_ids"
+    OBJECT = "object"
     REFERENCE = "reference"
     SELECT_EFEATURES_BY_PROTOCOL = "select_efeatures_by_protocol"
     SELECT_RECORDABLE_ION_CHANNEL_VARIABLE = "select_recordable_ion_channel_variable"
     STRING_CONSTANT = "string_constant"
     STRING_CONSTANT_ENHANCED = "string_constant_enhanced"
     STRING_INPUT = "string_input"
+    STRING_LIST_INPUT = "string_list_input"
+    STRING_LIST_OPTIONAL = "string_list_optional"
     STRING_SELECTION = "string_selection"
     STRING_SELECTION_ENHANCED = "string_selection_enhanced"
+    STOCHASTICITY = "stochasticity"
+    TASK_RESULT_SELECTOR = "task_result_selector"
     VOLTAGE_DURATION = "voltage_duration"
 
 

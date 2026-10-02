@@ -9,6 +9,7 @@ from entitysdk.types import AssetLabel
 
 import obi_one as obi
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 
@@ -25,10 +26,10 @@ class _FakeClient:
         self.asset_names = asset_names
         self.selections = []
 
-    def get_entity(self, entity_id, entity_type):  # noqa: ARG002
+    def get_entity(self, entity_id, entity_type):  # ruff: ignore[unused-method-argument]
         return object()
 
-    def download_assets(self, entity, *, selection, output_path):  # noqa: ARG002
+    def download_assets(self, entity, *, selection, output_path):  # ruff: ignore[unused-method-argument]
         self.selections.append(selection)
         downloaded = []
         for asset_name in self.asset_names:
@@ -53,6 +54,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         db_client = _FakeClient()
 
         reports = recording.config(
+            SIMULATION_TIMESTEP_MILLISECONDS,
             end_time=100.0,
             default_node_set="AllBiophysical",
             db_client=db_client,
@@ -76,6 +78,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         db_client = _FakeClient()
 
         recording.config(
+            SIMULATION_TIMESTEP_MILLISECONDS,
             end_time=100.0,
             db_client=db_client,
             sonata_simulation_config_directory=tmp_path,
@@ -90,6 +93,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         """`write_simulation_config` validates with libsonata, which is strict about lfp reports."""
         recording = _recording()
         reports = recording.config(
+            SIMULATION_TIMESTEP_MILLISECONDS,
             end_time=100.0,
             db_client=_FakeClient(),
             sonata_simulation_config_directory=tmp_path,
@@ -111,13 +115,19 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         recording = _recording()
 
         with pytest.raises(OBIONEError, match="needs a database client"):
-            recording.config(end_time=100.0, sonata_simulation_config_directory=tmp_path)
+            recording.config(
+                SIMULATION_TIMESTEP_MILLISECONDS,
+                end_time=100.0,
+                sonata_simulation_config_directory=tmp_path,
+            )
 
     def test_missing_config_directory_raises(self):
         recording = _recording()
 
         with pytest.raises(OBIONEError, match="needs the simulation config directory"):
-            recording.config(end_time=100.0, db_client=_FakeClient())
+            recording.config(
+                SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, db_client=_FakeClient()
+            )
 
     @pytest.mark.parametrize("asset_names", [(), ("a.h5", "b.h5")])
     def test_requires_exactly_one_weight_matrix_asset(self, tmp_path, asset_names):
@@ -125,6 +135,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
 
         with pytest.raises(OBIONEError, match="Expected exactly one"):
             recording.config(
+                SIMULATION_TIMESTEP_MILLISECONDS,
                 end_time=100.0,
                 db_client=_FakeClient(asset_names=asset_names),
                 sonata_simulation_config_directory=tmp_path,

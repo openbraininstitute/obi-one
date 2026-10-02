@@ -344,6 +344,7 @@ def _check_generated_obi_config(tmp_path, scan):  # ruff: ignore[too-many-locals
             "SynapticMgManipulation": mg_dict,
             "ScaleAcetylcholineUSESynapticManipulation": use_dict,
         },
+        "neuronal_manipulations": {},
         "initialize": init_dict,
         "info": info_dict,
         "morphology_locations": {},
@@ -512,6 +513,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-
         }
         assert cfg.pop("info") == info_dict
         assert cfg.pop("distributions") == {}
+        assert cfg.pop("neuronal_manipulations") == {}
         assert cfg.pop("morphology_locations") == {}
         assert len(cfg) == 0  # No additional entries
 
@@ -866,14 +868,6 @@ def test_continuous_stimulus_exposes_single_target_field():
     assert fields["neuron_set"].title == "Target"
     assert "MorphologyLocationsReference" in reference_types
     assert "RandomMorphologyLocations" in morphology_locations_ref_schema["allowed_block_types"]
-    assert (
-        "RandomGroupedMorphologyLocations"
-        not in morphology_locations_ref_schema["allowed_block_types"]
-    )
-    assert (
-        "ClusteredGroupedMorphologyLocations"
-        not in morphology_locations_ref_schema["allowed_block_types"]
-    )
     assert "locations" not in fields
     assert "compartment_set" not in fields
 

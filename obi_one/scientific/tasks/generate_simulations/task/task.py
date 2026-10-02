@@ -8,6 +8,9 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.blocks.morphology_locations.base import (
+    GeneratedMorphologyLocationsBlock,
+)
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
@@ -36,6 +39,9 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BaseNeuronSetReference,
     NeuronSetReference,
@@ -63,6 +69,22 @@ class GenerateSimulationTask(Task):
     _materialized_compartment_sets: dict[str, MaterializedCompartmentSet] = PrivateAttr(
         default_factory=dict
     )
+
+    def _needs_circuit_morphologies(self) -> bool:
+        """Whether generation has to read morphologies out of the circuit.
+
+        Only MorphologyLocations targets do: they are turned into compartment sets by
+        ``_materialize_location_targets``, which walks the morphology of each selected neuron.
+        Mirrors the block discovery in ``materialize_locations_to_compartment_sets``.
+        """
+        return any(
+            isinstance(
+                getattr(block, "morphology_locations", None) or getattr(block, "neuron_set", None),
+                MorphologyLocationsReference,
+            )
+            for block_dict_name in ("stimuli", "recordings")
+            for block in getattr(self.config, block_dict_name, {}).values()
+        )
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -100,8 +122,18 @@ class GenerateSimulationTask(Task):
                     / self._circuit_id
                 )
 
+            stage_kwargs = {}
+            if isinstance(circuit, CircuitFromID) and not self._needs_circuit_morphologies():
+                # Generation reads node properties and node sets; nothing here opens the edge
+                # files, which are the bulk of a large circuit. Staging them would be a wasted
+                # download for a private-project circuit, which cannot be symlinked.
+                stage_kwargs["nodes_only"] = True
+
             self._circuit = circuit.stage_circuit(
-                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
+                db_client=db_client,
+                dest_dir=circuit_dest_dir,
+                entity_cache=self._entity_cache,
+                **stage_kwargs,
             )
 
             self._sonata_config["network"] = str(
@@ -131,7 +163,6 @@ class GenerateSimulationTask(Task):
             elif isinstance(stimulus, Brian2DirectPoissonStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
-                        circuit=self._circuit,  # ty:ignore[invalid-argument-type]
                         default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
                     )
@@ -141,6 +172,7 @@ class GenerateSimulationTask(Task):
                     stimulus.config(
                         default_node_set=self.config.default_node_set_name,
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
+                        simulation_timestep=self.config.timestep,
                     )
                 )
 
@@ -151,9 +183,10 @@ class GenerateSimulationTask(Task):
         for recording in getattr(self.config, "recordings", {}).values():
             self._sonata_config["reports"].update(
                 recording.config(
-                    self.config.initialize.simulation_length,
-                    self.config.default_node_set_name,
-                    db_client,
+                    simulation_timestep=self.config.timestep,
+                    end_time=self.config.initialize.simulation_length,
+                    default_node_set=self.config.default_node_set_name,
+                    db_client=db_client,
                     sonata_simulation_config_directory=self.config.coordinate_output_root,
                 )
             )
@@ -188,7 +221,7 @@ class GenerateSimulationTask(Task):
             if range_modifications:
                 self._sonata_config["conditions"]["modifications"] = range_modifications
             if mechanisms:
-                self._sonata_config["conditions"]["mechanisms"] = mechanisms
+                self._sonata_config["conditions"].setdefault("mechanisms", {}).update(mechanisms)
 
     def _ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
         self, block: Block
@@ -220,13 +253,7 @@ class GenerateSimulationTask(Task):
                 if accepts_optional_neuron_set_reference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
-                        # A Brian2 Poisson stimulus with no target drives the `sugar` node set,
-                        # not the simulation-wide default (every point neuron); see
-                        # Brian2SimulationScanConfig.
-                        if isinstance(block, Brian2DirectPoissonStimulus):
-                            setattr(block, attr_name, self._default_stimulus_neuron_set_ref())
-                        else:
-                            setattr(block, attr_name, self._default_neuron_set_ref())
+                        setattr(block, attr_name, self._default_neuron_set_ref())
 
     def _ensure_morphology_locations_have_neuron_set_reference(self) -> None:
         """Ensure morphology locations have a neuron-set target.
@@ -239,7 +266,12 @@ class GenerateSimulationTask(Task):
             return
 
         for locations_block in morphology_locations.values():
-            if getattr(locations_block, "neuron_set", None) is not None:
+            # Explicit locations carry no target: they name points on the single neuron being
+            # simulated, so there is no neuron set to fill in.
+            if not isinstance(locations_block, GeneratedMorphologyLocationsBlock):
+                continue
+
+            if locations_block.neuron_set is not None:
                 continue
 
             locations_block.neuron_set = self.config.default_neuron_set_reference
@@ -260,6 +292,12 @@ class GenerateSimulationTask(Task):
             for neuron_set in list(getattr(self.config, "neuron_sets", {}).values()):
                 if isinstance(neuron_set, CombinedBaseNeuronSet):
                     self._ensure_combined_neuron_set_has_references(neuron_set)
+
+            if hasattr(self.config, "neuronal_manipulations"):
+                for manipulation in self.config.neuronal_manipulations.values():  # ty:ignore[unresolved-attribute]
+                    self._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(
+                        manipulation
+                    )
 
     def _materialize_location_targets(self) -> None:
         circuit = self._circuit
@@ -370,17 +408,6 @@ class GenerateSimulationTask(Task):
 
         return default_neuron_set_ref
 
-    def _default_stimulus_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
-        """Returns the reference for the default stimulus neuron set (Brian2: the `sugar` set).
-
-        The circuit is already resolved: ``execute`` calls ``_resolve_circuit`` before it fills
-        in the missing neuron set references.
-        """
-        ref = self.config.default_stimulus_neuron_set_reference(self._circuit)  # ty:ignore[unresolved-attribute,invalid-argument-type]
-        if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
-            self.config.neuron_sets[ref.block_name] = ref.block  # ty:ignore[unresolved-attribute,invalid-assignment]
-        return ref
-
     """
     NEW NEURON SETS REFACTOR: SOME OF THIS CAN PROBABLY BE REMOVED NOW THE
     NEURON SETS HAVE TYPES (BIOPHYSICAL, POINT, ETC.)
@@ -454,6 +481,12 @@ class GenerateSimulationTask(Task):
         predefined neuron set, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
+
+        Node set definitions are kept symbolic wherever SONATA can express them, so that the
+        simulator resolves them against the circuit it already has staged. Only sub-sampling and
+        the combined set operations SONATA has no construct for (intersection, difference) fall
+        back to explicit neuron IDs. This keeps the written file small and, more importantly,
+        means generation does not have to read node properties for the common cases.
         """
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
 
@@ -470,9 +503,7 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                neuron_set_.add_node_set_definition_to_sonata_circuit(
-                    self._circuit, sonata_circuit, force_resolve_ids=True
-                )
+                neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
         else:
             neuron_set = self.config.default_neuron_set_type()
@@ -480,7 +511,6 @@ class GenerateSimulationTask(Task):
             neuron_set.add_node_set_definition_to_sonata_circuit(
                 self._circuit,  # ty:ignore[invalid-argument-type]
                 sonata_circuit,
-                force_resolve_ids=True,
             )
 
         # 3. Write node sets from SONATA circuit object to .json file
@@ -602,6 +632,7 @@ class GenerateSimulationTask(Task):
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
         self._resolve_circuit(db_client)
+        self.config.validate_circuit(self._circuit)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._materialize_location_targets()

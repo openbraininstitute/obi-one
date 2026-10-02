@@ -1,4 +1,5 @@
 import logging
+import re
 import types
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,12 +19,83 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.exception import OBIONEError
+from obi_one.core.fill_none_references import (
+    BlockDefault,
+    fill_none_references_in_config,
+    resolve_block_default,
+)
 from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
 
 L = logging.getLogger(__name__)
+
+# A default block can introduce references of its own; this bounds that chain.
+_MAX_FILL_PASSES = 10
+
+# The label every default's name carries; the schema advertises the unset field with it, and a
+# materialized default is expected to start with it so the resolved name reads as intended.
+_DEFAULT_LABEL_PREFIX = "Default: "
+# Prepended to a default's schema name when it is materialized into a block dictionary, so the
+# resolved block reads distinctly from the "Default: ..." label the schema still advertises for
+# the unset field. A collision with a different block stacks an index: "Resolved (1) ...".
+_RESOLVED_PREFIX = "Resolved "
+
+
+def _resolved_default_name(default_name: str, index: int = 0) -> str:
+    """The name a materialized default takes in its block dictionary.
+
+    ``index`` 0 gives "Resolved <default_name>"; a positive index gives "Resolved (<index>)
+    <default_name>", used to avoid colliding with a different block already under that name.
+
+    Raises:
+        OBIONEError: If ``default_name`` does not start with "Default: ". Every default a config
+            declares is expected to; a name without it would resolve to a misleading key.
+    """
+    if not default_name.startswith(_DEFAULT_LABEL_PREFIX):
+        msg = (
+            f"Cannot resolve a default whose name does not start with "
+            f"{_DEFAULT_LABEL_PREFIX!r}: {default_name!r}."
+        )
+        raise OBIONEError(msg)
+    if index:
+        return f"Resolved ({index}) {default_name}"
+    return f"{_RESOLVED_PREFIX}{default_name}"
+
+
+def _default_name_of(resolved_name: str) -> str:
+    """The "Default: ..." name a "Resolved ..." name was built from.
+
+    Inverts ``_resolved_default_name`` for either form: "Resolved Default: X" and
+    "Resolved (n) Default: X" both give back "Default: X", so a provisional name can be
+    re-resolved at a different index.
+    """
+    stripped = resolved_name.removeprefix(_RESOLVED_PREFIX)
+    # Drop a leading "(n) " index if present, leaving the bare "Default: ..." name.
+    match = re.match(r"^\(\d+\) (Default: .*)$", stripped)
+    return match.group(1) if match else stripped
+
+
+def _blocks_equal(first: object, second: object) -> bool:
+    """Whether two blocks are the same block by a full dump comparison."""
+    return first.model_dump(mode="json") == second.model_dump(mode="json")  # ty:ignore[unresolved-attribute]
+
+
+def _stacked_resolved_name(default_name: str, block_dict: dict, block: object) -> str:
+    """The "Resolved ..." name ``block`` settles on among what ``block_dict`` already holds.
+
+    Takes the plain name when it is free or held by an equal block (the same default, reloaded
+    or filled twice), and otherwise stacks "Resolved (1) ...", "Resolved (2) ..." so a different
+    block already there is left in place. Equality is a full dump comparison.
+    """
+    index = 0
+    while True:
+        candidate = _resolved_default_name(default_name, index)
+        existing = block_dict.get(candidate)
+        if existing is None or _blocks_equal(existing, block):
+            return candidate
+        index += 1
 
 
 def get_all_annotations(cls: type) -> dict[str, type]:
@@ -43,6 +115,176 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     name: ClassVar[str] = "Add a name class' name variable"
     description: ClassVar[str] = """Add a description to the class' description variable"""
+
+    @staticmethod
+    def default_blocks() -> dict[str, BlockDefault]:
+        """What each unset tagged field resolves to, keyed by the tag it carries.
+
+        The one thing a config declares about its defaults. Turning these into references and
+        publishing them to the schema is done below, so a config says what its defaults are and
+        nothing about how they are used. A config that leaves nothing to be inferred returns
+        nothing, which is the default. See `obi_one.core.fill_none_references`.
+        """
+        return {}
+
+    @classmethod
+    def default_block_references(cls) -> dict[str, BlockReference]:
+        """The declared defaults, resolved into references the fill pass can substitute."""
+        return {
+            tag: resolve_block_default(block_default)
+            for tag, block_default in cls.default_blocks().items()
+        }
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Publish the defaults a config declares, so the UI reads what the fill will do.
+
+        `REFERENCE_TAG_DEFAULTS` is derived from `default_block_references` rather than written
+        out beside it, because the two were declared separately and drifted: the schema named
+        nine tags while the fill answered seventeen, and nothing said so. Deriving it means a
+        config declares its defaults once and the schema cannot disagree with them.
+        """
+        super().__init_subclass__(**kwargs)
+
+        defaults = cls.default_block_references()
+        if not defaults:
+            return
+        # `json_schema_extra` is typed as a dict, a callable or None; only the dict case can
+        # carry this, and OBIBaseModel's model_config always sets one.
+        extra = cls.model_config.get("json_schema_extra")
+        if not isinstance(extra, dict):
+            return
+        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {  # ty:ignore[invalid-assignment]
+            tag: {"name": reference.block_name, "block": reference.block.model_dump(mode="json")}
+            for tag, reference in defaults.items()
+        }
+
+    def fill_none_references(self) -> None:
+        """Give every unset tagged reference its default, and register what was used.
+
+        Called before the scan is serialized, so the configs written to disk and the
+        entities registered from them name the blocks that actually produced the result
+        rather than recording `None` and leaving it to the code version to say.
+
+        Two phases, because a default is itself a block that can leave references of its own
+        unset (a synaptic model adds nine unset distributions) and the config may be a reloaded
+        one already carrying earlier-materialized defaults:
+
+        1. Fill loop: repeatedly fill unset fields and park each materialized block in its
+           dictionary under a name kept unique by identity, so later passes discover it and fill
+           its own references. Names are provisional - a half-filled block cannot be compared.
+        2. Reconcile: once the loop settles every block is fully filled, so
+           `_reconcile_resolved_defaults` gives each its final name - reusing a plain "Resolved
+           Default: ..." name when an equal block is already there, else stacking beside it.
+        """
+        defaults = self.default_block_references()
+        if not defaults:
+            return
+
+        used_defaults: list[BlockReference] = []
+        settled = False
+        for _ in range(_MAX_FILL_PASSES):
+            used = fill_none_references_in_config(self, defaults)
+            if not self._register_used_defaults(used, used_defaults):
+                settled = True
+                break
+
+        if not settled:
+            msg = (
+                "Filling unset block references did not settle: a default block appears to keep "
+                "introducing references that are themselves unset."
+            )
+            raise OBIONEError(msg)
+
+        # Every materialized default is now fully filled, so its dump is stable and two of them
+        # can be told apart from one filled twice. Only now can each be given its final name.
+        self._reconcile_resolved_defaults(used_defaults)
+
+    def _register_used_defaults(
+        self, used: list[BlockReference], used_defaults: list[BlockReference]
+    ) -> bool:
+        """Put each newly used default into its block dictionary so later passes fill it.
+
+        A default is registered under a "Resolved Default: ..." name rather than the "Default:
+        ..." label the schema advertises for the unset field, so that a materialized default
+        reads as a distinct, resolved block once the config is reloaded - not as the implicit
+        default the field still falls back to. The block goes in under a name kept unique by
+        block identity so a materialized default never clobbers a differently-keyed block a
+        stored config already carried, and later passes discover it (and fill its own unset
+        references) from the dictionary.
+
+        Names are only provisional here: a block still filling in its nested references cannot be
+        compared for content, so `_reconcile_resolved_defaults` assigns final names once the fill
+        has settled. Records each newly used default in ``used_defaults`` and returns whether any
+        was new, which is what tells the caller to look again.
+        """
+        registered_any = False
+        for reference in used:
+            if any(reference is seen for seen in used_defaults):
+                continue
+            used_defaults.append(reference)
+            block_dict = getattr(self, reference.block_dict_name)
+            name = self._register_by_identity(block_dict, reference)
+            reference.block_name = name
+            registered_any = True
+        return registered_any
+
+    @staticmethod
+    def _register_by_identity(block_dict: dict, reference: BlockReference) -> str:
+        """Register a default's block under a name unique by identity, returning that name.
+
+        Reuses the name of whatever slot already holds this exact block object (a tag filled
+        again), and otherwise takes the first "Resolved ..." name not held by a different block.
+        """
+        base = reference.block_name
+        index = 0
+        while True:
+            candidate = _resolved_default_name(base, index)
+            existing = block_dict.get(candidate)
+            if existing is None:
+                block_dict[candidate] = reference.block
+                return candidate
+            if existing is reference.block:
+                return candidate
+            index += 1
+
+    def _reconcile_resolved_defaults(self, used_defaults: list[BlockReference]) -> None:
+        """Give each materialized default its final name now that all are fully filled.
+
+        A default drops onto the plain "Resolved Default: ..." name when nothing else holds it
+        or the block already there is equal (the same default, reloaded or filled twice), and
+        otherwise stacks "Resolved (1) ...", "Resolved (2) ..." so a block a stored config
+        carried - one the user may have edited, or one a since-changed library default filled
+        differently - is left untouched and the new default keeps its own values. Every
+        reference to a block is repointed together, since they share the one block object.
+
+        Children are named before parents: a parent block embeds its children's names, so its
+        equality check only sees a stable dump once those names are final. `used_defaults` lists
+        each default in the order it was first needed - a parent before the children it
+        introduced - so reversing it names children first.
+        """
+        # The blocks not materialized this fill (e.g. reloaded from a stored config), keyed by
+        # their dictionary: a materialized default must not clobber one, only match or stack
+        # beside it. Rebuilt from scratch below so a provisional name never lingers.
+        materialized = {id(reference.block) for reference in used_defaults}
+        kept: dict[str, dict[str, object]] = {}
+        for reference in used_defaults:
+            name = reference.block_dict_name
+            if name not in kept:
+                block_dict = getattr(self, name)
+                kept[name] = {
+                    key: block for key, block in block_dict.items() if id(block) not in materialized
+                }
+
+        for reference in reversed(used_defaults):
+            block_dict = kept[reference.block_dict_name]
+            base = _default_name_of(reference.block_name)
+            final_name = _stacked_resolved_name(base, block_dict, reference.block)
+            block_dict[final_name] = reference.block
+            reference.block_name = final_name
+
+        for name, block_dict in kept.items():
+            getattr(self, name).clear()
+            getattr(self, name).update(block_dict)
 
     _block_mapping: dict = None  # ty:ignore[invalid-assignment]
 

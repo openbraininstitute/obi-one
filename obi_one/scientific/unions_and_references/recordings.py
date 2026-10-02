@@ -7,33 +7,62 @@ from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
+from obi_one.scientific.blocks.recordings.morphology_location import (
+    MorphologyLocationVoltageRecording,
+    TimeWindowMorphologyLocationVoltageRecording,
+)
 from obi_one.scientific.blocks.recordings.soma import (
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
     SomaVoltageRecording,
     TimeWindowSomaVoltageRecording,
 )
 
 _SOMA_VOLTAGE_RECORDINGS = SomaVoltageRecording | TimeWindowSomaVoltageRecording
 
+_MORPHOLOGY_LOCATION_VOLTAGE_RECORDINGS = (
+    MorphologyLocationVoltageRecording | TimeWindowMorphologyLocationVoltageRecording
+)
 
-RecordingUnion = Annotated[_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
+_VOLTAGE_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | _MORPHOLOGY_LOCATION_VOLTAGE_RECORDINGS
 
 # An extracellular recording needs a weight matrix computed for the whole circuit, so it is only
 # offered by simulations of a circuit.
-_CIRCUIT_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | ExtracellularElectrodeArrayRecordingBlock
-CircuitRecordingUnion = Annotated[_CIRCUIT_RECORDINGS, Discriminator("type")]
+_CIRCUIT_RECORDINGS = _VOLTAGE_RECORDINGS | ExtracellularElectrodeArrayRecordingBlock
 
 _RECORDINGS = IonChannelVariableRecording | _CIRCUIT_RECORDINGS
+
+# Sampled on the simulation timestep, so these carry no Timestep parameter of their own.
+_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS = (
+    SimulationDtSomaVoltageRecording | SimulationDtTimeWindowSomaVoltageRecording
+)
+
+
+RecordingUnion = Annotated[_VOLTAGE_RECORDINGS, Discriminator("type")]
+
+CircuitRecordingUnion = Annotated[_CIRCUIT_RECORDINGS, Discriminator("type")]
+
+Brian2RecordingUnion = Annotated[_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
+
+# Morphology-location recordings are excluded: they require a `morphology_locations` block to
+# reference, and the ion channel configuration declares no such dictionary. Its circuit is built
+# from the selected channel models, so there is no morphology to place a location on either.
 IonChannelModelRecordingUnion = Annotated[
-    _RECORDINGS,
+    IonChannelVariableRecording | _SOMA_VOLTAGE_RECORDINGS,
     Discriminator("type"),
 ]
+
+# Everything a recording reference may point at, the simulation-timestep variants included.
+_ALL_RECORDINGS = _RECORDINGS | _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS
+
+_AllRecordingsUnion = Annotated[_ALL_RECORDINGS, Discriminator("type")]
 
 
 class RecordingReference(BlockReference):
     """A reference to a StimulusUnion block."""
 
-    allowed_block_types: ClassVar[Any] = IonChannelModelRecordingUnion
+    allowed_block_types: ClassVar[Any] = _AllRecordingsUnion
 
     json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_RECORDINGS)
+        "allowed_block_types": BlockReference.get_class_names(_ALL_RECORDINGS)
     }

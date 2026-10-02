@@ -32,12 +32,17 @@ from obi_one.scientific.unions_and_references.manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
+)
+from obi_one.scientific.unions_and_references.neuronal_manipulations import (
+    CircuitNeuronalManipulationReference,
+    CircuitNeuronalManipulationUnion,
 )
 from obi_one.scientific.unions_and_references.recordings import (
     CircuitRecordingUnion,
@@ -84,6 +89,9 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
             MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 
@@ -126,6 +134,19 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    neuronal_manipulations: dict[str, CircuitNeuronalManipulationUnion] = Field(
+        default_factory=dict,
+        title="Neuronal Manipulations",
+        description="Neuronal manipulations for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [CircuitNeuronalManipulationReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -176,6 +197,24 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Neuron Set",
             SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    # Narrowed to exclude explicit locations: a section id and offset name a different branch on
+    # every morphology, so hand-picked points are only meaningful for a single neuron.
+    morphology_locations: dict[str, CircuitMorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology Locations",
+        description=(
+            "Reusable rules for selecting precise locations on neuronal morphologies. "
+            "Stimuli can reference these locations to target compartments instead of whole cells."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
 

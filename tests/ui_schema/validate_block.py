@@ -3,6 +3,7 @@ import math
 import sys
 from enum import StrEnum
 
+from entitysdk.types import TaskResultType
 from fastapi.openapi.utils import get_openapi
 from jsonschema import Draft7Validator, RefResolver, ValidationError, validate
 
@@ -13,6 +14,9 @@ from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
 from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
     MorphologyMappedProperties,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    MAX_DISTANCE_FUNCTION_LENGTH,
 )
 
 L = logging.getLogger()
@@ -83,7 +87,111 @@ def validate_string_param(schema: dict, param: str, ref: str) -> None:
         validate("a", schema)
 
     except ValidationError:
-        msg = f"Validation error at {ref}: string_input param {param} failedto validate a string"
+        msg = f"Validation error at {ref}: string_input param {param} failed to validate a string"
+        raise ValidationError(msg) from None
+
+
+def validate_distance_function_input(schema: dict, param: str, ref: str) -> None:
+    # Non-nullable distance function: a plain string carrying max_length at the schema root
+    # (so the frontend reads `maxLength` directly, with no structural branching). Nullable
+    # fields must use `distance_function_input_nullable` instead.
+    validate_string_param(schema, param, ref)
+
+    if schema.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: distance_function_input param {param} must be a plain "
+            f"'string' (use distance_function_input_nullable for `str | None`). Got: {schema}"
+        )
+        raise ValidationError(msg) from None
+    max_length = schema.get("maxLength")
+    if max_length != MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Validation error at {ref}: distance_function_input param {param} must declare "
+            f"max_length=MAX_DISTANCE_FUNCTION_LENGTH ({MAX_DISTANCE_FUNCTION_LENGTH}) at the "
+            f"schema root. Got: {max_length}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_distance_function_input_nullable(schema: dict, param: str, ref: str) -> None:
+    # Nullable distance function (`str | None`): an anyOf whose first branch is the string
+    # carrying max_length and whose second branch is null. The string must come first so the
+    # frontend reads `maxLength` from a fixed position without branching.
+    any_of = schema.get("anyOf")
+    if not isinstance(any_of, list) or len(any_of) != 2:
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must be an "
+            f"'anyOf' of a string and null. Got: {schema}"
+        )
+        raise ValidationError(msg) from None
+    string_branch, null_branch = any_of
+    if string_branch.get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must have "
+            f"the string as its first anyOf branch. Got: {string_branch}"
+        )
+        raise ValidationError(msg) from None
+    if null_branch.get("type") != "null":
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must have "
+            f"null as its second anyOf branch. Got: {null_branch}"
+        )
+        raise ValidationError(msg) from None
+    max_length = string_branch.get("maxLength")
+    if max_length != MAX_DISTANCE_FUNCTION_LENGTH:
+        msg = (
+            f"Validation error at {ref}: distance_function_input_nullable param {param} must "
+            f"declare max_length=MAX_DISTANCE_FUNCTION_LENGTH ({MAX_DISTANCE_FUNCTION_LENGTH}) on "
+            f"its string branch. Got: {max_length}"
+        )
+        raise ValidationError(msg) from None
+
+
+def accepts(schema: dict, value: object) -> bool:
+    try:
+        validate(value, schema)
+    except ValidationError:
+        return False
+    return True
+
+
+def accepts_null(schema: dict) -> bool:
+    """Return whether the schema permits ``null`` (a nullable field, implicitly None-defaulted).
+
+    Detected structurally (without resolving ``$ref`` or validating an instance): the schema is
+    nullable if it is ``type: null`` or has a ``null`` branch in ``anyOf``/``oneOf``.
+    """
+    if schema.get("type") == "null":
+        return True
+    for branch in (*schema.get("anyOf", []), *schema.get("oneOf", [])):
+        if isinstance(branch, dict) and branch.get("type") == "null":
+            return True
+    return False
+
+
+def validate_string_list_param(schema: dict, param: str, ref: str) -> None:
+    # Must accept a list of strings and reject anything else.
+    if not accepts(schema, ["a"]) or any(
+        accepts(schema, rejected) for rejected in ("a", None, [1])
+    ):
+        msg = (
+            f"Validation error at {ref}: string_list_input param {param} should validate a "
+            f"list of strings and nothing else"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_string_list_optional(schema: dict, param: str, ref: str) -> None:
+    # Must accept a list of strings and null, and reject anything else.
+    if (
+        not accepts(schema, ["a"])
+        or not accepts(schema, None)
+        or any(accepts(schema, rejected) for rejected in ("a", [1]))
+    ):
+        msg = (
+            f"Validation error at {ref}: string_list_optional param {param} should validate a "
+            f"list of strings or null and nothing else"
+        )
         raise ValidationError(msg) from None
 
 
@@ -135,18 +243,30 @@ def validate_numeric_single_and_list_types(
             f"be a union with a '{data_type}' as first element"
         )
         raise ValidationError(msg) from None
-
     if schema.get("anyOf", [{}])[1].get("type") != "array":
         msg = (
             f"Validation error at {ref}: {ui_element} param {param} should "
             "be a union with an 'array' as second element"
         )
         raise ValidationError(msg) from None
-
     if schema.get("anyOf", [{}])[0] != schema.get("anyOf", [{}])[1].get("items"):
         msg = (
             f"Validation error at {ref}: {ui_element} param {param} should "
             "have matching types for single value and array items"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_float_input(schema: dict, param: str, ref: str) -> None:
+    # Must accept a single number and reject anything else (null, string, list).
+    # Use the schema's own default as the "valid number" sample so bounds are respected.
+    valid_number = schema.get("default", schema.get("minimum", 0.0))
+    if not accepts(schema, valid_number) or any(
+        accepts(schema, rejected) for rejected in (None, "a", [1.0])
+    ):
+        msg = (
+            f"Validation error at {ref}: float_input param {param} should validate a "
+            f"single number and nothing else"
         )
         raise ValidationError(msg) from None
 
@@ -205,18 +325,18 @@ def validate_int_param_sweep(schema: dict, param: str, ref: str) -> None:
 
 
 def validate_float_optional(schema: dict, param: str, ref: str) -> None:
-    any_of = schema.get("anyOf", [{}, {}])
-    if any_of[0].get("type") != "number":
+    any_of = schema.get("anyOf", [])
+    numeric_schema = next((branch for branch in any_of if branch.get("type") == "number"), None)
+    if numeric_schema is None:
         msg = (
             f"Validation error at {ref}: float_optional param {param} should "
-            "be a union with a 'number' as first element"
+            "include a 'number' branch"
         )
         raise ValidationError(msg) from None
 
-    if any_of[1].get("type") != "null":
+    if not any(branch.get("type") == "null" for branch in any_of):
         msg = (
-            f"Validation error at {ref}: float_optional param {param} should "
-            "be a union with 'null' as second element"
+            f"Validation error at {ref}: float_optional param {param} should include a null branch"
         )
         raise ValidationError(msg) from None
 
@@ -339,14 +459,20 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     reference_types = schema.get(SchemaKey.REFERENCE_TYPES)
 
-    schema_union = schema.get("anyOf", [])
+    schema_union = schema.get("anyOf")
+    schema_union = [{"$ref": schema.get("$ref")}] if schema_union is None else list(schema_union)
 
-    if (refref := schema_union[0].get("$ref")) is None:
+    non_null_refs = [
+        union_member.get("$ref") for union_member in schema_union if union_member.get("$ref")
+    ]
+    if not non_null_refs:
         msg = (
             f"Validation error at {ref}: 'reference' param {param} should "
-            "be a union with a 'BlockReference' as first element"
+            "be a BlockReference or a union with a BlockReference as first element"
         )
         raise ValidationError(msg) from None
+
+    allows_null = len(schema_union) == 2 and schema_union[1].get("type") == "null"
 
     # Each non-null member of the union is a $ref to a BlockReference whose
     # default `type` is its class name. Collect these and check they correspond
@@ -370,20 +496,23 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
 
     except ValidationError:
         msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
+            f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+            "failed to validate a "
             f"reference object {validated_ref}"
         )
         raise ValidationError(msg) from None
 
-    try:
-        validator.validate(None, schema)
+    if allows_null:
+        try:
+            validator.validate(None, schema)
 
-    except ValidationError:
-        msg = (
-            f"Validation error at {refref}: 'reference' param {param} failed to validate a "
-            "'null' value"
-        )
-        raise ValidationError(msg) from None
+        except ValidationError:
+            msg = (
+                f"Validation error at {non_null_refs[0]}: 'reference' param {param} "
+                "failed to validate a "
+                "'null' value"
+            )
+            raise ValidationError(msg) from None
 
 
 def validate_neuron_set_combination(schema: dict, param: str, ref: str) -> None:
@@ -553,6 +682,79 @@ def validate_string_selection_enhanced(schema: dict, param: str, ref: str) -> No
     validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
 
 
+def validate_axon_modifier(schema: dict, param: str, ref: str) -> None:
+    # One-off element for the `axon_modifier` field, whose type is the `AxonModifier` enum
+    # class. Pydantic emits enum-class fields as a `$ref` to a shared definition (unlike inline
+    # `Literal` selections), so resolve the reference before applying the enhanced-selection
+    # checks (enum + title_by_key + description_by_key keyed to the enum values).
+    if schema.get("$ref"):
+        schema = {**resolve_ref(openapi_schema, schema["$ref"]), **schema}
+        schema.pop("$ref", None)
+
+    validate_string_selection(schema=schema, param=param, ref=ref)
+
+    enum_list = schema.get("enum")
+    validate_enhanced_string_fields(schema=schema, param=param, ref=ref, enum_list=enum_list)
+
+
+# Nested block-element ui_elements allowed inside an `object`. Restricted to the types used by
+# the eFEL / phase-plot / SineSpec settings objects.
+OBJECT_PROPERTY_UI_ELEMENTS = frozenset(
+    {
+        UIElement.BOOLEAN_INPUT,
+        UIElement.FLOAT_INPUT,
+        UIElement.STRING_INPUT,
+        UIElement.STRING_LIST_INPUT,
+    }
+)
+
+
+def validate_object(schema: dict, param: str, ref: str) -> None:
+    # An `object` is a fixed-shape mapping that becomes a plain dict in Python. Its type is a
+    # referenced model, so Pydantic emits it as a `$ref`; resolve it to read the properties.
+    if schema.get("$ref"):
+        schema = {**resolve_ref(openapi_schema, schema["$ref"]), **schema}
+        schema.pop("$ref", None)
+
+    if schema.get("type") != "object":
+        msg = f"Validation error at {ref}: object param {param} should be of type 'object'"
+        raise ValidationError(msg) from None
+
+    # Additional properties must be forbidden: undeclared keys have no schema to validate against.
+    if schema.get("additionalProperties") is not False:
+        msg = (
+            f"Validation error at {ref}: object param {param} must set "
+            "'additionalProperties' to false so every key is schema-validated"
+        )
+        raise ValidationError(msg) from None
+
+    properties = schema.get("properties", {})
+    if not properties:
+        msg = (
+            f"Validation error at {ref}: object param {param} should declare at least one property"
+        )
+        raise ValidationError(msg) from None
+
+    for prop, prop_schema in properties.items():
+        if prop == "type":
+            validate_type(prop_schema, ref)
+            continue
+
+        validate_string(prop_schema, "title", f"{prop} at {ref}")
+        validate_string(prop_schema, "description", f"{prop} at {ref}")
+
+        prop_ui_element = prop_schema.get(SchemaKey.UI_ELEMENT)
+        if prop_ui_element not in OBJECT_PROPERTY_UI_ELEMENTS:
+            msg = (
+                f"Validation error at {ref}: object param {param} property {prop} has an "
+                f"unsupported 'ui_element' {prop_ui_element}. Allowed: "
+                f"{sorted(OBJECT_PROPERTY_UI_ELEMENTS)}"
+            )
+            raise ValidationError(msg) from None
+
+        validate_block_elements(prop, prop_schema, ref)
+
+
 def validate_string_constant(schema: dict, param: str, ref: str) -> None:
     # Make sure type
     if schema.get("type") != "string":
@@ -643,8 +845,149 @@ def validate_model_identifier_multiple(schema: dict, param: str, ref: str) -> No
         raise ValidationError(msg) from None
 
 
+def validate_model_identifier_grouped(schema: dict, param: str, ref: str) -> None:
+    """Validate a grouped model-identifier field (case D of the multiple-entities spec).
+
+    The field is a NamedTuple group or a list of them:
+    ``anyOf: [ {$ref: Group}, {type: array, items: {$ref: Group}} ]``. Each group carries a
+    ``name`` string and an ``elements`` array of model-identifier (``{"id_str": ...}``) objects.
+    The single-group and list-of-groups branches must reference the same group schema so the two
+    ways of storing the value stay in sync.
+    """
+    any_of = schema.get("anyOf")
+    if not isinstance(any_of, list) or len(any_of) != 2:
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} should be an "
+            "'anyOf' of a group and an array of groups"
+        )
+        raise ValidationError(msg)
+
+    single_branch, array_branch = any_of
+    group_ref = single_branch.get("$ref")
+    array_items_ref = array_branch.get("items", {}).get("$ref")
+    if group_ref is None or array_branch.get("type") != "array" or array_items_ref != group_ref:
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} should reference "
+            "the same group schema for its single-group and list-of-groups branches"
+        )
+        raise ValidationError(msg)
+
+    group_schema = resolve_ref(openapi_schema, group_ref)
+    group_props = group_schema.get("properties", {})
+
+    if group_props.get("name", {}).get("type") != "string":
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} group should have "
+            "a 'name' string"
+        )
+        raise ValidationError(msg)
+
+    elements = group_props.get("elements", {})
+    if elements.get("type") != "array":
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} group should have "
+            "an 'elements' array"
+        )
+        raise ValidationError(msg)
+
+    # Each element must validate a model-identifier ({"id_str": ...}) object.
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(elements.get("items", {}), resolver=resolver)
+    obj = {"id_str": "model_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: model_identifier_grouped param {param} group elements "
+            f"failed to validate a 'model identifier' object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
 def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
-    """To do"""
+    """Validate a single-entity selector field.
+
+    The field is a single ``FromID`` entity reference (an ``{"id_str": ...}`` object) that
+    declares an ``entity_query`` with a ``type`` telling the frontend which entities to browse.
+    """
+    entity_query = schema.get(SchemaKey.ENTITY_QUERY)
+    if not isinstance(entity_query, dict) or not entity_query.get("type"):
+        msg = (
+            f"Validation error at {ref}: model_selector_single param {param} must declare an "
+            f"'{SchemaKey.ENTITY_QUERY}' with a 'type'. Got: {entity_query!r}"
+        )
+        raise ValidationError(msg)
+
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+    obj = {"id_str": "model_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: model_selector_single param {param} failed to validate "
+            f"an entity-reference object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_task_result_selector(schema: dict, param: str, ref: str) -> None:
+    """Validate a TaskResult selector field.
+
+    The field is a ``TaskResultFromID`` entity reference (an ``{"id_str": ...}`` object). It does
+    not carry an ``entity_query`` (the frontend resolves the eligible results); instead it declares
+    the concrete TaskResult subtype as data via ``task_result_type``, which the frontend uses to
+    filter the selectable results.
+    """
+    task_result_type = schema.get(SchemaKey.TASK_RESULT_TYPE)
+    valid_task_result_types = {member.value for member in TaskResultType}
+    if task_result_type not in valid_task_result_types:
+        msg = (
+            f"Validation error at {ref}: task_result_selector param {param} must declare a "
+            f"'{SchemaKey.TASK_RESULT_TYPE}' that is a valid TaskResultType. "
+            f"Got: {task_result_type!r}"
+        )
+        raise ValidationError(msg) from None
+
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+    obj = {"id_str": "task_result_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: task_result_selector param {param} failed to "
+            f"validate an entity-reference object {obj}"
+        )
+        raise ValidationError(msg) from None
+
+
+def validate_etype_selector(schema: dict, param: str, ref: str) -> None:
+    """Validate an ETypeClass (Identifiable, not Entity) single-selector field.
+
+    The field is an identifier reference (an ``{"id_str": ...}`` object) and must declare an
+    ``entity_query`` of ``{"type": "etype"}``.
+    """
+    entity_query = schema.get(SchemaKey.ENTITY_QUERY)
+    if not isinstance(entity_query, dict) or entity_query.get("type") != "etype":
+        msg = (
+            f"Validation error at {ref}: etype_selector param {param} must declare an "
+            f"'{SchemaKey.ENTITY_QUERY}' of {{'type': 'etype'}}. Got: {entity_query!r}"
+        )
+        raise ValidationError(msg) from None
+
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
+
+    obj = {"id_str": "etype_id"}
+    try:
+        validator.validate(obj)
+    except ValidationError:
+        msg = (
+            f"Validation error at {ref}: 'etype_selector' param {param} failed to validate "
+            f"an etype identifier object {obj}"
+        )
+        raise ValidationError(msg) from None
 
 
 def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
@@ -654,17 +997,33 @@ def validate_boolean_input(schema: dict, param: str, ref: str) -> None:
 
     test_true = True
     test_false = False
-
     try:
         validate(test_true, schema)
     except ValidationError:
         msg = f"Validation error at {ref}: boolean_input param {param} failed to validate True"
         raise ValidationError(msg) from None
-
     try:
         validate(test_false, schema)
     except ValidationError:
         msg = f"Validation error at {ref}: boolean_input param {param} failed to validate False"
+        raise ValidationError(msg) from None
+
+
+def validate_stochasticity(schema: dict, param: str, ref: str) -> None:
+    # One-off element for the `stochasticity` field (``bool | tuple[str, ...]``). The value is
+    # either a boolean (enable/disable globally) or a list of protocol names (enable only for
+    # those protocols). The protocol names are matched downstream by BluePyEModel; rendering them
+    # from the selected extraction result is deferred to a future dynamic-dropdown element, so the
+    # list is validated only by shape here (a list of strings).
+    accepted = (True, False, ["a"])
+    rejected = ("a", [1])
+    if not all(accepts(schema, value) for value in accepted) or any(
+        accepts(schema, value) for value in rejected
+    ):
+        msg = (
+            f"Validation error at {ref}: stochasticity param {param} should validate a boolean "
+            f"or a list of strings and nothing else"
+        )
         raise ValidationError(msg) from None
 
 
@@ -704,6 +1063,95 @@ def validate_select_efeatures_by_protocol(schema: dict, param: str, ref: str) ->
     )
     # Which efeatures are valid per protocol is carried by each protocol's
     # `features` union in the schema, so there is no catalogue extra to check.
+
+
+def validate_morphology_location_selection(schema: dict, param: str, ref: str) -> None:
+    # The field may be nullable (anyOf: [array-schema, null]), so unwrap to the array branch.
+    if "anyOf" in schema:
+        array_schemas = [s for s in schema["anyOf"] if s.get("type") == "array"]
+        assert len(array_schemas) == 1, (
+            f"Validation error at {ref}: morphology_location_selection param {param} should "
+            "have exactly one array member in anyOf"
+        )
+        array_schema = array_schemas[0]
+    else:
+        array_schema = schema
+
+    assert array_schema.get("type") == "array", (
+        f"Validation error at {ref}: morphology_location_selection param {param} should be of "
+        "type 'array'"
+    )
+
+    resolved_ref = resolve_ref(openapi_schema, array_schema.get("items").get("$ref"))
+    properties = resolved_ref.get("properties", {})
+
+    # The widget edits one row per location, so the referenced object must carry exactly the
+    # pair the row is made of — anything else and the row would silently drop a field.
+    assert set(properties) == {"section_id", "offset"}, (
+        f"Validation error at {ref}: morphology_location_selection param {param} should "
+        f"reference a schema with exactly 'section_id' and 'offset'. Got: {sorted(properties)}"
+    )
+
+    location = f"{param} at {ref}"
+
+    section_id = properties["section_id"]
+    assert section_id.get("type") == "integer", (
+        f"Validation error at {location}: morphology_location_selection 'section_id' should be "
+        "of type 'integer'"
+    )
+    assert section_id.get("minimum") == 0, (
+        f"Validation error at {location}: morphology_location_selection 'section_id' should "
+        "have minimum 0 (SONATA reserves 0 for the soma)"
+    )
+
+    offset = properties["offset"]
+    assert offset.get("type") == "number", (
+        f"Validation error at {location}: morphology_location_selection 'offset' should be of "
+        "type 'number'"
+    )
+    assert math.isclose(offset.get("minimum"), 0.0), (
+        f"Validation error at {location}: morphology_location_selection 'offset' should have "
+        "minimum 0.0"
+    )
+    assert math.isclose(offset.get("maximum"), 1.0), (
+        f"Validation error at {location}: morphology_location_selection 'offset' should have "
+        "maximum 1.0"
+    )
+
+
+def validate_discrete_probabilities(schema: dict, param: str, ref: str) -> None:
+    """The element edits two fields, so both halves of that pair are checked here.
+
+    The component reads the sibling `probabilities` off the block's state by name. Nothing in
+    the component can notice if that field is renamed, retyped, or made visible - it would
+    simply render an empty column, or a second list editor beside the table that can put the
+    two arrays at different lengths. This is where that contract is held.
+    """
+    assert schema.get("type") == "array", (
+        f"Validation error at {ref}: discrete_probabilities param {param} should be of type 'array'"
+    )
+    assert schema.get("items") == {"type": "integer"}, (
+        f"Validation error at {ref}: discrete_probabilities param {param} should be an array of "
+        "integers"
+    )
+
+    block = resolve_ref(openapi_schema, ref)
+    probabilities = block.get("properties", {}).get("probabilities")
+    assert probabilities is not None, (
+        f"Validation error at {ref}: discrete_probabilities param {param} needs a sibling "
+        "'probabilities' field, which the same element edits"
+    )
+    assert probabilities.get("type") == "array", (
+        f"Validation error at {ref}: 'probabilities' should be of type 'array'"
+    )
+    assert probabilities.get("items") == {"type": "number"}, (
+        f"Validation error at {ref}: 'probabilities' should be an array of numbers"
+    )
+    assert probabilities.get(SchemaKey.UI_HIDDEN) is True, (
+        f"Validation error at {ref}: 'probabilities' should be {SchemaKey.UI_HIDDEN}, because "
+        f"the discrete_probabilities element on {param} edits it as part of the same table. "
+        "Shown separately, the two arrays could be given different lengths."
+    )
 
 
 def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
@@ -749,12 +1197,44 @@ def validate_voltage_duration(schema: dict, param: str, ref: str) -> None:
     )
 
 
-def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, complex-structure]
+def validate_block_union(schema: dict, param: str, ref: str) -> None:
+    if schema.get("oneOf") is None:
+        msg = f"Validation error at {ref}: block_union param {param} must have 'oneOf'"
+        raise ValueError(msg)
+
+    for block_schema in schema.get("oneOf"):
+        block_ref = block_schema.get("$ref")
+        resolved_block_schema = block_schema
+
+        if block_ref:
+            resolved_block_schema = {
+                **block_schema,
+                **resolve_ref(openapi_schema, block_ref),
+            }
+
+        validate_block(resolved_block_schema, block_ref)
+
+
+def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff: ignore[too-many-branches, too-many-statements, complex-structure]
     match ui_element := schema.get(SchemaKey.UI_ELEMENT):
+        case UIElement.BLOCK_UNION:
+            validate_block_union(schema, param, ref)
         case UIElement.STRING_INPUT:
             validate_string_param(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT:
+            validate_distance_function_input(schema, param, ref)
+        case UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE:
+            validate_distance_function_input_nullable(schema, param, ref)
+        case UIElement.STRING_LIST_INPUT:
+            validate_string_list_param(schema, param, ref)
+        case UIElement.STRING_LIST_OPTIONAL:
+            validate_string_list_optional(schema, param, ref)
         case UIElement.BOOLEAN_INPUT:
             validate_boolean_input(schema, param, ref)
+        case UIElement.STOCHASTICITY:
+            validate_stochasticity(schema, param, ref)
+        case UIElement.FLOAT_INPUT:
+            validate_float_input(schema, param, ref)
         case UIElement.FLOAT_PARAMETER_SWEEP:
             validate_float_param_sweep(schema, param, ref)
         case UIElement.INT_PARAMETER_SWEEP:
@@ -771,6 +1251,10 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_string_selection(schema, param, ref)
         case UIElement.STRING_SELECTION_ENHANCED:
             validate_string_selection_enhanced(schema, param, ref)
+        case UIElement.AXON_MODIFIER:
+            validate_axon_modifier(schema, param, ref)
+        case UIElement.OBJECT:
+            validate_object(schema, param, ref)
         case UIElement.STRING_CONSTANT:
             validate_string_constant(schema, param, ref)
         case UIElement.STRING_CONSTANT_ENHANCED:
@@ -781,8 +1265,16 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_model_identifier(schema, param, ref)
         case UIElement.MODEL_IDENTIFIER_MULTIPLE:
             validate_model_identifier_multiple(schema, param, ref)
+        case UIElement.MODEL_IDENTIFIER_GROUPED:
+            validate_model_identifier_grouped(schema, param, ref)
         case UIElement.MODEL_SELECTOR_SINGLE:
             validate_model_selector_single(schema, param, ref)
+        case UIElement.TASK_RESULT_SELECTOR:
+            validate_task_result_selector(schema, param, ref)
+        case UIElement.ETYPE_SELECTOR:
+            validate_etype_selector(schema, param, ref)
+        case UIElement.MORPHOLOGY_LOCATION_SELECTION:
+            validate_morphology_location_selection(schema, param, ref)
         case UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION:
             validate_morphology_section_type_selection(schema, param, ref)
         case UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST:
@@ -795,6 +1287,8 @@ def validate_block_elements(param: str, schema: dict, ref: str) -> None:  # ruff
             validate_select_recordable_ion_channel_variable(schema, param, ref)
         case UIElement.VOLTAGE_DURATION:
             validate_voltage_duration(schema, param, ref)
+        case UIElement.DISCRETE_PROBABILITIES:
+            validate_discrete_probabilities(schema, param, ref)
         case UIElement.NEURON_PROPERTY_FILTER:
             # Validation not yet implemented
             pass
@@ -813,6 +1307,15 @@ def validate_block(schema: dict, ref: str) -> None:
 
     for param, param_schema in schema.get("properties", {}).items():
         if param_schema.get(SchemaKey.UI_HIDDEN):
+            # Hidden elements are never shown or edited, so they must carry a default.
+            # Pydantic omits an explicit ``default: null`` for nullable fields, so a schema
+            # that accepts ``null`` (an implicit ``None`` default) counts as defaulted.
+            if "default" not in param_schema and not accepts_null(param_schema):
+                msg = (
+                    f"Validation error at {ref}: hidden element {param} "
+                    f"('{SchemaKey.UI_HIDDEN}' is True) must have a 'default'."
+                )
+                raise ValidationError(msg)
             continue
 
         if param == "type":

@@ -4,7 +4,10 @@ import entitysdk
 import pytest
 
 from app.endpoints import circuit_properties
-from obi_one.scientific.library.entity_property_types import CircuitUsability
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    CircuitUsability,
+)
 
 
 def _circuit_metrics():
@@ -22,6 +25,8 @@ def _circuit_metrics():
         ],
         point_node_populations=[],
         virtual_node_populations=[],
+        names_of_chemical_edge_populations=["chemical"],
+        names_of_electrical_edge_populations=[],
     )
 
 
@@ -29,6 +34,101 @@ def _db_client(scale: entitysdk.types.CircuitScale):
     return SimpleNamespace(
         get_entity=lambda **_: SimpleNamespace(scale=scale, has_morphologies=True),
     )
+
+
+def test_circuit_metrics_endpoint_returns_metrics(monkeypatch):
+    metrics = _circuit_metrics()
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: metrics)
+
+    response = circuit_properties.circuit_metrics_endpoint(
+        circuit_id="circuit-id",
+        db_client=SimpleNamespace(),
+    )
+
+    assert response is metrics
+
+
+def test_circuit_metrics_endpoint_maps_sdk_error_to_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.circuit_metrics_endpoint(
+            circuit_id="circuit-id",
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 500
+
+
+def test_circuit_populations_endpoint_returns_biophysical_populations(monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.circuit_populations_endpoint(
+        circuit_id="circuit-id",
+        db_client=SimpleNamespace(),
+    )
+
+    assert response.populations == ["biophysical"]
+
+
+def test_mapped_properties_offer_edge_populations(monkeypatch):
+    # The synaptic model assigners select an edge population from this, so the chemical and
+    # electrical lists have to stay separate: a Tsodyks-Markram model on a gap junction
+    # population would be a nonsensical assignment the UI should never offer.
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(entitysdk.types.CircuitScale.microcircuit),
+    )
+
+    assert response[CircuitMappedProperties.CHEMICAL_EDGE_POPULATION] == ["chemical"]
+    assert response[CircuitMappedProperties.ELECTRICAL_EDGE_POPULATION] == []
+    assert response[CircuitMappedProperties.EDGE_POPULATION] == ["chemical"]
+
+
+def test_circuit_populations_endpoint_maps_sdk_error_to_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.circuit_populations_endpoint(
+            circuit_id="circuit-id",
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 500
+
+
+def test_circuit_nodesets_endpoint_returns_nodesets(monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.circuit_nodesets_endpoint(
+        circuit_id="circuit-id",
+        db_client=SimpleNamespace(),
+    )
+
+    assert response.nodesets == ["All"]
+
+
+def test_circuit_nodesets_endpoint_maps_sdk_error_to_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.circuit_nodesets_endpoint(
+            circuit_id="circuit-id",
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 500
 
 
 @pytest.mark.parametrize(
@@ -42,7 +142,6 @@ def _db_client(scale: entitysdk.types.CircuitScale):
 )
 def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
-    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
@@ -62,7 +161,6 @@ def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatc
 )
 def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
-    monkeypatch.setattr(circuit_properties, "try_get_mechanism_variables", lambda **_: None)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
         circuit_id="circuit-id",
@@ -70,3 +168,109 @@ def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch
     )
 
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is False
+
+
+@pytest.mark.parametrize(
+    ("scale", "expected"),
+    [
+        (entitysdk.types.CircuitScale.single, True),
+        (entitysdk.types.CircuitScale.pair, False),
+        (entitysdk.types.CircuitScale.small, False),
+        (entitysdk.types.CircuitScale.microcircuit, False),
+    ],
+)
+def test_explicit_morphology_locations_are_single_neuron_only(scale, expected, monkeypatch):
+    """Narrower than the general morphology-locations gate, and deliberately so.
+
+    An explicit location names a section id with no cell attached, so on a circuit holding
+    several neurons the same id is applied to every morphology — where it refers to a
+    different branch on each.
+    """
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(scale),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS] is expected
+
+
+def test_explicit_morphology_locations_are_enabled_for_memodels(monkeypatch):
+    """An MEModel is one neuron, so a section id names exactly one branch.
+
+    MEModels are not stored as Circuit, so they fall through to the default usability
+    branch which enables explicit morphology locations.
+    """
+
+    def _no_circuit_metrics(**_):
+        msg = "not a circuit"
+        raise entitysdk.exception.EntitySDKError(msg)
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", _no_circuit_metrics)
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="memodel-id",
+        db_client=SimpleNamespace(get_entity=lambda **_: None),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS] is True
+
+
+def test_memodel_without_circuit_metrics_gets_default_usability(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+    db_client = _db_client(entitysdk.types.CircuitScale.single)
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="memodel-id",
+        db_client=db_client,
+    )
+
+    assert "MechanismVariablesByIonChannel" not in response
+    assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is True
+    assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False
+
+
+def test_unknown_entity_without_circuit_metrics_returns_500(monkeypatch):
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", raise_entity_sdk_error)
+    db_client = type(
+        "DBClient",
+        (),
+        {"get_entity": staticmethod(raise_entity_sdk_error)},
+    )()
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.mapped_circuit_properties_endpoint(
+            circuit_id="unknown-id",
+            db_client=db_client,
+        )
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail["detail"] == "No properties found for entity unknown-id."
+
+
+def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    def raise_entity_sdk_error(**_kwargs):
+        raise entitysdk.exception.EntitySDKError
+
+    db_client = type(
+        "DBClient",
+        (),
+        {"get_entity": staticmethod(raise_entity_sdk_error)},
+    )()
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=db_client,
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] is False
+    assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False

@@ -181,19 +181,49 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
                 rebase_config(v, old_base, new_base)
 
 
-def run_validation(circuit_path: str | Path) -> None:
-    """Run SONATA circuit validation."""
+def run_validation(
+    circuit_path: str | Path,
+    *,
+    raise_on_error: bool = True,
+) -> tuple[list[str], list[str]]:
+    """Run SONATA circuit validation with OBI-specific ignore rules.
+
+    Wraps ``bluepysnap.circuit_validation.validate`` and always applies
+    ``_IGNORE_EDGE_PROPERTIES``. Unlike calling SNAP directly with
+    ``only_errors=True``, this collects both FATAL errors and WARNINGs.
+
+    Args:
+        circuit_path: Path to ``circuit_config.json``.
+        raise_on_error: When True (default), raise ``ValueError`` if any FATAL
+            errors are found. Callers that want to aggregate results (e.g. the
+            async circuit validation task) should pass ``False``.
+
+    Returns:
+        ``(fatal_errors, warnings)`` as lists of string messages. Empty lists
+        when validation is clean.
+    """
     errors = snap.circuit_validation.validate(
         str(circuit_path),
         skip_slow=False,
-        only_errors=True,
+        only_errors=False,
         print_errors=False,
         ignore_edge_properties=_IGNORE_EDGE_PROPERTIES,
     )
-    if len(errors) > 0:
-        msg = f"Circuit validation error(s) found:\n{errors}"
-        raise ValueError(msg)
-    L.info("No SONATA validation errors found!")
+    fatal_errors = [str(e) for e in errors if e.level == "FATAL"]
+    warnings = [str(e) for e in errors if e.level == "WARNING"]
+
+    if fatal_errors:
+        L.warning("SONATA validation found %d fatal error(s)", len(fatal_errors))
+        if raise_on_error:
+            msg = f"Circuit validation error(s) found:\n{fatal_errors}"
+            raise ValueError(msg)
+        return fatal_errors, warnings
+
+    if warnings:
+        L.warning("SONATA validation found %d warning(s)", len(warnings))
+    else:
+        L.info("No SONATA validation errors found!")
+    return fatal_errors, warnings
 
 
 def get_morph_dirs(
@@ -484,13 +514,17 @@ def run_circuit_folder_compression(
         output_root: Directory where the compressed output will be written.
 
     Returns:
-        Path to the generated .gz file.
+        Path to the generated .tar.gz file.
     """
     from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
         run_tasks_for_generated_scan,
     )
     from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
         GridScanGenerationTask,
+    )
+    from obi_one.db_sdk.registration.circuit.assets import (  # ruff: ignore[import-outside-top-level]
+        COMPRESSED_CIRCUIT_FORMAT,
+        COMPRESSED_CIRCUIT_NAME,
     )
     from obi_one.scientific.tasks.folder_compression import (  # ruff: ignore[import-outside-top-level]
         FolderCompressionScanConfig,
@@ -502,8 +536,8 @@ def run_circuit_folder_compression(
     )
     compression_init = FolderCompressionScanConfig.Initialize(
         folder_path=folder_path,
-        file_format="gz",
-        file_name="circuit",
+        file_format=COMPRESSED_CIRCUIT_FORMAT,
+        file_name=COMPRESSED_CIRCUIT_NAME,
         archive_name=circuit_name,
     )
     folder_compressions_config = FolderCompressionScanConfig(initialize=compression_init)
@@ -516,10 +550,8 @@ def run_circuit_folder_compression(
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
-    output_file = (
-        grid_scan.single_configs[0].coordinate_output_root
-        / f"{compression_init.file_name}.{compression_init.file_format}"
-    )
+    single_config = grid_scan.single_configs[0]
+    output_file = single_config.output_path  # ty:ignore[unresolved-attribute]
     if not output_file.exists():
         msg = "Compressed circuit file does not exist!"
         raise OBIONEError(msg)

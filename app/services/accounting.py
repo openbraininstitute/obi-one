@@ -16,7 +16,7 @@ from app.logger import L
 from app.schemas.accounting import AccountingParameters
 from app.schemas.auth import UserContext
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import TaskAccountingInfo, TaskDefinition
+from app.schemas.task import LaunchableTaskDefinition, TaskAccountingInfo
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
 from obi_one.db_sdk.db_sdk import select_json_asset_content
@@ -78,7 +78,7 @@ def estimate_task_cost(
     *,
     db_client: Client,
     config_id: UUID,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     project_context: ProjectContext,
     accounting_factory: AccountingSessionFactory,
 ) -> TaskAccountingInfo:
@@ -107,11 +107,11 @@ def estimate_task_cost(
     )
 
 
-def _evaluate_accounting_parameters(
+def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many-branches, too-many-return-statements]
     *,
     db_client: Client,
     config_id: UUID,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> AccountingParameters:
     """Evaluate accounting parameters from the task configuration.
 
@@ -145,6 +145,26 @@ def _evaluate_accounting_parameters(
             return AccountingParameters(
                 count=1,
                 service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
+            )
+        case TaskType.circuit_single_build:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SYNAPTOME_BUILD,
+            )
+        case TaskType.efeature_extraction:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
+            )
+        case TaskType.emodel_optimization:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_OPTIMISATION,
+            )
+        case TaskType.circuit_synaptic_physiology_assignment:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SYNAPSE_PARAMETERIZATION_SMALL,
             )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1

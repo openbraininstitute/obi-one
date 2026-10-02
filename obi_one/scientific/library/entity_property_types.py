@@ -9,6 +9,7 @@ class EntityType(StrEnum):
 class MappedPropertiesGroup(StrEnum):
     CIRCUIT = "Circuit"
     ION_CHANNEL_MODEL = "IonChannelModel"
+    NEURONAL_MANIPULATION = "NeuronalManipulation"
     MORPHOLOGY = "Morphology"
     ELECTRICAL_CELL_RECORDINGS = "ElectricalCellRecordings"
 
@@ -20,6 +21,9 @@ class CircuitMappedProperties(StrEnum):
     VIRTUAL_NEURONAL_POPULATION = "VirtualNeuronalPopulation"
     NONVIRTUAL_NEURONAL_POPULATION = "NonVirtualNeuronalPopulation"
     NEURONAL_POPULATION = "NeuronalPopulation"
+    CHEMICAL_EDGE_POPULATION = "ChemicalEdgePopulation"
+    ELECTRICAL_EDGE_POPULATION = "ElectricalEdgePopulation"
+    EDGE_POPULATION = "EdgePopulation"
     MECHANISM_VARIABLES_BY_ION_CHANNEL = "MechanismVariablesByIonChannel"
     NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION = "NodePropertyUniqueValuesByPopulation"
 
@@ -34,10 +38,15 @@ class ElectricalCellRecordingMappedProperties(StrEnum):
     AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
 
 
+class MorphologySourceMappedProperties(StrEnum):
+    SECTION_TYPES = "SectionTypes"
+
+
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
     SHOW_MORPHOLOGY_LOCATIONS = "ShowMorphologyLocations"
+    SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS = "ShowExplicitMorphologyLocations"
     SHOW_BIOPHYSICAL_NEURON_SETS = "ShowBiophysicalNeuronSets"
     SHOW_POINT_NEURON_SETS = "ShowPointNeuronSets"
     SHOW_VIRTUAL_NEURON_SETS = "ShowVirtualNeuronSets"

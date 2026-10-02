@@ -1,4 +1,3 @@
-# ruff: file-ignore[implicit-namespace-package]
 """Launch script for circuit validation task.
 
 Runs on the launch-system with image ``python_3_12_openmpi5_neuron9_neurodamus``.
@@ -16,11 +15,13 @@ import logging
 import os
 import sys
 from functools import partial
+from pathlib import Path
 from uuid import UUID
 
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.token_manager import TokenFromFunction
 from obi_auth import get_token
+from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.db_sdk.registration.circuit.lifecycle import is_validation_allowed
 from obi_one.scientific.tasks.circuit_validation.task import (
@@ -61,21 +62,22 @@ def main() -> int:
             token_manager = TokenFromFunction(
                 partial(
                     get_token,
-                    environment=deployment,
-                    auth_mode="persistent_token",
+                    environment=DeploymentEnvironment(deployment),
+                    auth_mode=AuthMode.persistent_token,
                     persistent_token_id=persistent_token_id,
                 ),
             )
         project_context = ProjectContext(
             project_id=args.project_id,
             virtual_lab_id=args.virtual_lab_id,
-            environment=deployment,
         )
         db_client = Client(
             environment=deployment,
             project_context=project_context,
             token_manager=token_manager,
-            local_store=LocalAssetStore(prefix=local_store_prefix),
+            local_store=None
+            if local_store_prefix is None
+            else LocalAssetStore(prefix=Path(local_store_prefix)),
         )
 
         circuit = db_client.get_entity(entity_id=circuit_id, entity_type=models.Circuit)

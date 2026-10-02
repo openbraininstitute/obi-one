@@ -6,24 +6,21 @@ import morphio
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, Circuit, MEModel
-from entitysdk.types import AssetLabel, CircuitScale, ContentType
+from entitysdk.types import AssetLabel, CircuitScale
 
 from app.schemas.morphology_section_types import MorphologySectionTypeOption
 from app.services.circuit_visualization import (
     download_circuit_config,
     get_morphology,
     get_nodes,
+    load_cell_morphology,
+    load_memodel_morphology,
 )
 
 _SECTION_TYPE_LABELS = {
     morphio.SectionType.basal_dendrite: "Basal dendrite",
     morphio.SectionType.apical_dendrite: "Apical dendrite",
 }
-_MORPHOLOGY_ASSET_TYPES = (
-    (ContentType.application_swc, ".swc"),
-    (ContentType.application_x_hdf5, ".h5"),
-    (ContentType.application_asc, ".asc"),
-)
 _STATIC_CIRCUIT_SCALE_SECTION_TYPE_OPTIONS = {
     CircuitScale.pair,
     CircuitScale.small,
@@ -53,45 +50,6 @@ def section_type_options(
     ]
 
 
-def _load_morphology_content(content: bytes, suffix: str) -> morphio.Morphology:
-    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
-        tmp.write(content)
-        tmp.flush()
-        return morphio.Morphology(tmp.name, options=morphio.Option.nrn_order)
-
-
-def _load_cell_morphology(client: Client, morphology: CellMorphology) -> morphio.Morphology:
-    if morphology.id is None:
-        msg = "Cell morphology is missing an id."
-        raise ValueError(msg)
-
-    assets = morphology.assets or []
-    for content_type, suffix in _MORPHOLOGY_ASSET_TYPES:
-        asset = next(
-            (
-                asset
-                for asset in assets
-                if asset.content_type == content_type and asset.label == AssetLabel.morphology
-            ),
-            None,
-        )
-        if asset is None:
-            continue
-        if asset.id is None:
-            msg = "Morphology asset is missing an id."
-            raise ValueError(msg)
-
-        content = client.download_content(
-            entity_id=morphology.id,
-            entity_type=CellMorphology,
-            asset_id=asset.id,
-        )
-        return _load_morphology_content(content, suffix)
-
-    msg = "Cell morphology has no supported SWC, H5, or ASC asset."
-    raise ValueError(msg)
-
-
 def memodel_section_type_options(
     client: Client,
     memodel_id: UUID,
@@ -104,13 +62,7 @@ def _memodel_section_type_options(
     client: Client,
     memodel: MEModel,
 ) -> list[MorphologySectionTypeOption]:
-    morphology = memodel.morphology
-    if not (morphology.assets or []):
-        if morphology.id is None:
-            msg = "MEModel morphology is missing an id."
-            raise ValueError(msg)
-        morphology = client.get_entity(entity_id=morphology.id, entity_type=CellMorphology)
-    return section_type_options(_load_cell_morphology(client, morphology))
+    return section_type_options(load_memodel_morphology(client, memodel))
 
 
 def _sonata_circuit_asset_id(client: Client, circuit: Circuit) -> UUID:
@@ -200,7 +152,7 @@ def morphology_section_type_options(
         if isinstance(entity, MEModel):
             return _memodel_section_type_options(client, entity)
         if isinstance(entity, CellMorphology):
-            return section_type_options(_load_cell_morphology(client, entity))
+            return section_type_options(load_cell_morphology(client, entity))
         if isinstance(entity, Circuit):
             return _circuit_section_type_options(client, entity)
 

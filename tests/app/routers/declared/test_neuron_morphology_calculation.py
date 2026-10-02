@@ -624,3 +624,54 @@ def test_asc_upload_success(client, monkeypatch):
     )
     assert response.status_code == 200, response.json()
     assert response.json()["morphology_name"] == "cell.asc"
+
+
+def test_converted_asc_is_uploaded_for_swc_input(client, monkeypatch):
+    """Regression: a .swc upload must also register the converted .asc asset.
+
+    The simulator (bluecellulab) loads the .asc morphology, so the registration
+    endpoint must upload the .asc produced by morph_tool conversion in addition
+    to the .swc and .h5 variants.
+    """
+
+    def _existing_path(name):
+        p = MagicMock()
+        p.exists.return_value = True
+        p.suffix = Path(name).suffix
+        p.__str__ = lambda _self, _n=name: _n
+        return p
+
+    converted = MorphologyFiles.model_construct(
+        swc=_existing_path("converted.swc"),
+        hdf5=_existing_path("converted.h5"),
+        asc=_existing_path("converted.asc"),
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.validate_and_convert_morphology",
+        lambda *_args, **_kwargs: converted,
+    )
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
+    )
+
+    uploaded_suffixes = []
+
+    def _record_upload(_client, _entity_id, file_path, **_kwargs):
+        uploaded_suffixes.append(file_path.suffix)
+
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.upload_morphology_file",
+        _record_upload,
+    )
+
+    response = client.post(
+        ROUTE,
+        data={"metadata": "{}"},
+        files={"file": ("cell.swc", b"swc content")},
+    )
+
+    assert response.status_code == 200, response.json()
+    assert ".asc" in uploaded_suffixes, (
+        f"converted .asc was not uploaded; uploaded: {uploaded_suffixes}"
+    )
+    assert {".swc", ".h5", ".asc"} <= set(uploaded_suffixes)

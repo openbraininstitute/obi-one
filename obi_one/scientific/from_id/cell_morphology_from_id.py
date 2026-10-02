@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import ClassVar
 
@@ -9,7 +10,14 @@ import morphio
 import neurom
 from entitysdk._server_schemas import AssetLabel, ContentType  # ruff: ignore[import-private-name]
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import CellMorphology, EMCellMesh, TaskActivity, TaskConfig
+from entitysdk.models import (
+    BrainRegion,
+    CellMorphology,
+    EMCellMesh,
+    Species,
+    TaskActivity,
+    TaskConfig,
+)
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from entitysdk.models.entity import Entity
 from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
@@ -20,6 +28,12 @@ from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
 L = logging.getLogger(__name__)
 
+_MORPHOLOGY_ASSET_FORMATS = (
+    (ContentType.application_asc, ".asc"),
+    (ContentType.application_swc, ".swc"),
+    (ContentType.application_x_hdf5, ".h5"),
+)
+
 
 class CellMorphologyFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = CellMorphology
@@ -29,8 +43,11 @@ class CellMorphologyFromID(EntityFromID):
     _morphio_morphology: morphio.Morphology | None = PrivateAttr(default=None)
     _swc_file_content: str | None = PrivateAttr(default=None)
 
-    def swc_file_content(self, db_client: entitysdk.client.Client = None) -> None:  # ty:ignore[invalid-parameter-default]
-        """Function for downloading SWC files of a morphology into memory."""
+    def swc_file_content(
+        self,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> str:
+        """Download the morphology's SWC asset into memory."""
         if self._swc_file_content is None:
             for asset in self.entity(db_client=db_client).assets:
                 if asset.content_type == "application/swc":
@@ -52,25 +69,48 @@ class CellMorphologyFromID(EntityFromID):
                         break
 
             if self._swc_file_content is None:
-                msg = "No valid application/asc asset found for morphology."
+                msg = "No valid application/swc asset found for morphology."
                 raise ValueError(msg)
 
-        return self._swc_file_content  # ty:ignore[invalid-return-type]
+        content = self._swc_file_content
+        if content is None:
+            msg = "SWC asset download did not produce content."
+            raise RuntimeError(msg)
+        return content
 
     def neurom_morphology(
         self,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> neurom.core.Morphology:
-        """Getter for the neurom_morphology property.
-
-        Downloads the application/asc asset if not already downloaded
-        and loads it using neurom.load_morphology.
-        """
+        """Load the morphology's SWC asset as a Neurom morphology."""
         if self._neurom_morphology is None:
             self._neurom_morphology = neurom.load_morphology(
                 io.StringIO(self.swc_file_content(db_client)), reader="swc"
             )
         return self._neurom_morphology
+
+    def metadata_entities(
+        self,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> tuple[Species, BrainRegion]:
+        """Return the species and brain-region entities linked to the morphology."""
+        morphology_entity = self.entity(db_client=db_client)
+        subject = getattr(morphology_entity, "subject", None)
+        if subject is None:
+            msg = f"CellMorphology {self.id_str} has no subject relationship."
+            raise EntitySDKError(msg)
+
+        species: Species | None = getattr(subject, "species", None)
+        if species is None:
+            msg = f"CellMorphology {self.id_str} has no subject.species relationship."
+            raise EntitySDKError(msg)
+
+        brain_region: BrainRegion | None = getattr(morphology_entity, "brain_region", None)
+        if brain_region is None:
+            msg = f"CellMorphology {self.id_str} has no brain_region relationship."
+            raise EntitySDKError(msg)
+
+        return species, brain_region
 
     def has_source_mesh(self, db_client: entitysdk.client.Client = None) -> bool:  # ty:ignore[invalid-parameter-default]
         """Does the cell morphology originate from an EMCellMesh?
@@ -173,17 +213,46 @@ class CellMorphologyFromID(EntityFromID):
         spiny_morph = load_morphology_with_spines(str(path))
         return spiny_morph
 
-    def morphio_morphology(self, db_client: entitysdk.client.Client = None) -> morphio.Morphology:  # ty:ignore[invalid-parameter-default]
-        """Getter for the morphio_morphology property.
-
-        Downloads the application/asc asset if not already downloaded
-        and initializes it as morphio.Morphology([...]).
-        """
-        msg = "morphio_morphology must be retested."
-        raise NotImplementedError(msg)
-
+    def morphio_morphology(
+        self,
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+    ) -> morphio.Morphology:
+        """Download a supported morphology asset and load it with MorphIO."""
         if self._morphio_morphology is None:
-            self._morphio_morphology = morphio.Morphology(
-                io.StringIO(self.swc_file_content(db_client)), reader="swc"
-            )
+            entity = self.entity(db_client=db_client)
+            for content_type, suffix in _MORPHOLOGY_ASSET_FORMATS:
+                asset = next(
+                    (
+                        asset
+                        for asset in entity.assets
+                        if asset.content_type == content_type
+                        and (
+                            content_type != ContentType.application_x_hdf5
+                            or asset.label == AssetLabel.morphology
+                        )
+                    ),
+                    None,
+                )
+                if asset is None:
+                    continue
+                if asset.id is None:
+                    msg = "Morphology asset must have an id."
+                    raise ValueError(msg)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / f"morphology{suffix}"
+                    db_client.download_file(
+                        entity_id=entity.id,
+                        entity_type=self.entitysdk_class,
+                        asset_id=asset.id,
+                        output_path=path,
+                    )
+                    self._morphio_morphology = morphio.Morphology(
+                        path, options=morphio.Option.nrn_order
+                    )
+                break
+
+            if self._morphio_morphology is None:
+                msg = "Morphology entity has no ASC, SWC, or H5 morphology asset."
+                raise EntitySDKError(msg)
+
         return self._morphio_morphology

@@ -17,6 +17,11 @@ def load_json(path: PathLike) -> dict:
     return json.loads(Path(path).read_bytes())
 
 
+def compressed_archive_filename(name: str, file_format: str) -> str:
+    """Archive filename for the given name and compression format, e.g. "circuit.tar.gz"."""
+    return f"{name}.tar.{file_format}"
+
+
 def extract_tar_gz(
     archive_path: Path, output_dir: Path | None = None, *, clean: bool = False
 ) -> Path:

@@ -1,11 +1,12 @@
-"""Blocks whose every block-reference field is left unset.
+"""Blocks whose optional block-reference fields are left unset.
 
-Reference fields are all optional and all default to ``None``, so "the user added a block and
-targeted nothing" is the most common config there is. Resolving those ``None``s is spread across
-several places -- the task fills some in on the block itself before generating, while others stay
-``None`` and are resolved to a bare node set *name* inside the block's own ``config()``. These
-tests pin what an unset reference currently produces, so that consolidating the two mechanisms
-can be checked against real output rather than by reading.
+Most reference fields default to ``None``, so "the user added a block and targeted nothing" is the
+most common config there is. Specialized blocks may require a target and are covered by dedicated
+tests rather than the untargeted sweeps below. Resolving those ``None``s is spread across several
+places -- the task fills some in on the block itself before generating, while others stay ``None``
+and are resolved to a bare node set *name* inside the block's own ``config()``. These tests pin
+what an unset reference currently produces, so that consolidating the two mechanisms can be
+checked against real output rather than by reading.
 
 The parametrised sweeps build their cases from the block unions themselves, so a newly added
 block type is covered here without anyone editing this file.
@@ -32,6 +33,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationUnion,
 )
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
@@ -42,7 +44,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -53,12 +54,27 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     union_member_names,
 )
 
-# Every block in these unions is constructible with no arguments, so "all references unset" is
-# just the default construction.
+# Most blocks in these unions are constructible with no arguments, so "all references unset" is
+# the default construction. Required-target blocks are kept out of the untargeted sweeps below.
 CIRCUIT_STIMULI = sorted(union_member_names(CircuitStimulusUnion))
 RECORDINGS = sorted(union_member_names(RecordingUnion))
+# A recording whose reference field has no default cannot be constructed untargeted, so it is
+# derived rather than listed: a new such block excludes itself from the sweeps below.
+REQUIRED_TARGET_RECORDINGS = {
+    name
+    for name in RECORDINGS
+    if any(
+        getattr(obi, name).model_fields[field_name].is_required()
+        for field_name in reference_field_names(getattr(obi, name))
+    )
+}
+UNTARGETED_RECORDINGS = sorted(
+    name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
+)
 SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
-MORPHOLOGY_LOCATIONS = sorted(union_member_names(MorphologyLocationUnion))
+# Explicit locations are excluded: they name points on a single neuron, so they carry no
+# neuron-set reference and are not offered for circuit configurations.
+MORPHOLOGY_LOCATIONS = sorted(union_member_names(CircuitMorphologyLocationUnion))
 COMBINED_NEURON_SETS = sorted(
     name for name in union_member_names(NEURONSimulationNeuronSetUnion) if "Combined" in name
 )
@@ -90,8 +106,8 @@ BLOCK_CLASSES = {
     ]
 }
 
-# Every reference-holding field a simulation-generation block can have, each with a case below.
-# Seven name neuron sets, one names timestamps, one names a distribution.
+# Seven named neuron sets, one names timestamps, one names a distribution, and one names
+# morphology locations (the latter is required by its specialized recording block).
 COVERED_REFERENCE_FIELDS = {
     "neuron_set",
     "source_neuron_set",
@@ -103,6 +119,7 @@ COVERED_REFERENCE_FIELDS = {
     "initialize.node_set",
     "timestamps",
     "distribution",
+    "morphology_locations",
 }
 
 # Neuronal manipulations take a required `modification`, so each needs a factory rather than
@@ -189,7 +206,7 @@ class TestEveryReferenceFieldIsExercised:
 
     @pytest.mark.parametrize(
         "name",
-        CIRCUIT_STIMULI + RECORDINGS + SYNAPTIC_MANIPULATIONS + MORPHOLOGY_LOCATIONS,
+        CIRCUIT_STIMULI + UNTARGETED_RECORDINGS + SYNAPTIC_MANIPULATIONS + MORPHOLOGY_LOCATIONS,
     )
     def test_every_reference_field_defaults_to_none(self, name):
         block_class = getattr(obi, name)
@@ -227,7 +244,7 @@ class TestUnsetReferencesResolveToTheDefault:
 
         assert _input_entry(result, "Stim")["node_set"] == DEFAULT_BIOPHYSICAL_NODE_SET
 
-    @pytest.mark.parametrize("name", RECORDINGS)
+    @pytest.mark.parametrize("name", UNTARGETED_RECORDINGS)
     def test_recording_records_the_default_neuron_set(self, name, circuit, tmp_path):
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Rec": _block(name)}
@@ -423,15 +440,12 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves one default, shared by the simulation and the stimulus."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(
@@ -659,7 +673,7 @@ class TestUnsetReferencesAcrossEveryBlockAtOnce:
     def test_a_config_of_entirely_untargeted_blocks_generates_valid_sonata(self, circuit, tmp_path):
         """The end state this module is really about: nothing anywhere points at anything."""
         blocks = {name: _block(name) for name in CIRCUIT_STIMULI}
-        blocks |= {name: _block(name) for name in RECORDINGS}
+        blocks |= {name: _block(name) for name in UNTARGETED_RECORDINGS}
         blocks |= {name: _block(name) for name in SYNAPTIC_MANIPULATIONS}
 
         config = build_config(CircuitSimulationSingleConfig, circuit=circuit, blocks=blocks)
@@ -669,7 +683,7 @@ class TestUnsetReferencesAcrossEveryBlockAtOnce:
         assert result.dangling_node_sets() == set()
         assert result.referenced_node_sets() == {DEFAULT_BIOPHYSICAL_NODE_SET}
         assert len(result.inputs) == len(CIRCUIT_STIMULI)
-        assert len(result.reports) == len(RECORDINGS)
+        assert len(result.reports) == len(UNTARGETED_RECORDINGS)
         assert len(result.sonata_config["connection_overrides"]) == len(SYNAPTIC_MANIPULATIONS)
 
     def test_spike_stimuli_are_the_only_ones_that_can_target_a_virtual_source(

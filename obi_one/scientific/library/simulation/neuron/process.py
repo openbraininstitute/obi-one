@@ -1,3 +1,4 @@
+import json
 import logging
 import math
 import os
@@ -14,7 +15,6 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     SimulationResults,
 )
 from obi_one.types import SimulationBackend
-from obi_one.utils.filesystem import find_file
 from obi_one.utils.process import run_and_log
 
 L = logging.getLogger(__name__)
@@ -174,29 +174,20 @@ def _compile_neurodamus_mechanisms(
         "--with-internal-mods",
         "--simulator",
         "coreneuron",
+        "--output-type",
+        "json",
     ]
 
-    compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
+    compilation_output = run_and_log(
+        command, cwd=output_dir, env={"PATH": f"/opt/obi/:{os.environ['PATH']}"}
+    ).stdout
 
     L.debug(compilation_output)
 
-    special_binary_path = find_file(
-        directory=output_dir,
-        pattern="special",
-        recursive=True,
-    )
-    libnrnmech_path = find_file(
-        directory=output_dir,
-        pattern="libnrnmech.so",
-        recursive=True,
-    )
-    libcorenrnmech_path = find_file(
-        directory=output_dir,
-        pattern="libcorenrnmech.so",
-        recursive=True,
-    )
+    env = json.loads(compilation_output)
+
     return NeurodamusMechanismBuild(
-        libnrnmech_path=libnrnmech_path,
-        libcorenrnmech_path=libcorenrnmech_path,
-        special_binary_path=special_binary_path,
+        libnrnmech_path=Path(env["NRNMECH_LIB_PATH"]),
+        libcorenrnmech_path=Path(env["CORENEURONLIB"]),
+        special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )

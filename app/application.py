@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 from entitysdk.exception import EntitySDKError
+from entitysdk.utils.http import HTTPClient as EntitySDKHTTPClient
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -17,6 +18,7 @@ from starlette.responses import Response
 from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
+    circuit_customization,
     circuit_properties,
     circuit_registration,
     circuit_visualization,
@@ -24,6 +26,7 @@ from app.endpoints import (
     contributor,
     convert_morphology_to_registered_mesh,
     count_scan_coordinates,
+    distance_function_validation,
     electrical_cell_recording_properties,
     ephys_metrics,
     extracellular_locations,
@@ -57,14 +60,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         settings.ENVIRONMENT,
     )
     http_client = httpx.Client()
+    entitysdk_http_client = EntitySDKHTTPClient()
     try:
         yield {
             "http_client": http_client,
+            "entitysdk_http_client": entitysdk_http_client,
         }
     except asyncio.CancelledError as err:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
+        entitysdk_http_client.close()
         http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
@@ -174,15 +180,18 @@ async def version() -> dict:
 
 app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
+app.include_router(circuit_customization.router)
 app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
+app.include_router(distance_function_validation.router)
 app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)
 app.include_router(extracellular_locations.router)
 app.include_router(ion_channel_properties.router)
+app.include_router(circuit_visualization.memodel_router)
 app.include_router(mesh_registration.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_metrics.router)

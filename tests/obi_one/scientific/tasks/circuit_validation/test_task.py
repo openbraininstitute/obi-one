@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock
 
+from obi_one.scientific.library.circuit_id_mapping import find_stale_populations
 from obi_one.scientific.tasks.circuit_validation.task import (
     _collect_hoc_files,
-    _find_stale_populations,
 )
 
 # ---------------------------------------------------------------------------
@@ -16,12 +16,12 @@ class TestFindStalePopulations:
     def test_no_stale(self):
         mapping = {"pop_a": {"new_id": [0, 1, 2], "parent_id": [0, 1, 2]}}
         pop_sizes = {"pop_a": 10}
-        assert _find_stale_populations(mapping, pop_sizes) == []
+        assert find_stale_populations(mapping, pop_sizes) == []
 
     def test_stale_detected(self):
         mapping = {"pop_a": {"new_id": [0, 5, 99]}}
         pop_sizes = {"pop_a": 50}  # max new_id=99 >= 50
-        result = _find_stale_populations(mapping, pop_sizes)
+        result = find_stale_populations(mapping, pop_sizes)
         assert len(result) == 1
         assert "pop_a" in result[0]
         assert "99" in result[0]
@@ -29,17 +29,17 @@ class TestFindStalePopulations:
     def test_missing_population_in_sizes(self):
         mapping = {"pop_a": {"new_id": [0, 999]}}
         pop_sizes = {}  # pop_a not in sizes → skip
-        assert _find_stale_populations(mapping, pop_sizes) == []
+        assert find_stale_populations(mapping, pop_sizes) == []
 
     def test_empty_new_ids(self):
         mapping = {"pop_a": {"new_id": []}}
         pop_sizes = {"pop_a": 10}
-        assert _find_stale_populations(mapping, pop_sizes) == []
+        assert find_stale_populations(mapping, pop_sizes) == []
 
     def test_non_dict_entry_skipped(self):
         mapping = {"pop_a": "not a dict"}
         pop_sizes = {"pop_a": 10}
-        assert _find_stale_populations(mapping, pop_sizes) == []
+        assert find_stale_populations(mapping, pop_sizes) == []
 
 
 # ---------------------------------------------------------------------------

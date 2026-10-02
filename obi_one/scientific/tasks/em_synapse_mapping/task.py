@@ -91,8 +91,12 @@ class EMSynapseMappingTask(Task):
         resolved_neurons = []
         pt_root_id_names: dict[int, str] = {}
 
+        mechanisms_placed = None
         for neuron_entry in init.neurons.elements:  # ty:ignore[unresolved-attribute]
-            resolved_neuron = resolve_neuron(neuron_entry, db_client, out_root, spiny_dir)
+            resolved_neuron, mechanisms_placed_ = resolve_neuron(
+                neuron_entry, db_client, out_root, spiny_dir
+            )
+            mechanisms_placed = mechanisms_placed or mechanisms_placed_
             if resolved_neuron.pt_root_id in pt_root_id_names:
                 err_str = (
                     f"Duplicate pt_root_id {resolved_neuron.pt_root_id}: "
@@ -125,9 +129,10 @@ class EMSynapseMappingTask(Task):
         if advanced.include_spiny_morphologies:
             L.info("Merging spiny morphologies into combined file...")
             merge_spiny_morphologies(
-                source_files=[spiny_dir / rn.fn_morph_h5 for rn in resolved_neurons],
+                source_files_with_neuron_names=[
+                    (spiny_dir / rn.fn_morph_h5, rn.name_in_circuit) for rn in resolved_neurons
+                ],
                 output_path=out_root / fn_merged_h5,
-                neuron_id_strings=[rn.name_in_circuit for rn in resolved_neurons],
                 include_meshes=True,
             )
 
@@ -226,7 +231,7 @@ class EMSynapseMappingTask(Task):
                             coll_bio.properties[col] = numpy.full(n_neurons, -1, dtype=vals.dtype)
                         else:
                             coll_bio.properties[col] = numpy.full(n_neurons, "", dtype=vals.dtype)
-                    coll_bio.properties[col][bio_idx] = vals[0]
+                    coll_bio.properties.loc[bio_idx, col] = vals[0]
 
         if external_pt_roots_sorted:
             virt_pt_root_mapping = pandas.DataFrame(
@@ -276,8 +281,8 @@ class EMSynapseMappingTask(Task):
                 int_edges_df,
                 pop_bio,
                 pop_bio,
-                n_src=len(pop_bio),
-                n_tgt=len(pop_bio),
+                n_src=len(coll_bio),
+                n_tgt=len(coll_bio),
             )
 
         if all_external_edges:
@@ -290,8 +295,8 @@ class EMSynapseMappingTask(Task):
                 ext_edges_df,
                 pop_virt,
                 pop_bio,
-                n_src=len(pop_virt),
-                n_tgt=len(pop_bio),
+                n_src=len(coll_virtual),  # ty:ignore[invalid-argument-type]
+                n_tgt=len(coll_bio),
             )
 
         # Write circuit config
@@ -311,6 +316,7 @@ class EMSynapseMappingTask(Task):
             alternate_morphologies_h5=(
                 "morphologies" if not advanced.include_spiny_morphologies else fn_merged_h5
             ),
+            mechanisms_dir=mechanisms_placed,
         )
         circuit_config_path = out_root / "circuit_config.json"
         with circuit_config_path.open("w") as fid:

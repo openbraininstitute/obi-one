@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 import entitysdk
 from libsonata import SimulatorType
@@ -44,6 +44,9 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     VirtualNeuronSetReference,
 )
 
+if TYPE_CHECKING:
+    from obi_one.scientific.library.circuit import Circuit
+
 SONATA_VERSION = 2.4
 
 L = logging.getLogger(__name__)
@@ -51,7 +54,7 @@ L = logging.getLogger(__name__)
 
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
-DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: No Locations"
+DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: Soma (no explicit compartment)"
 
 
 class BlockGroup(StrEnum):
@@ -129,6 +132,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 
@@ -179,6 +185,13 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
+
+    def validate_circuit(self, circuit: "Circuit | None") -> None:
+        """Check the resolved circuit can be simulated by this configuration's simulator.
+
+        Called by the generation task once the circuit is staged. The default accepts anything;
+        simulators with structural requirements override it to fail early with a clear message.
+        """
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""

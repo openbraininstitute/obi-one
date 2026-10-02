@@ -25,6 +25,8 @@ TYPE_MAP: dict[str, str] = {
     # Scan configs and single configs
     "BasicConnectivityPlotsScanConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
     "BasicConnectivityPlotsSingleConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
+    "MEModelSynapticModelPlacementScanConfig": "obi_one.scientific.tasks.build_synaptome",
+    "MEModelSynapticModelPlacementSingleConfig": "obi_one.scientific.tasks.build_synaptome",
     "CircuitExtractionScanConfig": "obi_one.scientific.tasks.circuit_extraction",
     "CircuitExtractionSingleConfig": "obi_one.scientific.tasks.circuit_extraction",
     "CircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
@@ -65,6 +67,8 @@ TYPE_MAP: dict[str, str] = {
     # EModel optimization workflows
     "EModelEFeatureExtractionScanConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
     "EModelEFeatureExtractionSingleConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
+    "EModelOptimizationScanConfig": "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config",
+    "EModelOptimizationSingleConfig": "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config",
     # __init__.py aliases (class is re-exported under this name)
     "CoupledScan": "obi_one",
     "GridScan": "obi_one",
