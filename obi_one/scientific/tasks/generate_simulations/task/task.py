@@ -13,6 +13,9 @@ from obi_one.scientific.blocks.morphology_locations.base import (
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -564,6 +567,31 @@ class GenerateSimulationTask(Task):
                 attrs_or_entity={"number_neurons": number_neurons},
             )
 
+    def _recording_array_ids(self) -> list[str]:
+        """The extracellular recording arrays this simulation's LFP reports read, each once."""
+        return sorted(
+            {
+                recording.electrode_array.id_str
+                for recording in getattr(self.config, "recordings", {}).values()
+                if isinstance(recording, ExtracellularElectrodeArrayRecordingBlock)
+            }
+        )
+
+    def _link_recording_arrays_to_simulation(
+        self, db_client: entitysdk.client.Client, array_ids: list[str]
+    ) -> None:
+        """Link the Simulation entity to the recording arrays its LFP reports read.
+
+        entitysdk's stage_simulation stages the weight matrix of every linked array when the
+        simulation is run, and refuses an LFP report whose array is not linked, so this is what
+        lets generation leave the matrix alone.
+        """
+        db_client.update_entity(
+            entity_id=self.config.single_entity.id,
+            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+            attrs_or_entity={"recording_arrays": [{"id": array_id} for array_id in array_ids]},
+        )
+
     def _write_simulation_config_to_file(self) -> None:
         write_simulation_config(
             config=self._sonata_config,
@@ -641,5 +669,8 @@ class GenerateSimulationTask(Task):
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._write_materialized_compartment_sets_file()
         self._update_simulation_number_neurons(db_client)
+        array_ids = self._recording_array_ids()
+        if db_client and array_ids:
+            self._link_recording_arrays_to_simulation(db_client, array_ids)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)

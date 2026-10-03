@@ -3,6 +3,9 @@ from typing import Annotated, Any, ClassVar
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
 from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
@@ -23,7 +26,11 @@ _MORPHOLOGY_LOCATION_VOLTAGE_RECORDINGS = (
 
 _VOLTAGE_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | _MORPHOLOGY_LOCATION_VOLTAGE_RECORDINGS
 
-_RECORDINGS = IonChannelVariableRecording | _VOLTAGE_RECORDINGS
+# An extracellular recording needs a weight matrix computed for the whole circuit, so it is only
+# offered by simulations of a circuit.
+_CIRCUIT_RECORDINGS = _VOLTAGE_RECORDINGS | ExtracellularElectrodeArrayRecordingBlock
+
+_RECORDINGS = IonChannelVariableRecording | _CIRCUIT_RECORDINGS
 
 # Sampled on the simulation timestep, so these carry no Timestep parameter of their own.
 _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS = (
@@ -32,6 +39,8 @@ _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS = (
 
 
 RecordingUnion = Annotated[_VOLTAGE_RECORDINGS, Discriminator("type")]
+
+CircuitRecordingUnion = Annotated[_CIRCUIT_RECORDINGS, Discriminator("type")]
 
 Brian2RecordingUnion = Annotated[_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
 
