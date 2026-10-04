@@ -136,6 +136,19 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
                 SchemaKey.UI_HIDDEN: True,
             },
         )
+        n_processes: int | None = Field(
+            default=None,
+            title="Worker Processes",
+            description=(
+                "Number of worker processes for parallel filter computation."
+                " None or 1 = single-process."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_HIDDEN: True,
+                SchemaKey.PARAMETER_ORDER_PRIORITY: 98,
+            },
+            ge=1,
+        )
 
     algorithms: dict[str, SimplificationAlgorithmUnion] = Field(
         default_factory=default_simplification_algorithms,
@@ -414,9 +427,7 @@ class CircuitSimplificationTask(Task):
 
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithm_names:
-                mechanisms_dir = process.get_mechanisms_dirs(input_circuit_path)
-                assert len(mechanisms_dir) == 1, "Do not currently handle multiple mechanisms_dirs"  # ruff: ignore[assert]
-                mechanisms_dir = next(iter(mechanisms_dir))
+                mechanisms_dirs = sorted(set(process.get_mechanisms_dirs(input_circuit_path)))
                 sim_backend = (
                     SimulationBackend.neurodamus
                     if shutil.which("neurodamus-compile-mods")
@@ -424,7 +435,7 @@ class CircuitSimplificationTask(Task):
                 )
                 process.compile_mechanisms(
                     output_dir=Path(),
-                    mechanisms_dir=mechanisms_dir,
+                    mechanisms_dirs=mechanisms_dirs,
                     simulation_backend=sim_backend,
                 )
 
@@ -459,6 +470,7 @@ class CircuitSimplificationTask(Task):
                 pipeline = SimplificationPipeline(
                     simulation_config=str(sim_config_path),
                     simplification_mode=base_algorithm,
+                    n_processes=self.config.initialize.n_processes,
                 )
 
                 # Run the pipeline with a recipe that includes the exporter

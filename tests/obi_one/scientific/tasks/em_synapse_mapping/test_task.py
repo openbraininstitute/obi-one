@@ -15,6 +15,21 @@ from obi_one.scientific.tasks.em_synapse_mapping.task import EMSynapseMappingTas
 _TASK_MODULE = "obi_one.scientific.tasks.em_synapse_mapping.task"
 
 
+class _FakeCollection:
+    """Minimal stand-in for voxcell.CellCollection.
+
+    Exposes a pandas-backed ``properties`` table (supporting item and ``.loc``
+    assignment) and ``__len__`` reporting the node count, matching the subset of
+    the CellCollection API used by EMSynapseMappingTask.
+    """
+
+    def __init__(self, n_nodes):
+        self.properties = pd.DataFrame(index=range(n_nodes))
+
+    def __len__(self):
+        return len(self.properties)
+
+
 @pytest.fixture
 def mock_db_client():
     return Mock()
@@ -86,14 +101,9 @@ class TestEMSynapseMappingTask:
     ):
         task = _make_task(tmp_path)
 
-        coll_bio = SimpleNamespace(properties={})
-        coll_virt = SimpleNamespace(properties={})
-
         def fake_assemble(*_args, **_kwargs):
-            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping")
-            if len(mapping) == 1:
-                return coll_bio, []
-            return coll_virt, []
+            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
+            return _FakeCollection(len(mapping)), []
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
@@ -104,7 +114,7 @@ class TestEMSynapseMappingTask:
             ),
             patch(
                 f"{_TASK_MODULE}.resolve_neuron",
-                return_value=resolved_neuron,
+                return_value=(resolved_neuron, None),
             ),
             patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
             patch(
@@ -154,14 +164,9 @@ class TestEMSynapseMappingTask:
             custom_virtual_node_population="my_virt_nodes",
         )
 
-        coll_bio = SimpleNamespace(properties={})
-        coll_virt = SimpleNamespace(properties={})
-
         def fake_assemble(*_args, **_kwargs):
-            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping")
-            if len(mapping) == 1:
-                return coll_bio, []
-            return coll_virt, []
+            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
+            return _FakeCollection(len(mapping)), []
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
@@ -172,7 +177,7 @@ class TestEMSynapseMappingTask:
             ),
             patch(
                 f"{_TASK_MODULE}.resolve_neuron",
-                return_value=resolved_neuron,
+                return_value=(resolved_neuron, None),
             ),
             patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
             patch(

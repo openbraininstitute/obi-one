@@ -26,7 +26,7 @@ PROJECT_CONTEXTS = [
 ]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def _clear_cache():
     yield
     test_module._check_user_info.cache_clear()

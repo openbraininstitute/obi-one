@@ -342,10 +342,50 @@ class TestTaskExecution:
         # Pipeline should have been constructed and run_recipe called
         mock_pipeline.assert_called_once()
         mock_pipeline.return_value.run_recipe.assert_called_once()
+        assert mock_pipeline.call_args.kwargs["n_processes"] is None
         sim_config_path = Path(mock_pipeline.call_args.kwargs["simulation_config"])
         sim_config = json.loads(sim_config_path.read_text(encoding="utf-8"))
         assert "node_set" not in sim_config
         assert "node_sets_file" not in sim_config
+
+    def test_execute_passes_n_processes_to_pipeline(
+        self,
+        fake_simplified_circuit: Path,
+        mock_pipeline,
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
+        tmp_path: Path,
+    ):
+        """execute() should forward initialize.n_processes to SimplificationPipeline."""
+        config = self._make_config(tmp_path)
+        config.initialize = CircuitSimplificationScanConfig.Initialize(
+            circuit=CircuitFromID(id_str="test-circuit-id"),
+            n_processes=4,
+        )
+        task = CircuitSimplificationTask(config=config)
+
+        mock_circuit = MagicMock()
+        mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
+        mock_circuit.sonata_circuit = MagicMock()
+        mock_entity = MagicMock()
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                return_value=(mock_circuit, mock_entity),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._get_execution_activity",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
+                return_value=None,
+            ),
+        ):
+            task.execute(db_client=None)
+
+        mock_pipeline.assert_called_once()
+        assert mock_pipeline.call_args.kwargs["n_processes"] == 4
 
     def test_execute_registers_only_exported_circuit(
         self,

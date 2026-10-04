@@ -138,7 +138,7 @@ def test_execute_local_does_not_register(
 
     mock_stage_circuit.assert_called_once()
     mock_compile.assert_called_once_with(
-        mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+        mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
         output_dir=staged_circuit.directory.resolve(),
         simulation_backend=SimulationBackend.neurodamus,
     )

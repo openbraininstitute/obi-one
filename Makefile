@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -65,6 +65,18 @@ upgrade-deps:  ## Create or update the lock file, using the latest version of th
 
 check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version.
 	uv lock --locked --upgrade-package entitysdk
+
+compile-launch-deps:  ## Compile launch-script requirements (.in -> pinned .txt), preserving existing pins. Optional: FILE=<path to .in or dir>
+	uv run python launch_scripts/tools/launch_deps_compile.py $(FILE)
+
+upgrade-launch-deps:  ## Compile launch-script requirements, upgrading the transitive closure to latest. Optional: FILE=<path to .in or dir>
+	uv run python launch_scripts/tools/launch_deps_compile.py --upgrade $(FILE)
+
+check-launch-deps:  ## Verify committed launch-script .txt files are consistent with their .in sources
+	uv run python launch_scripts/tools/launch_deps_compile.py --check $(FILE)
+
+pin-launch-deps:  ## Pin obi-one==VERSION in launch-script .txt files (used by the release-pin workflow). Required: VERSION=<calver>. Optional: FILE=<path to .txt or dir>
+	python3 launch_scripts/tools/launch_deps_pin.py --version "$(VERSION)" $(FILE)
 
 format:  ## Run formatters
 	uv run ruff format $(FILE)

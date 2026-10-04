@@ -44,6 +44,7 @@ class CircuitCustomizationResponse(BaseModel):
     circuit_id: UUID
     status: str
     message: str
+    job_id: UUID | None = None
 
 
 class EdgeValidationError(ValueError):
@@ -729,7 +730,7 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
         )
 
     # 4. Trigger async validation task via launch-system
-    trigger_validation_task(
+    job_id = trigger_validation_task(
         ls_client=ls_client,
         circuit_id=registered.id,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
@@ -738,14 +739,16 @@ def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-pos
     )
 
     L.info(
-        "Customized circuit '%s' created: %s (parent: %s)",
+        "Customized circuit '%s' created: %s (parent: %s, job_id=%s)",
         name,
         registered.id,
         parent_circuit_id,
+        job_id,
     )
 
     return CircuitCustomizationResponse(
         circuit_id=registered.id,
         status="draft",
         message=f"Circuit created from parent {parent_circuit_id}. Validation pending.",
+        job_id=job_id,
     )

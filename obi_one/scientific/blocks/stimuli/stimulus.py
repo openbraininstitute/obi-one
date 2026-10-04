@@ -4,12 +4,14 @@ from typing import Annotated, Any, ClassVar, cast
 from pydantic import (
     Field,
     NonNegativeFloat,
+    PositiveFloat,
     PrivateAttr,
     model_validator,
 )
 
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
+from obi_one.core.exception import OBIONEError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -20,6 +22,8 @@ from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     MIN_NON_NEGATIVE_FLOAT_VALUE,
     MIN_TIMESTEP_MILLISECONDS,
+    SIMULATION_TIMESTEP_MILLISECONDS,
+    nyquist_frequency_hz,
 )
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
@@ -51,6 +55,7 @@ _TIMESTAMPS_OFFSET_FIELD = Field(
 class BaseStimulus(Block, ABC):
     _default_node_set: str = PrivateAttr(default="All")
     _default_timestamps: TimestampsReference = PrivateAttr(default=SingleTimestamp(start_time=0.0))  # ty:ignore[invalid-assignment]
+    _simulation_timestep: PositiveFloat = PrivateAttr(default=SIMULATION_TIMESTEP_MILLISECONDS)
 
     @abstractmethod
     def _generate_config(self) -> dict:
@@ -183,11 +188,14 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
         self,
         default_node_set: str = "All",
         default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
+        simulation_timestep: PositiveFloat | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
         if default_timestamps is None:
             default_timestamps = SingleTimestamp(start_time=0.0)
         self._default_timestamps = default_timestamps
+        if simulation_timestep is not None:
+            self._simulation_timestep = simulation_timestep
 
         return self._generate_config()
 
@@ -496,7 +504,11 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
         return stim_dict
 
 
-class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
+# The docstring is the block's description in the UI, so it stays user-facing and matches
+# SinusoidalCurrentClampSomaticStimulus's. Why this variant exists: Brian2 plays the signal
+# through a TimedArray clocked by the integration timestep and rejects any other interval, so
+# the signal is sampled at the simulation timestep rather than at a Timestep of its own.
+class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
     title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
@@ -525,6 +537,51 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
             SchemaKey.UNITS: Units.HERTZ,
         },
     )
+
+    @property
+    def signal_timestep(self) -> PositiveFloat:
+        """Timestep at which the sinusoid is sampled, in milliseconds (ms)."""
+        return self._simulation_timestep
+
+    def _check_frequency_against_timestep(self) -> None:
+        """Reject a frequency the signal timestep is too coarse to represent.
+
+        The bound cannot be a field constraint, because the timestep is not a property of the
+        block: this class takes it from the simulation, and
+        :class:`SinusoidalCurrentClampSomaticStimulus` from a parameter of its own. So it is
+        checked here, once the timestep that will actually be used is known.
+        """
+        timestep = self.signal_timestep
+        maximum_frequency = nyquist_frequency_hz(timestep)
+        if self.frequency >= maximum_frequency:  # ty:ignore[unsupported-operator]
+            msg = (
+                f"Stimulus '{self.block_name}': a frequency of {self.frequency} Hz cannot be "
+                f"represented at a timestep of {timestep} ms, which can only carry frequencies "
+                f"below {maximum_frequency} Hz. Lower the frequency, or shorten the timestep."
+            )
+            raise OBIONEError(msg)
+
+    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
+        self._check_frequency_against_timestep()
+        stim_dict = {
+            "delay": offset_timestamp,
+            "duration": self.duration,
+            **self._target_entry(),
+            "module": self._module,
+            "input_type": self._input_type,
+            "amp_start": self.maximum_amplitude,
+            "frequency": self.frequency,
+            "dt": self.signal_timestep,
+            "represents_physical_electrode": self._represents_physical_electrode,
+        }
+        return stim_dict
+
+
+class SinusoidalCurrentClampSomaticStimulus(SimulationDtSinusoidalCurrentClampSomaticStimulus):
+    """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
+
+    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
+
     dt: (
         Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
         | list[Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]]
@@ -538,19 +595,10 @@ class SinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
         },
     )
 
-    def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
-        stim_dict = {
-            "delay": offset_timestamp,
-            "duration": self.duration,
-            **self._target_entry(),
-            "module": self._module,
-            "input_type": self._input_type,
-            "amp_start": self.maximum_amplitude,
-            "frequency": self.frequency,
-            "dt": self.dt,
-            "represents_physical_electrode": self._represents_physical_electrode,
-        }
-        return stim_dict
+    @property
+    def signal_timestep(self) -> PositiveFloat:
+        """Timestep at which the sinusoid is sampled, in milliseconds (ms)."""
+        return self.dt  # ty:ignore[invalid-return-type]
 
 
 class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):

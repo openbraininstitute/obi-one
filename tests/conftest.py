@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from uuid import UUID
 
 import pytest
@@ -9,6 +10,7 @@ from app.application import app
 from app.dependencies import auth
 from app.schemas.auth import UserContext
 
+from tests.httpx_mock import HTTPXMock, mock_httpx
 from tests.utils import (
     AUTH_HEADER_ADMIN,
     AUTH_HEADER_USER_1,
@@ -24,6 +26,12 @@ from tests.utils import (
     VIRTUAL_LAB_ID,
     ClientProxy,
 )
+
+
+@pytest.fixture
+def httpx_mock() -> Generator[HTTPXMock, None, None]:
+    with mock_httpx() as mock:
+        yield mock
 
 
 @pytest.fixture

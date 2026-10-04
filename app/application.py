@@ -1,12 +1,13 @@
 import asyncio
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Any
 
 import httpx
 from entitysdk.exception import EntitySDKError
+from entitysdk.utils.http import HTTPClient as EntitySDKHTTPClient
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -25,6 +26,7 @@ from app.endpoints import (
     contributor,
     convert_morphology_to_registered_mesh,
     count_scan_coordinates,
+    distance_function_validation,
     electrical_cell_recording_properties,
     ephys_metrics,
     extracellular_locations,
@@ -49,7 +51,7 @@ from app.schemas.base import ErrorResponse
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[dict[str, Any], None]:
     """Execute actions on server startup and shutdown."""
     L.info(
         "Starting application [PID=%s, CPU_COUNT=%s, ENVIRONMENT=%s]",
@@ -58,14 +60,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         settings.ENVIRONMENT,
     )
     http_client = httpx.Client()
+    entitysdk_http_client = EntitySDKHTTPClient()
     try:
         yield {
             "http_client": http_client,
+            "entitysdk_http_client": entitysdk_http_client,
         }
     except asyncio.CancelledError as err:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
+        entitysdk_http_client.close()
         http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
@@ -179,6 +184,7 @@ app.include_router(circuit_customization.router)
 app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
+app.include_router(distance_function_validation.router)
 app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(electrical_cell_recording_properties.router)

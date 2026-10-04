@@ -439,15 +439,14 @@ def _asset_label_value(label: object) -> str:
     return str(getattr(label, "value", label))
 
 
-def _assets_with_label(entity: models.Circuit, asset_label: str) -> list[Asset]:
+def _assets_with_label(entity: models.Circuit, asset_label: AssetLabel) -> list[Asset]:
     """Return all assets on the entity that match ``asset_label``."""
-    return [
-        asset for asset in (entity.assets or []) if _asset_label_value(asset.label) == asset_label
-    ]
+    target = _asset_label_value(asset_label)
+    return [asset for asset in (entity.assets or []) if _asset_label_value(asset.label) == target]
 
 
 def _delete_assets_with_label(
-    client: Client, registered_circuit: models.Circuit, asset_label: str
+    client: Client, registered_circuit: models.Circuit, asset_label: AssetLabel
 ) -> None:
     """Delete all assets with ``asset_label`` on the circuit (in-memory + remote)."""
     for asset in _assets_with_label(registered_circuit, asset_label):
@@ -465,7 +464,7 @@ def _upload_or_replace_file(
     client: Client,
     registered_circuit: models.Circuit,
     *,
-    asset_label: str,
+    asset_label: AssetLabel,
     file_path: Path,
     file_content_type: str,
     transfer_config: MultipartUploadTransferConfig | None = None,
@@ -500,7 +499,7 @@ def _upload_or_replace_file(
         entity_type=models.Circuit,
         file_path=file_path,
         file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
-        asset_label=asset_label,  # ty:ignore[invalid-argument-type]
+        asset_label=asset_label,
         transfer_config=transfer_config,
     )
     L.info("'%s' asset uploaded under asset ID %s", asset_label, asset.id)
@@ -511,7 +510,7 @@ def _upload_or_replace_directory(
     client: Client,
     registered_circuit: models.Circuit,
     *,
-    asset_label: str,
+    asset_label: AssetLabel,
     name: str,
     paths: dict,
 ) -> Asset:
@@ -524,7 +523,7 @@ def _upload_or_replace_directory(
         _delete_assets_with_label(client, registered_circuit, asset_label)
 
     asset = client.upload_directory(
-        label=asset_label,  # ty:ignore[invalid-argument-type]
+        label=asset_label,
         name=name,
         entity_id=registered_circuit.id,
         entity_type=models.Circuit,

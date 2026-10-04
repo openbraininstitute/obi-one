@@ -1,8 +1,12 @@
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
+import morphio
 import pytest
 
 import obi_one as obi
+from obi_one.scientific import library
 from obi_one.scientific.library import circuit as test_module
 
 from tests.utils import CIRCUIT_DIR
@@ -380,6 +384,59 @@ def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
     assert morph_path.suffix in {".asc", ".swc", ".h5"}
 
 
+def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
+    """A containerized circuit declares no per-morphology file, only `alternate_morphologies`."""
+    source = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+    hoc_path = Path(library.__file__).parent
+    scan_config = obi.MorphologyContainerizationScanConfig(
+        initialize=obi.MorphologyContainerizationScanConfig.Initialize(
+            circuit=[source],
+            hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
+            hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
+        )
+    )
+    grid_scan = obi.GridScanGenerationTask(
+        form=scan_config,
+        output_root=tmp_path / "grid_scan",
+        coordinate_directory_option="VALUE",
+    )
+    grid_scan.execute()
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    containerized = obi.Circuit(
+        name=source.name,
+        path=str(tmp_path / grid_scan.output_root / source.name / "circuit_config.json"),
+    )
+    population = containerized.default_population_name
+
+    # Only an .h5 container is declared, so no per-morphology file path can be resolved.
+    pop_cfg = containerized._population_config(population)
+    assert pop_cfg["alternate_morphologies"]["h5v1"].endswith("merged-morphologies.h5")
+    with pytest.raises((FileNotFoundError, KeyError)):
+        containerized.get_morphology_path(node_id=0, population=population)
+
+    morphology = containerized.load_morphology(0, population=population)
+
+    assert len(morphology.sections) > 0
+
+
+def test_circuit_reports_when_no_morphology_source_provides_the_cell():
+    circuit = obi.Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    with (
+        patch.object(obi.Circuit, "get_morphology_path", side_effect=FileNotFoundError),
+        patch.object(obi.Circuit, "_alternate_morphology_base", return_value=None),
+        pytest.raises(FileNotFoundError, match="tried: none"),
+    ):
+        circuit.load_morphology(0, population=circuit.default_population_name)
+
+
 def test_circuit_resolves_morphology_name_that_already_includes_directory(monkeypatch, tmp_path):
     cfg = tmp_path / "circuit_config.json"
     cfg.write_text("{}")
@@ -423,3 +480,106 @@ def test_circuit_resolves_morphology_name_that_already_includes_directory(monkey
     circuit = test_module.Circuit(name="c1", path=str(cfg))
 
     assert circuit.get_morphology_path(node_id=0, population="All") == morph_path
+
+
+# swc and h5 with different section counts, so a loaded morphology names which format won.
+_SWC_TWO_SECTIONS = """\
+1 1 0 0 0 5 -1
+2 3 0 5 0 1 1
+3 3 0 10 0 1 2
+4 2 0 -5 0 1 1
+5 2 0 -10 0 1 4
+"""
+
+
+def _morphology_with_extra_dendrite() -> morphio.mut.Morphology:
+    """A morphology with one more section than `_SWC_TWO_SECTIONS`, so the two are told apart."""
+    morphology = morphio.mut.Morphology()
+    # A three-point soma contour: a single-point soma is not a valid h5 morphology.
+    morphology.soma.points = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+    morphology.soma.diameters = [10.0, 10.0, 10.0]
+    for points in ([[0.0, 5.0, 0.0], [0.0, 10.0, 0.0]], [[0.0, -5.0, 0.0], [0.0, -10.0, 0.0]]):
+        morphology.append_root_section(
+            morphio.PointLevel(points, [1.0, 1.0]), morphio.SectionType.basal_dendrite
+        )
+    morphology.append_root_section(
+        morphio.PointLevel([[5.0, 0.0, 0.0], [10.0, 0.0, 0.0]], [1.0, 1.0]),
+        morphio.SectionType.axon,
+    )
+    return morphology
+
+
+def _both_formats_circuit(tmp_path):
+    """A circuit whose one cell 'cell' is available as both an swc file and an h5 container."""
+    (tmp_path / "morphologies").mkdir()
+    (tmp_path / "morphologies" / "cell.swc").write_text(_SWC_TWO_SECTIONS)
+    (tmp_path / "alt").mkdir()
+    _morphology_with_extra_dendrite().write(tmp_path / "alt" / "cell.h5")
+
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+
+    class _Population:
+        type = "biophysical"
+
+        @staticmethod
+        def get(_node_id):
+            return SimpleNamespace(morphology="cell")
+
+    class _Nodes:
+        def __init__(self):
+            self.population_names = ["All"]
+            self.node_sets = SimpleNamespace(content={})
+
+        @staticmethod
+        def __getitem__(_population):
+            return _Population()
+
+    class _SnapCircuit:
+        def __init__(self):
+            self.nodes = _Nodes()
+            self.edges = _FakeEdges({})
+            self.node_sets = SimpleNamespace(content={})
+            self.config = {
+                "manifest": {"$BASE_DIR": "."},
+                "components": {},
+                "networks": {
+                    "nodes": [
+                        {
+                            "populations": {
+                                "All": {
+                                    "morphologies_dir": "$BASE_DIR/morphologies",
+                                    "alternate_morphologies": {"h5v1": "$BASE_DIR/alt"},
+                                }
+                            }
+                        }
+                    ]
+                },
+            }
+
+    return cfg, _SnapCircuit
+
+
+def test_load_morphology_prefers_h5_over_swc(monkeypatch, tmp_path):
+    """When both an h5 container and an swc file exist, the h5 is the one loaded."""
+    cfg, snap_circuit = _both_formats_circuit(tmp_path)
+    monkeypatch.setattr(test_module.snap, "Circuit", lambda _path: snap_circuit())
+    circuit = test_module.Circuit(name="c1", path=str(cfg))
+
+    morphology = circuit.load_morphology(0, population="All")
+
+    # The h5 carries three sections; the swc only two, so this can only be the h5.
+    assert len(morphology.sections) == 3
+
+
+def test_load_morphology_falls_back_to_swc_without_an_h5(monkeypatch, tmp_path):
+    """With no h5 alternate declared, the swc under morphologies_dir is loaded."""
+    cfg, snap_circuit = _both_formats_circuit(tmp_path)
+    instance = snap_circuit()
+    instance.config["networks"]["nodes"][0]["populations"]["All"].pop("alternate_morphologies")
+    monkeypatch.setattr(test_module.snap, "Circuit", lambda _path: instance)
+    circuit = test_module.Circuit(name="c1", path=str(cfg))
+
+    morphology = circuit.load_morphology(0, population="All")
+
+    assert len(morphology.sections) == 2

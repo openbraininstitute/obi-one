@@ -55,7 +55,7 @@ def test_distribution_default_is_lazy_and_resolves_references():
     assert first is not second
     assert len(created) == 2
     assert default.description == "a Empty distribution"
-    assert default.label == "Built-in default: Empty distribution"
+    assert default.label == "Default: Empty distribution"
 
     explicit = _ConfiguredDistribution()
     reference = SimpleNamespace(block=explicit)

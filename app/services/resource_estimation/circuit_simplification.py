@@ -20,7 +20,7 @@ import numpy as np
 from entitysdk import models
 
 from app.schemas.accounting import AccountingParameters
-from app.schemas.task import Resources, TaskDefinition, TaskLaunchSubmit
+from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
 from obi_one.db_sdk import db_sdk
@@ -111,7 +111,7 @@ def _get_required_cpu_memory_combo(min_cores: int, mem_gb_required: float) -> tu
 def estimate_task_resources(  # ruff: ignore[too-many-locals]
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     compute_cell: str,
     accounting_parameters: AccountingParameters | None = None,  # ruff: ignore[unused-function-argument]
 ) -> Resources:
