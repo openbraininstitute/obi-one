@@ -1,6 +1,6 @@
 import asyncio
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Any
@@ -51,7 +51,7 @@ from app.schemas.base import ErrorResponse
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[dict[str, Any], None]:
     """Execute actions on server startup and shutdown."""
     L.info(
         "Starting application [PID=%s, CPU_COUNT=%s, ENVIRONMENT=%s]",

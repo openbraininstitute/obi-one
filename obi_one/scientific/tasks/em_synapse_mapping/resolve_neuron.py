@@ -23,14 +23,14 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 L = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ResolvedNeuron:
     """Result of resolving a neuron reference."""
 
     pt_root_id: int
     morph_entity: object
     morph_from_id: CellMorphologyFromID
-    spiny_morph: MorphologyWithSpines | None
+    spiny_morph: MorphologyWithSpines
     smooth_morph: object  # neurom.core.Morphology
     source_mesh_entity: EMCellMesh
     source_dataset: EMDenseReconstructionDataset
@@ -38,8 +38,8 @@ class ResolvedNeuron:
     use_me_model: bool
     name_in_circuit: str
     phys_node_props: dict = field(default_factory=dict)
-    fn_morph_h5: Path | None = None
-    fn_morph_swc: Path | None = None
+    fn_morph_h5: Path
+    fn_morph_swc: Path
 
 
 def resolve_provenance(

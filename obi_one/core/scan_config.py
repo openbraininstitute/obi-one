@@ -153,7 +153,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         extra = cls.model_config.get("json_schema_extra")
         if not isinstance(extra, dict):
             return
-        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {  # ty:ignore[invalid-assignment]
+        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {
             tag: {"name": reference.block_name, "block": reference.block.model_dump(mode="json")}
             for tag, reference in defaults.items()
         }
