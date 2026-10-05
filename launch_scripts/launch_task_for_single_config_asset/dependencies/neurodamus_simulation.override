@@ -1,3 +1,6 @@
 # Provided by the python_3_12_openmpi5_neuron9_neurodamus launch-system image.
 # Maintained with that image; not edited by task developers.
-neuron==9.0.2.dev64
+neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
+h5py==3.16.0
+libsonata==0.2.2
+mpi4py==4.1.2
