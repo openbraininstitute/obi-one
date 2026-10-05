@@ -349,7 +349,7 @@ def register_task_config_entity(
         TaskConfig(
             name=name,
             description=description,
-            task_config_type=task_config_type,  # ty:ignore[invalid-argument-type]
+            task_config_type=task_config_type,
             meta=multiple_value_parameters_dictionary,
             inputs=input_entities,
             task_config_generator_id=task_config_generator_id,
@@ -457,7 +457,11 @@ def _delete_assets_with_label(
         )
         L.info("Deleted existing '%s' asset %s", asset_label, asset.id)
         if registered_circuit.assets is not None:
-            registered_circuit.assets = [a for a in registered_circuit.assets if a.id != asset.id]
+            # Circuit is a frozen model, so the attribute cannot be reassigned; mutate the
+            # existing list in place to keep the in-memory assets in sync with the remote state.
+            registered_circuit.assets[:] = [
+                a for a in registered_circuit.assets if a.id != asset.id
+            ]
 
 
 def _upload_or_replace_file(

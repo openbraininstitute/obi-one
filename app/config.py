@@ -87,4 +87,4 @@ class Settings(BaseSettings):
     MOUNT_BASE_DIR: str | None = None
 
 
-settings = Settings()  # ty:ignore[missing-argument]
+settings = Settings()

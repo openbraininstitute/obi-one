@@ -122,7 +122,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        target_neuron_set: BiophysicalNeuronSetReference | None = Field(
+        target_neuron_set: BiophysicalNeuronSetReference | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
             title="Target Neuron Set",
             description=(
@@ -150,7 +150,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             ge=1,
         )
 
-    algorithms: dict[str, SimplificationAlgorithmUnion] = Field(
+    algorithms: dict[str, SimplificationAlgorithmUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=default_simplification_algorithms,
         title="Algorithms",
         description=(

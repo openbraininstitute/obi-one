@@ -46,7 +46,7 @@ class Brian2DirectPoissonStimulus(Block):
 
     title: ClassVar[str] = "Direct Poisson Input"
 
-    neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Neurons that receive the Poisson drive.",

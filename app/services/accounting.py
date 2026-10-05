@@ -103,7 +103,7 @@ def estimate_task_cost(
     )
 
     return TaskAccountingInfo(
-        cost=cost_estimate,  # ty:ignore[invalid-argument-type]
+        cost=cost_estimate,
         config_id=config_id,
         parameters=accounting_parameters,
         task_type=task_definition.task_type,
