@@ -6,7 +6,12 @@ import libsonata
 import pytest
 
 import obi_one as obi
+from obi_one.core.schema import SchemaKey
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 
@@ -81,6 +86,17 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         report = parsed.report("LFPRecording")
         assert report.type == libsonata.SimulationConfig.Report.Type.lfp
         assert report.electrodes_file == str(tmp_path / f"{ARRAY_ID}.h5")
+
+
+class TestCircuitUsability:
+    def test_is_offered_only_where_the_circuit_allows_extracellular_recordings(self):
+        """The frontend greys the block out when the circuit's usability flag is false."""
+        schema = obi.ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
+        usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
+
+        assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
+        assert usability[SchemaKey.PROPERTY] == CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS
+        assert usability[SchemaKey.FALSE_MESSAGE]
 
 
 class TestCircuitRecordingUnion:

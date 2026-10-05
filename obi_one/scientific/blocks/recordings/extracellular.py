@@ -9,6 +9,10 @@ from obi_one.scientific.blocks.recordings.base import Recording
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
+from obi_one.scientific.library.entity_property_types import (
+    CircuitUsability,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
@@ -21,6 +25,17 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
     onto every electrode, so the recorded neuron set must be part of the circuit the array was
     built for.
     """
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS,
+            SchemaKey.FALSE_MESSAGE: (
+                "Extracellular recordings are only available for circuits larger than a small "
+                "microcircuit."
+            ),
+        },
+    }
 
     title: ClassVar[str] = "Extracellular Electrode Array Recording"
 
