@@ -229,21 +229,29 @@ def test_estimate_task_resources_allocation(
 )
 def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
-    with pytest.raises(ApiError, match="Not enough disk space") as exc_info:
+    with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual)
 
     assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert "about 1,100,000,000 synapses" in exc_info.value.message
+    assert "more than the 200 GB of storage a task can have" in exc_info.value.message
+    # Leaving out virtual neurons is only suggested when they were included.
+    assert ("turn off Include Virtual Populations" in exc_info.value.message) == do_virtual
 
 
 def test_estimate_task_resources_memory_limit(db_client):
     """3M input neurons need 1 + 55e-6 * 3e6 = 166 GB, more than the largest machine."""
     metrics = _make_circuit_metrics(3_000_000, 0, 1000, 0)
-    with pytest.raises(ApiError, match="No CPU/memory combination found") as exc_info:
+    with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual=False)
 
     assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert exc_info.value.message == (
+        "Extracting 3,000,000 neurons needs about 166 GB of memory, more than the largest"
+        " machine has (120 GB). Extract fewer neurons."
+    )
 
 
 @pytest.mark.parametrize(
@@ -309,7 +317,7 @@ def test_estimate_task_resources_with_accounting_parameters_disk_limit(db_client
         count=100_000,
         service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
     )
-    with pytest.raises(ApiError, match="Not enough disk space"):
+    with pytest.raises(ApiError, match="more than the 200 GB of storage a task can have"):
         _run_estimate_task_resources(
             db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
         )
