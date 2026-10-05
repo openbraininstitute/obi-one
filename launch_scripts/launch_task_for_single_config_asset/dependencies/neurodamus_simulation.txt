@@ -4,7 +4,7 @@
 # and kept by compiling.
 obi-one==2026.10.0
 # Pinned by neurodamus_simulation.override, not resolved:
-neuron==9.0.2.dev64
+neuron==9.0.0+g2ac5cc7191e44805abf0ad6d3fac1481d49
 aiofiles==25.1.0
 annotated-types==0.8.0
 anyio==4.15.1

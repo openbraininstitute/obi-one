@@ -61,7 +61,7 @@ Some executor images ship a build that is not published on any index, such as th
 # neurodamus_simulation.override
 # Provided by the python_3_12_openmpi5_neuron9_neurodamus launch-system image.
 # Maintained with that image; not edited by task developers.
-neuron==9.0.2.dev64
+neuron==9.0.0+g2ac5cc7191e44805abf0ad6d3fac1481d49
 ```
 
 **`*.override` files are owned by the maintainers of the launch-system images** and are updated when the image changes; task developers only edit the `*.in`. Only a task whose `image_type` provides the build may have one, and an `*.override` without a matching `*.in` is an error.
