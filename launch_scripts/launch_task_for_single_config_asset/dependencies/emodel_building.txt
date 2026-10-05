@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[emodel]==2026.10.0
+obi-one[emodel]==2026.10.1
 aiofiles==25.1.0
 annotated-types==0.8.0
 anyio==4.15.1
