@@ -1013,16 +1013,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.28"
+version = "0.19.29"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/45/765b32f10328243e6c1a9bad44f5b2496a1794ef35e2d1b842761148fda9/entitysdk-0.19.28.tar.gz", hash = "sha256:889240beb2a4f491f5f322f715b542e325dff999df99d0029f4861b3756ad98c", size = 99541, upload-time = "2026-09-29T16:46:14.198Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/69/a21d5dff878b13fdabc2f7a82ccf30e218dcca5f41f6486820389e94e3d0/entitysdk-0.19.29.tar.gz", hash = "sha256:3c7cf8888527c11d0950a6ff7c20ccafa4ab4e8758999cc3c8e1511d8ab2a362", size = 99667, upload-time = "2026-10-05T07:11:06.56Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/5a/0ece7eee57ad4673f73bd653fe1ee049513f25750f976fb84aa93526cf06/entitysdk-0.19.28-py3-none-any.whl", hash = "sha256:ac5518a87cbba3da84d9f6ea70c80d83c6268cedc843f2032b8e87936599bf34", size = 134011, upload-time = "2026-09-29T16:46:12.169Z" },
+    { url = "https://files.pythonhosted.org/packages/39/07/000f5be9c41a6b15bcb238c44219f84f9d5ff4f2aad39eb2f2987d3ff17c/entitysdk-0.19.29-py3-none-any.whl", hash = "sha256:53afe74bacd9fc995324d55e3a38605eb7989f0f856a3e28c8ab5917903ff459", size = 134219, upload-time = "2026-10-05T07:11:04.924Z" },
 ]
 
 [[package]]
@@ -2630,7 +2630,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.19.25" },
+    { name = "entitysdk", specifier = ">=0.19.29" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },

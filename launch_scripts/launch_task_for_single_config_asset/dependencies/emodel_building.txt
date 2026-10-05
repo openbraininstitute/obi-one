@@ -43,7 +43,7 @@ decorator==5.3.1
 deprecation==2.1.0
 distributed==2026.8.0
 efel==5.7.34
-entitysdk==0.19.28
+entitysdk==0.19.29
 executing==2.2.1
 fasteners==0.20
 find-libpython==0.5.1
