@@ -156,6 +156,20 @@ class TestGetPopulationSizes:
 # ---------------------------------------------------------------------------
 
 
+def _raise_not_configured(extension):
+    """Mimic bluepysnap raising for a morphology format absent from the config."""
+    msg = f"'{extension}' not configured"
+    raise BluepySnapError(msg)
+
+
+def _write_h5_container(path: Path, *cell_names: str) -> Path:
+    """Write a minimal HDF5 morphology container with the given cell-name keys."""
+    with h5py.File(path, "w") as f:
+        for name in cell_names:
+            f.create_group(name)
+    return path
+
+
 def _make_morph_pop(configured_extensions, *, unloadable_extensions=(), pop_type="biophysical"):
     """Build a mock biophysical population with the given configured morphology formats.
 
@@ -851,7 +865,12 @@ class TestRunCircuitValidation:
 
 class TestValidateHocLoading:
     def _make_circuit_with_used_template(
-        self, *, hoc_file: Path, morph_file: Path | None, template_ref: str = "hoc:Cell"
+        self,
+        *,
+        hoc_file: Path,
+        morph_file: Path | None,
+        template_ref: str = "hoc:Cell",
+        h5_container: Path | None = None,
     ):
         mock_circuit = MagicMock()
         mock_circuit.nodes.population_names = ["pop_a"]
@@ -867,6 +886,15 @@ class TestValidateHocLoading:
             mock_pop.morph.get_filepath.side_effect = Exception("missing morph")
         else:
             mock_pop.morph.get_filepath.return_value = str(morph_file)
+
+        # Model an H5 container (no standalone morphology file): get_filepath fails for
+        # every extension, and _get_morphology_base("h5") points at the container file.
+        if h5_container is not None:
+            mock_pop.morph.get_filepath.side_effect = Exception("no standalone file")
+            mock_pop.morph._get_morphology_base.side_effect = lambda ext: (
+                str(h5_container) if ext == "h5" else _raise_not_configured(ext)
+            )
+
         mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
         return mock_circuit
 
@@ -882,6 +910,70 @@ class TestValidateHocLoading:
         hoc_file = hoc_dir / "Cell.hoc"
         hoc_file.write_text("begintemplate Cell\nendtemplate Cell\n")
         mock_circuit = self._make_circuit_with_used_template(hoc_file=hoc_file, morph_file=None)
+
+        result = _validate_hoc_loading(mock_circuit, tmp_path, load_mods=False)
+        assert len(result) == 1
+        assert "could not resolve morphology" in result[0]
+
+    def test_container_morph_with_incompatible_old_hoc_is_error(self, tmp_path):
+        """An H5-container morphology + an old HOC without .h5 support is a fatal error."""
+        hoc_dir = tmp_path / "hoc"
+        hoc_dir.mkdir()
+        hoc_file = hoc_dir / "OldCell.hoc"
+        # Old template: load_morphology handles only asc/swc, no morphio_read.
+        hoc_file.write_text(
+            "begintemplate OldCell\nproc load_morphology() {}\nendtemplate OldCell\n"
+        )
+        container = _write_h5_container(tmp_path / "merged-morphologies.h5", "cell")
+
+        mock_circuit = self._make_circuit_with_used_template(
+            hoc_file=hoc_file, morph_file=None, template_ref="hoc:OldCell", h5_container=container
+        )
+
+        result = _validate_hoc_loading(mock_circuit, tmp_path, load_mods=False)
+        assert len(result) == 1
+        assert "does not support H5 container morphologies" in result[0]
+
+    @patch("obi_one.scientific.validations.emodels.bluecellulab_initializable")
+    def test_container_morph_with_compatible_hoc_instantiates(self, mock_init, tmp_path):
+        """An H5-container morphology + a container-capable HOC proceeds to instantiation."""
+        hoc_dir = tmp_path / "hoc"
+        hoc_dir.mkdir()
+        hoc_file = hoc_dir / "NewCell.hoc"
+        # New template: load_morphology calls morphio_read for the .h5 branch.
+        hoc_file.write_text(
+            "begintemplate NewCell\nproc load_morphology() { morphio_read(this, morph_path) }\n"
+            "endtemplate NewCell\n"
+        )
+        container = _write_h5_container(tmp_path / "merged-morphologies.h5", "cell")
+
+        mock_circuit = self._make_circuit_with_used_template(
+            hoc_file=hoc_file, morph_file=None, template_ref="hoc:NewCell", h5_container=container
+        )
+
+        result = _validate_hoc_loading(mock_circuit, tmp_path, load_mods=False)
+
+        assert result == []
+        mock_init.assert_called_once()
+        # bluecellulab receives the container-style path <container>.h5/<cell_name>.
+        morph_arg = str(mock_init.call_args[0][1])
+        assert morph_arg.endswith("merged-morphologies.h5/cell")
+
+    def test_container_missing_morphology_key_is_error(self, tmp_path):
+        """A container that lacks the referenced morphology key is a fatal error."""
+        hoc_dir = tmp_path / "hoc"
+        hoc_dir.mkdir()
+        hoc_file = hoc_dir / "NewCell.hoc"
+        hoc_file.write_text(
+            "begintemplate NewCell\nproc load_morphology() { morphio_read(this, morph_path) }\n"
+            "endtemplate NewCell\n"
+        )
+        # Container exists but does not contain the "cell" morphology.
+        container = _write_h5_container(tmp_path / "merged-morphologies.h5", "other_cell")
+
+        mock_circuit = self._make_circuit_with_used_template(
+            hoc_file=hoc_file, morph_file=None, template_ref="hoc:NewCell", h5_container=container
+        )
 
         result = _validate_hoc_loading(mock_circuit, tmp_path, load_mods=False)
         assert len(result) == 1
