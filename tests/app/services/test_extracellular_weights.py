@@ -113,14 +113,45 @@ def test_resources_scale_with_cells_and_electrodes(
     assert result.compute_cell == "cell_b"
 
 
-def test_too_large_circuit_is_rejected(json_model, task_definition):
-    """nbS1-HEX0 (30190 cells) needs ~317 GB, more than the largest machine."""
+@pytest.mark.parametrize(
+    ("n_cells", "electrodes", "expected"),
+    [
+        # nbS1-HEX0: 1 + 30190 * 0.01048 = 317 GB, and still 303 GB without electrodes
+        (
+            30_190,
+            (16,),
+            (
+                "(30,190 cells, 16 electrodes) needs about 317 GB of memory, more than the"
+                " largest machine has (120 GB). Use a smaller circuit."
+            ),
+        ),
+        # 1 + 5000 * 0.0388 = 195 GB, but 51 GB without electrodes
+        (
+            5_000,
+            (960,),
+            (
+                "(5,000 cells, 960 electrodes) needs about 195 GB of memory, more than the"
+                " largest machine has (120 GB). Use fewer electrodes or a smaller circuit."
+            ),
+        ),
+    ],
+    ids=["too_many_cells", "too_many_electrodes"],
+)
+def test_too_large_circuit_is_rejected(json_model, task_definition, n_cells, electrodes, expected):
     with pytest.raises(ApiError) as exc_info:
-        _estimate(json_model, task_definition, scale=CircuitScale.microcircuit, n_cells=30_190)
+        _estimate(
+            json_model,
+            task_definition,
+            scale=CircuitScale.microcircuit,
+            n_cells=n_cells,
+            n_electrodes_per_probe=electrodes,
+        )
 
     assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-    assert "30190 cells and 16 electrodes need about 317 GB" in exc_info.value.message
+    assert exc_info.value.message == (
+        f"Calculating extracellular recording weights for 'test circuit' {expected}"
+    )
 
 
 @pytest.mark.parametrize(

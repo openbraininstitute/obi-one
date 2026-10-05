@@ -9,7 +9,10 @@ from entitysdk.types import CircuitScale
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
-from app.services.resource_estimation.circuit_extraction import get_required_cpu_memory_combo
+from app.services.resource_estimation.circuit_extraction import (
+    MAX_MEMORY_GB,
+    get_required_cpu_memory_combo,
+)
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
 from obi_one.db_sdk import db_sdk
@@ -110,10 +113,16 @@ def estimate_task_resources(
     try:
         cores, memory_gb = get_required_cpu_memory_combo(memory_gb_required)
     except ValueError as e:
+        # Fewer electrodes only helps if the cells alone would fit.
+        hint = (
+            "Use fewer electrodes or a smaller circuit."
+            if BASE_MEMORY_GB + n_cells * MEMORY_GB_PER_CELL < MAX_MEMORY_GB
+            else "Use a smaller circuit."
+        )
         msg = (
-            f"Circuit '{circuit.name}' is too large for an extracellular recording weights"
-            f" calculation: {n_cells} cells and {n_electrodes} electrodes need about"
-            f" {memory_gb_required:.0f} GB of memory."
+            f"Calculating extracellular recording weights for '{circuit.name}' ({n_cells:,} cells,"
+            f" {n_electrodes:,} electrodes) needs about {memory_gb_required:.0f} GB of memory, more"
+            f" than the largest machine has ({MAX_MEMORY_GB} GB). {hint}"
         )
         raise _invalid_request(msg) from e
     # Small circuits keep the defaults, which also cover compiling the mechanisms.
