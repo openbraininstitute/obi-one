@@ -67,6 +67,7 @@ class SchemaKey(StrEnum):
     UNITS = "units"
     # path to a sibling field whose entity id should populate entity_query filters.
     # Used by the frontend; e.g. "initialize.circuit" for a circuit model_identifier.
+    # A filter whose value is a list is a placeholder for that id; a plain value is static.
     VALUE_FROM = "value_from"
 
 

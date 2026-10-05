@@ -36,7 +36,8 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
             SchemaKey.ENTITY_QUERY: {
                 "type": EntityType.simulatable_extracellular_recording_array,
                 SchemaKey.FILTERS: {
-                    "circuit_id": {"circuit_id"},
+                    # A list, not a value: the frontend fills it with the id from VALUE_FROM.
+                    "circuit_id": ["circuit_id"],
                 },
                 SchemaKey.VALUE_FROM: "initialize.circuit",
             },
