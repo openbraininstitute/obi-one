@@ -9,6 +9,8 @@ import h5py
 import numpy as np
 import pandas as pd
 import pytest
+from bluepysnap import Circuit
+from bluepysnap.exceptions import BluepySnapError
 
 from obi_one.scientific.library.circuit_id_mapping import (
     get_population_sizes,
@@ -24,6 +26,8 @@ from obi_one.scientific.tasks.circuit_validation.task import (
     _validate_hoc_loading,
     _validate_morphology_paths,
 )
+
+from tests.utils import CIRCUIT_DIR
 
 # ---------------------------------------------------------------------------
 # _find_mod_dir
@@ -152,58 +156,108 @@ class TestGetPopulationSizes:
 # ---------------------------------------------------------------------------
 
 
+def _make_morph_pop(configured_extensions, *, unloadable_extensions=(), pop_type="biophysical"):
+    """Build a mock biophysical population with the given configured morphology formats.
+
+    ``configured_extensions`` are the formats resolvable in the config (others raise
+    BluepySnapError, mimicking bluepysnap). Formats in ``unloadable_extensions`` resolve
+    but fail to load (``pop.morph.get`` raises).
+    """
+    mock_pop = MagicMock()
+    mock_pop.type = pop_type
+    mock_pop.ids.return_value = [0, 1, 2]
+
+    def get_morphology_base(extension):
+        if extension in configured_extensions:
+            return f"/morph/{extension}"
+        msg = f"'{extension}' not configured"
+        raise BluepySnapError(msg)
+
+    def get(_node_id, extension="swc"):
+        if extension in unloadable_extensions:
+            msg = f"could not load .{extension}"
+            raise ValueError(msg)
+        return MagicMock()
+
+    mock_pop.morph._get_morphology_base.side_effect = get_morphology_base
+    mock_pop.morph.get.side_effect = get
+    return mock_pop
+
+
+def _make_morph_circuit(mock_pop, pop_name="pop_a"):
+    mock_circuit = MagicMock()
+    mock_circuit.nodes.population_names = [pop_name]
+    mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
+    return mock_circuit
+
+
 class TestValidateMorphologyPaths:
-    def test_valid_morphology_files(self, tmp_path):
-        """All sampled morphology files exist — no error."""
-        morph_file = tmp_path / "cell.swc"
-        morph_file.write_text("mock")
-
-        mock_circuit = MagicMock()
-        mock_circuit.nodes.population_names = ["pop_a"]
-        mock_pop = MagicMock()
-        mock_pop.type = "biophysical"
-        mock_pop.ids.return_value = [0, 1, 2]
-        mock_pop.morph.get_filepath.return_value = str(morph_file)
-        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
-
-        errors = _validate_morphology_paths(mock_circuit)
+    def test_valid_swc_morphologies(self):
+        """A loadable swc morphologies_dir — no error."""
+        pop = _make_morph_pop(["swc"])
+        errors = _validate_morphology_paths(_make_morph_circuit(pop))
         assert errors == []
 
-    def test_missing_morphology_file(self):
-        """Morphology file doesn't exist on disk — error reported."""
-        mock_circuit = MagicMock()
-        mock_circuit.nodes.population_names = ["pop_a"]
-        mock_pop = MagicMock()
-        mock_pop.type = "biophysical"
-        mock_pop.ids.return_value = [0]
-        mock_pop.morph.get_filepath.return_value = "/nonexistent/cell.swc"
-        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
-        errors = _validate_morphology_paths(mock_circuit)
+    def test_valid_h5_container_only(self):
+        """Only an H5 container is configured (no morphologies_dir) and loads — no error.
+
+        This is the regression case: the old path check assumed an swc directory and
+        wrongly failed H5-container-only circuits.
+        """
+        pop = _make_morph_pop(["h5"])
+        errors = _validate_morphology_paths(_make_morph_circuit(pop))
+        assert errors == []
+
+    def test_configured_format_not_loadable(self):
+        """A configured format that fails to load is a fatal error."""
+        pop = _make_morph_pop(["h5"], unloadable_extensions=["h5"])
+        errors = _validate_morphology_paths(_make_morph_circuit(pop))
         assert len(errors) == 1
-        assert "not found" in errors[0]
+        assert "not loadable" in errors[0]
+        assert ".h5" in errors[0]
+
+    def test_one_of_several_formats_not_loadable(self):
+        """Every configured format is checked; one broken format flags the population."""
+        pop = _make_morph_pop(["swc", "h5"], unloadable_extensions=["h5"])
+        errors = _validate_morphology_paths(_make_morph_circuit(pop))
+        assert len(errors) == 1
+        assert ".h5" in errors[0]
+
+    def test_no_morphology_format_configured(self):
+        """No morphology format at all in the config is a fatal error."""
+        pop = _make_morph_pop([])
+        errors = _validate_morphology_paths(_make_morph_circuit(pop))
+        assert len(errors) == 1
+        assert "no morphology format" in errors[0]
 
     def test_skips_virtual_populations(self):
         """Virtual populations are skipped — no error."""
-        mock_circuit = MagicMock()
-        mock_circuit.nodes.population_names = ["virt"]
-        mock_pop = MagicMock()
-        mock_pop.type = "virtual"
-        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
-        errors = _validate_morphology_paths(mock_circuit)
+        pop = _make_morph_pop(["swc"], pop_type="virtual")
+        errors = _validate_morphology_paths(_make_morph_circuit(pop))
         assert errors == []
 
-    def test_get_filepath_raises(self):
-        """get_filepath raises (e.g. H5 container missing morphology) — error reported."""
-        mock_circuit = MagicMock()
-        mock_circuit.nodes.population_names = ["pop_a"]
-        mock_pop = MagicMock()
-        mock_pop.type = "biophysical"
-        mock_pop.ids.return_value = [0]
-        mock_pop.morph.get_filepath.side_effect = Exception("morphology not in container")
-        mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
-        errors = _validate_morphology_paths(mock_circuit)
-        assert len(errors) == 1
-        assert "not accessible" in errors[0]
+    def test_real_h5_container_circuit(self):
+        """Integration: a real circuit whose only morphology source is an H5 container.
+
+        Regression guard for the H5-container-only case (no morphologies_dir), which the
+        previous swc-assuming implementation wrongly flagged. Uses bluepysnap end-to-end
+        rather than mocks, so it would catch a reintroduction of the private-API coupling.
+        """
+        config_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+        circuit = Circuit(str(config_path))
+
+        errors = _validate_morphology_paths(circuit)
+
+        assert errors == []
+
+    def test_real_swc_circuit(self):
+        """Integration: a real circuit whose morphologies are a file-based swc directory."""
+        config_path = CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"
+        circuit = Circuit(str(config_path))
+
+        errors = _validate_morphology_paths(circuit)
+
+        assert errors == []
 
 
 # ---------------------------------------------------------------------------
@@ -631,14 +685,11 @@ class TestRunCircuitValidation:
         mock_cfg_obj.expanded_json = config_path.read_text()
         mock_libsonata_cfg.return_value = mock_cfg_obj
 
-        # Mock bluepysnap.Circuit so that morph lookup fails
-        mock_circuit_instance = MagicMock()
-        mock_circuit_instance.nodes.population_names = ["pop_a"]
-        mock_pop = MagicMock()
-        mock_pop.type = "biophysical"
+        # Mock bluepysnap.Circuit so that morphology loading fails: swc is configured
+        # but cannot be loaded.
+        mock_pop = _make_morph_pop(["swc"], unloadable_extensions=["swc"])
         mock_pop.ids.return_value = [0]
-        mock_pop.morph.get_filepath.side_effect = Exception("morphologies_dir does not exist")
-        mock_circuit_instance.nodes.__getitem__ = lambda _self, _k: mock_pop
+        mock_circuit_instance = _make_morph_circuit(mock_pop)
         mock_bluepysnap_circuit.return_value = mock_circuit_instance
 
         mock_run_validation.return_value = ([], [])
@@ -657,7 +708,7 @@ class TestRunCircuitValidation:
         )
 
         assert result["valid"] is False
-        assert any("not accessible" in e for e in result["errors"])
+        assert any("not loadable" in e for e in result["errors"])
         mock_update_status.assert_called_once_with(db_client, circuit_id, "disqualified")
 
     @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")

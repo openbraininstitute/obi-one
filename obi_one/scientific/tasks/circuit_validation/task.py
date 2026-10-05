@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from bluepysnap.exceptions import BluepySnapError
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
 
@@ -30,6 +31,10 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 _MOD_DECLARATION_PARTS = 2
+
+# Morphology formats to probe, in SONATA config terms (swc -> morphologies_dir,
+# asc/h5 -> alternate_morphologies).
+_MORPHOLOGY_EXTENSIONS = ("swc", "asc", "h5")
 
 
 def run_circuit_validation(
@@ -133,11 +138,15 @@ def run_circuit_validation(
 
 
 def _validate_morphology_paths(circuit: SnapCircuitType) -> list[str]:
-    """Verify that morphologies referenced by nodes actually exist.
+    """Verify that morphologies referenced by nodes are loadable.
 
-    Uses bluepysnap to resolve morphology file paths for a sample of nodes in each
-    biophysical population. This validates both file-based morphologies_dir and
-    alternate_morphologies (H5 containers) transparently.
+    For each biophysical population, every morphology format declared in the config
+    (``morphologies_dir`` for SWC, ``alternate_morphologies`` for ASC / H5 containers)
+    must be loadable for a sample of nodes. A format that is configured but not loadable
+    is a fatal error, as is a population with no morphology format configured at all.
+
+    Loading goes through bluepysnap/morphio, so file-based directories and H5 containers
+    are both handled transparently (a path-existence check would fail for containers).
     """
     errors = []
 
@@ -159,18 +168,47 @@ def _validate_morphology_paths(circuit: SnapCircuitType) -> list[str]:
             errors.append(f"Population '{pop_name}': could not retrieve node IDs: {e}")
             continue
 
+        errors.extend(_validate_population_morphologies(pop_name, pop, sample_ids))
+
+    return errors
+
+
+def _configured_morphology_extensions(pop: NodePopulation) -> list[str]:
+    """Return the morphology formats declared in the config for this population.
+
+    A format counts as configured when bluepysnap can resolve its base path; an
+    unconfigured format raises ``BluepySnapError``. Uses a private accessor because
+    bluepysnap exposes no public API for this (see ``get_morph_dirs`` in utils).
+    """
+    configured = []
+    for extension in _MORPHOLOGY_EXTENSIONS:
+        try:
+            pop.morph._get_morphology_base(extension)  # ruff: ignore[private-member-access]
+        except BluepySnapError:
+            continue
+        configured.append(extension)
+    return configured
+
+
+def _validate_population_morphologies(
+    pop_name: str, pop: NodePopulation, sample_ids: list
+) -> list[str]:
+    """Validate every configured morphology format is loadable for the sampled nodes."""
+    extensions = _configured_morphology_extensions(pop)
+    if not extensions:
+        return [f"Population '{pop_name}': no morphology format defined in config"]
+
+    errors = []
+    for extension in extensions:
         for node_id in sample_ids:
             try:
-                filepath = pop.morph.get_filepath(node_id)
-                if not Path(filepath).exists():
-                    errors.append(f"Population '{pop_name}': morphology file not found: {filepath}")
-                    break  # one missing file is enough to flag the population
+                pop.morph.get(node_id, extension=extension)
             except Exception as e:  # ruff: ignore[blind-except]
                 errors.append(
-                    f"Population '{pop_name}': morphology not accessible for node {node_id}: {e}"
+                    f"Population '{pop_name}': .{extension} morphology not loadable "
+                    f"for node {node_id}: {e}"
                 )
-                break
-
+                break  # one unloadable morphology is enough to flag this format
     return errors
 
 
