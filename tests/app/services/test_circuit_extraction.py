@@ -39,12 +39,12 @@ def db_client():
     ],
 )
 def test_get_required_cpu_memory_combo(mem_required, expected):
-    assert test_module._get_required_cpu_memory_combo(mem_required) == expected
+    assert test_module.get_required_cpu_memory_combo(mem_required) == expected
 
 
 def test_get_required_cpu_memory_combo_too_large():
     with pytest.raises(ValueError, match="No CPU/memory combination found"):
-        test_module._get_required_cpu_memory_combo(200)
+        test_module.get_required_cpu_memory_combo(200)
 
 
 def test_get_required_extra_storage_space_default():
