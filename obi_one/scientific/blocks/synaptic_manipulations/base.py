@@ -27,7 +27,7 @@ _NEURON_SET_DESCRIPTION = (
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
 
-    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Presynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
@@ -38,7 +38,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         },
     )
 
-    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Postsynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
