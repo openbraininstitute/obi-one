@@ -52,6 +52,13 @@ def get_task_config_asset(*, client: Client, config: Entity) -> Asset:
     )
 
 
+def get_task_config_asset_content(*, client: Client, config: Entity) -> dict:
+    """Return task config JSON as a dict."""
+    return select_json_asset_content(
+        client=client, entity=config, selection={"label": AssetLabel.task_config}
+    )
+
+
 def create_activity(
     *,
     client: Client,

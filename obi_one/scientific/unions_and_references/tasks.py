@@ -6,6 +6,9 @@ from pydantic import Discriminator
 
 from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsTask
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionTask
+from obi_one.scientific.tasks.circuit_simplification import (
+    CircuitSimplificationTask,
+)
 from obi_one.scientific.tasks.connectivity_matrix_extraction import ConnectivityMatrixExtractionTask
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
@@ -41,6 +44,7 @@ _TASK_MEMBERS: tuple[type, ...] = (
     MorphologyMetricsTask,
     CreateExtracellularRecordingArrayScanConfig,
     MorphologyLocationsTask,
+    CircuitSimplificationTask,
 )
 if EModelOptimizationTask is not None:
     _TASK_MEMBERS = (*_TASK_MEMBERS, EModelOptimizationTask)

@@ -31,6 +31,8 @@ TYPE_MAP: dict[str, str] = {
     "CircuitExtractionSingleConfig": "obi_one.scientific.tasks.circuit_extraction",
     "CircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
     "CircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
+    "CircuitSimplificationSingleConfig": "obi_one.scientific.tasks.circuit_simplification",
+    "CircuitSimplificationScanConfig": "obi_one.scientific.tasks.circuit_simplification",
     "ConnectivityMatrixExtractionScanConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
     "ConnectivityMatrixExtractionSingleConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
     "CreateExtracellularRecordingArrayScanConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
