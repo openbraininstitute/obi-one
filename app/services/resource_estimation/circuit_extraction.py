@@ -1,9 +1,11 @@
 import json
+from http import HTTPStatus
 
 import entitysdk
 import numpy as np
 from entitysdk import models
 
+from app.errors import ApiError, ApiErrorCode
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
 from obi_one import deserialize_obi_object_from_json_data
@@ -60,6 +62,15 @@ def _get_required_extra_storage_space(disk_space_gb_required: float) -> int | No
     raise ValueError(msg)
 
 
+def _too_large(e: ValueError) -> ApiError:
+    """The error for an extraction that no machine can run, given the helper's reason."""
+    return ApiError(
+        message=f"Circuit extraction is too large to run: {e}",
+        error_code=ApiErrorCode.INVALID_REQUEST,
+        http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+    )
+
+
 def estimate_task_resources(  # ruff: ignore[too-many-locals]
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
@@ -109,7 +120,10 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio  # ty:ignore[unresolved-attribute]
 
     mem_gb_required = 1 + 55e-6 * input_size_neurons
-    ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
+    try:
+        ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
+    except ValueError as e:
+        raise _too_large(e) from e
 
     # Estimate time limit based on the number input neurons
     time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
@@ -133,7 +147,10 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
     output_size_synapses = input_size_synapses * output_fraction
     output_size_gb = 1 + output_size_synapses * 1.85e-7
-    storage_gb = _get_required_extra_storage_space(output_size_gb)
+    try:
+        storage_gb = _get_required_extra_storage_space(output_size_gb)
+    except ValueError as e:
+        raise _too_large(e) from e
 
     # Update resources
     return task_definition.resources.model_copy(

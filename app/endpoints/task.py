@@ -104,6 +104,17 @@ def task_launch_endpoint(
         task_definition=task_definition,
         accounting_factory=accounting_factory,
     )
+    # Before reserving credits, and outside the try below, so that a task no machine can run
+    # is refused with the estimator's own error rather than a generic submission failure.
+    updated_resources = task_service.estimate_task_resources(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell=compute_cell,
+        accounting_parameters=accounting_info.parameters,
+    )
+    task_definition = task_definition.model_copy(update={"resources": updated_resources})
+
     accounting_session = accounting_service.make_task_reservation(
         user_context=user_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
@@ -118,15 +129,6 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
-        updated_resources = task_service.estimate_task_resources(
-            json_model=json_model,
-            db_client=db_client,
-            task_definition=task_definition,
-            compute_cell=compute_cell,
-            accounting_parameters=accounting_info.parameters,
-        )
-        task_definition = task_definition.model_copy(update={"resources": updated_resources})
-
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,

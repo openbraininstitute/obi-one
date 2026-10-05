@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -6,6 +7,7 @@ import entitysdk
 import pytest
 from obp_accounting_sdk.constants import ServiceSubtype
 
+from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import TaskLaunchSubmit, TaskType
@@ -227,8 +229,21 @@ def test_estimate_task_resources_allocation(
 )
 def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
-    with pytest.raises(ValueError, match="Not enough disk space"):
+    with pytest.raises(ApiError, match="Not enough disk space") as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual)
+
+    assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_estimate_task_resources_memory_limit(db_client):
+    """3M input neurons need 1 + 55e-6 * 3e6 = 166 GB, more than the largest machine."""
+    metrics = _make_circuit_metrics(3_000_000, 0, 1000, 0)
+    with pytest.raises(ApiError, match="No CPU/memory combination found") as exc_info:
+        _run_estimate_task_resources(db_client, metrics, do_virtual=False)
+
+    assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.parametrize(
@@ -294,7 +309,7 @@ def test_estimate_task_resources_with_accounting_parameters_disk_limit(db_client
         count=100_000,
         service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
     )
-    with pytest.raises(ValueError, match="Not enough disk space"):
+    with pytest.raises(ApiError, match="Not enough disk space"):
         _run_estimate_task_resources(
             db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
         )
