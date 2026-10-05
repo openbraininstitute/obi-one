@@ -90,6 +90,11 @@ is Brian2-specific, so any simulator with the same constraint can use them.
 
 Only soma voltage (`variable_name: "v"`) is reported.
 
+Recordings are held in memory until the run ends: the runner records the union of every recording's neurons at every timestep of the simulation, and a time window only applies when a recording is written.
+Generation therefore refuses a configuration that would record more than 150,000,000 samples (recorded neurons × timesteps), which is what the Brian2 job's machine can hold alongside a whole-brain network.
+At the 0.025 ms timestep that is 3,750 neurons for a full second, or every neuron of `FlyWire-v783-Brian2-LIF` for about 27 ms.
+A recording without a neuron set records every neuron in the circuit, so on a whole-brain circuit it is refused for anything longer than that.
+
 ### Synaptic manipulations
 
 | Block | Notes |
