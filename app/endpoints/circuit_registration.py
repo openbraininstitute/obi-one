@@ -5,6 +5,7 @@ import logging
 import tarfile
 import tempfile
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
@@ -63,12 +64,14 @@ def _parse_experiment_date(value: str | None) -> datetime | None:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
 
-def _parse_optional_enum[T](value: str | None, enum_cls: type[T], field_name: str) -> T | None:
+def _parse_optional_enum[T: Enum](
+    value: str | None, enum_cls: type[T], field_name: str
+) -> T | None:
     """Parse an optional string form field into an enum member."""
     if value is None:
         return None
     try:
-        return enum_cls(value)  # type: ignore[call-arg]
+        return enum_cls(value)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Invalid {field_name} '{value}'") from e
 

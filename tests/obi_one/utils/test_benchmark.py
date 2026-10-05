@@ -7,7 +7,7 @@ import pytest
 from obi_one.utils.benchmark import BenchmarkTracker
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def _reset_tracker():
     """Reset and enable BenchmarkTracker before each test."""
     BenchmarkTracker.reset()

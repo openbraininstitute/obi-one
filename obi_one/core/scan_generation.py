@@ -192,7 +192,7 @@ class ScanGenerationTask(Task, abc.ABC):
                 raise ValidationError(e) from e
 
         # Return single_configs
-        return single_configs
+        return single_configs  # ty:ignore[invalid-return-type]
 
     def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.
@@ -308,13 +308,13 @@ class GridScanGenerationTask(ScanGenerationTask):
             self._coordinate_parameters = []
             for scan_params in product(*single_values_by_multi_value):
                 self._coordinate_parameters.append(
-                    SingleCoordinateScanParams(scan_params=scan_params)  # ty:ignore[invalid-argument-type]
+                    SingleCoordinateScanParams(scan_params=scan_params)
                 )
 
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
                 )
             ]
 
@@ -363,7 +363,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
                 )
             ]
 

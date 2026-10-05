@@ -87,7 +87,7 @@ class SimulationExecutionTask(Task):
 
         with log_timing("compile_mechanisms"):
             mechanism_build = compile_mechanisms(
-                mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+                mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
                 output_dir=staged_circuit.directory.resolve(),
                 simulation_backend=self.simulation_backend,
             )

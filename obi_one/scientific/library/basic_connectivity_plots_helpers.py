@@ -346,7 +346,7 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
         colors = [cmap(i) for i in range(len(category_counts))[::-1]]
 
     # Create the pie chart without percentages inside
-    wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})  # ty:ignore[invalid-assignment]
+    wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})
 
     # Add annotations outside the pie chart to avoid overlapping
     for i, wedge in enumerate(wedges):

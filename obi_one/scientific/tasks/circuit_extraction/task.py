@@ -135,7 +135,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
             },
         )
-        neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
             title="Neuron Set",
             description="Set of neurons to be extracted from the parent circuit, including their"
@@ -184,7 +184,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_sets: dict[str, CircuitExtractionNeuronSetUnion] = Field(
+    neuron_sets: dict[str, CircuitExtractionNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
         description="Neuron sets for the extraction.",
         json_schema_extra={

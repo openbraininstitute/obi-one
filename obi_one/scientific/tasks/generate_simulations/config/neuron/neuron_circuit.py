@@ -104,7 +104,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
@@ -188,7 +188,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

@@ -42,7 +42,7 @@ def _monkeypatch_session():
     m.undo()
 
 
-@pytest.fixture(autouse=True, scope="module")
+@pytest.fixture(autouse=True, scope="module")  # ruff: ignore[pytest-fixture-autouse]
 def mock_heavy_dependencies(_monkeypatch_session):
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
@@ -52,7 +52,7 @@ def mock_heavy_dependencies(_monkeypatch_session):
         del sys.modules["neurom"]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def mock_template_and_functions(monkeypatch):
     mock_result = MagicMock()
     mock_result.hdf5 = Path("path0.h5")
@@ -67,7 +67,7 @@ def mock_template_and_functions(monkeypatch):
     )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def mock_io_for_test(monkeypatch):
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"

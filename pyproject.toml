@@ -97,9 +97,7 @@ service = [
 all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
-# Requires MPI-enabled h5py and NEURON built from source.
-# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
-bluerecording = ["bluerecording>=0.4.6"]
+bluerecording = ["bluerecording>=0.6.2"]
 
 [dependency-groups]
 dev = [
@@ -109,9 +107,9 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "respx==0.22.0",
+    "respx>=0.22.0",
     "ruff",
-    "ty>=0.0.33",
+    "ty>=0.0.35",
 ]
 docs = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.1"]
 
@@ -137,7 +135,7 @@ version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
-required-version = ">=0.9.22"
+required-version = ">=0.12.22"
 
 [[tool.uv.index]]
 name = "obi-codeartifact"

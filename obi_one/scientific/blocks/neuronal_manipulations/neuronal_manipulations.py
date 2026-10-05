@@ -244,7 +244,7 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
 
     title: ClassVar[str] = "Variable Modification by Section List"
 
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
@@ -273,7 +273,7 @@ class CircuitByNeuronMechanismVariableNeuronalManipulation(
 
     title: ClassVar[str] = "Full Neuron Variable Modification"
 
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set (Target)",
         description="Neuron set to which modification is applied.",
