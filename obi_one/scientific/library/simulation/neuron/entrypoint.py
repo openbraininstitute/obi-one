@@ -268,7 +268,10 @@ def _distribute_cells(
     # config ("network") and its manifest variables, and the circuit + simulation node
     # sets are merged for resolution.
     simulation_config_obj = libsonata.SimulationConfig.from_file(str(simulation_config))
-    node_set_name = simulation_config_obj.node_set or config_data.get("node_set", "All")
+    node_set_name = simulation_config_obj.node_set or config_data.get("node_set")
+    if not node_set_name:
+        msg = "No node set defined in the simulation config."
+        raise ValueError(msg)
     ids_per_population = resolve_simulation_node_set_ids(simulation_config_obj, node_set_name)
 
     # Flatten to a deterministically ordered list of (population, node_id) pairs so the

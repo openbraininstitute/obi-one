@@ -266,3 +266,22 @@ def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
             simulation_config_file=simulation_config_file,
             mechanism_build=mechanism_build,
         )
+
+
+def test_get_simulation_parameters_no_node_set(monkeypatch, tmp_path):
+    """No node set defined in the simulation config must raise an error."""
+    simulation_config_file = tmp_path / "config.json"
+    mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"run": {"tstop": 100}}),
+    )
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set=None)
+
+    with pytest.raises(ValueError, match="No node set defined"):
+        test_module.get_simulation_parameters(
+            simulation_backend=SimulationBackend.bluecellulab,
+            simulation_config_file=simulation_config_file,
+            mechanism_build=mechanism_build,
+        )

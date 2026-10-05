@@ -122,7 +122,10 @@ def get_simulation_parameters(
     # circuit ("network") and manifest variables, and the circuit + simulation node sets
     # are merged for resolution.
     simulation_config = libsonata.SimulationConfig.from_file(str(simulation_config_file))
-    node_set_name = simulation_config.node_set or "All"
+    node_set_name = simulation_config.node_set
+    if not node_set_name:
+        msg = "No node set defined in the simulation config."
+        raise ValueError(msg)
     num_cells = count_cells_in_simulation_node_set(simulation_config, node_set_name)
 
     tstop = config_data["run"]["tstop"]

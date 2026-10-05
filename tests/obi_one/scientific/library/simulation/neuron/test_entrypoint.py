@@ -198,6 +198,17 @@ def test_distribute_cells_missing_nodeset_raises(monkeypatch, tmp_path):
         test_module._distribute_cells({"node_set": "Missing"}, cfg, 0, 1)
 
 
+def test_distribute_cells_no_nodeset_raises(monkeypatch, tmp_path):
+    """No node set in the simulation config nor the config data must raise."""
+    cfg = tmp_path / "cfg.json"
+    cfg.write_text("{}")
+
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1]}}, node_set=None)
+
+    with pytest.raises(ValueError, match="No node set defined"):
+        test_module._distribute_cells({}, cfg, 0, 1)
+
+
 def test_gather_results_collects_and_gathers(monkeypatch):
     calls = {}
 
