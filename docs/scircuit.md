@@ -210,6 +210,8 @@ The block emits a SONATA report of type `lfp` whose `electrodes_file` is named a
 
 Nothing is downloaded at generation. The weight matrix (the array's `electrode_array_weight_matrix` asset) holds a weight per electrode for every segment of the circuit, so it can be large, and generation has no use for it. It is fetched when the simulation is run: entitysdk's `stage_simulation` downloads the matrix of every array linked to the Simulation, identifies which report each belongs to by the file name, and rewrites `electrodes_file` to point at the staged copy.
 
+The signal the simulation records is registered on its SimulationResult as an `lfp_report` asset, apart from the voltage reports: the run reads the simulation config to tell which of its output files are lfp reports.
+
 LFP reports always record the membrane current (`i_membrane`), so unlike compartment reports they take no `variable_name`.
 
 ## Running Simulations
