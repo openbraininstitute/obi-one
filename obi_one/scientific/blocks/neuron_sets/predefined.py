@@ -5,6 +5,7 @@ from typing import Annotated, ClassVar
 import bluepysnap as snap
 from pydantic import Field
 
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.constants import (
@@ -102,7 +103,7 @@ class PredefinedBaseNeuronSet(NeuronSet, abc.ABC):
                 f"Node set '{self.node_set}' not found in circuit '{circuit.name}'. "
                 f"Available node sets: {', '.join(circuit.node_sets)}"
             )
-            raise ValueError(msg)
+            raise ConfigValidationError(msg)
 
     @staticmethod
     def get_node_set_populations(node_set: str, circuit: Circuit) -> list[str]:

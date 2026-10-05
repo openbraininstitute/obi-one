@@ -254,12 +254,12 @@ class IonChannelFittingScanConfig(ScanConfig):
         self,
         ion_channel_modelings: list[entitysdk.models.IonChannelModelingConfig],  # ty:ignore[possibly-missing-submodule]
         db_client: entitysdk.client.Client,
-    ) -> None:  # ty:ignore[invalid-method-override]
+    ) -> entitysdk.models.IonChannelModelingConfigGeneration:  # ty:ignore[invalid-method-override, possibly-missing-submodule]
         """Register the activity generating the ion channel modeling tasks in the database."""
         L.info("3. Saving completed ion channel modeling campaign generation")
 
         L.info("-- Register IonChannelModelingGeneration Entity")
-        db_client.register_entity(
+        return db_client.register_entity(
             entitysdk.models.IonChannelModelingConfigGeneration(  # ty:ignore[possibly-missing-submodule]
                 start_time=datetime.now(UTC),
                 used=[self._campaign],

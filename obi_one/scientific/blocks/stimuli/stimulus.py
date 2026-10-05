@@ -11,7 +11,7 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -559,7 +559,7 @@ class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
                 f"represented at a timestep of {timestep} ms, which can only carry frequencies "
                 f"below {maximum_frequency} Hz. Lower the frequency, or shorten the timestep."
             )
-            raise OBIONEError(msg)
+            raise ConfigValidationError(msg)
 
     def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
         self._check_frequency_against_timestep()

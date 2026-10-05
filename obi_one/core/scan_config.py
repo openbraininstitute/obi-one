@@ -8,6 +8,7 @@ from typing import ClassVar, get_args, get_origin
 import entitysdk
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
+from entitysdk.models.activity import Activity
 from entitysdk.types import (
     ActivityStatus,
     TaskActivityType,
@@ -349,7 +350,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def create_campaign_generation_entity(
         self, generated: list[TaskConfig], db_client: Client
-    ) -> None:
+    ) -> Activity:
         if self.campaign_generation_task_activity_type is None:
             msg = (
                 "campaign_generation_task_activity_type must be defined to create "
@@ -359,7 +360,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         time_now = datetime.now(UTC)
 
-        db_sdk.create_generic_activity(
+        return db_sdk.create_generic_activity(
             client=db_client,
             activity_type=self.campaign_generation_task_activity_type,
             used=[self._campaign],
