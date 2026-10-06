@@ -190,10 +190,10 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             compute_cell="local",
         ),
     ),
-    TaskDefinitionLegacy(
+    TaskDefinition(
         task_type=TaskType.ion_channel_fitting,
-        config_type=models.IonChannelModelingConfig,
-        activity_type=models.IonChannelModelingExecution,
+        config_type=TaskConfigType.ion_channel_modeling__config,
+        activity_type=TaskActivityType.ion_channel_modeling__execution,
         code=_obi_one_code("ion_channel_fitting.txt"),
         resources=MachineResources(
             cores=1,

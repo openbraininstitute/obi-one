@@ -7,7 +7,7 @@ decides whether it can be launched at all, not the science.
 from unittest.mock import Mock
 from uuid import uuid4
 
-from entitysdk import models
+from entitysdk.types import TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.mappings import TASK_DEFINITIONS
@@ -20,13 +20,10 @@ def test_ion_channel_fitting_is_launchable():
 
 
 def test_it_launches_against_the_entities_the_scan_actually_registers():
-    """The campaign and its configs are IonChannelModeling* entities rather than generic
-    TaskConfigs, so the launch definition has to name those or the executor fetches nothing.
-    """
     definition = TASK_DEFINITIONS[TaskType.ion_channel_fitting]
 
-    assert definition.config_type is models.IonChannelModelingConfig
-    assert definition.activity_type is models.IonChannelModelingExecution
+    assert definition.config_type == TaskConfigType.ion_channel_modeling__config
+    assert definition.activity_type == TaskActivityType.ion_channel_modeling__execution
 
 
 def test_it_asks_for_an_image_with_neuron():

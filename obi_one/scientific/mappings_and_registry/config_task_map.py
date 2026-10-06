@@ -213,10 +213,13 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=IonChannelFittingTask,
         single_config_cls=IonChannelFittingSingleConfig,
         scan_config_cls=IonChannelFittingScanConfig,
-        # The campaign and its configs are IonChannelModeling* entities rather than generic
-        # TaskConfigs, so this is the label the single config uploads its own JSON under and
-        # the one `run_task_type` reads back to rehydrate it on the executor.
-        asset_label=AssetLabel.ion_channel_modeling_generation_config,
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.ion_channel_modeling__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.ion_channel_modeling__config_generation
+        ),
+        single_task_config_type=TaskConfigType.ion_channel_modeling__config,
+        single_task_activity_type=TaskActivityType.ion_channel_modeling__execution,
     ),
     TaskType.ion_channel_model_simulation_execution: TaskRegistration(
         task_cls=IonChannelModelSimulationExecutionTask,

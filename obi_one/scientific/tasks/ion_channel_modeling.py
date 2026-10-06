@@ -14,7 +14,6 @@ import json
 import logging
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import uuid
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal
@@ -26,10 +25,7 @@ from pydantic import Discriminator, Field, StringConstraints
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.info import Info
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME, SCAN_CONFIG_FILENAME
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations import (
@@ -37,6 +33,7 @@ from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations impor
     equation_schema_extra,
 )
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 
 L = logging.getLogger(__name__)
 
@@ -208,7 +205,7 @@ class HodgkinHuxleyIonChannelModel(Block):
 IonChannelModelUnion = Annotated[HodgkinHuxleyIonChannelModel, Discriminator("type")]
 
 
-class IonChannelFittingScanConfig(ScanConfig):
+class IonChannelFittingScanConfig(InfoScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
     name: ClassVar[str] = "Ion channel"
@@ -248,16 +245,6 @@ class IonChannelFittingScanConfig(ScanConfig):
             )
         )
 
-    info: Info = Field(
-        title="Info",
-        description="Information about the ion channel modeling campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the fitting.",
@@ -281,98 +268,12 @@ class IonChannelFittingScanConfig(ScanConfig):
         },
     )
 
-    def input_recordings(self, db_client: entitysdk.client.Client) -> list:
-        """The recording entities this config fits."""
+    def input_entities(self, db_client: entitysdk.client.Client) -> list:
         return [recording.entity(db_client=db_client) for recording in self.initialize.recordings]
-
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-    ) -> entitysdk.models.IonChannelModelingCampaign:  # ty:ignore[possibly-missing-submodule]
-        """Initializes the ion channel modeling campaign in the database."""
-        L.info("1. Initializing ion channel modeling campaign in the database...")
-        if multiple_value_parameters_dictionary is None:
-            multiple_value_parameters_dictionary = {}
-
-        L.info("-- Register IonChannelModelingCampaign Entity")
-        self._campaign = db_client.register_entity(
-            entitysdk.models.IonChannelModelingCampaign(  # ty:ignore[possibly-missing-submodule]
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                input_recordings=self.input_recordings(db_client),
-                scan_parameters=multiple_value_parameters_dictionary,
-            )
-        )
-
-        L.info("-- Upload campaign_generation_config")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
-            file_path=output_root / SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-            asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
-        )
-
-        return self._campaign
-
-    def create_campaign_generation_entity(
-        self,
-        ion_channel_modelings: list[entitysdk.models.IonChannelModelingConfig],  # ty:ignore[possibly-missing-submodule]
-        db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.IonChannelModelingConfigGeneration:  # ty:ignore[invalid-method-override, possibly-missing-submodule]
-        """Register the activity generating the ion channel modeling tasks in the database."""
-        L.info("3. Saving completed ion channel modeling campaign generation")
-
-        L.info("-- Register IonChannelModelingGeneration Entity")
-        return db_client.register_entity(
-            entitysdk.models.IonChannelModelingConfigGeneration(  # ty:ignore[possibly-missing-submodule]
-                start_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=ion_channel_modelings,
-            )
-        )
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
-
-    def create_single_entity_with_config(
-        self,
-        campaign: entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
-        db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.IonChannelModelingConfig:  # ty:ignore[possibly-missing-submodule]
-        """Saves the simulation to the database."""
-        L.info(f"2.{self.idx} Saving ion channel modeling config {self.idx} to database...")
-
-        # For now, we only support a single recording
-        recordings = self.initialize.recordings
-        if not isinstance(recordings, IonChannelRecordingFromID):
-            msg = (
-                "IonChannelModeling currently only supports a single IonChannelRecordingFromID. "
-                f"Got {type(recordings).__name__}"
-            )
-            raise OBIONEError(msg)
-
-        L.info("-- Register IonChannelModeling Entity")
-        self._single_entity = db_client.register_entity(
-            entitysdk.models.IonChannelModelingConfig(  # ty:ignore[possibly-missing-submodule]
-                name=f"IonChannelModelingConfig {self.idx}",
-                description=f"IonChannelModelingConfig {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
-                ion_channel_modeling_campaign_id=campaign.id,
-            )
-        )
-
-        L.info("-- Upload ion_channel_modeling_generation_config")
-        _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=entitysdk.models.IonChannelModelingConfig,  # ty:ignore[possibly-missing-submodule]
-            file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-            asset_label="ion_channel_modeling_generation_config",  # ty:ignore[invalid-argument-type]
-        )
 
 
 class IonChannelFittingTask(Task):
