@@ -1,0 +1,2 @@
+obi-one
+ion-channel-builder @ git+https://github.com/openbraininstitute/ion-channel-builder.git@main

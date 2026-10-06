@@ -191,6 +191,24 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinitionLegacy(
+        task_type=TaskType.ion_channel_fitting,
+        config_type=models.IonChannelModelingConfig,
+        activity_type=models.IonChannelModelingExecution,
+        code=_obi_one_code("ion_channel_fitting.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            # The fit compiles the generated mod file with nrnivmodl and then runs it.
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
