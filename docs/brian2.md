@@ -128,6 +128,18 @@ the 20-neuron `sugar` set is the natural target.
 A Brian2 configuration also refuses, before generating anything, a circuit that does not have
 exactly one point node population, since the runner cannot build a network from it.
 
+## Progress
+
+While simulated time advances, `simulate_brian2.py` prints its progress to stdout in the same form as neurodamus, so a Brian2 job's log reads like a NEURON job's:
+
+```
+[t=250.00] Completed 25% ETA: 0:00:31
+```
+
+A line is printed at most every two seconds of wall time, and always once the simulation ends. The percentage is of the whole simulation, although the runner advances it with one `network.run` per interval between stimulus and manipulation events. The time remaining leaves out building and compiling the network, which happen before simulated time starts to move. Unlike neurodamus, each update is a line of its own rather than one redrawn with a carriage return, because the job log is read a line at a time.
+
+On FlyWire, staging, building and compiling the network take about a minute before the first of those lines. So on the platform the runner's own messages (loading the neurons and synapses, writing the spikes, registering the result) also go to stdout, as `[INFO] ...` lines, whatever the verbosity.
+
 ## Worked example
 
 `examples/obi_one/scientific/tasks/generate_simulations/Brian2/brian2_flywire_simulation.ipynb`
