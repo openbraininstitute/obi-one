@@ -232,7 +232,7 @@ def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_vir
     with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual)
 
-    assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert "about 1,100,000,000 synapses" in exc_info.value.message
     assert "more than the 200 GB of storage a task can have" in exc_info.value.message
@@ -246,7 +246,7 @@ def test_estimate_task_resources_memory_limit(db_client):
     with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual=False)
 
-    assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert exc_info.value.message == (
         "Extracting 3,000,000 neurons needs about 166 GB of memory, more than the largest"

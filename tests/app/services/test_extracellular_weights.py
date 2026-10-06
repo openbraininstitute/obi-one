@@ -147,7 +147,7 @@ def test_too_large_circuit_is_rejected(json_model, task_definition, n_cells, ele
             n_electrodes_per_probe=electrodes,
         )
 
-    assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert exc_info.value.message == (
         f"Calculating extracellular recording weights for 'test circuit' {expected}"

@@ -125,7 +125,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         )
         raise ApiError(
             message=msg,
-            error_code=ApiErrorCode.INVALID_REQUEST,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
 
@@ -161,7 +161,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         )
         raise ApiError(
             message=msg,
-            error_code=ApiErrorCode.INVALID_REQUEST,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
 

@@ -21,29 +21,13 @@ SUPPORTED_CIRCUIT_SCALES = frozenset(
     {CircuitScale.single, CircuitScale.pair, CircuitScale.small, CircuitScale.microcircuit}
 )
 
-# `bluerecording write_weights` instantiates every cell of the circuit in one process, so its
-# memory and time grow with the number of cells. Measured in the neurodamus launch image
-# (emulated amd64) for a 16-electrode line-source probe:
-#   nbS1-HEX0-L1                 291 cells, 118 segments/cell   856 MB peak   62 s
-#   nbS1-O1-vSub-nCN-HEX0-L5-01   10 cells, 952 segments/cell   427 MB peak   11 s
-#   nbS1-O1-vSub-nCN-HEX0-L4-01   10 cells, 315 segments/cell   372 MB peak    9 s
-# and with 256 electrodes on nbS1-HEX0-L1, 1103 MB peak. That fits 0.34 GB + 0.77 MB/cell +
-# 8.6 kB/segment, plus 30 B per segment and electrode for the weights, and 6 s + 0.15 s/cell
-# + 0.38 ms/segment. Segment counts are only known once the circuit is staged, so every cell
-# is budgeted at the measured L5 maximum of ~1000 segments.
-BASE_MEMORY_GB = 1.0  # bluerecording's own baseline plus the task process around it
+# write_weights builds every cell in one process, so memory and time scale with the cell count.
+# Fitted to runs measured in #1062, budgeting every cell like an L5 pyramidal cell.
+BASE_MEMORY_GB = 1.0
 MEMORY_GB_PER_CELL = 0.01
 MEMORY_GB_PER_CELL_AND_ELECTRODE = 3e-5
 SECONDS_PER_CELL = 0.6
 OVERHEAD_SECONDS = 900  # staging the circuit and compiling its mechanisms
-
-
-def _invalid_request(message: str) -> ApiError:
-    return ApiError(
-        message=message,
-        error_code=ApiErrorCode.INVALID_REQUEST,
-        http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-    )
 
 
 def _count_electrodes(
@@ -90,7 +74,11 @@ def estimate_task_resources(
             "Extracellular recording weights config has no input circuit registered; cannot "
             "estimate its resources."
         )
-        raise _invalid_request(msg)
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
     circuit = db_client.get_entity(entity_id=config.inputs[0].id, entity_type=models.Circuit)
 
     if circuit.scale not in SUPPORTED_CIRCUIT_SCALES:
@@ -101,7 +89,11 @@ def estimate_task_resources(
             f"Extracellular recording weights are not supported for circuits of scale"
             f" '{circuit.scale}'. Supported scales: {supported}."
         )
-        raise _invalid_request(msg)
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
 
     n_cells = circuit.number_neurons
     n_electrodes = _count_electrodes(json_model, config, db_client, task_definition)
@@ -124,7 +116,11 @@ def estimate_task_resources(
             f" {n_electrodes:,} electrodes) needs about {memory_gb_required:.0f} GB of memory, more"
             f" than the largest machine has ({MAX_MEMORY_GB} GB). {hint}"
         )
-        raise _invalid_request(msg) from e
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        ) from e
     # Small circuits keep the defaults, which also cover compiling the mechanisms.
     if memory_gb < defaults.memory:  # ty:ignore[unresolved-attribute]
         cores, memory_gb = defaults.cores, defaults.memory  # ty:ignore[unresolved-attribute]
