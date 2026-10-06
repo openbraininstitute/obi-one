@@ -30,7 +30,7 @@ DEFAULT_DISK_SPACE_LIMIT_GB = 20
 EXTRA_DISK_SPACE_LIMIT_GB = 200
 
 
-def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
+def get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
     """Returns the required CPU/memory combination."""
     max_mem = 0
     for ncpu, mem_values in CPU_MEMORY_COMBINATIONS.items():
@@ -117,7 +117,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         else "Extract fewer neurons."
     )
     try:
-        ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
+        ncpu, mem_gb = get_required_cpu_memory_combo(mem_gb_required)
     except ValueError as e:
         msg = (
             f"Extracting {input_size_neurons:,} neurons needs about {mem_gb_required:.0f} GB of"
@@ -125,7 +125,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         )
         raise ApiError(
             message=msg,
-            error_code=ApiErrorCode.INVALID_REQUEST,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
 
@@ -161,7 +161,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         )
         raise ApiError(
             message=msg,
-            error_code=ApiErrorCode.INVALID_REQUEST,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
 
