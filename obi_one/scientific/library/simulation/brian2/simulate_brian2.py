@@ -6,11 +6,13 @@ import logging
 import math
 import os
 import re
+import sys
 import tempfile
+import time
 import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial, singledispatch
 from pathlib import Path
 from typing import Protocol
@@ -44,6 +46,9 @@ KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 # SONATA expresses times (`dt`, `delay`, `duration`) in milliseconds but frequencies in hertz,
 # so anything combining the two has to convert first.
 MILLISECONDS_PER_SECOND = 1000.0
+
+# Wall-clock seconds between two lines of `SimulationProgress`.
+PROGRESS_REPORT_PERIOD_SECONDS = 2.0
 
 
 class NetworkOperation(BaseModel):
@@ -934,6 +939,56 @@ def _write_reports(
         )
 
 
+class SimulationProgress:
+    """Print the simulation's progress the way neurodamus does.
+
+    A line such as `[t=450.00] Completed 45% ETA: 0:00:12` goes to stdout at most every
+    `period` seconds of wall time, and always once the end is reached. The run is split into
+    one `network.run` per interval between events, and brian2 reports each of those as a
+    fraction of its own interval, so this is handed to every one of them as their `report`
+    and turns that fraction back into the time through the whole simulation.
+
+    Each update is a line of its own, where neurodamus redraws one with a carriage return:
+    the job log is read a line at a time, so a redrawn line would only show up once the next
+    update had started it.
+    """
+
+    def __init__(self, tstop: float, period: float) -> None:
+        """Ibid."""
+        self.tstop = tstop
+        self.period = period
+        self._wall_start = time.monotonic()
+        self._last_report = -math.inf
+
+    def __call__(
+        self,
+        _elapsed: brian2.Quantity,
+        completed: float,
+        start: brian2.Quantity,
+        duration: brian2.Quantity,
+    ) -> None:
+        """Brian2's `report` callable, called at the start, end and every report period."""
+        now = time.monotonic()
+        t = float((start + completed * duration) / brian2.units.ms)
+        if t <= 0:
+            # Building and compiling what runs from t=0 can take longer than simulating it, and
+            # would otherwise inflate the first estimates of the time remaining.
+            self._wall_start = now
+            return
+
+        finished = math.isclose(t, self.tstop) or t > self.tstop
+        if not finished and now - self._last_report < self.period:
+            return
+
+        self._last_report = now
+        remaining = 0.0 if finished else (now - self._wall_start) * (self.tstop / t - 1)
+        print(  # ruff: ignore[print]
+            f"[t={t:5.2f}] Completed {t * 100 / self.tstop:2.0f}% "
+            f"ETA: {timedelta(seconds=int(remaining))}",
+            flush=True,
+        )
+
+
 def run_sonata_brian2_trial(
     simulation_config_path: Path, *, profile: bool = False
 ) -> Brian2Network:
@@ -961,11 +1016,16 @@ def run_sonata_brian2_trial(
     queue = list(net.events)
     heapq.heapify(queue)
 
-    report = "text" if profile else None
+    progress = SimulationProgress(simulation.run.tstop, period=PROGRESS_REPORT_PERIOD_SECONDS)
     current_t = 0.0
     while current_t < simulation.run.tstop:
         next_t = min(queue[0].at, simulation.run.tstop) if queue else simulation.run.tstop
-        network.run((next_t - current_t) * brian2.units.ms, profile=profile, report=report)
+        network.run(
+            (next_t - current_t) * brian2.units.ms,
+            profile=profile,
+            report=progress,
+            report_period=progress.period * brian2.units.second,
+        )
         current_t = next_t
 
         while queue and queue[0].at <= current_t:
@@ -1139,7 +1199,15 @@ def sonata_simulation_task(
 
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level, force=True)
-    L.setLevel(log_level)
+    # This module's own messages say which phase a job is in - on FlyWire, staging, building and
+    # compiling the network take about a minute before simulated time starts to move - so they
+    # go to stdout, at INFO at least, next to the progress lines. Everything else keeps
+    # `log_level`, on stderr.
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    L.addHandler(handler)
+    L.propagate = False
+    L.setLevel(min(log_level, logging.INFO))
     if verbose > 1:
         brian2.BrianLogger.log_level_debug()
 
