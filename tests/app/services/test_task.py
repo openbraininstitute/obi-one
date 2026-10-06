@@ -52,6 +52,7 @@ CLUSTER_TASK_TYPES = [
 # Tasks routed to ECS Managed Instances. Everything else keeps the pre-existing
 # behaviour of running on Fargate on the AWS cell.
 MANAGED_INSTANCES_TASK_TYPES = {
+    TaskType.ion_channel_fitting,
     TaskType.ion_channel_model_simulation_execution,
     TaskType.single_neuron_simulation_execution,
     TaskType.single_neuron_synaptome_simulation_execution,

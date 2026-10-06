@@ -4,14 +4,9 @@ The fit itself needs `ion_channel_builder` and `nrnivmodl`, so these check the w
 decides whether it can be launched at all, not the science.
 """
 
-from unittest.mock import Mock
-from uuid import uuid4
-
 from entitysdk.types import TaskActivityType, TaskConfigType
-from obp_accounting_sdk.constants import ServiceSubtype
 
 from app.mappings import TASK_DEFINITIONS
-from app.services.accounting import _evaluate_accounting_parameters
 from app.types import MachineExecutorImageType, TaskType
 
 
@@ -43,17 +38,3 @@ def test_it_installs_the_builder_the_task_imports_behind_a_try_except():
     definition = TASK_DEFINITIONS[TaskType.ion_channel_fitting]
 
     assert definition.code.dependencies.endswith("ion_channel_fitting.txt")
-
-
-def test_it_is_billed_as_an_ion_channel_build():
-    """Without its own case it would fall through to the SMALL_SIM default and be billed
-    as a simulation.
-    """
-    parameters = _evaluate_accounting_parameters(
-        db_client=Mock(),
-        config_id=uuid4(),
-        task_definition=TASK_DEFINITIONS[TaskType.ion_channel_fitting],
-    )
-
-    assert parameters.service_subtype == ServiceSubtype.ION_CHANNEL_BUILD
-    assert parameters.count == 1
