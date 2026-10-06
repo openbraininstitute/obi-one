@@ -122,22 +122,18 @@ class HodgkinHuxleyIonChannelModel(Block):
 
     title: ClassVar[str] = "Hodgkin-Huxley ion channel model"
 
-    m_power: int | list[int] = Field(
+    m_power: Annotated[int, Field(ge=1, le=4)] | list[Annotated[int, Field(ge=1, le=4)]] = Field(
         title="m exponent in channel equation",
         default=1,
-        ge=1,
-        le=4,
         description=(
             r"Exponent \(p\) of \(m\) in the channel equation: "
             r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
-    h_power: int | list[int] = Field(
+    h_power: Annotated[int, Field(ge=0, le=4)] | list[Annotated[int, Field(ge=0, le=4)]] = Field(
         title="h exponent in channel equation",
         default=1,
-        ge=0,
-        le=4,
         description=(
             r"Exponent \(q\) of \(h\) in the channel equation: "
             r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
@@ -297,7 +293,7 @@ class IonChannelFittingTask(Task):
         if len(temperatures) > 1:
             msg = (
                 "Ion channel recordings fitted together must share a temperature, because the "
-                f"fitted model records a single one. Got {sorted(temperatures)}."
+                f"fitted model records a single one. Got {sorted(temperatures, key=str)}."
             )
             raise OBIONEError(msg)
         return entities[0]
@@ -341,8 +337,10 @@ class IonChannelFittingTask(Task):
         trace_ljps = []
         for recording in self.recordings:
             trace_paths.append(
+                # One folder per recording: NWB files of different recordings can share a name.
                 recording.download_asset(
-                    dest_dir=self.config.coordinate_output_root, db_client=db_client
+                    dest_dir=self.config.coordinate_output_root / "recordings" / recording.id_str,
+                    db_client=db_client,
                 )
             )
             trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
@@ -514,7 +512,8 @@ class IonChannelFittingTask(Task):
             )
 
             # create new mod file
-            mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
+            coordinate_root = Path(self.config.coordinate_output_root).resolve()
+            mechanisms_dir = coordinate_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
             output_name = mechanisms_dir / f"{self.config.initialize.ion_channel_name}.mod"
 
@@ -528,7 +527,9 @@ class IonChannelFittingTask(Task):
                 output_name=output_name,  # ty:ignore[invalid-argument-type]
             )
 
-            # compile output mod file
+            # Compile into the coordinate folder rather than the process cwd, which concurrent
+            # fits in one worker share, and load from there explicitly: `run_ion_channel_model`
+            # expects the mechanism to be loaded already.
             subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
                 [  # ruff: ignore[start-process-with-partial-path]
                     "nrnivmodl",
@@ -537,7 +538,11 @@ class IonChannelFittingTask(Task):
                     str(mechanisms_dir),
                 ],
                 check=True,
+                cwd=coordinate_root,
             )
+            import neuron  # ruff: ignore[import-outside-top-level]
+
+            neuron.load_mechanisms(str(coordinate_root))
 
             # Get recording entity to access temperature
             recording_entity = self.describing_recording(db_client)
