@@ -20,8 +20,12 @@ from obi_one.scientific.tasks.circuit_validation.task import (
     _compile_mechanisms,
     _find_mod_dir,
     _find_morphology_for_template,
+    _hoc_supports_h5_container,
+    _is_h5_container_path,
     _load_compiled_mechanisms,
     _mechanism_suffixes_from_mod_dir,
+    _morphology_in_container,
+    _resolve_morphology_path,
     _validate_emodel_paths,
     _validate_hoc_loading,
     _validate_morphology_paths,
@@ -856,6 +860,74 @@ class TestRunCircuitValidation:
         assert any("missing edge property" in r.message for r in caplog.records)
         assert any("partial circuit warning" in r.message for r in caplog.records)
         mock_update_status.assert_called_once_with(db_client, circuit_id, "disqualified")
+
+
+# ---------------------------------------------------------------------------
+# morphology-resolution helpers
+# ---------------------------------------------------------------------------
+
+
+class TestMorphologyHelpers:
+    def test_is_h5_container_path_none(self):
+        assert _is_h5_container_path(None) is False
+
+    def test_is_h5_container_path_plain_file(self, tmp_path):
+        swc = tmp_path / "cell.swc"
+        swc.write_text("x")
+        assert _is_h5_container_path(swc) is False
+
+    def test_is_h5_container_path_true(self, tmp_path):
+        container = _write_h5_container(tmp_path / "merged.h5", "cell")
+        assert _is_h5_container_path(container / "cell") is True
+
+    def test_hoc_supports_h5_container_true(self, tmp_path):
+        hoc = tmp_path / "new.hoc"
+        hoc.write_text("proc load_morphology() { morphio_read(this, p) }\n")
+        assert _hoc_supports_h5_container(hoc) is True
+
+    def test_hoc_supports_h5_container_false(self, tmp_path):
+        hoc = tmp_path / "old.hoc"
+        hoc.write_text("proc load_morphology() {}\n")
+        assert _hoc_supports_h5_container(hoc) is False
+
+    def test_hoc_supports_h5_container_unreadable(self, tmp_path):
+        # A path that cannot be read (does not exist) is treated as unsupported.
+        assert _hoc_supports_h5_container(tmp_path / "missing.hoc") is False
+
+    def test_morphology_in_container_present_and_absent(self, tmp_path):
+        container = _write_h5_container(tmp_path / "merged.h5", "cell_a")
+        assert _morphology_in_container(container, "cell_a") is True
+        assert _morphology_in_container(container, "cell_b") is False
+
+    def test_morphology_in_container_unreadable(self, tmp_path):
+        # Not a valid HDF5 file -> OSError handled, returns False.
+        bogus = tmp_path / "bogus.h5"
+        bogus.write_bytes(b"not hdf5")
+        assert _morphology_in_container(bogus, "cell") is False
+
+    def test_resolve_morphology_path_file(self, tmp_path):
+        swc = tmp_path / "cell.swc"
+        swc.write_text("x")
+        mock_pop = MagicMock()
+        mock_pop.morph.get_filepath.side_effect = lambda _node_id, extension="swc": (
+            str(swc) if extension == "swc" else "/none"
+        )
+        assert _resolve_morphology_path(mock_pop, 0) == swc
+
+    def test_resolve_morphology_path_container(self, tmp_path):
+        container = _write_h5_container(tmp_path / "merged.h5", "cell")
+        mock_pop = MagicMock()
+        mock_pop.morph.get_filepath.side_effect = Exception("no standalone file")
+        mock_pop.morph._get_morphology_base.side_effect = lambda ext: (
+            str(container) if ext == "h5" else _raise_not_configured(ext)
+        )
+        assert _resolve_morphology_path(mock_pop, 0, "cell") == container / "cell"
+
+    def test_resolve_morphology_path_no_source(self):
+        mock_pop = MagicMock()
+        mock_pop.morph.get_filepath.side_effect = Exception("no file")
+        mock_pop.morph._get_morphology_base.side_effect = _raise_not_configured
+        assert _resolve_morphology_path(mock_pop, 0, "cell") is None
 
 
 # ---------------------------------------------------------------------------
