@@ -40,10 +40,16 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
     parent_circuit = single_config.initialize.circuit
     if isinstance(parent_circuit, CircuitFromID):
         with tempfile.TemporaryDirectory() as temp_dir:
+            # Counting neurons only reads the node files (get_neuron_ids resolves IDs over the
+            # circuit's node populations). Stage just those: a circuit's edge files and
+            # morphologies can dwarf the node files and exhaust the web service's small tmpfs
+            # (private-project circuits are downloaded rather than symlinked), which otherwise
+            # fails with "OSError: [Errno 28] No space left on device".
             staged_circuit = parent_circuit.stage_circuit(
                 db_client=db_client,
                 dest_dir=Path(temp_dir) / "sonata_circuit",
                 entity_cache=False,
+                nodes_only=True,
             )
             neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
                 circuit=staged_circuit
