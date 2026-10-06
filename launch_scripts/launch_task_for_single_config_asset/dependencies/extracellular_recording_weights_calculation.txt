@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[bluerecording]==2026.10.3
+obi-one[bluerecording]==2026.10.4
 # Pinned by extracellular_recording_weights_calculation.override, not resolved:
 neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
 h5py==3.16.0
