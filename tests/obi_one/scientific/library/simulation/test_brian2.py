@@ -8,7 +8,9 @@
 import copy
 import json
 import math
+import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import bluepysnap
 import brian2.units
@@ -678,3 +680,50 @@ def test_connection_override_unsupported(tmp_path, field, value):
     }
     with pytest.raises(RuntimeError, match=f"connection_overrides::{field} is not supported"):
         _run_simulation(tmp_path, config)
+
+
+PROGRESS_LINE = re.compile(r"\[t=\s*([\d.]+)\] Completed\s*(\d+)% ETA: \d+:\d\d:\d\d")
+
+
+def test_simulation_progress(monkeypatch, capsys):
+    wall_clock = iter([0.0, 0.0, 30.0, 31.0, 32.0, 33.5, 34.0])
+    monkeypatch.setattr(test_module, "time", SimpleNamespace(monotonic=lambda: next(wall_clock)))
+    progress = test_module.SimulationProgress(tstop=100.0, period=2.0)
+    ms, s = brian2.units.ms, brian2.units.second
+
+    progress(0 * s, 0.0, 0 * ms, 0 * ms)  # nothing simulated yet...
+    progress(0 * s, 0.0, 0 * ms, 50 * ms)  # ...and 30 s compiling are left out of the ETA
+    progress(0 * s, 0.5, 0 * ms, 50 * ms)
+    progress(0 * s, 1.0, 0 * ms, 50 * ms)  # within `period` of the previous line
+    progress(0 * s, 0.2, 50 * ms, 50 * ms)  # a second run, starting where the first ended
+    progress(0 * s, 1.0, 50 * ms, 50 * ms)  # the end is always reported
+
+    assert capsys.readouterr().out.splitlines() == [
+        "[t=25.00] Completed 25% ETA: 0:00:03",
+        "[t=60.00] Completed 60% ETA: 0:00:02",
+        "[t=100.00] Completed 100% ETA: 0:00:00",
+    ]
+
+
+def test_progress_spans_runs_split_by_events(tmp_path, monkeypatch, capsys):
+    """The override splits the simulation in two runs; progress is of the whole simulation."""
+    monkeypatch.setattr(test_module, "PROGRESS_REPORT_PERIOD_SECONDS", 0.0)
+    config = {
+        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": "Disconnect0", "source": "0", "target": "All", "delay": 1.5, "weight": 0.0}
+        ],
+    }
+    _run_simulation(tmp_path, config)
+
+    lines = capsys.readouterr().out.splitlines()
+    matches = [PROGRESS_LINE.fullmatch(line) for line in lines]
+    assert all(matches), lines
+    times = [float(m[1]) for m in matches]
+    assert times == sorted(times)
+    assert any(t < 1.5 for t in times)
+    assert any(t > 1.5 for t in times)
+    assert all(abs(int(m[2]) - t * 100 / 4) <= 0.5 for m, t in zip(matches, times, strict=True))
+    assert lines[-1] == "[t= 4.00] Completed 100% ETA: 0:00:00"
