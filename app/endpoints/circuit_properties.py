@@ -258,10 +258,11 @@ def mapped_circuit_properties_endpoint(
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
                 CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: circuit.scale
-                not in {
-                    entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.pair,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.small,  # ty:ignore[possibly-missing-submodule]
+                in {
+                    entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.region,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.system,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.whole_brain,  # ty:ignore[possibly-missing-submodule]
                 },
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
                 and circuit.scale
