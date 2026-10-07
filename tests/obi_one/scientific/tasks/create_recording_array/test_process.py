@@ -5,8 +5,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from obi_one.scientific.tasks.create_recording_array.process import (
+    get_number_of_mpi_processes,
     run_bluerecording_write_weights,
 )
+
+
+@pytest.mark.parametrize(
+    ("n_cells", "expected"),
+    [(1, 1), (100, 1), (101, 2), (291, 4), (400, 4), (401, 8), (800, 8), (801, 16), (30_190, 16)],
+)
+def test_get_number_of_mpi_processes(n_cells, expected):
+    assert get_number_of_mpi_processes(n_cells) == expected
 
 
 def test_run_bluerecording_write_weights_calls_subprocess_with_correct_args(tmp_path):
@@ -25,12 +34,19 @@ def test_run_bluerecording_write_weights_calls_subprocess_with_correct_args(tmp_
             electrode_json,
             output_path,
             nrnmech_lib_path=str(tmp_path / "libnrnmech.so"),
+            number_of_mpi_processes=4,
         )
 
     assert result == output_path
     call_args = mock_run.call_args[0][0]
-    assert call_args[0] == "bluerecording"
-    assert call_args[1] == "write_weights"
+    assert call_args[:6] == [
+        "mpirun",
+        "--use-hwthread-cpus",
+        "-np",
+        "4",
+        "bluerecording",
+        "write_weights",
+    ]
     assert str(circuit_config) in call_args
     assert str(electrode_json) in call_args
     assert str(output_path) in call_args
@@ -48,6 +64,7 @@ def test_run_bluerecording_write_weights_streams_its_output(tmp_path):
             tmp_path / "electrodes.json",
             tmp_path / "weights.h5",
             nrnmech_lib_path=tmp_path / "libnrnmech.so",
+            number_of_mpi_processes=1,
         )
 
     kwargs = mock_run.call_args[1]
@@ -71,4 +88,5 @@ def test_run_bluerecording_write_weights_raises_on_failure(tmp_path):
             tmp_path / "electrodes.json",
             tmp_path / "weights.h5",
             nrnmech_lib_path=str(tmp_path / "lib.so"),
+            number_of_mpi_processes=1,
         )

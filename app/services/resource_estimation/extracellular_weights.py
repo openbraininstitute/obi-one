@@ -16,17 +16,18 @@ from app.services.resource_estimation.circuit_extraction import (
 from obi_one import deserialize_obi_object_from_json_data
 from obi_one.core.registry import task_registry
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.tasks.create_recording_array.process import get_number_of_mpi_processes
 
 SUPPORTED_CIRCUIT_SCALES = frozenset(
     {CircuitScale.single, CircuitScale.pair, CircuitScale.small, CircuitScale.microcircuit}
 )
 
-# write_weights builds every cell in one process, so memory and time scale with the cell count.
-# Fitted to runs measured in #1062, budgeting every cell like an L5 pyramidal cell.
-BASE_MEMORY_GB = 1.0
+# write_weights splits the cells between its MPI processes, each of which also loads NEURON and
+# neurodamus. Fitted to runs measured in #1062, budgeting every cell like an L5 pyramidal cell.
+MEMORY_GB_PER_PROCESS = 0.5  # measured 0.35 GB in the launch image
 MEMORY_GB_PER_CELL = 0.01
 MEMORY_GB_PER_CELL_AND_ELECTRODE = 3e-5
-SECONDS_PER_CELL = 0.6
+SECONDS_PER_CELL = 2.0  # in one process; nbS1-HEX0-L23 took over 0.8 s per cell
 OVERHEAD_SECONDS = 900  # staging the circuit and compiling its mechanisms
 
 
@@ -63,9 +64,10 @@ def estimate_task_resources(
 ) -> Resources:
     """Estimate machine resources for an extracellular recording weights calculation.
 
-    Scales memory and time with the number of cells in the circuit and electrodes in the
-    array, never below the defaults from TASK_DEFINITIONS. Circuits larger than a
-    microcircuit, or too large for any machine, are rejected.
+    Gives the job a CPU for each of write_weights' MPI processes, and scales memory and time
+    with the number of cells in the circuit and electrodes in the array, never below the
+    defaults from TASK_DEFINITIONS. Circuits larger than a microcircuit, or too large for any
+    machine, are rejected.
     """
     config = db_client.get_entity(entity_id=json_model.config_id, entity_type=models.TaskConfig)
 
@@ -97,18 +99,20 @@ def estimate_task_resources(
 
     n_cells = circuit.number_neurons
     n_electrodes = _count_electrodes(json_model, config, db_client, task_definition)
+    n_processes = get_number_of_mpi_processes(n_cells)
     defaults = task_definition.resources
 
-    memory_gb_required = BASE_MEMORY_GB + n_cells * (
-        MEMORY_GB_PER_CELL + n_electrodes * MEMORY_GB_PER_CELL_AND_ELECTRODE
+    memory_gb_for_cells = n_processes * MEMORY_GB_PER_PROCESS + n_cells * MEMORY_GB_PER_CELL
+    memory_gb_required = (
+        memory_gb_for_cells + n_cells * n_electrodes * MEMORY_GB_PER_CELL_AND_ELECTRODE
     )
     try:
-        cores, memory_gb = get_required_cpu_memory_combo(memory_gb_required)
+        cores, memory_gb = get_required_cpu_memory_combo(memory_gb_required, min_cpus=n_processes)
     except ValueError as e:
         # Fewer electrodes only helps if the cells alone would fit.
         hint = (
             "Use fewer electrodes or a smaller circuit."
-            if BASE_MEMORY_GB + n_cells * MEMORY_GB_PER_CELL < MAX_MEMORY_GB
+            if memory_gb_for_cells < MAX_MEMORY_GB
             else "Use a smaller circuit."
         )
         msg = (
@@ -121,12 +125,14 @@ def estimate_task_resources(
             error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
-    # Small circuits keep the defaults, which also cover compiling the mechanisms.
-    if memory_gb < defaults.memory:  # ty:ignore[unresolved-attribute]
-        cores, memory_gb = defaults.cores, defaults.memory  # ty:ignore[unresolved-attribute]
+    # Small circuits keep the default memory, which also covers compiling the mechanisms.
+    memory_gb = max(memory_gb, defaults.memory)  # ty:ignore[unresolved-attribute]
 
     default_hours = int(defaults.timelimit.split(":")[0])  # ty:ignore[unresolved-attribute]
-    hours = max(default_hours, math.ceil((OVERHEAD_SECONDS + n_cells * SECONDS_PER_CELL) / 3600))
+    hours = max(
+        default_hours,
+        math.ceil((OVERHEAD_SECONDS + n_cells * SECONDS_PER_CELL / n_processes) / 3600),
+    )
 
     return defaults.model_copy(
         update={

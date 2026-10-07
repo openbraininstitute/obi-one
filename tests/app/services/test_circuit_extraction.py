@@ -42,6 +42,19 @@ def test_get_required_cpu_memory_combo(mem_required, expected):
     assert test_module.get_required_cpu_memory_combo(mem_required) == expected
 
 
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        (1, 2, (2, 4)),
+        (5, 4, (4, 8)),
+        (10, 4, (4, 16)),
+        (59, 16, (16, 64)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_min_cpus(mem_required, min_cpus, expected):
+    assert test_module.get_required_cpu_memory_combo(mem_required, min_cpus=min_cpus) == expected
+
+
 def test_get_required_cpu_memory_combo_too_large():
     with pytest.raises(ValueError, match="No CPU/memory combination found"):
         test_module.get_required_cpu_memory_combo(200)

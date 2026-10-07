@@ -30,10 +30,12 @@ DEFAULT_DISK_SPACE_LIMIT_GB = 20
 EXTRA_DISK_SPACE_LIMIT_GB = 200
 
 
-def get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
-    """Returns the required CPU/memory combination."""
+def get_required_cpu_memory_combo(mem_gb_required: float, min_cpus: int = 1) -> tuple[int, int]:
+    """Returns the smallest CPU/memory combination with at least min_cpus CPUs."""
     max_mem = 0
     for ncpu, mem_values in CPU_MEMORY_COMBINATIONS.items():
+        if ncpu < min_cpus:
+            continue
         for mem in sorted(mem_values):
             max_mem = max(max_mem, mem)
             if mem > mem_gb_required:

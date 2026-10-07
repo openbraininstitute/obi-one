@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import tempfile
 import typing
 from enum import StrEnum
@@ -28,6 +29,7 @@ from obi_one.scientific.library.extracellular_locations import (
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.create_recording_array.process import (
+    get_number_of_mpi_processes,
     run_bluerecording_write_weights,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
@@ -272,6 +274,11 @@ class CreateExtracellularRecordingArrayTask(Task):
             electrode_json_path,
             weights_output_path,
             nrnmech_lib_path=nrnmech_lib_path.absolute(),
+            # A launch-system job has a CPU for each process; a local run may have fewer CPUs.
+            number_of_mpi_processes=min(
+                get_number_of_mpi_processes(self._circuit_entity.number_neurons),  # ty:ignore[unresolved-attribute]
+                os.cpu_count() or 1,
+            ),
         )
         L.info("Weights saved to: %s", weights_output_path)
 
