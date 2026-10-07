@@ -8,7 +8,7 @@ from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
 
-_MODULE = "obi_one.scientific.from_id.circuit_from_id"
+_MODULE = "obi_one_lazy.scientific.from_id.circuit_from_id"
 
 
 def _sonata_asset():

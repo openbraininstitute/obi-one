@@ -31,6 +31,7 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -82,6 +83,8 @@ SynapticModelPlacerUnion = Annotated[
 
 class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     """Form for placing synaptic models on a single ME-model."""
+
+    task_type: ClassVar[TaskType] = TaskType.circuit_single_build
 
     name: ClassVar[str] = "ME-model Synapse Placement"
     description: ClassVar[str] = "Place synaptic models on a single ME-model."

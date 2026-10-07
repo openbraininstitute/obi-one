@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 
     import morphio
 
-    from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
-    from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    from obi_one_lazy.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+    from obi_one_lazy.scientific.unions_and_references.combined_neuron_sets import (
         BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     )
     from obi_one_lazy.scientific.library.circuit import Circuit

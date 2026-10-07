@@ -13,9 +13,6 @@ from obi_one_lazy.core.scan_config import ScanConfig
 from obi_one_lazy.core.single import SingleConfigMixin
 from obi_one_lazy.core.task import Task
 from obi_one_lazy.db_sdk.registration.simulation_result import register_simulation_results
-from obi_one_lazy.types import SimulationBackend
-from obi_one_lazy.utils.benchmark import log_timing
-from obi_one_lazy.utils.filesystem import create_dir
 from obi_one_lazy.scientific.library.circuit import Circuit
 from obi_one_lazy.scientific.library.simulation.neuron.process import (
     compile_mechanisms,
@@ -23,6 +20,9 @@ from obi_one_lazy.scientific.library.simulation.neuron.process import (
 )
 from obi_one_lazy.scientific.library.simulation.neuron.schemas import SimulationMetadata
 from obi_one_lazy.scientific.library.simulation.neuron.staging import get_simulation_parameters
+from obi_one_lazy.types import SimulationBackend
+from obi_one_lazy.utils.benchmark import log_timing
+from obi_one_lazy.utils.filesystem import create_dir
 
 if TYPE_CHECKING:
     from entitysdk.models import Simulation

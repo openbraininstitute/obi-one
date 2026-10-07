@@ -40,6 +40,7 @@ from obi_one.scientific.unions_and_references.stimuli import (
     StimulusReference,
 )
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     compatible with Brian2 point neuron models. The generated
     ``simulation_config.json`` will have ``target_simulator: "Brian2"``.
     """
+
+    task_type: ClassVar[TaskType] = TaskType.brian2_circuit_simulation
 
     name: ClassVar[str] = "Brian2 Simulation Campaign"
     description: ClassVar[str] = "Brian2-targeted SONATA simulation campaign"

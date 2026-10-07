@@ -1,6 +1,6 @@
 """Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[unused-import]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
 from obi_one_lazy.core.schema import (
     AcceptedInputTypes,
@@ -8,3 +8,10 @@ from obi_one_lazy.core.schema import (
     StrEnum,
     UIElement,
 )
+
+__all__ = [
+    "AcceptedInputTypes",
+    "SchemaKey",
+    "StrEnum",
+    "UIElement",
+]

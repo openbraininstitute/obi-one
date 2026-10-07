@@ -14,13 +14,13 @@ from importlib import import_module
 
 TYPE_MAP: dict[str, str] = {
     # Core types
-    "Block": "obi_one.core.block",
-    "BlockReference": "obi_one.core.block_reference",
-    "CoupledScanGenerationTask": "obi_one.core.scan_generation",
-    "GridScanGenerationTask": "obi_one.core.scan_generation",
+    "Block": "obi_one_lazy.core.block",
+    "BlockReference": "obi_one_lazy.core.block_reference",
+    "CoupledScanGenerationTask": "obi_one_lazy.core.scan_generation",
+    "GridScanGenerationTask": "obi_one_lazy.core.scan_generation",
     "Info": "obi_one_lazy.core.info",
     "NamedPath": "obi_one.core.path",
-    "NamedTuple": "obi_one.core.tuple",
+    "NamedTuple": "obi_one_lazy.core.tuple",
     "ScanConfig": "obi_one_lazy.core.scan_config",
     # Scan configs and single configs
     "BasicConnectivityPlotsScanConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
@@ -29,8 +29,8 @@ TYPE_MAP: dict[str, str] = {
     "MEModelSynapticModelPlacementSingleConfig": "obi_one.scientific.tasks.build_synaptome",
     "CircuitExtractionScanConfig": "obi_one.scientific.tasks.circuit_extraction",
     "CircuitExtractionSingleConfig": "obi_one.scientific.tasks.circuit_extraction",
-    "CircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
-    "CircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
+    "CircuitSimulationScanConfig": "obi_one_lazy.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
+    "CircuitSimulationSingleConfig": "obi_one_lazy.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
     "ConnectivityMatrixExtractionScanConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
     "ConnectivityMatrixExtractionSingleConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
     "CreateExtracellularRecordingArrayScanConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",

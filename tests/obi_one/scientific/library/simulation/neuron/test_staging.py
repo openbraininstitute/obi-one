@@ -34,7 +34,7 @@ def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set, **kwargs)
         lambda _path: simulation_config,
     )
     monkeypatch.setattr(
-        "obi_one.utils.circuit._merged_simulation_node_sets",
+        "obi_one_lazy.utils.circuit.merged_simulation_node_sets",
         lambda _sim_cfg: (node_sets, circuit_config),
     )
     return simulation_config

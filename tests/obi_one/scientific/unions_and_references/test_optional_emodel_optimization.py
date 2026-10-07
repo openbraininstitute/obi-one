@@ -52,6 +52,8 @@ class _BlockBluePyEModel(importlib.abc.MetaPathFinder):
 _MODULES_TO_EVICT = (
     "bluepyemodel",
     "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
+    "obi_one.scientific.mappings_and_registry.config_task_map",
+    "obi_one_lazy.scientific.mappings_and_registry.config_task_map",
     "app.endpoints.ion_channel_properties",
     "app.endpoints.scan_config",
     "app.endpoints.config_validation",
@@ -133,6 +135,8 @@ def test_config_task_map_omits_emodel_optimization_without_bluepyemodel():
 
     assert module.HAS_EMODEL_OPTIMIZATION is False
     assert module.TaskType.emodel_optimization not in module.TASK_MAP
+    with pytest.raises(KeyError, match="emodel_optimization"):
+        module.resolve_task_registration(module.TaskType.emodel_optimization)
 
 
 @pytest.mark.usefixtures("bluepyemodel_blocked")

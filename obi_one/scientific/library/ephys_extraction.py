@@ -1,5 +1,53 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
-from obi_one_lazy.scientific.library.ephys_extraction import *
+from obi_one_lazy.scientific.library.ephys_extraction import (
+    AmplitudeInput,
+    Any,
+    BaseModel,
+    CALCULATED_FEATURES,
+    EFEL_SETTINGS,
+    ElectricalCellRecording,
+    ElectrophysiologyMetricsOutput,
+    entitysdk,
+    extract_efeatures,
+    Field,
+    get_electrophysiology_metrics,
+    get_unit,
+    Literal,
+    logging,
+    mean,
+    parse_bpe_logs,
+    POSSIBLE_STIMULI_STR,
+    ProtocolNotFoundError,
+    STEP_LIKE_STIMULI_TYPES,
+    STIMULI_TYPES,
+    StringIO,
+    tempfile,
+)
+
+__all__ = [
+    "AmplitudeInput",
+    "Any",
+    "BaseModel",
+    "CALCULATED_FEATURES",
+    "EFEL_SETTINGS",
+    "ElectricalCellRecording",
+    "ElectrophysiologyMetricsOutput",
+    "entitysdk",
+    "extract_efeatures",
+    "Field",
+    "get_electrophysiology_metrics",
+    "get_unit",
+    "Literal",
+    "logging",
+    "mean",
+    "parse_bpe_logs",
+    "POSSIBLE_STIMULI_STR",
+    "ProtocolNotFoundError",
+    "STEP_LIKE_STIMULI_TYPES",
+    "STIMULI_TYPES",
+    "StringIO",
+    "tempfile",
+]

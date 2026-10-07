@@ -1,24 +1,25 @@
 import logging
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import entitysdk
 from entitysdk import models
 
 from obi_one_lazy.db_sdk import db_sdk
-from obi_one_lazy.utils.filesystem import create_dir
 from obi_one_lazy.scientific.library.circuit import Circuit
 from obi_one_lazy.scientific.library.simulation.neuron.staging import stage_circuit
 from obi_one_lazy.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )
+from obi_one_lazy.types import TaskType
+from obi_one_lazy.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
 
 
 class CircuitSimulationExecutionSingleConfig(SimulationExecutionSingleConfig):
-    pass
+    task_type: ClassVar[TaskType] = TaskType.circuit_simulation_neurodamus_machine
 
 
 class CircuitSimulationExecutionTask(SimulationExecutionTask):

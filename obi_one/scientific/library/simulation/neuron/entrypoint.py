@@ -1,8 +1,37 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star, import-private-name, unused-import, unsorted-imports]
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one_lazy.scientific.library.simulation.neuron.entrypoint import *
+from obi_one_lazy.scientific.library.simulation.neuron.entrypoint import (
+    Any,
+    argparse,
+    CircuitSimulation,
+    collect_local_payload,
+    collect_local_spikes,
+    contextmanager,
+    dataclass,
+    gather_payload_to_rank0,
+    gather_recording_sites,
+    Generator,
+    get_instantiate_gids_params,
+    h,
+    libsonata,
+    load_json,
+    logger,
+    logging,
+    main,
+    MPIProcess,
+    neuron_mpi_process,
+    Path,
+    payload_to_cells,
+    prepare_recordings_for_reports,
+    ReportManager,
+    resolve_simulation_node_set_ids,
+    run,
+    run_bluecellulab,
+    run_neurodamus,
+    SimulationBackend,
+)
 
 from obi_one_lazy.scientific.library.simulation.neuron.entrypoint import (
     _distribute_cells,
@@ -10,3 +39,38 @@ from obi_one_lazy.scientific.library.simulation.neuron.entrypoint import (
     _save_reports_and_outputs,
     _setup_mpi_logging,
 )
+
+__all__ = [
+    "Any",
+    "argparse",
+    "CircuitSimulation",
+    "collect_local_payload",
+    "collect_local_spikes",
+    "contextmanager",
+    "dataclass",
+    "gather_payload_to_rank0",
+    "gather_recording_sites",
+    "Generator",
+    "get_instantiate_gids_params",
+    "h",
+    "libsonata",
+    "load_json",
+    "logger",
+    "logging",
+    "main",
+    "MPIProcess",
+    "neuron_mpi_process",
+    "Path",
+    "payload_to_cells",
+    "prepare_recordings_for_reports",
+    "ReportManager",
+    "resolve_simulation_node_set_ids",
+    "run",
+    "run_bluecellulab",
+    "run_neurodamus",
+    "SimulationBackend",
+    "_distribute_cells",
+    "_gather_results",
+    "_save_reports_and_outputs",
+    "_setup_mpi_logging",
+]

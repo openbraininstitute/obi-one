@@ -1,150 +1,104 @@
-from typing import Annotated, Any, ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Discriminator
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
-from obi_one.scientific.blocks.stimuli.electric_field import (
-    SpatiallyUniformElectricFieldStimulus,
-    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
-)
-from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
-    OrnsteinUhlenbeckConductanceSomaticStimulus,
-    OrnsteinUhlenbeckCurrentSomaticStimulus,
-    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
-    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
-)
-from obi_one.scientific.blocks.stimuli.spike import (
-    FullySynchronousSpikeStimulus,
-    PoissonSpikeStimulus,
-    SinusoidalPoissonSpikeStimulus,
-)
-from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
-    InterSpikeIntervalDistributionSpikeStimulus,
-)
-from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
-    SpikeTimeDistributionSpikeStimulus,
-)
-from obi_one.scientific.blocks.stimuli.stimulus import (
+from obi_one_lazy.scientific.unions_and_references.stimuli import (
+    Annotated,
+    Any,
+    BlockReference,
+    Brian2CircuitStimulusUnion,
+    Brian2DirectPoissonStimulus,
+    CircuitStimulusUnion,
+    ClassVar,
     ConstantCurrentClampSomaticStimulus,
+    Discriminator,
+    FullySynchronousSpikeStimulus,
     HyperpolarizingCurrentClampSomaticStimulus,
+    InterSpikeIntervalDistributionSpikeStimulus,
+    IonChannelModelStimulusUnion,
+    LearningEngineCircuitStimulusUnion,
     LinearCurrentClampSomaticStimulus,
+    MEModelStimulusUnion,
     MultiLevelSEClampSomaticStimulus,
     MultiPulseCurrentClampSomaticStimulus,
     NormallyDistributedCurrentClampSomaticStimulus,
+    OrnsteinUhlenbeckConductanceSomaticStimulus,
+    OrnsteinUhlenbeckCurrentSomaticStimulus,
+    PoissonSpikeStimulus,
     RelativeConstantCurrentClampSomaticStimulus,
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
+    RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
+    RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
     SEClampSomaticStimulus,
     SimulationDtSinusoidalCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
+    SinusoidalPoissonSpikeStimulus,
+    SpatiallyUniformElectricFieldStimulus,
+    SpikeTimeDistributionSpikeStimulus,
+    StimulusReference,
+    StimulusUnion,
     SubthresholdCurrentClampSomaticStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
 )
 
-_ABSOLUTE_INJECTION_STIMULI = (
-    ConstantCurrentClampSomaticStimulus
-    | HyperpolarizingCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | NormallyDistributedCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | OrnsteinUhlenbeckCurrentSomaticStimulus
-    | OrnsteinUhlenbeckConductanceSomaticStimulus
-)
-
-_RELATIVE_INJECTION_STIMULI = (
-    RelativeNormallyDistributedCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | RelativeLinearCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-    | RelativeOrnsteinUhlenbeckCurrentSomaticStimulus
-    | RelativeOrnsteinUhlenbeckConductanceSomaticStimulus
-)
-
-_INJECTION_STIMULI = _RELATIVE_INJECTION_STIMULI | _ABSOLUTE_INJECTION_STIMULI
-
-_SPIKE_STIMULI = (
-    PoissonSpikeStimulus
-    | FullySynchronousSpikeStimulus
-    | SinusoidalPoissonSpikeStimulus
-    | InterSpikeIntervalDistributionSpikeStimulus
-    | SpikeTimeDistributionSpikeStimulus
-)
-
-_FIELD_STIMULI = (
-    SpatiallyUniformElectricFieldStimulus | TemporallyCosineSpatiallyUniformElectricFieldStimulus
-)
-
-_SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
-
-# The Brian2 runner turns SONATA `linear`, `pulse` and `sinusoidal` inputs into current
-# injections, `poisson` into a direct membrane kick, and `synapse_replay` into a
-# SpikeGeneratorGroup wired through the circuit's own connectivity. Relative-to-threshold, noise,
-# electric field and voltage clamp modules have no counterpart there.
-_BRIAN2_STIMULI = (
-    ConstantCurrentClampSomaticStimulus
-    | LinearCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | SimulationDtSinusoidalCurrentClampSomaticStimulus
-    | Brian2DirectPoissonStimulus
-    | _SPIKE_STIMULI
-)
-
-_LE_ABSOLUTE_INJECTION_STIMULI = (
-    ConstantCurrentClampSomaticStimulus
-    | RelativeConstantCurrentClampSomaticStimulus
-    | MultiPulseCurrentClampSomaticStimulus
-    | SinusoidalCurrentClampSomaticStimulus
-    | SubthresholdCurrentClampSomaticStimulus
-)
-
-StimulusUnion = Annotated[
-    _INJECTION_STIMULI | _SPIKE_STIMULI,
-    Discriminator("type"),
-]
-
-CircuitStimulusUnion = Annotated[
-    _INJECTION_STIMULI | _SPIKE_STIMULI | _FIELD_STIMULI,
-    Discriminator("type"),
-]
-
-MEModelStimulusUnion = Annotated[
-    _INJECTION_STIMULI,
-    Discriminator("type"),
-]
-
-IonChannelModelStimulusUnion = Annotated[
-    _SE_CLAMP_STIMULI | _ABSOLUTE_INJECTION_STIMULI,
-    Discriminator("type"),
-]
-
-Brian2CircuitStimulusUnion = Annotated[
+from obi_one_lazy.scientific.unions_and_references.stimuli import (
+    _ABSOLUTE_INJECTION_STIMULI,
+    _ALL_STIMULI,
     _BRIAN2_STIMULI,
-    Discriminator("type"),
-]
-
-
-LearningEngineCircuitStimulusUnion = Annotated[
+    _FIELD_STIMULI,
+    _INJECTION_STIMULI,
     _LE_ABSOLUTE_INJECTION_STIMULI,
-    Discriminator("type"),
-]
-
-
-_ALL_STIMULI = (
-    _INJECTION_STIMULI
-    | _SPIKE_STIMULI
-    | _FIELD_STIMULI
-    | _SE_CLAMP_STIMULI
-    | _LE_ABSOLUTE_INJECTION_STIMULI
-    | _BRIAN2_STIMULI
+    _RELATIVE_INJECTION_STIMULI,
+    _SE_CLAMP_STIMULI,
+    _SPIKE_STIMULI,
 )
 
-
-class StimulusReference(BlockReference):
-    """A reference to a StimulusUnion block."""
-
-    allowed_block_types: ClassVar[Any] = StimulusUnion
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_ALL_STIMULI)
-    }
+__all__ = [
+    "Annotated",
+    "Any",
+    "BlockReference",
+    "Brian2CircuitStimulusUnion",
+    "Brian2DirectPoissonStimulus",
+    "CircuitStimulusUnion",
+    "ClassVar",
+    "ConstantCurrentClampSomaticStimulus",
+    "Discriminator",
+    "FullySynchronousSpikeStimulus",
+    "HyperpolarizingCurrentClampSomaticStimulus",
+    "InterSpikeIntervalDistributionSpikeStimulus",
+    "IonChannelModelStimulusUnion",
+    "LearningEngineCircuitStimulusUnion",
+    "LinearCurrentClampSomaticStimulus",
+    "MEModelStimulusUnion",
+    "MultiLevelSEClampSomaticStimulus",
+    "MultiPulseCurrentClampSomaticStimulus",
+    "NormallyDistributedCurrentClampSomaticStimulus",
+    "OrnsteinUhlenbeckConductanceSomaticStimulus",
+    "OrnsteinUhlenbeckCurrentSomaticStimulus",
+    "PoissonSpikeStimulus",
+    "RelativeConstantCurrentClampSomaticStimulus",
+    "RelativeLinearCurrentClampSomaticStimulus",
+    "RelativeNormallyDistributedCurrentClampSomaticStimulus",
+    "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus",
+    "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus",
+    "SEClampSomaticStimulus",
+    "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+    "SinusoidalCurrentClampSomaticStimulus",
+    "SinusoidalPoissonSpikeStimulus",
+    "SpatiallyUniformElectricFieldStimulus",
+    "SpikeTimeDistributionSpikeStimulus",
+    "StimulusReference",
+    "StimulusUnion",
+    "SubthresholdCurrentClampSomaticStimulus",
+    "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
+    "_ABSOLUTE_INJECTION_STIMULI",
+    "_ALL_STIMULI",
+    "_BRIAN2_STIMULI",
+    "_FIELD_STIMULI",
+    "_INJECTION_STIMULI",
+    "_LE_ABSOLUTE_INJECTION_STIMULI",
+    "_RELATIVE_INJECTION_STIMULI",
+    "_SE_CLAMP_STIMULI",
+    "_SPIKE_STIMULI",
+]

@@ -5,7 +5,10 @@ from morph_spines import MorphologyWithSpines
 from neurom.core import Morphology
 from scipy.spatial import KDTree
 
-from obi_one.scientific.from_id.em_dataset_from_id import _C_P_LOCS  # ruff: ignore[import-private-name]
+from obi_one_lazy.scientific.from_id.em_dataset_from_id import SYNAPSE_POSITION_COLUMNS
+
+# Compat alias for star-re-exports / older patch paths.
+_C_P_LOCS = SYNAPSE_POSITION_COLUMNS
 
 # Columns of edge table dataframes
 _C_SEG_S = ["start_x", "start_y", "start_z"]
@@ -34,7 +37,10 @@ _STR_SEC_OFF = "section_pos"  # !
 _PF_AFF = "afferent_"
 _PF_EFF = "efferent_"
 _WITH_DIR = (
-    _C_CENTER + _C_SURFACE + _C_P_LOCS + [_STR_SEC_ID, _STR_SEG_ID, _STR_SEG_OFF, _STR_SEC_OFF]
+    _C_CENTER
+    + _C_SURFACE
+    + SYNAPSE_POSITION_COLUMNS
+    + [_STR_SEC_ID, _STR_SEG_ID, _STR_SEG_OFF, _STR_SEC_OFF]
 )
 
 # Names of groups in the morphology-w-spines hdf5 file
@@ -114,7 +120,7 @@ def synapse_info_df(
     syns = client.materialize.synapse_query(post_ids=pt_root_id)  # ty:ignore[unresolved-attribute]
 
     syn_locs = syns[col_location].apply(
-        lambda _x: pandas.Series(_x * resolutions / 1000.0, index=_C_P_LOCS)
+        lambda _x: pandas.Series(_x * resolutions / 1000.0, index=SYNAPSE_POSITION_COLUMNS)
     )
     syns = pandas.concat([syns, syn_locs], axis=1).reset_index(drop=True)
     syns.index.name = "synapse_id"
@@ -290,15 +296,15 @@ def edges_dataframe_for_soma_syns(
     mapped_syn_idx = syns.index[is_on_soma]
     c = pandas.concat(
         [
-            syns.loc[mapped_syn_idx, [_C_CAVE_ID_IN, *_C_P_LOCS]].rename(
+            syns.loc[mapped_syn_idx, [_C_CAVE_ID_IN, *SYNAPSE_POSITION_COLUMNS]].rename(
                 columns={
-                    _C_P_LOCS[0]: _C_SURFACE[0],
-                    _C_P_LOCS[1]: _C_SURFACE[1],
-                    _C_P_LOCS[2]: _C_SURFACE[2],
+                    SYNAPSE_POSITION_COLUMNS[0]: _C_SURFACE[0],
+                    SYNAPSE_POSITION_COLUMNS[1]: _C_SURFACE[1],
+                    SYNAPSE_POSITION_COLUMNS[2]: _C_SURFACE[2],
                     _C_CAVE_ID_IN: _C_CAVE_ID_OUT,
                 }
             ),
-            syns.loc[mapped_syn_idx, _C_P_LOCS],
+            syns.loc[mapped_syn_idx, SYNAPSE_POSITION_COLUMNS],
         ],
         axis=1,
     )
@@ -321,12 +327,12 @@ def edges_dataframe_for_shaft_syns(
 ) -> pandas.DataFrame:
     b = pandas.concat(
         [
-            syns.loc[is_on_shaft, _C_P_LOCS],
-            syns.loc[is_on_shaft, [_C_CAVE_ID_IN, *_C_P_LOCS]].rename(
+            syns.loc[is_on_shaft, SYNAPSE_POSITION_COLUMNS],
+            syns.loc[is_on_shaft, [_C_CAVE_ID_IN, *SYNAPSE_POSITION_COLUMNS]].rename(
                 columns={
-                    _C_P_LOCS[0]: _C_SURFACE[0],
-                    _C_P_LOCS[1]: _C_SURFACE[1],
-                    _C_P_LOCS[2]: _C_SURFACE[2],
+                    SYNAPSE_POSITION_COLUMNS[0]: _C_SURFACE[0],
+                    SYNAPSE_POSITION_COLUMNS[1]: _C_SURFACE[1],
+                    SYNAPSE_POSITION_COLUMNS[2]: _C_SURFACE[2],
                     _C_CAVE_ID_IN: _C_CAVE_ID_OUT,
                 }
             ),
@@ -362,7 +368,7 @@ def edges_dataframe_for_spine_syns(
     a["distance"] = mpd.loc[is_on_spine, "distance"].to_numpy()
     a["synapse_id"] = mpd.index[is_on_spine].to_numpy()
     a[_C_PSD_ID] = numpy.arange(len(a.index))  # For now simply all different
-    for col in _C_P_LOCS:
+    for col in SYNAPSE_POSITION_COLUMNS:
         a[_PF_AFF + col] = syns.loc[
             is_on_spine, col
         ].to_numpy()  # Could also be a pandas.concat after reset_index()
@@ -379,8 +385,8 @@ def map_afferents_to_spiny_morphology(
     segs_df = morph_to_segs_df(m)  # ty:ignore[invalid-argument-type]
     spine_and_soma_points = morph_to_spine_and_soma_df(m)
 
-    mpd_nrt = map_points_to_segs_df(segs_df, syns[_C_P_LOCS])
-    mpd_spn = find_nearest_mesh_points(spine_and_soma_points, syns[_C_P_LOCS])
+    mpd_nrt = map_points_to_segs_df(segs_df, syns[SYNAPSE_POSITION_COLUMNS])
+    mpd_spn = find_nearest_mesh_points(spine_and_soma_points, syns[SYNAPSE_POSITION_COLUMNS])
 
     is_on_spine = (mpd_spn["distance"] <= mpd_nrt["distance"]) & (mpd_spn[_C_SP_INDEX] != -1)
     is_on_soma = (mpd_spn["distance"] <= mpd_nrt["distance"]) & (mpd_spn[_C_SP_INDEX] == -1)
@@ -396,7 +402,9 @@ def map_afferents_to_spiny_morphology(
     df_concat = pandas.concat([df_soma, df_shaft, df_spine], axis=0).sort_index()
 
     if add_quality_info:
-        competing_dist = add_competing_mesh_distances(spine_and_soma_points, syns[_C_P_LOCS])
+        competing_dist = add_competing_mesh_distances(
+            spine_and_soma_points, syns[SYNAPSE_POSITION_COLUMNS]
+        )
         competing_dist[is_on_shaft] = mpd_spn.loc[is_on_shaft, "distance"]
         competing_dist[is_on_soma] = numpy.minimum(
             competing_dist[is_on_soma].to_numpy(), mpd_nrt.loc[is_on_soma, "distance"].to_numpy()

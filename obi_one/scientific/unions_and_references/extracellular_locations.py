@@ -1,30 +1,36 @@
-from typing import Annotated, Any, ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Discriminator
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
+from obi_one_lazy.scientific.unions_and_references.extracellular_locations import (
+    Annotated,
+    Any,
+    BlockReference,
+    ClassVar,
+    Discriminator,
+    ExtracellularLocationsReference,
+    ExtracellularLocationsUnion,
     GridExtracellularLocations,
     LinearExtracellularLocations,
     Neuropixels1ExtracellularLocations,
     UTAHArrayExtracellularLocations,
 )
 
-_EXTRACELLULAR_LOCATION_BLOCKS = (
-    LinearExtracellularLocations
-    | Neuropixels1ExtracellularLocations
-    | GridExtracellularLocations
-    | UTAHArrayExtracellularLocations
+from obi_one_lazy.scientific.unions_and_references.extracellular_locations import (
+    _EXTRACELLULAR_LOCATION_BLOCKS,
 )
 
-ExtracellularLocationsUnion = Annotated[_EXTRACELLULAR_LOCATION_BLOCKS, Discriminator("type")]
-
-
-class ExtracellularLocationsReference(BlockReference):
-    """A reference to an ExtracellularLocationsUnion block."""
-
-    allowed_block_types: ClassVar[Any] = ExtracellularLocationsUnion
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_EXTRACELLULAR_LOCATION_BLOCKS)
-    }
+__all__ = [
+    "Annotated",
+    "Any",
+    "BlockReference",
+    "ClassVar",
+    "Discriminator",
+    "ExtracellularLocationsReference",
+    "ExtracellularLocationsUnion",
+    "GridExtracellularLocations",
+    "LinearExtracellularLocations",
+    "Neuropixels1ExtracellularLocations",
+    "UTAHArrayExtracellularLocations",
+    "_EXTRACELLULAR_LOCATION_BLOCKS",
+]

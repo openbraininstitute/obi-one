@@ -11,7 +11,7 @@ from obi_one.scientific.from_id.em_dataset_from_id import (
     _configure_caveclient_retries,
 )
 
-_MODULE = "obi_one.scientific.from_id.em_dataset_from_id"
+_MODULE = "obi_one_lazy.scientific.from_id.em_dataset_from_id"
 
 
 def _make_dataset():

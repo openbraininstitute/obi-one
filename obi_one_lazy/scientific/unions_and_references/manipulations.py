@@ -1,0 +1,45 @@
+from typing import Annotated, Any, ClassVar
+
+from pydantic import Discriminator
+
+from obi_one_lazy.core.block_reference import BlockReference
+from obi_one_lazy.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+)
+from obi_one_lazy.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
+
+_SYNAPTIC_MANIPULATIONS = (
+    DisconnectSynapticManipulation
+    | ConnectSynapticManipulation
+    | SynapticMgManipulation
+    | ScaleAcetylcholineUSESynapticManipulation
+)
+
+# Brian2 applies a connection override's `weight` and `synapse_delay_override` and rejects the
+# config outright on `synapse_configure` or `modoverride`, which is what the mechanism-specific
+# manipulations emit.
+_BRIAN2_SYNAPTIC_MANIPULATIONS = DisconnectSynapticManipulation | ConnectSynapticManipulation
+
+SynapticManipulationsUnion = Annotated[
+    _SYNAPTIC_MANIPULATIONS,
+    Discriminator("type"),
+]
+
+Brian2SynapticManipulationsUnion = Annotated[
+    _BRIAN2_SYNAPTIC_MANIPULATIONS,
+    Discriminator("type"),
+]
+
+
+class SynapticManipulationsReference(BlockReference):
+    """A reference to a SynapticManipulations block."""
+
+    allowed_block_types: ClassVar[Any] = SynapticManipulationsUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_SYNAPTIC_MANIPULATIONS)
+    }

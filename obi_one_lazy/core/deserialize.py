@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from obi_one_lazy.core.base import OBIBaseModel
 from obi_one_lazy.core.deserializable_types import load_class
 from obi_one_lazy.core.scan_config import ScanConfig
-from obi_one.utils.io import load_json
+from obi_one_lazy.utils.io import load_json
 
 
 def deserialize_obi_object_from_json_data(json_dict: dict) -> OBIBaseModel:

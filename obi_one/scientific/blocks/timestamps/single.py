@@ -1,12 +1,15 @@
-from typing import ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from obi_one.scientific.blocks.timestamps.base import Timestamps
+# ruff: file-ignore[unused-import, unsorted-imports]
 
+from obi_one_lazy.scientific.blocks.timestamps.single import (
+    ClassVar,
+    SingleTimestamp,
+    Timestamps,
+)
 
-class SingleTimestamp(Timestamps):
-    """A single timestamp at a specified time."""
-
-    title: ClassVar[str] = "Single Timestamp"
-
-    def _resolve_timestamps(self) -> list[float]:
-        return [self.start_time]  # ty:ignore[invalid-return-type]
+__all__ = [
+    "ClassVar",
+    "SingleTimestamp",
+    "Timestamps",
+]

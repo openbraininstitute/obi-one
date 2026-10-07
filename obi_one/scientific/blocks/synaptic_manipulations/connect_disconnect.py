@@ -1,23 +1,19 @@
-from typing import ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import PrivateAttr
+# ruff: file-ignore[unused-import, unsorted-imports]
 
-from obi_one.scientific.blocks.synaptic_manipulations.base import (
+from obi_one_lazy.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ClassVar,
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+    PrivateAttr,
     WeightChangeDelayedInterNeuronSetSynapticManipulation,
 )
 
-
-class DisconnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticManipulation):
-    """Disconnect all synapses between specified source and target neuron sets."""
-
-    title: ClassVar[str] = "Disconnect Synapses"
-
-    _weight: float = PrivateAttr(default=0.0)
-
-
-class ConnectSynapticManipulation(WeightChangeDelayedInterNeuronSetSynapticManipulation):
-    """Connect all synapses between specified source and target neuron sets."""
-
-    title: ClassVar[str] = "Connect Synapses"
-
-    _weight: float = PrivateAttr(default=1.0)
+__all__ = [
+    "ClassVar",
+    "ConnectSynapticManipulation",
+    "DisconnectSynapticManipulation",
+    "PrivateAttr",
+    "WeightChangeDelayedInterNeuronSetSynapticManipulation",
+]

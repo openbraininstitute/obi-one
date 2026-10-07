@@ -1,15 +1,16 @@
 """Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[unused-import]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
 from obi_one_lazy.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
-    DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
-    DEFAULT_TIMESTAMPS_NAME,
     Annotated,
     BlockGroup,
     ClassVar,
+    DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
+    DEFAULT_TIMESTAMPS_NAME,
     Field,
     L,
+    logging,
     MappedPropertiesGroup,
     MEModelCircuit,
     MEModelDiscriminator,
@@ -24,7 +25,35 @@ from obi_one_lazy.scientific.tasks.generate_simulations.config.neuron.neuron_me_
     SchemaKey,
     SimulationSingleConfigMixin,
     StimulusReference,
+    TaskType,
     TimestampsReference,
     UIElement,
-    logging,
 )
+
+__all__ = [
+    "Annotated",
+    "BlockGroup",
+    "ClassVar",
+    "DEFAULT_MORPHOLOGY_LOCATIONS_NAME",
+    "DEFAULT_TIMESTAMPS_NAME",
+    "Field",
+    "L",
+    "logging",
+    "MappedPropertiesGroup",
+    "MEModelCircuit",
+    "MEModelDiscriminator",
+    "MEModelFromID",
+    "MEModelSimulationScanConfig",
+    "MEModelSimulationSingleConfig",
+    "MEModelStimulusUnion",
+    "MorphologyLocationsReference",
+    "NeuronalManipulationReference",
+    "NeuronalManipulationUnion",
+    "NeuronSimulationScanConfig",
+    "SchemaKey",
+    "SimulationSingleConfigMixin",
+    "StimulusReference",
+    "TaskType",
+    "TimestampsReference",
+    "UIElement",
+]

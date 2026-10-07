@@ -22,6 +22,7 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.p
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
     Settings,
 )
+from obi_one.types import TaskType
 
 # Base of the eFEL feature documentation; the frontend appends
 # ``#<efel_doc_anchor>`` to deep-link a specific feature.
@@ -50,6 +51,8 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
     ``./extracted_features.json``, ready to be picked up by the optimisation
     stage. No model assets are needed at this point.
     """
+
+    task_type: ClassVar[TaskType] = TaskType.efeature_extraction
 
     name: ClassVar[str] = "EModel EFeature Extraction"
     description: ClassVar[str] = (

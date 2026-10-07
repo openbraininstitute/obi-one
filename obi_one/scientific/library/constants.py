@@ -1,5 +1,39 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
-from obi_one_lazy.scientific.library.constants import *
+from obi_one_lazy.scientific.library.constants import (
+    DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
+    DEFAULT_SIMULATION_LENGTH_MILLISECONDS,
+    DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
+    MAX_EFIELD_FREQUENCY_HZ,
+    MAX_POISSON_SPIKE_LIMIT,
+    MAX_SIMULATION_LENGTH_MILLISECONDS,
+    MAX_SMALL_MICROCIRCUIT_SIZE,
+    MIN_NON_NEGATIVE_FLOAT_VALUE,
+    MIN_SIMULATION_LENGTH_MILLISECONDS,
+    MIN_TIMESTEP_MILLISECONDS,
+    NEURON_PAIR_SIZE,
+    nyquist_frequency_hz,
+    SIMULATION_TIMESTEP_MILLISECONDS,
+    SONATA,
+    StrEnum,
+)
+
+__all__ = [
+    "DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS",
+    "DEFAULT_SIMULATION_LENGTH_MILLISECONDS",
+    "DEFAULT_STIMULUS_LENGTH_MILLISECONDS",
+    "MAX_EFIELD_FREQUENCY_HZ",
+    "MAX_POISSON_SPIKE_LIMIT",
+    "MAX_SIMULATION_LENGTH_MILLISECONDS",
+    "MAX_SMALL_MICROCIRCUIT_SIZE",
+    "MIN_NON_NEGATIVE_FLOAT_VALUE",
+    "MIN_SIMULATION_LENGTH_MILLISECONDS",
+    "MIN_TIMESTEP_MILLISECONDS",
+    "NEURON_PAIR_SIZE",
+    "nyquist_frequency_hz",
+    "SIMULATION_TIMESTEP_MILLISECONDS",
+    "SONATA",
+    "StrEnum",
+]

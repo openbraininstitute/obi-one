@@ -12,6 +12,7 @@ from obi_one.core.schema import AcceptedInputTypes, SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.scientific.from_id.named_tuple_from_id import EMSynapseMappingInputNamedTuple
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -70,6 +71,8 @@ class AdvancedEMSynapseMappingOptions(Block):
 
 class EMSynapseMappingScanConfig(InfoScanConfig):
     """Map location of afferent synapses from EM onto one or more spiny morphologies."""
+
+    task_type: ClassVar[TaskType] = TaskType.em_synapse_mapping
 
     name: ClassVar[str] = "Map synapse locations"
     description: ClassVar[str] = "EM synapse mapping campaign"

@@ -1,8 +1,28 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star, import-private-name, unused-import, unsorted-imports, suppressible-exception]
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one_lazy.scientific.library.morphology_locations import *
+from obi_one_lazy.scientific.library.morphology_locations import (
+    add_normalized_section_offset,
+    candidate_segments_all_morphology,
+    candidate_segments_for_center,
+    find_normalized_interval_below_zero,
+    generate_neurite_locations_on,
+    map_presynaptic_ids,
+    min_max_offset_for_center_segment,
+    min_max_offset_in_segment,
+    morphio,
+    MorphologyPathDistanceCalculator,
+    np,
+    pandas,
+    path_distance_all_segments_from,
+    pd,
+    rv_frozen,
+    select_places_from_candidate_list,
+    select_segments_as_cluster_centers,
+    stats,
+    warnings,
+)
 
 from obi_one_lazy.scientific.library.morphology_locations import (
     _CEN_IDX,
@@ -18,9 +38,35 @@ from obi_one_lazy.scientific.library.morphology_locations import (
     _SOM_PAD,
 )
 
-try:
-    from obi_one_lazy.scientific.library.morphology_locations import (
-        MorphologyPathDistanceCalculator,
-    )
-except ImportError:
-    pass
+__all__ = [
+    "add_normalized_section_offset",
+    "candidate_segments_all_morphology",
+    "candidate_segments_for_center",
+    "find_normalized_interval_below_zero",
+    "generate_neurite_locations_on",
+    "map_presynaptic_ids",
+    "min_max_offset_for_center_segment",
+    "min_max_offset_in_segment",
+    "morphio",
+    "MorphologyPathDistanceCalculator",
+    "np",
+    "pandas",
+    "path_distance_all_segments_from",
+    "pd",
+    "rv_frozen",
+    "select_places_from_candidate_list",
+    "select_segments_as_cluster_centers",
+    "stats",
+    "warnings",
+    "_CEN_IDX",
+    "_PRE_IDX",
+    "_SEC_ID",
+    "_SEC_LOC",
+    "_SEC_TYP",
+    "_SEG_ID",
+    "_SEG_LEN",
+    "_SEG_MAX",
+    "_SEG_MIN",
+    "_SEG_OFF",
+    "_SOM_PAD",
+]

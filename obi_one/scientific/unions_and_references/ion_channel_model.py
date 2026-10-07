@@ -1,30 +1,34 @@
-from typing import Annotated, Any, ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Discriminator
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.ion_channel_model.ion_channel_model import (
+from obi_one_lazy.scientific.unions_and_references.ion_channel_model import (
+    Annotated,
+    Any,
+    BlockReference,
+    ClassVar,
+    Discriminator,
+    IonChannelModelReference,
+    IonChannelModelUnion,
     IonChannelModelWithConductance,
     IonChannelModelWithMaxPermeability,
     IonChannelModelWithoutConductance,
 )
 
-_ION_CHANNEL_MODELS = (
-    IonChannelModelWithConductance
-    | IonChannelModelWithMaxPermeability
-    | IonChannelModelWithoutConductance
-)
-IonChannelModelUnion = Annotated[
+from obi_one_lazy.scientific.unions_and_references.ion_channel_model import (
     _ION_CHANNEL_MODELS,
-    Discriminator("type"),
+)
+
+__all__ = [
+    "Annotated",
+    "Any",
+    "BlockReference",
+    "ClassVar",
+    "Discriminator",
+    "IonChannelModelReference",
+    "IonChannelModelUnion",
+    "IonChannelModelWithConductance",
+    "IonChannelModelWithMaxPermeability",
+    "IonChannelModelWithoutConductance",
+    "_ION_CHANNEL_MODELS",
 ]
-
-
-class IonChannelModelReference(BlockReference):
-    """A reference to an IonChannelModel block."""
-
-    allowed_block_types: ClassVar[Any] = IonChannelModelUnion
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_ION_CHANNEL_MODELS)
-    }

@@ -1,45 +1,42 @@
-from typing import Annotated, Any, ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Discriminator
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
+from obi_one_lazy.scientific.unions_and_references.neuronal_manipulations import (
+    Annotated,
+    Any,
+    BlockReference,
     ByNeuronMechanismVariableNeuronalManipulation,
     BySectionListMechanismVariableNeuronalManipulation,
     CircuitByNeuronMechanismVariableNeuronalManipulation,
     CircuitBySectionListMechanismVariableNeuronalManipulation,
+    CircuitNeuronalManipulationReference,
+    CircuitNeuronalManipulationUnion,
+    ClassVar,
+    Discriminator,
+    NeuronalManipulationReference,
+    NeuronalManipulationUnion,
 )
 
-_NEURONAL_MANIPULATIONS = (
-    BySectionListMechanismVariableNeuronalManipulation
-    | ByNeuronMechanismVariableNeuronalManipulation
-)
-NeuronalManipulationUnion = Annotated[
-    _NEURONAL_MANIPULATIONS,
-    Discriminator("type"),
-]
-
-
-class NeuronalManipulationReference(BlockReference):
-    """A reference to a NeuronalManipulation block."""
-
-    allowed_block_types: ClassVar[Any] = NeuronalManipulationUnion
-
-
-_CIRCUIT_NEURONAL_MANIPULATIONS = (
-    CircuitBySectionListMechanismVariableNeuronalManipulation
-    | CircuitByNeuronMechanismVariableNeuronalManipulation
-)
-CircuitNeuronalManipulationUnion = Annotated[
+from obi_one_lazy.scientific.unions_and_references.neuronal_manipulations import (
     _CIRCUIT_NEURONAL_MANIPULATIONS,
-    Discriminator("type"),
+    _NEURONAL_MANIPULATIONS,
+)
+
+__all__ = [
+    "Annotated",
+    "Any",
+    "BlockReference",
+    "ByNeuronMechanismVariableNeuronalManipulation",
+    "BySectionListMechanismVariableNeuronalManipulation",
+    "CircuitByNeuronMechanismVariableNeuronalManipulation",
+    "CircuitBySectionListMechanismVariableNeuronalManipulation",
+    "CircuitNeuronalManipulationReference",
+    "CircuitNeuronalManipulationUnion",
+    "ClassVar",
+    "Discriminator",
+    "NeuronalManipulationReference",
+    "NeuronalManipulationUnion",
+    "_CIRCUIT_NEURONAL_MANIPULATIONS",
+    "_NEURONAL_MANIPULATIONS",
 ]
-
-
-class CircuitNeuronalManipulationReference(BlockReference):
-    """A reference to a circuit NeuronalManipulation block."""
-
-    allowed_block_types: ClassVar[Any] = CircuitNeuronalManipulationUnion
-    json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_CIRCUIT_NEURONAL_MANIPULATIONS)
-    }

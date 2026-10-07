@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from entitysdk import Client
 
-from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
+from obi_one_lazy.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 
 DEFAULT_NODE_SPECS = {
     "Portion 65 of the IARPA MICrONS dataset": {

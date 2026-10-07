@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 from typing import cast
 
-from obi_one_lazy.types import SimulationBackend
-from obi_one.utils.process import run_and_log
 from obi_one_lazy.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     MechanismBuild,
@@ -16,6 +14,8 @@ from obi_one_lazy.scientific.library.simulation.neuron.schemas import (
     SimulationParameters,
     SimulationResults,
 )
+from obi_one_lazy.types import SimulationBackend
+from obi_one_lazy.utils.process import run_and_log
 
 L = logging.getLogger(__name__)
 

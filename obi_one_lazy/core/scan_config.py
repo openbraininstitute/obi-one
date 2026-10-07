@@ -24,7 +24,7 @@ from obi_one_lazy.core.fill_none_references import (
     fill_none_references_in_config,
     resolve_block_default,
 )
-from obi_one_lazy.core.registry import block_ref_registry, task_registry
+from obi_one_lazy.core.registry import TaskRegistration, block_ref_registry, task_registry
 from obi_one_lazy.core.schema import SchemaKey
 from obi_one_lazy.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one_lazy.db_sdk import db_sdk
@@ -331,14 +331,28 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         msg = "You must define a campaign_description property for your ScanConfig subclass."
         raise NotImplementedError(msg)
 
+    def _task_registration(self) -> TaskRegistration | None:
+        """Resolve TaskRegistration via ``task_type`` ClassVar when present."""
+        task_type = getattr(type(self), "task_type", None)
+        if task_type is not None:
+            from obi_one_lazy.scientific.mappings_and_registry.config_task_map import (  # ruff: ignore[import-outside-top-level]
+                resolve_task_registration,
+            )
+
+            try:
+                return resolve_task_registration(task_type)
+            except KeyError:
+                return None
+        return task_registry.get_registration_for_scan_config(type(self))
+
     @property
     def campaign_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_scan_config(type(self))
+        registration = self._task_registration()
         return registration.campaign_task_config_type if registration is not None else None
 
     @property
     def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
-        registration = task_registry.get_registration_for_scan_config(type(self))
+        registration = self._task_registration()
         return (
             registration.campaign_generation_task_activity_type
             if registration is not None
@@ -556,7 +570,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     @property
     def single_config_class(self) -> type[OBIBaseModel]:
         """The SingleConfig class this ScanConfig expands into, from TASK_MAP."""
-        registration = task_registry.get_registration_for_scan_config(type(self))
+        registration = self._task_registration()
         if registration is None:
             msg = (
                 f"'{type(self).__name__}' has no entry in TASK_MAP, so the SingleConfig "

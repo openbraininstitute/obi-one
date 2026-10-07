@@ -1,6 +1,6 @@
 """Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[unused-import]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
 from obi_one_lazy.scientific.blocks.distributions.poisson import (
     ClassVar,
@@ -12,3 +12,14 @@ from obi_one_lazy.scientific.blocks.distributions.poisson import (
     SchemaKey,
     UIElement,
 )
+
+__all__ = [
+    "ClassVar",
+    "Distribution",
+    "Field",
+    "NonNegativeFloat",
+    "np",
+    "PoissonDistribution",
+    "SchemaKey",
+    "UIElement",
+]

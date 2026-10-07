@@ -1,8 +1,28 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star, import-private-name, unused-import, unsorted-imports]
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one_lazy.scientific.library.neuronal_manipulation_properties import *
+from obi_one_lazy.scientific.library.neuronal_manipulation_properties import (
+    annotations,
+    Circuit,
+    CircuitMappedProperties,
+    DerivationModel,
+    FetchFileStrategy,
+    get_circuit_manipulation_properties,
+    get_circuit_node_ids,
+    get_mechanism_variables_for_emodel,
+    IonChannelVariables,
+    L,
+    logging,
+    MechanismVariableDetail,
+    NodeStorage,
+    ObiCircuit,
+    Path,
+    SnapCircuit,
+    tempfile,
+    TYPE_CHECKING,
+    UUID,
+)
 
 from obi_one_lazy.scientific.library.neuronal_manipulation_properties import (
     _build_emodel_groups,
@@ -15,3 +35,34 @@ from obi_one_lazy.scientific.library.neuronal_manipulation_properties import (
     _stage_circuit_for_neuron_set_resolution,
     _stage_file,
 )
+
+__all__ = [
+    "annotations",
+    "Circuit",
+    "CircuitMappedProperties",
+    "DerivationModel",
+    "FetchFileStrategy",
+    "get_circuit_manipulation_properties",
+    "get_circuit_node_ids",
+    "get_mechanism_variables_for_emodel",
+    "IonChannelVariables",
+    "L",
+    "logging",
+    "MechanismVariableDetail",
+    "NodeStorage",
+    "ObiCircuit",
+    "Path",
+    "SnapCircuit",
+    "tempfile",
+    "TYPE_CHECKING",
+    "UUID",
+    "_build_emodel_groups",
+    "_build_mechanism_variables_by_ion_channel_response",
+    "_compute_common_mechanism_variables",
+    "_fetch_emodel_derivation_mapping",
+    "_get_circuit_asset",
+    "_match_templates_to_emodels",
+    "_stage_circuit_for_neuron_set",
+    "_stage_circuit_for_neuron_set_resolution",
+    "_stage_file",
+]

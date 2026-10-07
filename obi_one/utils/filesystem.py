@@ -1,6 +1,6 @@
 """Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[unused-import]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
 from obi_one_lazy.utils.filesystem import (
     chdir,
@@ -14,3 +14,16 @@ from obi_one_lazy.utils.filesystem import (
     shutil,
     StrOrPath,
 )
+
+__all__ = [
+    "chdir",
+    "contextmanager",
+    "copy_tree",
+    "create_dir",
+    "filter_extension",
+    "Generator",
+    "os",
+    "Path",
+    "shutil",
+    "StrOrPath",
+]

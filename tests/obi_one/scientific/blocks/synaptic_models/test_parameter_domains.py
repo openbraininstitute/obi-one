@@ -10,17 +10,17 @@ import logging
 import numpy as np
 import pytest
 
-from obi_one.scientific.blocks.synaptic_models.domains import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
+    ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
+    TsodyksMarkramSynapticModel,
+)
+from obi_one_lazy.scientific.blocks.synaptic_models.domains import (
     ParameterDomain,
     clip_parameter_samples,
     highest_allowed,
     is_valid_parameter_sample,
     lowest_allowed,
-)
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
-    ExcitatoryTsodyksMarkramSynapticModel,
-    InhibitoryTsodyksMarkramSynapticModel,
-    TsodyksMarkramSynapticModel,
 )
 
 
@@ -141,7 +141,7 @@ def test_an_unbounded_side_clips_nothing_on_that_side():
 def test_clipping_is_reported():
     # A distribution most of whose draws are clipped is a badly chosen one; the run continues
     # but must not do so silently.
-    logger = logging.getLogger("obi_one.scientific.blocks.synaptic_models.domains")
+    logger = logging.getLogger("obi_one_lazy.scientific.blocks.synaptic_models.domains")
     records = []
     handler = logging.Handler()
     handler.emit = records.append
@@ -159,7 +159,7 @@ def test_clipping_is_reported():
 
 
 def test_nothing_inside_the_domain_is_reported():
-    logger = logging.getLogger("obi_one.scientific.blocks.synaptic_models.domains")
+    logger = logging.getLogger("obi_one_lazy.scientific.blocks.synaptic_models.domains")
     records = []
     handler = logging.Handler()
     handler.emit = records.append

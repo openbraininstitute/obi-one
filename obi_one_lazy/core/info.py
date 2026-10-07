@@ -1,7 +1,7 @@
 from pydantic import Field
 
-from obi_one.core.block import Block
-from obi_one.core.schema import SchemaKey, UIElement
+from obi_one_lazy.core.block import Block
+from obi_one_lazy.core.schema import SchemaKey, UIElement
 
 
 class Info(Block):

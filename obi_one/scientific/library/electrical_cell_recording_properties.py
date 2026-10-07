@@ -1,8 +1,28 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star, import-private-name, unused-import, unsorted-imports]
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one_lazy.scientific.library.electrical_cell_recording_properties import *
+from obi_one_lazy.scientific.library.electrical_cell_recording_properties import (
+    Any,
+    bbp_current_conversion,
+    detect_protocol_ton_ms,
+    detect_ton_ms,
+    estimate_step_amplitude,
+    h5py,
+    L,
+    logging,
+    Mapping,
+    math,
+    median_filter,
+    np,
+    Path,
+    read_amplitudes_from_nwb,
+    read_amplitudes_via_inspection,
+    read_protocols_from_nwb,
+    read_timing_from_nwb,
+    step_amplitude,
+    stim_key_for_trace,
+)
 
 from obi_one_lazy.scientific.library.electrical_cell_recording_properties import (
     _BASELINE_WINDOW,
@@ -14,3 +34,33 @@ from obi_one_lazy.scientific.library.electrical_cell_recording_properties import
     _ONSET_THRESHOLD_FLOOR_NA,
     _unit_str,
 )
+
+__all__ = [
+    "Any",
+    "bbp_current_conversion",
+    "detect_protocol_ton_ms",
+    "detect_ton_ms",
+    "estimate_step_amplitude",
+    "h5py",
+    "L",
+    "logging",
+    "Mapping",
+    "math",
+    "median_filter",
+    "np",
+    "Path",
+    "read_amplitudes_from_nwb",
+    "read_amplitudes_via_inspection",
+    "read_protocols_from_nwb",
+    "read_timing_from_nwb",
+    "step_amplitude",
+    "stim_key_for_trace",
+    "_BASELINE_WINDOW",
+    "_MIN_ONSET_SAMPLES",
+    "_ONSET_BUFFER_MS",
+    "_ONSET_NOISE_SAMPLES",
+    "_ONSET_SMOOTH_WIDTH",
+    "_ONSET_THRESHOLD_FACTOR",
+    "_ONSET_THRESHOLD_FLOOR_NA",
+    "_unit_str",
+]

@@ -10,7 +10,7 @@ from obi_one.scientific.blocks.morphology_locations.clustered import (
 )
 from obi_one.scientific.library.morphology_locations import _CEN_IDX
 
-_MODULE = "obi_one.scientific.blocks.morphology_locations.clustered"
+_MODULE = "obi_one_lazy.scientific.blocks.morphology_locations.clustered"
 
 
 @pytest.mark.parametrize(

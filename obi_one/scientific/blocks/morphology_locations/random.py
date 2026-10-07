@@ -1,82 +1,38 @@
-from typing import ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-import morphio
-import pandas as pd
-from pydantic import Field, PositiveInt
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.morphology_locations.base import (
-    GeneratedMorphologyLocationsBlock,
-)
-from obi_one.scientific.library.morphology_locations import (
-    _CEN_IDX,
+from obi_one_lazy.scientific.blocks.morphology_locations.random import (
+    ClassVar,
+    Field,
     generate_neurite_locations_on,
+    GeneratedMorphologyLocationsBlock,
+    morphio,
+    pd,
+    PositiveInt,
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
+    SchemaKey,
+    UIElement,
 )
 
-_MIN_PD_SD = 0.1
+from obi_one_lazy.scientific.blocks.morphology_locations.random import (
+    _CEN_IDX,
+    _MIN_PD_SD,
+)
 
-
-class RandomMorphologyLocations(GeneratedMorphologyLocationsBlock):
-    """Uniformly distributed random locations."""
-
-    title: ClassVar[str] = "Random Morphology Locations"
-
-    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        locs = generate_neurite_locations_on(
-            morphology,
-            n_centers=1,
-            n_per_center=self.number_of_locations,  # ty:ignore[invalid-argument-type]
-            srcs_per_center=1,
-            center_path_distances_mean=0.0,
-            center_path_distances_sd=0.0,
-            max_dist_from_center=None,  # ty:ignore[invalid-argument-type]
-            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
-            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
-        ).drop(columns=[_CEN_IDX])
-        return locs
-
-    def _check_parameter_values(self) -> None:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.number_of_locations, list):  # ruff: ignore[collapsible-if]
-            if self.number_of_locations <= 0:
-                msg = f"Number of locations: {self.number_of_locations} <= 0"
-                raise ValueError(msg)
-
-
-class RandomGroupedMorphologyLocations(GeneratedMorphologyLocationsBlock):
-    """Completely random locations, but grouped into abstract groups."""
-
-    title: ClassVar[str] = "Random Grouped Morphology Locations"
-
-    n_groups: PositiveInt | list[PositiveInt] = Field(
-        default=1,
-        title="Number of Groups",
-        description=(
-            "Number of conceptual groups to assign across the generated random locations. "
-            "Groups can be used by downstream workflows to keep subsets of locations distinct."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
-        },
-    )
-
-    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        locs = generate_neurite_locations_on(
-            morphology,
-            n_centers=1,
-            n_per_center=self.number_of_locations,  # ty:ignore[invalid-argument-type]
-            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
-            center_path_distances_mean=0.0,
-            center_path_distances_sd=0.0,
-            max_dist_from_center=None,  # ty:ignore[invalid-argument-type]
-            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
-            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
-        ).drop(columns=[_CEN_IDX])
-        return locs
-
-    def _check_parameter_values(self) -> None:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.n_groups, list):  # ruff: ignore[collapsible-if]
-            if self.n_groups <= 0:
-                msg = f"Number of groups: {self.n_groups} <= 0"
-                raise ValueError(msg)
+__all__ = [
+    "ClassVar",
+    "Field",
+    "generate_neurite_locations_on",
+    "GeneratedMorphologyLocationsBlock",
+    "morphio",
+    "pd",
+    "PositiveInt",
+    "RandomGroupedMorphologyLocations",
+    "RandomMorphologyLocations",
+    "SchemaKey",
+    "UIElement",
+    "_CEN_IDX",
+    "_MIN_PD_SD",
+]

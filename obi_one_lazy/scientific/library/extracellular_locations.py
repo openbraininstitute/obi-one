@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
-from obi_one.scientific.unions_and_references.extracellular_locations import (
+from obi_one_lazy.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsUnion,
 )
 

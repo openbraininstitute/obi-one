@@ -8,7 +8,7 @@ import voxcell
 from entitysdk import Client
 from voxcell import CellCollection
 
-from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
+from obi_one_lazy.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 
 
 def get_specified_tables(

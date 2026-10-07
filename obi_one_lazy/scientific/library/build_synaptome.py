@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from bluepysnap.nodes import NodePopulation
 
-from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one_lazy.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one_lazy.scientific.blocks.synaptic_models.base import SynapticModelBase
 from obi_one_lazy.scientific.library.circuit import ensure_mechanisms_dir
 from obi_one_lazy.scientific.library.map_em_synapses.write_sonata_edge_file import write_edges

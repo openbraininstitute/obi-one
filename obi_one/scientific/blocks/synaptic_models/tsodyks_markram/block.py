@@ -1,6 +1,6 @@
 """Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[unused-import]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
 from obi_one_lazy.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     abc,
@@ -26,3 +26,28 @@ from obi_one_lazy.scientific.blocks.synaptic_models.tsodyks_markram.block import
     UIElement,
     Units,
 )
+
+__all__ = [
+    "abc",
+    "AllDistributionsReference",
+    "ClassVar",
+    "DistributionDefault",
+    "ExcitatoryTsodyksMarkramSynapticModel",
+    "Field",
+    "FloatConstantDistribution",
+    "GammaDistribution",
+    "InhibitoryTsodyksMarkramSynapticModel",
+    "IntDiscreteDistribution",
+    "L",
+    "logging",
+    "NormalDistribution",
+    "ParameterDomain",
+    "partial",
+    "ReferenceTag",
+    "SchemaKey",
+    "SynapseModelFamily",
+    "SynapticModelBase",
+    "TsodyksMarkramSynapticModel",
+    "UIElement",
+    "Units",
+]

@@ -1,0 +1,61 @@
+from typing import Annotated, Any, ClassVar, get_args
+
+from pydantic import Discriminator
+
+from obi_one_lazy.core.block_reference import BlockReference
+from obi_one_lazy.scientific.blocks.morphology_locations.clustered import (
+    ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations,
+)
+from obi_one_lazy.scientific.blocks.morphology_locations.explicit import ExplicitMorphologyLocations
+from obi_one_lazy.scientific.blocks.morphology_locations.path_distance import (
+    PathDistanceMorphologyLocations,
+)
+from obi_one_lazy.scientific.blocks.morphology_locations.random import (
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
+)
+
+# Locations sampled across the morphologies of a targeted neuron set. Every neuron receives its
+# own sampled locations, so a section id always refers to the morphology it was sampled on.
+_GENERATED_MORPHOLOGY_LOCATIONS = (
+    ClusteredGroupedMorphologyLocations
+    | ClusteredMorphologyLocations
+    | ClusteredPathDistanceMorphologyLocations
+    | PathDistanceMorphologyLocations
+    | RandomGroupedMorphologyLocations
+    | RandomMorphologyLocations
+)
+
+_ALL_MORPHOLOGY_LOCATIONS = _GENERATED_MORPHOLOGY_LOCATIONS | ExplicitMorphologyLocations
+
+MorphologyLocationUnion = Annotated[
+    _ALL_MORPHOLOGY_LOCATIONS,
+    Discriminator("type"),
+]
+
+# Explicit locations name a section and offset but no cell, so on a multi-neuron circuit the same
+# branch id means a different branch on every morphology. They are therefore offered only for
+# single-neuron configurations.
+CircuitMorphologyLocationUnion = Annotated[
+    _GENERATED_MORPHOLOGY_LOCATIONS,
+    Discriminator("type"),
+]
+
+
+class MorphologyLocationsReference(BlockReference):
+    """Reference to a block that generates morphology locations."""
+
+    allowed_block_types: ClassVar[Any] = MorphologyLocationUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(get_args(MorphologyLocationUnion)[0])
+    }
+
+
+__all__ = [
+    "CircuitMorphologyLocationUnion",
+    "MorphologyLocationUnion",
+    "MorphologyLocationsReference",
+]

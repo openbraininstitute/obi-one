@@ -1,45 +1,40 @@
-from typing import Annotated, Any, ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Discriminator
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+from obi_one_lazy.scientific.unions_and_references.manipulations import (
+    Annotated,
+    Any,
+    BlockReference,
+    Brian2SynapticManipulationsUnion,
+    ClassVar,
     ConnectSynapticManipulation,
     DisconnectSynapticManipulation,
-)
-from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    Discriminator,
     ScaleAcetylcholineUSESynapticManipulation,
+    SynapticManipulationsReference,
+    SynapticManipulationsUnion,
     SynapticMgManipulation,
 )
 
-_SYNAPTIC_MANIPULATIONS = (
-    DisconnectSynapticManipulation
-    | ConnectSynapticManipulation
-    | SynapticMgManipulation
-    | ScaleAcetylcholineUSESynapticManipulation
+from obi_one_lazy.scientific.unions_and_references.manipulations import (
+    _BRIAN2_SYNAPTIC_MANIPULATIONS,
+    _SYNAPTIC_MANIPULATIONS,
 )
 
-# Brian2 applies a connection override's `weight` and `synapse_delay_override` and rejects the
-# config outright on `synapse_configure` or `modoverride`, which is what the mechanism-specific
-# manipulations emit.
-_BRIAN2_SYNAPTIC_MANIPULATIONS = DisconnectSynapticManipulation | ConnectSynapticManipulation
-
-SynapticManipulationsUnion = Annotated[
-    _SYNAPTIC_MANIPULATIONS,
-    Discriminator("type"),
+__all__ = [
+    "Annotated",
+    "Any",
+    "BlockReference",
+    "Brian2SynapticManipulationsUnion",
+    "ClassVar",
+    "ConnectSynapticManipulation",
+    "DisconnectSynapticManipulation",
+    "Discriminator",
+    "ScaleAcetylcholineUSESynapticManipulation",
+    "SynapticManipulationsReference",
+    "SynapticManipulationsUnion",
+    "SynapticMgManipulation",
+    "_BRIAN2_SYNAPTIC_MANIPULATIONS",
+    "_SYNAPTIC_MANIPULATIONS",
 ]
-
-Brian2SynapticManipulationsUnion = Annotated[
-    _BRIAN2_SYNAPTIC_MANIPULATIONS,
-    Discriminator("type"),
-]
-
-
-class SynapticManipulationsReference(BlockReference):
-    """A reference to a SynapticManipulations block."""
-
-    allowed_block_types: ClassVar[Any] = SynapticManipulationsUnion
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        "allowed_block_types": BlockReference.get_class_names(_SYNAPTIC_MANIPULATIONS)
-    }

@@ -26,8 +26,8 @@ from bluecellulab.reports.utils import (
 from neuron import h
 
 from obi_one_lazy.types import SimulationBackend
-from obi_one.utils.circuit import resolve_simulation_node_set_ids
-from obi_one.utils.io import load_json
+from obi_one_lazy.utils.circuit import resolve_simulation_node_set_ids
+from obi_one_lazy.utils.io import load_json
 
 logger = logging.getLogger(__name__)
 

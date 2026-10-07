@@ -8,10 +8,7 @@ from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 from entitysdk.staging.memodel import stage_sonata_from_memodel
 
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one_lazy.types import SimulationBackend
-from obi_one.utils.circuit import count_cells_in_simulation_node_set
-from obi_one.utils.io import load_json
+from obi_one_lazy.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one_lazy.scientific.library.circuit import Circuit
 from obi_one_lazy.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one_lazy.scientific.library.simulation.neuron.schemas import (
@@ -22,6 +19,9 @@ from obi_one_lazy.scientific.library.simulation.neuron.schemas import (
     NeuronMechanismBuild,
     SimulationParameters,
 )
+from obi_one_lazy.types import SimulationBackend
+from obi_one_lazy.utils.circuit import count_cells_in_simulation_node_set
+from obi_one_lazy.utils.io import load_json
 
 if TYPE_CHECKING:
     from entitysdk.models import MEModel

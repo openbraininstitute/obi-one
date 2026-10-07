@@ -1,6 +1,6 @@
 """Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[unused-import]
+# ruff: file-ignore[unused-import, unsorted-imports]
 
 from obi_one_lazy.scientific.from_id.circuit_from_id import (
     Circuit,
@@ -18,3 +18,20 @@ from obi_one_lazy.scientific.from_id.circuit_from_id import (
     stage_circuit,
     stage_circuit_nodes,
 )
+
+__all__ = [
+    "Circuit",
+    "CircuitFromID",
+    "ClassVar",
+    "Client",
+    "EntityFromID",
+    "MEModelWithSynapsesCircuit",
+    "MEModelWithSynapsesCircuitFromID",
+    "models",
+    "OBIONEError",
+    "Path",
+    "PrivateAttr",
+    "SONATA_CIRCUIT_ASSET_SELECTION",
+    "stage_circuit",
+    "stage_circuit_nodes",
+]

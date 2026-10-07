@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from obi_one_lazy.config import CaveClientConfig
+
 
 class CircuitExtractionSettings(BaseModel):
     benchmarking_enabled: bool = True
@@ -9,17 +11,6 @@ class CircuitExtractionSettings(BaseModel):
 
 class SynapseParameterizationSettings(BaseModel):
     benchmarking_enabled: bool = True
-
-
-class CaveClientConfig(BaseModel):
-    microns_api_key: str = "CAVECLIENT_MICRONS_API_KEY"
-    # Retry behaviour for the CAVEClient materialization engine (urllib3 Retry).
-    # The engine intermittently returns 503s; these widen caveclient's weak
-    # built-in defaults so transient outages are ridden out before failing.
-    max_retries: int = 8
-    retry_backoff_factor: float = 0.5
-    retry_backoff_max: float = 120.0
-    retry_status_forcelist: tuple[int, ...] = (429, 502, 503, 504)
 
 
 class Settings(BaseSettings):

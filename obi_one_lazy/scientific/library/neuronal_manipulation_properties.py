@@ -35,7 +35,7 @@ from obi_one_lazy.scientific.library.memodel_circuit import (
 if TYPE_CHECKING:
     import entitysdk.client
 
-    from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
+    from obi_one_lazy.scientific.blocks.neuron_sets.base import NeuronSet
 
 L = logging.getLogger(__name__)
 

@@ -3,27 +3,28 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one_lazy.scientific.tasks.generate_simulations.config.base import (
+    BlockGroup,
+    SimulationSingleConfigMixin,
+)
+from obi_one_lazy.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
+from obi_one_lazy.scientific.unions_and_references.combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NEURONMEModelWithSynapsesNeuronSetUnion,
+)
+from obi_one_lazy.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+    MorphologyLocationUnion,
+)
 from obi_one_lazy.core.schema import SchemaKey, UIElement
 from obi_one_lazy.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
-from obi_one.scientific.tasks.generate_simulations.config.base import (
-    BlockGroup,
-    SimulationSingleConfigMixin,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitSimulationScanConfig,
-)
-from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    ALL_NEURON_SETS_REFERENCE_TYPES,
-    NEURONMEModelWithSynapsesNeuronSetUnion,
-)
-from obi_one.scientific.unions_and_references.morphology_locations import (
-    MorphologyLocationsReference,
-    MorphologyLocationUnion,
-)
 from obi_one_lazy.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one_lazy.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
+from obi_one_lazy.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ MEModelWithSynapsesCircuitDiscriminator = Annotated[
 
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
+
+    task_type: ClassVar[TaskType] = TaskType.me_model_with_synapses_circuit_simulation
 
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"

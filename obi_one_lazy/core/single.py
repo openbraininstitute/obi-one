@@ -13,7 +13,7 @@ from pydantic import Field, field_validator
 from obi_one_lazy.core.base import OBIBaseModel
 from obi_one_lazy.core.block import Block
 from obi_one_lazy.core.param import SingleValueScanParam
-from obi_one_lazy.core.registry import task_registry
+from obi_one_lazy.core.registry import TaskRegistration, task_registry
 from obi_one_lazy.core.serialization_constants import COORDINATE_CONFIG_FILENAME
 from obi_one_lazy.db_sdk import db_sdk
 
@@ -92,9 +92,23 @@ class SingleConfigMixin:
         """Sets the single entity attribute to the given entity."""
         self._single_entity = entity
 
+    def _task_registration(self) -> TaskRegistration | None:
+        """Resolve TaskRegistration via ``task_type`` ClassVar when present."""
+        task_type = getattr(type(self), "task_type", None)
+        if task_type is not None:
+            from obi_one_lazy.scientific.mappings_and_registry.config_task_map import (  # ruff: ignore[import-outside-top-level]
+                resolve_task_registration,
+            )
+
+            try:
+                return resolve_task_registration(task_type)
+            except KeyError:
+                return None
+        return task_registry.get_registration_for_single_config(type(self))
+
     @property
     def single_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_single_config(type(self))
+        registration = self._task_registration()
         return registration.single_task_config_type if registration is not None else None
 
     def create_single_entity_with_config(

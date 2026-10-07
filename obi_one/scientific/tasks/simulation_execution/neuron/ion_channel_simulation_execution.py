@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import override
+from typing import ClassVar, override
 
 import entitysdk
 from entitysdk import models
@@ -17,11 +17,12 @@ from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )
+from obi_one.types import TaskType
 from obi_one.utils.filesystem import create_dir
 
 
 class IonChannelModelSimulationExecutionSingleConfig(SimulationExecutionSingleConfig):
-    pass
+    task_type: ClassVar[TaskType] = TaskType.ion_channel_model_simulation_execution
 
 
 class IonChannelModelSimulationExecutionTask(SimulationExecutionTask):

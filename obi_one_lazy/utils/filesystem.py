@@ -6,7 +6,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from obi_one.types import StrOrPath
+from obi_one_lazy.types import StrOrPath
 
 
 def create_dir(path: StrOrPath) -> Path:

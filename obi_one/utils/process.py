@@ -1,43 +1,23 @@
-import logging
-import os
-import shlex
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
-from pathlib import Path
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-L = logging.getLogger(__name__)
+# ruff: file-ignore[unused-import, unsorted-imports]
 
+from obi_one_lazy.utils.process import (
+    L,
+    logging,
+    os,
+    Path,
+    run_and_log,
+    shlex,
+    subprocess,
+)
 
-def run_and_log(
-    command: list[str], cwd: Path | None = None, env: dict | None = None
-) -> subprocess.CompletedProcess:
-    """Run a subprocess command and log stdout/stderr."""
-    cmd_str = shlex.join(command)
-    L.info("Command: %s", cmd_str)
-    try:
-        result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,
-            cwd=cwd,
-            env=env or os.environ,
-        )
-    except subprocess.CalledProcessError as e:
-        L.error("Return code: %s", e.returncode)
-
-        if e.stdout:
-            L.error("stdout: %s", e.stdout.strip())
-
-        if e.stderr:
-            L.error("stderr: %s", e.stderr.strip())
-
-        raise
-
-    if result.stdout:
-        L.debug("stdout: %s", result.stdout.strip())
-
-    if result.stderr:
-        L.warning("stderr: %s", result.stderr.strip())
-
-    return result
+__all__ = [
+    "L",
+    "logging",
+    "os",
+    "Path",
+    "run_and_log",
+    "shlex",
+    "subprocess",
+]

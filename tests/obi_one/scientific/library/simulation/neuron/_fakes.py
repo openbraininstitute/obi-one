@@ -15,7 +15,7 @@ helpers rely on:
 The fake ``SimulationConfig`` is accepted directly by
 ``resolve_simulation_node_set_ids`` / ``count_cells_in_simulation_node_set``
 because those read ``simulation_config.node_set`` and otherwise go through the
-patched ``_merged_simulation_node_sets`` (see the test helpers that patch it).
+patched ``merged_simulation_node_sets`` (see the test helpers that patch it).
 """
 
 from __future__ import annotations

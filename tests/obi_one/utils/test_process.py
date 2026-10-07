@@ -14,7 +14,7 @@ def test_run_success_logs_and_returns(tmp_path, caplog):
     custom_env = {"FOO": "bar"}
 
     with (
-        patch("obi_one.utils.process.subprocess.run", return_value=mock_result) as mock_run,
+        patch("obi_one_lazy.utils.process.subprocess.run", return_value=mock_result) as mock_run,
         caplog.at_level(logging.DEBUG),
     ):
         result = test_module.run_and_log(["echo", "hello"], cwd=tmp_path, env=custom_env)
@@ -42,7 +42,7 @@ def test_run_success_no_output(tmp_path, caplog):
     mock_result.stderr = ""
 
     with (
-        patch("obi_one.utils.process.subprocess.run", return_value=mock_result),
+        patch("obi_one_lazy.utils.process.subprocess.run", return_value=mock_result),
         caplog.at_level(logging.DEBUG),
     ):
         test_module.run_and_log(["echo", "hi"], cwd=tmp_path)
@@ -62,7 +62,7 @@ def test_run_failure_logs_and_raises(caplog):
     )
 
     with (
-        patch("obi_one.utils.process.subprocess.run", side_effect=error),
+        patch("obi_one_lazy.utils.process.subprocess.run", side_effect=error),
         caplog.at_level(logging.ERROR),
         pytest.raises(CalledProcessError),
     ):
@@ -82,7 +82,7 @@ def test_run_failure_no_output_logs(caplog):
     )
 
     with (
-        patch("obi_one.utils.process.subprocess.run", side_effect=error),
+        patch("obi_one_lazy.utils.process.subprocess.run", side_effect=error),
         caplog.at_level(logging.ERROR),
         pytest.raises(CalledProcessError),
     ):

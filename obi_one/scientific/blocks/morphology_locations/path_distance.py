@@ -1,78 +1,40 @@
-from typing import Annotated, ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-import morphio
-import pandas as pd
-from pydantic import Field, NonNegativeFloat
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.units import Units
-from obi_one.scientific.blocks.morphology_locations.base import (
-    GeneratedMorphologyLocationsBlock,
-)
-from obi_one.scientific.library.morphology_locations import (
-    _CEN_IDX,
+from obi_one_lazy.scientific.blocks.morphology_locations.path_distance import (
+    Annotated,
+    ClassVar,
+    Field,
     generate_neurite_locations_on,
+    GeneratedMorphologyLocationsBlock,
+    morphio,
+    NonNegativeFloat,
+    PathDistanceMorphologyLocations,
+    PathDistanceToleranceParameter,
+    pd,
+    SchemaKey,
+    UIElement,
+    Units,
 )
 
-PathDistanceToleranceParameter = Annotated[float, Field(ge=1.0)]
+from obi_one_lazy.scientific.blocks.morphology_locations.path_distance import (
+    _CEN_IDX,
+)
 
-
-class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
-    """Locations uniformly sampled near a specified soma path distance."""
-
-    title: ClassVar[str] = "Path Distance Morphology Locations"
-
-    path_dist_mean: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=100.0,
-        title="Path Distance Sampling Mean",
-        description=(
-            "Target soma path distance used to bias where candidate locations are selected. "
-            "Final locations are sampled uniformly from valid morphology intervals within "
-            "the path-distance tolerance."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MICROMETERS,
-        },
-    )
-    path_dist_tolerance: PathDistanceToleranceParameter | list[PathDistanceToleranceParameter] = (
-        Field(
-            default=50.0,
-            title="Max Distance to Path Distance Sampling Mean",
-            description=(
-                "Allowed deviation from the target soma path distance. Locations are sampled "
-                "uniformly from valid morphology intervals within this tolerance. Must be at "
-                "least 1.0."
-            ),
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MICROMETERS,
-            },
-        )
-    )
-
-    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        locs = generate_neurite_locations_on(
-            morphology,
-            n_centers=self.number_of_locations,  # ty:ignore[invalid-argument-type]
-            n_per_center=1,
-            srcs_per_center=1,
-            center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
-            center_path_distances_sd=0.1 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
-            max_dist_from_center=0.9 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
-            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
-            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
-        ).drop(columns=[_CEN_IDX])
-        return locs
-
-    def _check_parameter_values(self) -> None:
-        # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):  # ruff: ignore[collapsible-if]
-            if self.path_dist_mean < 0:
-                msg = f"Path distance mean: {self.path_dist_mean} < 0"
-                raise ValueError(msg)
-
-        if not isinstance(self.path_dist_tolerance, list):  # ruff: ignore[collapsible-if]
-            if self.path_dist_tolerance < 1.0:
-                msg = f"Path dist tolerance: {self.path_dist_tolerance} < 1.0 (numerical stability)"
-                raise ValueError(msg)
+__all__ = [
+    "Annotated",
+    "ClassVar",
+    "Field",
+    "generate_neurite_locations_on",
+    "GeneratedMorphologyLocationsBlock",
+    "morphio",
+    "NonNegativeFloat",
+    "PathDistanceMorphologyLocations",
+    "PathDistanceToleranceParameter",
+    "pd",
+    "SchemaKey",
+    "UIElement",
+    "Units",
+    "_CEN_IDX",
+]

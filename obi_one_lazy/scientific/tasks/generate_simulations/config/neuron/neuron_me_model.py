@@ -3,33 +3,34 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from obi_one_lazy.core.schema import SchemaKey, UIElement
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.tasks.generate_simulations.config.base import (
+from obi_one_lazy.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
+from obi_one_lazy.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
-from obi_one.scientific.unions_and_references.morphology_locations import (
+from obi_one_lazy.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
 )
-from obi_one.scientific.unions_and_references.neuronal_manipulations import (
+from obi_one_lazy.scientific.unions_and_references.neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
 )
-from obi_one.scientific.unions_and_references.stimuli import (
+from obi_one_lazy.scientific.unions_and_references.stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions_and_references.timestamps import (
+from obi_one_lazy.scientific.unions_and_references.timestamps import (
     TimestampsReference,
 )
+from obi_one_lazy.core.schema import SchemaKey, UIElement
+from obi_one_lazy.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one_lazy.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one_lazy.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one_lazy.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discrimin
 
 class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
+
+    task_type: ClassVar[TaskType] = TaskType.me_model_simulation
 
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"

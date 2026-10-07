@@ -11,8 +11,8 @@ from entitysdk.types import ActivityStatus
 from obi_auth import get_token
 from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
-from obi_one.core.run_tasks import run_task_type
-from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
+from obi_one_lazy.core.run_tasks import run_task_type
+from obi_one_lazy.db_sdk.db_sdk import finalize_activity, update_activity_status
 
 L = logging.getLogger(__name__)
 

@@ -703,7 +703,7 @@ class TestNodeSetResolution:
             raising_populations=["popB"],
         )
         monkeypatch.setattr(
-            "obi_one.utils.circuit._merged_simulation_node_sets",
+            "obi_one_lazy.utils.circuit.merged_simulation_node_sets",
             lambda _sim_cfg: (node_sets, circuit_config),
         )
         resolved = resolve_simulation_node_set_ids(simulation_config, "MySet")

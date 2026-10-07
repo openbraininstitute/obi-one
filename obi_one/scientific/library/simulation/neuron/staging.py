@@ -1,9 +1,68 @@
-"""Compatibility re-export; implementation lives in obi_one_lazy."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-# ruff: file-ignore[undefined-local-with-import-star, import-private-name, unused-import, unsorted-imports]
+# ruff: file-ignore[unused-import, unsorted-imports, import-private-name]
 
-from obi_one_lazy.scientific.library.simulation.neuron.staging import *
+from obi_one_lazy.scientific.library.simulation.neuron.staging import (
+    BluecellulabSimulationParameters,
+    cast,
+    Circuit,
+    Client,
+    count_cells_in_simulation_node_set,
+    get_simulation_parameters,
+    L,
+    libsonata,
+    load_json,
+    logging,
+    MechanismBuild,
+    MEModelCircuit,
+    MEModelFromID,
+    models,
+    NeurodamusMechanismBuild,
+    NeurodamusSimulationParameters,
+    NeuronMechanismBuild,
+    Path,
+    SimulationBackend,
+    SimulationParameters,
+    stage_circuit,
+    stage_circuit_entity,
+    stage_ion_channel_models_as_circuit,
+    stage_memodel_as_circuit,
+    stage_sonata_from_config,
+    stage_sonata_from_memodel,
+    TYPE_CHECKING,
+)
 
 from obi_one_lazy.scientific.library.simulation.neuron.staging import (
     _build_memodel_circuit,
 )
+
+__all__ = [
+    "BluecellulabSimulationParameters",
+    "cast",
+    "Circuit",
+    "Client",
+    "count_cells_in_simulation_node_set",
+    "get_simulation_parameters",
+    "L",
+    "libsonata",
+    "load_json",
+    "logging",
+    "MechanismBuild",
+    "MEModelCircuit",
+    "MEModelFromID",
+    "models",
+    "NeurodamusMechanismBuild",
+    "NeurodamusSimulationParameters",
+    "NeuronMechanismBuild",
+    "Path",
+    "SimulationBackend",
+    "SimulationParameters",
+    "stage_circuit",
+    "stage_circuit_entity",
+    "stage_ion_channel_models_as_circuit",
+    "stage_memodel_as_circuit",
+    "stage_sonata_from_config",
+    "stage_sonata_from_memodel",
+    "TYPE_CHECKING",
+    "_build_memodel_circuit",
+]

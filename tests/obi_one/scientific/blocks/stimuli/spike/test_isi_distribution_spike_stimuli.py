@@ -104,7 +104,7 @@ def _patch_resolved_timestamps(
         return mock_timestamps_block
 
     monkeypatch.setattr(
-        "obi_one.scientific.blocks.stimuli.stimulus.resolve_timestamps_ref_to_timestamps_block",
+        "obi_one_lazy.scientific.blocks.stimuli.stimulus.resolve_timestamps_ref_to_timestamps_block",
         _resolve_timestamps,
     )
 

@@ -1538,7 +1538,7 @@ def test_input_entities_resolves_nested_root_mechanism_references(monkeypatch):
         del db_client
         return self.id_str
 
-    monkeypatch.setattr("obi_one.core.entity_from_id.EntityFromID.entity", fake_entity)
+    monkeypatch.setattr("obi_one_lazy.core.entity_from_id.EntityFromID.entity", fake_entity)
 
     assert config.input_entities(object()) == ["target", "morphology", "icm-1"]
 
