@@ -1,18 +1,22 @@
 import logging
 from pathlib import Path
-from typing import ClassVar, get_args, get_type_hints
+from typing import TYPE_CHECKING, ClassVar, cast, get_args, get_type_hints
+from uuid import UUID
 
 import entitysdk
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.morphology_locations.base import (
     GeneratedMorphologyLocationsBlock,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -50,6 +54,9 @@ from obi_one.scientific.unions_and_references.simulations import (
     SIMULATION_GENERATION_SINGLE_CONFIGS,
 )
 from obi_one.utils.sonata import write_simulation_config
+
+if TYPE_CHECKING:
+    from entitysdk.models import SimulatableExtracellularRecordingArray
 
 L = logging.getLogger(__name__)
 
@@ -564,6 +571,57 @@ class GenerateSimulationTask(Task):
                 attrs_or_entity={"number_neurons": number_neurons},
             )
 
+    def _extracellular_recordings(self) -> list[ExtracellularElectrodeArrayRecordingBlock]:
+        return [
+            recording
+            for recording in getattr(self.config, "recordings", {}).values()
+            if isinstance(recording, ExtracellularElectrodeArrayRecordingBlock)
+        ]
+
+    def _recording_array_ids(self) -> list[str]:
+        """The extracellular recording arrays this simulation's LFP reports read, each once."""
+        return sorted(
+            {recording.electrode_array.id_str for recording in self._extracellular_recordings()}
+        )
+
+    def _check_recording_arrays_belong_to_circuit(
+        self, db_client: entitysdk.client.Client, circuit_id: str
+    ) -> None:
+        """Refuse an LFP recording whose array was built for another circuit.
+
+        The UI only offers the arrays of the simulated circuit, but a config can also come from
+        the API or an agent. An array's weight matrix covers the segments of the circuit it was
+        built for, so another circuit's would at best fail the simulation and at worst record
+        the signal with the wrong weights.
+        """
+        for recording in self._extracellular_recordings():
+            array = cast(
+                "SimulatableExtracellularRecordingArray",
+                recording.electrode_array.entity(db_client=db_client),
+            )
+            if array.circuit_id != UUID(circuit_id):
+                msg = (
+                    f"Recording '{recording.block_name}' uses extracellular recording array "
+                    f"'{array.id}', which was built for circuit '{array.circuit_id}', not for the "
+                    f"simulated circuit '{circuit_id}'."
+                )
+                raise ConfigValidationError(msg)
+
+    def _link_recording_arrays_to_simulation(
+        self, db_client: entitysdk.client.Client, array_ids: list[str]
+    ) -> None:
+        """Link the Simulation entity to the recording arrays its LFP reports read.
+
+        entitysdk's stage_simulation stages the weight matrix of every linked array when the
+        simulation is run, and refuses an LFP report whose array is not linked, so this is what
+        lets generation leave the matrix alone.
+        """
+        db_client.update_entity(
+            entity_id=self.config.single_entity.id,
+            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+            attrs_or_entity={"recording_arrays": [{"id": array_id} for array_id in array_ids]},
+        )
+
     def _write_simulation_config_to_file(self) -> None:
         write_simulation_config(
             config=self._sonata_config,
@@ -632,6 +690,10 @@ class GenerateSimulationTask(Task):
         self._sonata_config = self.config.base_sonata_config()
         self._resolve_circuit(db_client)
         self.config.validate_circuit(self._circuit)
+        # Only a circuit from entitycore has an id to compare a recording array's circuit with.
+        circuit = getattr(self.config.initialize, "circuit", None)
+        if db_client and isinstance(circuit, CircuitFromID):
+            self._check_recording_arrays_belong_to_circuit(db_client, circuit.id_str)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
         self._materialize_location_targets()
@@ -641,5 +703,8 @@ class GenerateSimulationTask(Task):
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._write_materialized_compartment_sets_file()
         self._update_simulation_number_neurons(db_client)
+        array_ids = self._recording_array_ids()
+        if db_client and array_ids:
+            self._link_recording_arrays_to_simulation(db_client, array_ids)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)
