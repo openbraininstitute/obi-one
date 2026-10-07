@@ -128,6 +128,14 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
     }
 
 
+def find_emodel_data(data: dict, emodel_name: str, seed: int) -> dict | None:
+    """Return the ``final.json`` entry matching ``emodel_name`` and ``seed``, if any."""
+    for entry in data.values():
+        if entry.get("emodel") == emodel_name and entry.get("seed") == seed:
+            return entry
+    return None
+
+
 def write_emodel_optimization_output(
     final_path: Path, emodel_name: str, seed: int, out_dir: Path
 ) -> Path:
@@ -140,14 +148,7 @@ def write_emodel_optimization_output(
     ``emodel_optimization_output.json``.
     """
     data = json.loads(final_path.read_text(encoding="utf-8"))
-    model_data = next(
-        (
-            entry
-            for entry in data.values()
-            if entry.get("emodel") == emodel_name and entry.get("seed") == seed
-        ),
-        None,
-    )
+    model_data = find_emodel_data(data, emodel_name, seed)
     if model_data is None:
         msg = f"No entry for emodel={emodel_name!r}, seed={seed} in {final_path}."
         raise ValueError(msg)
