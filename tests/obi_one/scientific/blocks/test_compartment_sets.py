@@ -109,7 +109,9 @@ def test_compartment_set_preflight_rejects_oversized_target_before_loading_morph
             node_population="pop",
             population="pop",
             neuron_set=neuron_set,
-            locations_block=obi.RandomMorphologyLocations(number_of_locations=1, section_types=(3, 4)),
+            locations_block=obi.RandomMorphologyLocations(
+                number_of_locations=1, section_types=(3, 4)
+            ),
         )
 
     circuit.load_morphology.assert_not_called()
@@ -132,7 +134,9 @@ def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
             node_population="pop",
             population="pop",
             neuron_set=neuron_set,
-            locations_block=obi.RandomMorphologyLocations(number_of_locations=1, section_types=(3, 4)),
+            locations_block=obi.RandomMorphologyLocations(
+                number_of_locations=1, section_types=(3, 4)
+            ),
         )
 
     assert result is expected

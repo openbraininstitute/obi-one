@@ -73,7 +73,9 @@ class TestAssetUploads:
     def test_compartment_sets_are_uploaded_when_present(
         self, morphology_circuit, tmp_path, db_client
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,

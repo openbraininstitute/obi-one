@@ -109,7 +109,9 @@ class TestCompartmentSetGeneration:
     def test_compartment_set_file_is_written_and_referenced(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4)),
+            obi.RandomMorphologyLocations(
+                random_seed=0, number_of_locations=2, section_types=(3, 4)
+            ),
         )
 
         result = generate(config, tmp_path)
@@ -120,7 +122,9 @@ class TestCompartmentSetGeneration:
     def test_rows_are_node_id_section_id_offset_triples(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=5, section_types=(3, 4)),
+            obi.RandomMorphologyLocations(
+                random_seed=0, number_of_locations=5, section_types=(3, 4)
+            ),
         )
 
         result = generate(config, tmp_path)
@@ -134,7 +138,9 @@ class TestCompartmentSetGeneration:
         """``to_sonata_dict`` emits canonical SONATA order, not generation order."""
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=8, section_types=(3, 4)),
+            obi.RandomMorphologyLocations(
+                random_seed=0, number_of_locations=8, section_types=(3, 4)
+            ),
         )
 
         result = generate(config, tmp_path)
@@ -176,7 +182,11 @@ class TestCompartmentSetGeneration:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
-            blocks={"Unused": obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))},
+            blocks={
+                "Unused": obi.RandomMorphologyLocations(
+                    random_seed=0, number_of_locations=2, section_types=(3, 4)
+                )
+            },
         )
 
         result = generate(config, tmp_path)
@@ -188,7 +198,9 @@ class TestStimulusRewriting:
     def test_the_stimulus_targets_the_compartment_set(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4)),
+            obi.RandomMorphologyLocations(
+                random_seed=0, number_of_locations=2, section_types=(3, 4)
+            ),
         )
 
         result = generate(config, tmp_path)
@@ -201,7 +213,9 @@ class TestStimulusRewriting:
     def test_two_stimuli_sharing_a_location_block_share_one_compartment_set(
         self, morphology_circuit, tmp_path
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
@@ -225,7 +239,9 @@ class TestStimulusRewriting:
     def test_a_location_targeting_stimulus_coexists_with_a_neuron_set_one(
         self, morphology_circuit, tmp_path
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
@@ -246,7 +262,9 @@ class TestStimulusRewriting:
 
 class TestRecordingRewriting:
     def test_the_recording_targets_the_compartment_set(self, morphology_circuit, tmp_path):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
@@ -268,7 +286,9 @@ class TestRecordingRewriting:
         assert "compartments" not in entry
 
     def test_the_recording_spans_the_whole_simulation(self, morphology_circuit, tmp_path):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
@@ -292,7 +312,9 @@ class TestTimeWindowRecording:
 
     @staticmethod
     def _config(morphology_circuit, *, window, simulation_length=500.0):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         return build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
@@ -371,7 +393,9 @@ class TestTimeWindowRecording:
 
 class TestLocationTargeting:
     def test_locations_without_a_neuron_set_use_the_default(self, morphology_circuit, tmp_path):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4))
+        locations = obi.RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         assert locations.neuron_set is None
         config = _locations_config(morphology_circuit, locations)
 
@@ -435,7 +459,9 @@ class TestCompartmentSetErrors:
     def test_a_renamed_compartment_set_is_refused(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2, section_types=(3, 4)),
+            obi.RandomMorphologyLocations(
+                random_seed=0, number_of_locations=2, section_types=(3, 4)
+            ),
         )
         coordinate_root = tmp_path / "0"
         coordinate_root.mkdir(parents=True)
