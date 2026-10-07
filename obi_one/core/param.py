@@ -1,37 +1,13 @@
-from typing import Any
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Field
+# ruff: file-ignore[unused-import]
 
-from obi_one.core.base import OBIBaseModel
-
-
-def nested_param_short(nested_param_list: list) -> str:
-    """Convert a list of nested parameters to a short string representation."""
-    nested_param_short = ""
-    for i, s in enumerate(nested_param_list):
-        nested_param_short += f"{s}"
-        if i < len(nested_param_list) - 1:
-            nested_param_short += "."
-    return nested_param_short
-
-
-class ScanParam(OBIBaseModel):
-    location_list: list = Field(default_factory=list)
-    _location_str: str = ""
-
-    @property
-    def location_str(self) -> str:
-        """String representation of the location list."""
-        return nested_param_short(self.location_list)
-
-
-class MultiValueScanParam(ScanParam):
-    values: list[Any] = Field(default_factory=lambda: [None])
-
-
-class SingleValueScanParam(ScanParam):
-    value: Any
-
-    # Optional for backwards compatibility where field not set
-    # in json serializations (i.e. obi_one_coordinate.json)
-    index_in_scan_dimension: int | None = None
+from obi_one_lazy.core.param import (
+    Any,
+    Field,
+    MultiValueScanParam,
+    nested_param_short,
+    OBIBaseModel,
+    ScanParam,
+    SingleValueScanParam,
+)

@@ -1,54 +1,28 @@
-from typing import Annotated, Any, ClassVar, cast
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import Discriminator
+# ruff: file-ignore[unused-import, import-private-name, unsorted-imports]
 
-from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.distributions.base import Distribution
-from obi_one.scientific.blocks.distributions.constant import (
-    FloatConstantDistribution,
-    IntConstantDistribution,
-)
-from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
-from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
-from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
-from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
-from obi_one.scientific.blocks.distributions.normal import NormalDistribution
-from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
-from obi_one.scientific.blocks.distributions.uniform import (
-    FloatUniformDistribution,
-    IntUniformDistribution,
-)
-
-_ALL_FLOAT_DISTRIBUTIONS = (
-    FloatConstantDistribution
-    | FloatUniformDistribution
-    | ExponentialDistribution
-    | GammaDistribution
-    | NormalDistribution
-    | LogNormalDistribution
-    | PoissonDistribution
-)
-
-_ALL_INT_DISTRIBUTIONS = IntConstantDistribution | IntUniformDistribution | IntDiscreteDistribution
-
-_ALL_DISTRIBUTIONS = _ALL_FLOAT_DISTRIBUTIONS | _ALL_INT_DISTRIBUTIONS
-
-AllDistributionsUnion = Annotated[
+from obi_one_lazy.scientific.unions_and_references.distributions import (
     _ALL_DISTRIBUTIONS,
-    Discriminator("type"),
-]
-
-
-class AllDistributionsReference(BlockReference):
-    """A reference to a Distribution block."""
-
-    allowed_block_types: ClassVar[Any] = AllDistributionsUnion
-
-    @property
-    def block(self) -> Distribution:
-        """The Distribution block associated with this reference."""
-        return cast("Distribution", super().block)
-
-    @block.setter
-    def block(self, value: Distribution) -> None:
-        BlockReference.block.fset(self, value)
+    _ALL_FLOAT_DISTRIBUTIONS,
+    _ALL_INT_DISTRIBUTIONS,
+    AllDistributionsReference,
+    AllDistributionsUnion,
+    Annotated,
+    Any,
+    BlockReference,
+    cast,
+    ClassVar,
+    Discriminator,
+    Distribution,
+    ExponentialDistribution,
+    FloatConstantDistribution,
+    FloatUniformDistribution,
+    GammaDistribution,
+    IntConstantDistribution,
+    IntDiscreteDistribution,
+    IntUniformDistribution,
+    LogNormalDistribution,
+    NormalDistribution,
+    PoissonDistribution,
+)

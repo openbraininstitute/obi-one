@@ -404,7 +404,7 @@ def test_build_densifies_sparse_source_ids(tmp_path, stage_memodel, monkeypatch)
         }
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.build_synaptome._generate_locations",
+        "obi_one_lazy.scientific.library.build_synaptome._generate_locations",
         Mock(return_value=sparse_locations),
     )
 
@@ -707,7 +707,7 @@ def test_build_wraps_virtual_node_writer_failure(tmp_path, stage_memodel, monkey
         write_virtual_nodes(tmp_path / "invalid-nodes.h5", "sources", 0)
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.build_synaptome.write_virtual_nodes",
+        "obi_one_lazy.scientific.library.build_synaptome.write_virtual_nodes",
         reject_virtual_nodes,
     )
 

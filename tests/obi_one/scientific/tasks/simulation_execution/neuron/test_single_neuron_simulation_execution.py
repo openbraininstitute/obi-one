@@ -14,18 +14,18 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron import (
-    single_neuron_simulation_execution as test_module,
-)
 from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution import (  # ruff: ignore[line-too-long]
     SingleNeuronSimulationExecutionSingleConfig,
     SingleNeuronSimulationExecutionTask,
 )
 from obi_one.types import SimulationBackend
+from obi_one_lazy.scientific.tasks.simulation_execution.neuron import (
+    single_neuron_simulation_execution as test_module,
+)
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
+_BASE = "obi_one_lazy.scientific.tasks.simulation_execution.neuron.base"
 _SINGLE_NEURON = (
-    "obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution"
+    "obi_one_lazy.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution"
 )
 
 

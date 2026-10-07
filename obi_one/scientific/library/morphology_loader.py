@@ -1,22 +1,5 @@
-from pathlib import Path
+"""Compatibility re-export; implementation lives in obi_one_lazy."""
 
-import morphio
+# ruff: file-ignore[undefined-local-with-import-star]
 
-
-def load_morphology_nrn_order(path: Path) -> morphio.Morphology:
-    """Load morphology with NEURON-compatible section ordering.
-
-    This is REQUIRED for compatibility with Neurodamus / SONATA section_id semantics.
-    """
-    return load_morphology_nrn_order_from_collection(path.parent, path.stem, path.suffix)
-
-
-def load_morphology_nrn_order_from_collection(
-    base: Path, name: str, extension: str
-) -> morphio.Morphology:
-    """Load a named morphology from a directory or an `.h5` container.
-
-    `morphio.Collection` accepts either as `base`.
-    """
-    collection = morphio.Collection(str(base), extensions=[extension])
-    return collection.load(name, morphio.Option.nrn_order)
+from obi_one_lazy.scientific.library.morphology_loader import *

@@ -1,0 +1,4 @@
+"""Core constants used by scan serialization."""
+
+SCAN_CONFIG_FILENAME = "obi_one_scan.json"
+COORDINATE_CONFIG_FILENAME = "obi_one_coordinate.json"

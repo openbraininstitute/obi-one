@@ -8,17 +8,17 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     NeurodamusSimulationParameters,
     SimulationResults,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron import (
-    circuit_simulation_execution as test_module,
-)
 from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
     CircuitSimulationExecutionSingleConfig,
     CircuitSimulationExecutionTask,
 )
 from obi_one.types import SimulationBackend
+from obi_one_lazy.scientific.tasks.simulation_execution.neuron import (
+    circuit_simulation_execution as test_module,
+)
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
-_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution"
+_BASE = "obi_one_lazy.scientific.tasks.simulation_execution.neuron.base"
+_CIRCUIT = "obi_one_lazy.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution"
 
 
 @pytest.fixture

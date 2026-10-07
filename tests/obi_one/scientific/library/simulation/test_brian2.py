@@ -19,7 +19,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-import obi_one.scientific.library.simulation.brian2.simulate_brian2 as test_module
+import obi_one_lazy.scientific.library.simulation.brian2.simulate_brian2 as test_module
 
 DATA = Path(__file__).parent / "data"
 

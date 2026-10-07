@@ -1,42 +1,14 @@
-from typing import ClassVar
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-import numpy as np
-from pydantic import Field, PositiveFloat
+# ruff: file-ignore[unused-import]
 
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.distributions.base import Distribution
-
-
-class NormalDistribution(Distribution):
-    """Samples values around a mean using a symmetric, bell-shaped distribution."""
-
-    title: ClassVar[str] = "Normal"
-
-    mean: float | list[float] = Field(
-        default=0.0,
-        title="Mean",
-        description="Center of the normal distribution.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
-        default=1.0,
-        title="Standard Deviation",
-        description="Standard deviation controlling the spread of the samples.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    random_seed: int | list[int] = Field(
-        default=1,
-        title="Random seed",
-        description="Seed for reproducible sampling.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
-    )
-
-    def _sample_generator(
-        self,
-        n: int = 1,
-        rng: np.random.Generator | None = None,
-    ) -> list[float]:
-        if rng is None:
-            rng = np.random.default_rng(self.random_seed)
-        samples = rng.normal(loc=self.mean, scale=self.standard_deviation, size=n)
-        return samples.tolist()
+from obi_one_lazy.scientific.blocks.distributions.normal import (
+    ClassVar,
+    Distribution,
+    Field,
+    NormalDistribution,
+    np,
+    PositiveFloat,
+    SchemaKey,
+    UIElement,
+)

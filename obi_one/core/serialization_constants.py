@@ -1,4 +1,8 @@
-"""Core constants used by scan serialization."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-SCAN_CONFIG_FILENAME = "obi_one_scan.json"
-COORDINATE_CONFIG_FILENAME = "obi_one_coordinate.json"
+# ruff: file-ignore[unused-import]
+
+from obi_one_lazy.core.serialization_constants import (
+    COORDINATE_CONFIG_FILENAME,
+    SCAN_CONFIG_FILENAME,
+)

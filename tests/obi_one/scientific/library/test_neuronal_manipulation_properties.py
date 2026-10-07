@@ -10,7 +10,6 @@ import pytest
 from entitysdk.types import FetchFileStrategy
 
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.library import circuit as circuit_module
 from obi_one.scientific.library.emodel_parameters import (
     ChannelInfo,
     ChannelSectionListMapping,
@@ -34,6 +33,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
+from obi_one_lazy.scientific.library import circuit as circuit_module
 
 TINY_CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
 
@@ -547,7 +547,7 @@ class TestBuildEmodelGroups:
         label_to_emodel_id = {"hoc:cADpyr_L5TPC": emodel_id}
 
         with patch(
-            "obi_one.scientific.library.neuronal_manipulation_properties"
+            "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
             ".get_mechanism_variables_for_emodel"
         ) as mock_get_vars:
             mock_get_vars.return_value = (
@@ -584,7 +584,7 @@ class TestBuildEmodelGroups:
         label_to_emodel_id = {"hoc:cADpyr_L5TPC": emodel_id}
 
         with patch(
-            "obi_one.scientific.library.neuronal_manipulation_properties"
+            "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
             ".get_mechanism_variables_for_emodel",
             side_effect=Exception("fetch failed"),
         ):
@@ -623,12 +623,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
 
         with (
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
                 return_value=(mock_populations, mock_templates),
             ),
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 ".get_mechanism_variables_for_emodel"
             ) as mock_get_vars,
         ):
@@ -675,7 +675,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         neuron_set = MagicMock()
 
         with patch(
-            "obi_one.scientific.library.neuronal_manipulation_properties"
+            "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
             "._stage_circuit_for_neuron_set_resolution",
             return_value=(["S1nonbarrel_neurons"], mock_templates),
         ):
@@ -746,12 +746,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
 
         with (
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["S1nonbarrel_neurons"], mock_templates),
             ),
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 ".get_mechanism_variables_for_emodel",
                 side_effect=_mock_get_vars,
             ),
@@ -810,12 +810,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
 
         with (
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["S1nonbarrel_neurons"], mock_templates),
             ),
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 ".get_mechanism_variables_for_emodel",
                 side_effect=_mock_get_vars,
             ),
@@ -1028,7 +1028,7 @@ class TestStageCircuitForNeuronSetResolution:
 
         with (
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set",
                 return_value=(
                     circuit_dir / "circuit_config.json",
@@ -1071,7 +1071,7 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1]}
 
         with patch(
-            "obi_one.scientific.library.neuronal_manipulation_properties.NodeStorage"
+            "obi_one_lazy.scientific.library.neuronal_manipulation_properties.NodeStorage"
         ) as mock_ns:
             mock_pop = MagicMock()
             mock_pop.attribute_names = ["x", "y"]
@@ -1105,7 +1105,7 @@ class TestGetCircuitManipulationPropertiesFastPath:
         client.search_entity.return_value.all.return_value = [deriv1, deriv2]
 
         with patch(
-            "obi_one.scientific.library.neuronal_manipulation_properties"
+            "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
             ".get_mechanism_variables_for_emodel"
         ) as mock_get_vars:
             mock_get_vars.return_value = (
@@ -1183,12 +1183,12 @@ class TestMultiPopulationRegression:
 
         with (
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
                 return_value=(["pop_A", "pop_B"], mock_templates),
             ),
             patch(
-                "obi_one.scientific.library.neuronal_manipulation_properties"
+                "obi_one_lazy.scientific.library.neuronal_manipulation_properties"
                 ".get_mechanism_variables_for_emodel"
             ) as mock_get_vars,
         ):
@@ -1354,7 +1354,7 @@ class TestMemodelMechanismVariableResponse:
         )
 
         with patch(
-            "obi_one.scientific.library.memodel_circuit.get_mechanism_variables",
+            "obi_one_lazy.scientific.library.memodel_circuit.get_mechanism_variables",
             return_value=(variables, mapping),
         ) as mock_get:
             result = get_memodel_mechanism_variables(db_client, "memodel-id")

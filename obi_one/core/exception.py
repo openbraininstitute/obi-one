@@ -1,13 +1,9 @@
-class OBIONEError(Exception):
-    """Base exception class for OBI-ONE."""
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
+# ruff: file-ignore[unused-import]
 
-class ConfigValidationError(OBIONEError):
-    """Exception raised for validation errors in OBI-ONE."""
-
-
-class ProtocolNotFoundError(Exception):
-    def __init__(self, msg: list[str]) -> None:
-        """Exception raised when a protocol is not found in the trace."""
-        message = msg
-        super().__init__(message)
+from obi_one_lazy.core.exception import (
+    ConfigValidationError,
+    OBIONEError,
+    ProtocolNotFoundError,
+)

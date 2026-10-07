@@ -250,7 +250,7 @@ class TestMechanismVariableLoading:
         expected = ([], ChannelSectionListMapping(channel_to_section_lists={}))
 
         with patch(
-            "obi_one.scientific.library.emodel_parameters.get_mechanism_variables_for_emodel",
+            "obi_one_lazy.scientific.library.emodel_parameters.get_mechanism_variables_for_emodel",
             return_value=expected,
         ) as mock_get:
             result = get_mechanism_variables(db_client, memodel)
@@ -412,11 +412,11 @@ class TestMechanismVariableLoading:
 
         with (
             patch(
-                "obi_one.scientific.library.emodel_parameters._fetch_optimization_parameters",
+                "obi_one_lazy.scientific.library.emodel_parameters._fetch_optimization_parameters",
                 return_value=optimized,
             ),
             patch(
-                "obi_one.scientific.library.emodel_parameters._get_ion_channel_variables",
+                "obi_one_lazy.scientific.library.emodel_parameters._get_ion_channel_variables",
                 return_value=metadata_variables,
             ),
         ):

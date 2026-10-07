@@ -6,7 +6,6 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
-from obi_one.scientific.library import compartment_sets
 from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
     MaterializedCompartmentSet,
@@ -24,6 +23,7 @@ from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimu
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
 )
+from obi_one_lazy.scientific.library import compartment_sets
 
 
 def test_compartment_set_sorts_deduplicates_and_builds_from_locations():
@@ -123,7 +123,7 @@ def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
     expected = MagicMock()
 
     with patch(
-        "obi_one.scientific.library.compartment_sets.build_compartment_set_from_locations_block",
+        "obi_one_lazy.scientific.library.compartment_sets.build_compartment_set_from_locations_block",
         return_value=expected,
     ) as build_compartment_set:
         result = build_compartment_set_for_neuron_set(

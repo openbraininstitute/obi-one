@@ -123,11 +123,13 @@ Issues = "https://github.com/openbraininstitute/obi-one/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["obi_one*"]
+include = ["obi_one*", "obi_one_lazy*"]
 
 [tool.setuptools.package-data]
 "obi_one.scientific.library" = ["*.json", "*.jinja2", "*.png"]
+"obi_one_lazy.scientific.library" = ["*.json", "*.jinja2", "*.png"]
 "obi_one.scientific.blocks.synaptic_models.tsodyks_markram" = ["mod/*.mod"]
+"obi_one_lazy.scientific.blocks.synaptic_models.tsodyks_markram" = ["mod/*.mod"]
 
 [tool.setuptools_scm]
 tag_regex = "^(?:v)?(?P<version>\\d{4}\\.\\d{1,2}\\.\\d+)$"
@@ -155,6 +157,7 @@ include = [
     "app/**/*.py",
     "tests/**/*.py",
     "obi_one/**/*.py",
+    "obi_one_lazy/**/*.py",
     "launch_scripts/**/*.py",
 ]
 # Legacy modules kept for reference; excluded from formatting and linting.
@@ -237,7 +240,7 @@ max-statements = 50
 max-public-methods = 60
 
 [tool.ty.src]
-include = ["app", "obi_one", "launch_scripts"]
+include = ["app", "obi_one", "obi_one_lazy", "launch_scripts"]
 # Legacy modules kept for reference; excluded from ty type checking.
 exclude = [
     "obi_one/scientific/blocks/neuron_sets/old",

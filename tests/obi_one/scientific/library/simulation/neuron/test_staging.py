@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
-from obi_one.scientific.library.simulation.neuron import staging as test_module
 from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     NeurodamusMechanismBuild,
@@ -11,6 +10,7 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     NeuronMechanismBuild,
 )
 from obi_one.types import SimulationBackend
+from obi_one_lazy.scientific.library.simulation.neuron import staging as test_module
 
 from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
 
@@ -30,7 +30,7 @@ def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set, **kwargs)
         per_node_set, node_set=node_set, **kwargs
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.libsonata.SimulationConfig.from_file",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.libsonata.SimulationConfig.from_file",
         lambda _path: simulation_config,
     )
     monkeypatch.setattr(
@@ -45,11 +45,11 @@ def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
     mock_me_model = MagicMock()
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.stage_sonata_from_config",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.stage_sonata_from_config",
         mock_stage_sonata,
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.MEModelCircuit",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.MEModelCircuit",
         mock_me_model,
     )
 
@@ -93,11 +93,11 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
     mock_build_circuit = MagicMock()
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.stage_sonata_from_memodel",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.stage_sonata_from_memodel",
         mock_stage_sonata,
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging._build_memodel_circuit",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging._build_memodel_circuit",
         mock_build_circuit,
     )
 
@@ -131,11 +131,11 @@ def test_stage_memodel_as_circuit_forwards_max_concurrent(monkeypatch, tmp_path)
     mock_build_circuit = MagicMock(return_value=MagicMock())
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.stage_sonata_from_memodel",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.stage_sonata_from_memodel",
         mock_stage_sonata,
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging._build_memodel_circuit",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging._build_memodel_circuit",
         mock_build_circuit,
     )
 
@@ -181,7 +181,7 @@ def test_get_simulation_parameters_success(
 
     mock_load_json.return_value = {"node_set": "All", "run": {"tstop": 100}}
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.load_json", mock_load_json
     )
     # Resolve the node set via libsonata (fake) instead of reading node_id lists.
     _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set="All")
@@ -205,7 +205,7 @@ def test_get_simulation_parameters_symbolic_node_set(monkeypatch, tmp_path):
     mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.load_json",
         MagicMock(return_value={"node_set": "Excitatory", "run": {"tstop": 50}}),
     )
     # "Excitatory" resolves across two populations, 5 cells total.
@@ -230,7 +230,7 @@ def test_get_simulation_parameters_simulation_only_node_set(monkeypatch, tmp_pat
     mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.load_json",
         MagicMock(return_value={"node_set": "MySimOnlySet", "run": {"tstop": 50}}),
     )
     # "MySimOnlySet" only resolves in popA; popB has it absent (does not apply there).
@@ -255,7 +255,7 @@ def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
     mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.load_json",
         MagicMock(return_value={"node_set": "Foo", "run": {"tstop": 100}}),
     )
     _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set="Foo")
@@ -274,7 +274,7 @@ def test_get_simulation_parameters_no_node_set(monkeypatch, tmp_path):
     mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        "obi_one_lazy.scientific.library.simulation.neuron.staging.load_json",
         MagicMock(return_value={"run": {"tstop": 100}}),
     )
     _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set=None)

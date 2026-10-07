@@ -1,0 +1,143 @@
+import logging
+from typing import Self
+
+import entitysdk.client
+from entitysdk.models import MEModel
+from pydantic import BaseModel, model_validator
+
+from obi_one_lazy.core.exception import OBIONEError
+from obi_one_lazy.core.schema import SchemaKey
+from obi_one_lazy.scientific.library.circuit import Circuit
+from obi_one_lazy.scientific.library.emodel_parameters import (
+    ChannelSectionListMapping,
+    MechanismVariable,
+    get_mechanism_variables,
+)
+
+L = logging.getLogger(__name__)
+
+
+class MechanismVariableDetail(BaseModel):
+    """Details for a single mechanism variable across all section lists."""
+
+    units: str = ""
+    limits: list[float] | None = None
+    variable_type: str  # "RANGE" or "GLOBAL"
+    section_lists_original_values: dict[str, float | None]
+
+
+class IonChannelVariables(BaseModel):
+    """Ion channel entry with its section lists, entity id, and mechanism variables."""
+
+    section_lists: list[str]
+    entity_id: str | None = None
+    variables: dict[str, MechanismVariableDetail]
+
+
+def _build_mechanism_variables_by_ion_channel_response(
+    variables: list[MechanismVariable],
+    channel_mapping: ChannelSectionListMapping,
+) -> dict[str, IonChannelVariables]:
+    """Convert flat variables list and channel mapping to channel-grouped response."""
+    raw: dict[str, dict] = {}
+
+    for var in variables:
+        channel = var.channel_name or "unknown"
+        if channel not in raw:
+            if channel == "-":
+                # For section properties, collect all unique section lists from the model
+                all_section_lists = set()
+                for channel_info in channel_mapping.channel_to_section_lists.values():
+                    all_section_lists.update(channel_info.section_lists)
+                # If no section lists found, use defaults
+                if not all_section_lists:
+                    all_section_lists = {"somatic", "apical", "basal", "axonal"}
+
+                raw[channel] = {
+                    "section_lists": list(all_section_lists),
+                    "entity_id": None,  # Section properties don't have entity IDs
+                    "variables": {},
+                }
+            else:
+                channel_info = channel_mapping.channel_to_section_lists.get(channel)
+                raw[channel] = {
+                    "section_lists": channel_info.section_lists if channel_info else [],
+                    "entity_id": channel_info.entity_id if channel_info else None,
+                    "variables": {},
+                }
+        var_entry = raw[channel]["variables"].setdefault(
+            var.neuron_variable,
+            {
+                SchemaKey.UNITS: var.units,
+                "limits": var.limits,
+                "variable_type": var.variable_type,
+                "section_lists_original_values": {},
+            },
+        )
+        var_entry["section_lists_original_values"][var.section_list] = var.value
+
+    return {
+        channel: IonChannelVariables(
+            section_lists=data["section_lists"],
+            entity_id=data["entity_id"],
+            variables={
+                var_name: MechanismVariableDetail(**var_data)
+                for var_name, var_data in data["variables"].items()
+            },
+        )
+        for channel, data in raw.items()
+    }
+
+
+def get_memodel_mechanism_variables(
+    db_client: entitysdk.client.Client,
+    entity_id: str,
+) -> dict[str, IonChannelVariables]:
+    """Fetch mechanism variables for an MEModel entity.
+
+    This helper is strict: it assumes the caller already knows the entity is
+    an MEModel and lets entity-fetch, asset-download, and parsing errors
+    propagate to the caller so they can be mapped to explicit HTTP error
+    responses rather than silently returning None.
+
+    Args:
+        db_client: entitysdk client used to fetch the MEModel and its assets.
+        entity_id: ID of the MEModel entity.
+
+    Returns:
+        Mapping of ion channel name to its variables, in the same shape used
+        by both the MEModel and Circuit neuronal-manipulation endpoints.
+    """
+    memodel = db_client.get_entity(entity_id=entity_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
+    variables, channel_mapping = get_mechanism_variables(db_client, memodel)
+    return _build_mechanism_variables_by_ion_channel_response(variables, channel_mapping)
+
+
+class MEModelCircuit(Circuit):
+    @model_validator(mode="after")
+    def confirm_single_neuron_without_synapses(self) -> Self:
+        sonata_circuit = self.sonata_circuit
+        if len(sonata_circuit.nodes.ids()) != 1:
+            msg = "MEModelCircuit must contain exactly one neuron."
+            raise OBIONEError(msg)
+        if len(sonata_circuit.edges.population_names) != 0:
+            msg = "MEModelCircuit must not contain any synapses."
+            raise OBIONEError(msg)
+        return self
+
+
+class MEModelWithSynapsesCircuit(Circuit):
+    @model_validator(mode="after")
+    def confirm_single_neuron(self) -> Self:
+        sonata_circuit = self.sonata_circuit
+        total_real = 0
+        for pop_name in sonata_circuit.nodes.population_names:
+            pop = sonata_circuit.nodes[pop_name]
+            if pop.type != "virtual":
+                n = pop.size
+                total_real += n
+
+        if total_real != 1:
+            msg = "MEModelWithSynapsesCircuit must contain exactly one neuron."
+            raise OBIONEError(msg)
+        return self

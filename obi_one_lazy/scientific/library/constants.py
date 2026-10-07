@@ -1,0 +1,43 @@
+from enum import StrEnum
+
+MIN_SIMULATION_LENGTH_MILLISECONDS = 1.0
+MAX_SIMULATION_LENGTH_MILLISECONDS = 12000.0
+
+MIN_NON_NEGATIVE_FLOAT_VALUE = 1e-6
+MIN_TIMESTEP_MILLISECONDS = 0.025
+
+DEFAULT_SIMULATION_LENGTH_MILLISECONDS = 1000.0
+DEFAULT_STIMULUS_LENGTH_MILLISECONDS = 200.0
+DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS = 50.0
+MAX_POISSON_SPIKE_LIMIT = 5000000
+
+SIMULATION_TIMESTEP_MILLISECONDS = 0.025
+
+
+def nyquist_frequency_hz(timestep_milliseconds: float) -> float:
+    """Highest frequency (Hz) a signal sampled every ``timestep_milliseconds`` can represent.
+
+    Above it the sampled waveform aliases: what reaches the cell is a different frequency from
+    the one asked for, rather than a coarse version of it.
+    """
+    return 1.0 / (2 * timestep_milliseconds / 1000.0)
+
+
+# 20 kHz, the Nyquist frequency of typical
+# simulations with dt=0.025 ms (i.e., 20 kHz)
+MAX_EFIELD_FREQUENCY_HZ = nyquist_frequency_hz(SIMULATION_TIMESTEP_MILLISECONDS)
+
+NEURON_PAIR_SIZE = 2
+MAX_SMALL_MICROCIRCUIT_SIZE = 20
+
+
+class SONATA(StrEnum):
+    SPIKE_STIMULUS_MODULE = "synapse_replay"
+    SPIKE_STIMULUS_INPUT_TYPE = "spikes"
+    DELAY = "delay"
+    DURATION = "duration"
+    NODE_SET = "node_set"
+    MODULE = "module"
+    INPUT_TYPE = "input_type"
+    SPIKE_FILE = "spike_file"
+    SPIKE_LOCATION_SOMA = "soma"

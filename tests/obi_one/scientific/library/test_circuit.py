@@ -7,7 +7,7 @@ import pytest
 
 import obi_one as obi
 from obi_one.scientific import library
-from obi_one.scientific.library import circuit as test_module
+from obi_one_lazy.scientific.library import circuit as test_module
 
 from tests.utils import CIRCUIT_DIR
 

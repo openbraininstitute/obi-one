@@ -1,18 +1,8 @@
-from enum import StrEnum
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
+# ruff: file-ignore[unused-import]
 
-class Units(StrEnum):
-    CENTIMETERS_PER_SECOND = "cm/s"
-    DEGREES = "°"
-    HERTZ = "Hz"
-    MICROMETERS = "μm"
-    MICROSIEMENS = "μS"
-    NANOAMPS_SQUARED = "nA^2"
-    MILLIMOLAR = "mM"
-    MILLISECONDS = "ms"
-    MILLIVOLTS = "mV"
-    NANOAMPS = "nA"
-    PERCENT = "%"
-    SECONDS = "s"
-    SIEMENS_PER_CM2 = "S/cm2"
-    VOLTS_PER_METER = "V/m"
+from obi_one_lazy.core.units import (
+    StrEnum,
+    Units,
+)

@@ -396,7 +396,7 @@ class TestValidateIdMappingFiles:
         config_path.write_text(json.dumps(cfg))
 
         with patch(
-            "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
+            "obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
         ) as mock_cfg:
             m = MagicMock()
             m.expanded_json = json.dumps(cfg)
@@ -414,7 +414,7 @@ class TestValidateIdMappingFiles:
         config_path.write_text(json.dumps(cfg))
 
         with patch(
-            "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
+            "obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
         ) as mock_cfg:
             m = MagicMock()
             m.expanded_json = json.dumps(cfg)
@@ -437,10 +437,10 @@ class TestValidateIdMappingFiles:
 
         with (
             patch(
-                "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
+                "obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
             ) as mock_cfg,
             patch(
-                "obi_one.scientific.library.circuit_id_mapping.get_population_sizes",
+                "obi_one_lazy.scientific.library.circuit_id_mapping.get_population_sizes",
                 return_value={"pop_a": 10},
             ),
         ):
@@ -467,10 +467,10 @@ class TestValidateIdMappingFiles:
 
         with (
             patch(
-                "obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
+                "obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file"
             ) as mock_cfg,
             patch(
-                "obi_one.scientific.library.circuit_id_mapping.get_population_sizes",
+                "obi_one_lazy.scientific.library.circuit_id_mapping.get_population_sizes",
                 return_value={"pop_a": 100},
             ),
         ):
@@ -552,7 +552,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._find_mod_dir")
     @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
-    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
+    @patch("obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_passes_with_no_errors(
         self,
@@ -614,7 +614,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._find_mod_dir")
     @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
-    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
+    @patch("obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_passes_with_warnings_logged(
         self,
@@ -672,7 +672,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
     @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
-    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
+    @patch("obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_fails_with_missing_morphology_dir(
         self,
@@ -737,7 +737,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_hoc_loading")
     @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
-    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
+    @patch("obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_mod_compilation_failure(
         self,
@@ -802,7 +802,7 @@ class TestRunCircuitValidation:
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._find_mod_dir")
     @patch("obi_one.scientific.tasks.circuit_validation.task.run_validation")
-    @patch("obi_one.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
+    @patch("obi_one_lazy.scientific.library.circuit_id_mapping.libsonata.CircuitConfig.from_file")
     @patch("bluepysnap.Circuit")
     def test_run_validation_failure_is_logged_as_fatal(
         self,

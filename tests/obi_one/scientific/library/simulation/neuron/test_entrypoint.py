@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from obi_one.scientific.library.simulation.neuron import entrypoint as test_module
 from obi_one.types import SimulationBackend
+from obi_one_lazy.scientific.library.simulation.neuron import entrypoint as test_module
 
 from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
 
@@ -15,7 +15,7 @@ def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set=None, **kw
         per_node_set, node_set=node_set, **kwargs
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron."
+        "obi_one_lazy.scientific.library.simulation.neuron."
         "entrypoint.libsonata.SimulationConfig.from_file",
         lambda _path: simulation_config,
     )

@@ -365,11 +365,11 @@ def test_get_morphology_analysis_dict_extends_neurite_domains(monkeypatch):
     get_morphology_analysis_dict.cache_clear()
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_template",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.get_morphology_template",
         lambda: {"data": []},
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.create_analysis_dict",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.create_analysis_dict",
         lambda _t: {"basal_dendrite": [["metric", "μm"]]},
     )
 
@@ -470,11 +470,11 @@ def test_resolve_swc_bytes_for_mesh_non_swc_returns_none():
 def test_run_morphology_analysis_success(monkeypatch):
     fake_neuron = MagicMock()
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.nm.load_morphology",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.nm.load_morphology",
         MagicMock(return_value=fake_neuron),
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.build_results_dict",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.build_results_dict",
         MagicMock(return_value={}),
     )
 
@@ -484,16 +484,16 @@ def test_run_morphology_analysis_success(monkeypatch):
         ]
     }
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.fill_json",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.fill_json",
         MagicMock(return_value=fake_filled),
     )
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_template",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.get_morphology_template",
         lambda: {"data": [{"measurement_kinds": []}]},
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
         dict,
     )
 
@@ -504,11 +504,11 @@ def test_run_morphology_analysis_success(monkeypatch):
 def test_run_morphology_analysis_filters_none_values(monkeypatch):
     fake_neuron = MagicMock()
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.nm.load_morphology",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.nm.load_morphology",
         MagicMock(return_value=fake_neuron),
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.build_results_dict",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.build_results_dict",
         MagicMock(return_value={}),
     )
 
@@ -523,16 +523,16 @@ def test_run_morphology_analysis_filters_none_values(monkeypatch):
         ]
     }
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.fill_json",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.fill_json",
         MagicMock(return_value=fake_filled),
     )
 
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_template",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.get_morphology_template",
         lambda: {"data": [{"measurement_kinds": []}]},
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
         dict,
     )
 
@@ -547,7 +547,7 @@ def test_run_morphology_analysis_exception(monkeypatch):
         MagicMock(side_effect=RuntimeError("neurom crash")),
     )
     monkeypatch.setattr(
-        "obi_one.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
+        "obi_one_lazy.scientific.library.morphology_measurement_annotation.get_morphology_analysis_dict",
         dict,
     )
     with pytest.raises(HTTPException) as exc_info:

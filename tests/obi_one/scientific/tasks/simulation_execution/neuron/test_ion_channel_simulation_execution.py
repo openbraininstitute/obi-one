@@ -26,7 +26,7 @@ from obi_one.scientific.tasks.simulation_execution.neuron.ion_channel_simulation
 )
 from obi_one.types import SimulationBackend
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
+_BASE = "obi_one_lazy.scientific.tasks.simulation_execution.neuron.base"
 _ION_CHANNEL = (
     "obi_one.scientific.tasks.simulation_execution.neuron.ion_channel_simulation_execution"
 )

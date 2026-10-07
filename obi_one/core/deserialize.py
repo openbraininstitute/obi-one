@@ -1,23 +1,15 @@
-from pathlib import Path
+"""Compatibility re-exports; implementation moved to obi_one_lazy."""
 
-from pydantic import TypeAdapter
+# ruff: file-ignore[unused-import]
 
-from obi_one.core.base import OBIBaseModel
-from obi_one.core.deserializable_types import load_class
-from obi_one.core.scan_config import ScanConfig
-from obi_one.utils.io import load_json
-
-
-def deserialize_obi_object_from_json_data(json_dict: dict) -> OBIBaseModel:
-    cls = load_class(json_dict["type"])
-    return cls.model_validate(json_dict)  # ty:ignore[unresolved-attribute]
-
-
-def deserialize_obi_object_from_json_file(json_path: Path) -> OBIBaseModel:
-    json_dict = load_json(json_path)
-    return deserialize_obi_object_from_json_data(json_dict)
-
-
-def deserialize_json_dict_to_form(json_dict: dict) -> OBIBaseModel:
-    adapter = TypeAdapter(ScanConfig)
-    return adapter.validate_python(json_dict)
+from obi_one_lazy.core.deserialize import (
+    deserialize_json_dict_to_form,
+    deserialize_obi_object_from_json_data,
+    deserialize_obi_object_from_json_file,
+    load_class,
+    load_json,
+    OBIBaseModel,
+    Path,
+    ScanConfig,
+    TypeAdapter,
+)

@@ -1,0 +1,486 @@
+"""SONATA artifact generation for Build Synaptome."""
+
+# ruff: file-ignore[raw-string-in-exception, f-string-in-exception, raise-vanilla-args, raise-within-try, too-many-statements-in-try-clause]
+
+import json
+import re
+import shutil
+from collections.abc import Generator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import bluepysnap
+import morphio
+import numpy as np
+import pandas as pd
+from bluepysnap.nodes import NodePopulation
+
+from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one_lazy.scientific.blocks.synaptic_models.base import SynapticModelBase
+from obi_one_lazy.scientific.library.circuit import ensure_mechanisms_dir
+from obi_one_lazy.scientific.library.map_em_synapses.write_sonata_edge_file import write_edges
+from obi_one_lazy.scientific.library.map_em_synapses.write_sonata_nodes_file import write_virtual_nodes
+from obi_one_lazy.scientific.library.morphology_locations import (
+    _PRE_IDX,  # ruff: ignore[import-private-name]
+    _SEC_ID,  # ruff: ignore[import-private-name]
+    _SEC_LOC,  # ruff: ignore[import-private-name]
+    _SEC_TYP,  # ruff: ignore[import-private-name]
+    _SEG_ID,  # ruff: ignore[import-private-name]
+    _SEG_OFF,  # ruff: ignore[import-private-name]
+)
+
+if TYPE_CHECKING:
+    from entitysdk import Client
+
+    from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementSingleConfig
+
+_SOURCE_ID = "pre_node_id"
+_TARGET_ID = "post_node_id"
+
+# The ME-model stager writes the neuron's biophysical `.mod` files here, without declaring the
+# folder in the circuit config. Build Synaptome folds them into the circuit's single declared
+# mechanisms directory so the persisted circuit keeps every `.mod` in one place.
+_STAGED_MECHANISMS_DIR_NAME = "mechanisms"
+
+
+@dataclass(frozen=True)
+class BuildSynaptomeResult:
+    """Files produced by a Build Synaptome build."""
+
+    circuit_config_path: Path
+    output_directory: Path
+    generated_files: tuple[Path, ...]
+    model_template: str
+
+
+class BuildSynaptomeError(ValueError):
+    """Raised when a Build Synaptome artifact cannot be generated or validated."""
+
+
+@contextmanager
+def _preserve_numpy_random_state() -> Generator[None, None, None]:
+    """Isolate legacy morphology placers that use NumPy's global RNG."""
+    state = np.random.get_state()  # ruff: ignore[numpy-legacy-random] - called placer uses the legacy global RNG
+    try:
+        yield
+    finally:
+        np.random.set_state(state)  # ruff: ignore[numpy-legacy-random] - restore legacy global RNG state
+
+
+def _safe_name(value: str) -> str:
+    name = re.sub(r"[^A-Za-z0-9_]+", "_", value).strip("_")
+    return name or "group"
+
+
+def _target_population(circuit: bluepysnap.Circuit) -> tuple[str, NodePopulation]:
+    populations = [
+        name for name in circuit.nodes.population_names if circuit.nodes[name].type == "biophysical"
+    ]
+    if len(populations) != 1:
+        msg = f"Expected exactly one biophysical target population, found {populations}."
+        raise BuildSynaptomeError(msg)
+    population = circuit.nodes[populations[0]]
+    if population.size != 1:
+        msg = f"Expected exactly one target neuron, found {population.size}."
+        raise BuildSynaptomeError(msg)
+    return populations[0], population
+
+
+def _derive_group_seed(random_seed: int, group_index: int) -> int:
+    """Derive a reproducible placement seed for a synapse group."""
+    return int(np.random.SeedSequence([random_seed, group_index]).generate_state(1)[0])
+
+
+def _generate_locations(
+    morphology: morphio.Morphology,
+    placement: MorphologyLocationsBlock,
+    *,
+    group_name: str,
+    group_index: int = 0,
+) -> pd.DataFrame:
+    count = placement.output_location_count()
+    if not isinstance(count, int) or count <= 0:
+        raise BuildSynaptomeError(
+            f"Synapse group '{group_name}' has invalid location count {count!r}."
+        )
+    try:
+        placement_for_group = placement
+        random_seed = getattr(placement, "random_seed", None)
+        if group_index and isinstance(random_seed, int):
+            placement_for_group = placement.model_copy(
+                update={
+                    "random_seed": _derive_group_seed(random_seed, group_index),
+                }
+            )
+        with _preserve_numpy_random_state():
+            locations = placement_for_group.points_on(morphology)
+    except Exception as exc:
+        msg = (
+            f"Synapse group '{group_name}' could not generate locations using "
+            f"{type(placement).__name__}: {exc}"
+        )
+        raise BuildSynaptomeError(msg) from exc
+    if len(locations) != count:
+        msg = (
+            f"Synapse group '{group_name}' generated {len(locations)} locations, expected {count}."
+        )
+        raise BuildSynaptomeError(msg)
+    return locations.reset_index(drop=True)
+
+
+def _location_edge_properties(
+    morphology: morphio.Morphology, locations: pd.DataFrame
+) -> pd.DataFrame:
+    rows: list[dict[str, float | int]] = []
+    for location in locations.to_dict(orient="records"):
+        section_id = int(location[_SEC_ID])
+        if section_id < 1:
+            msg = (
+                f"Invalid morphology location section={section_id}; "
+                "soma locations are not supported."
+            )
+            raise BuildSynaptomeError(msg)
+        segment_id = int(location[_SEG_ID])
+        physical_offset = float(location[_SEG_OFF])
+        try:
+            section = morphology.sections[section_id - 1]
+            start = section.points[segment_id, :3].astype(float)
+            end = section.points[segment_id + 1, :3].astype(float)
+        except (IndexError, KeyError) as exc:
+            msg = f"Invalid morphology location section={section_id}, segment={segment_id}."
+            raise BuildSynaptomeError(msg) from exc
+        segment_length = float(np.linalg.norm(end - start))
+        if segment_length <= 0:
+            raise BuildSynaptomeError(
+                f"Morphology location section={section_id}, segment={segment_id} has zero length."
+            )
+
+        if not 0.0 <= physical_offset <= segment_length:
+            raise BuildSynaptomeError(
+                f"Morphology location section={section_id}, segment={segment_id} "
+                f"has invalid physical offset {physical_offset}."
+            )
+
+        normalized_segment_offset = physical_offset / segment_length
+
+        center = start + normalized_segment_offset * (end - start)
+
+        rows.append(
+            {
+                "afferent_section_id": section_id,
+                "afferent_segment_id": segment_id,
+                "afferent_segment_offset": physical_offset,
+                "afferent_section_pos": float(location[_SEC_LOC]),
+                "afferent_section_type": int(location[_SEC_TYP]),
+                "afferent_center_x": center[0],
+                "afferent_center_y": center[1],
+                "afferent_center_z": center[2],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _sample_physiology(
+    model: SynapticModelBase, indices: pd.DataFrame, *, group_name: str
+) -> pd.DataFrame:
+    count = len(indices)
+    try:
+        physiology = model.sample(indices)
+    except Exception as exc:
+        msg = (
+            f"Synapse group '{group_name}' could not sample physiology from "
+            f"{type(model).__name__}: {exc}"
+        )
+        raise BuildSynaptomeError(msg) from exc
+    missing = set(model.parameter_names()).difference(physiology.columns)
+    if missing or len(physiology) != count:
+        msg = (
+            f"Synapse group '{group_name}' produced invalid physiology data; "
+            f"missing={sorted(missing)}, rows={len(physiology)}, expected={count}."
+        )
+        raise BuildSynaptomeError(msg)
+    return physiology.reset_index(drop=True)
+
+
+def _append_population_config(
+    circuit_config: dict,
+    *,
+    nodes_file: Path,
+    node_population: str,
+    edges_file: Path,
+    edge_population: str,
+) -> None:
+    circuit_config["networks"]["nodes"].append(
+        {
+            "nodes_file": f"$BASE_DIR/{nodes_file.as_posix()}",
+            "populations": {node_population: {"type": "virtual"}},
+        }
+    )
+    circuit_config["networks"]["edges"].append(
+        {
+            "edges_file": f"$BASE_DIR/{edges_file.as_posix()}",
+            "populations": {edge_population: {"type": "chemical"}},
+        }
+    )
+
+
+def validate_synaptome_artifact(
+    circuit_config_path: Path,
+    *,
+    target_population: str,
+    expected_groups: dict[str, tuple[int, int]],
+) -> None:
+    """Load the artifact through BluePySnap and validate generated references/properties."""
+    try:
+        circuit = bluepysnap.Circuit(circuit_config_path)
+        if circuit.nodes[target_population].size != 1:
+            raise BuildSynaptomeError("Generated circuit does not contain exactly one target cell.")
+        required = {
+            "afferent_section_id",
+            "afferent_segment_id",
+            "afferent_segment_offset",
+            "afferent_section_pos",
+            "syn_type_id",
+            "conductance",
+            "delay",
+        }
+        for edge_population, (expected_count, expected_sources) in expected_groups.items():
+            edges = circuit.edges[edge_population]
+            if edges.size != expected_count:
+                raise BuildSynaptomeError(
+                    f"Edge population '{edge_population}' contains {edges.size} edges, "
+                    f"expected {expected_count}."
+                )
+            missing = required.difference(edges.property_names)
+            if missing:
+                raise BuildSynaptomeError(
+                    f"Edge population '{edge_population}' is missing {sorted(missing)}."
+                )
+            refs = edges.get(edges.ids(), properties=["@source_node", "@target_node"])
+            if not (refs["@target_node"] == 0).all():
+                raise BuildSynaptomeError(
+                    f"Edge population '{edge_population}' has invalid target node references."
+                )
+            source_ids = refs["@source_node"].to_numpy()
+            if source_ids.min() < 0 or source_ids.max() >= expected_sources:
+                raise BuildSynaptomeError(
+                    f"Edge population '{edge_population}' has invalid source node references."
+                )
+            if edges.source.size != expected_sources or edges.target.name != target_population:
+                raise BuildSynaptomeError(
+                    f"Edge population '{edge_population}' references invalid node populations."
+                )
+            edges.get(edges.ids(), properties=sorted(required))
+    except BuildSynaptomeError:
+        raise
+    except Exception as exc:
+        raise BuildSynaptomeError(f"Generated SONATA circuit failed validation: {exc}") from exc
+
+
+def _fold_staged_mechanisms_into(mechanisms_dir: Path, staged_root: Path) -> None:
+    """Move the ME-model's staged `.mod` files into the circuit's declared mechanisms directory.
+
+    The ME-model stager drops the neuron's biophysical `.mod` files in a separate
+    ``mechanisms/`` folder that the circuit config never names, while the synaptic `.mod` files
+    go into the declared directory. A consumer only compiles the declared directory, so the
+    biophysical files would be silently dropped. Folding them in (and removing the now-empty
+    staged folder) leaves the persisted circuit with a single mechanisms directory holding both.
+
+    A file already present in the destination is left untouched, matching
+    ``SynapticModelBase.copy_mod_files``: the circuit's own copy wins over a same-named import.
+
+    Temporary: this exists only because the ME-model stager writes an undeclared ``mechanisms/``
+    folder. Once staging declares its mechanisms directory (or stages straight into the circuit's
+    ``mod/``) this can be removed - at which point the staged folder already is the destination
+    and the call becomes a no-op via the guard below, so removal is safe and low-risk.
+    """
+    staged_mechanisms = staged_root / _STAGED_MECHANISMS_DIR_NAME
+    if staged_mechanisms.resolve() == mechanisms_dir.resolve() or not staged_mechanisms.is_dir():
+        return
+    for mod_file in staged_mechanisms.glob("*.mod"):
+        destination = mechanisms_dir / mod_file.name
+        if destination.exists():
+            mod_file.unlink()
+        else:
+            shutil.move(str(mod_file), str(destination))
+    if not any(staged_mechanisms.iterdir()):
+        staged_mechanisms.rmdir()
+
+
+def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branches, too-many-locals, too-many-statements]
+    config: "MEModelSynapticModelPlacementSingleConfig",
+    output_directory: Path,
+    *,
+    db_client: "Client",
+) -> BuildSynaptomeResult:
+    """Stage an ME-model circuit and add generated virtual afferent populations."""
+    output_directory = Path(output_directory).resolve()
+    if output_directory.exists():
+        msg = f"Build Synaptome output directory already exists: '{output_directory}'."
+        raise FileExistsError(msg)
+    if db_client is None:
+        raise BuildSynaptomeError("Build Synaptome requires a db_client to resolve the ME-model.")
+    try:
+        staged = config.initialize.me_model.stage_circuit(
+            db_client=db_client,
+            dest_dir=output_directory,
+            entity_cache=False,
+        )
+    except Exception as exc:
+        msg = f"Unable to resolve or stage ME-model '{config.initialize.me_model.id_str}': {exc}"
+        raise BuildSynaptomeError(msg) from exc
+
+    circuit_config_path = Path(staged.path).resolve()
+    try:
+        circuit = bluepysnap.Circuit(circuit_config_path)
+        target_name, target_population = _target_population(circuit)
+        # The single neuron's model_template (e.g. "hoc:<name>"). The emodel_circuit derivation
+        # registered for this circuit is labelled with it, since the neuronal-manipulation
+        # consumer matches derivation labels against this exact value read back from the nodes.
+        model_template = str(target_population.get(0, properties="model_template"))
+    except BuildSynaptomeError:
+        raise
+    except Exception as exc:
+        msg = f"Unable to load staged ME-model '{config.initialize.me_model.id_str}': {exc}"
+        raise BuildSynaptomeError(msg) from exc
+
+    try:
+        morphology = staged.load_morphology(0, population=target_name)
+    except Exception as exc:
+        msg = (
+            f"Unable to load morphology from staged ME-model "
+            f"'{config.initialize.me_model.id_str}': {exc}"
+        )
+        raise BuildSynaptomeError(msg) from exc
+
+    try:
+        circuit_config = json.loads(circuit_config_path.read_text())
+        if circuit.edges.population_names:
+            raise BuildSynaptomeError(
+                "The staged ME-model circuit already contains edges; Build Synaptome requires "
+                "an unconnected single-cell ME-model."
+            )
+
+        expected_groups: dict[str, tuple[int, int]] = {}
+        models_by_edge_population: dict[str, SynapticModelBase] = {}
+        used_names: set[str] = set(circuit.nodes.population_names)
+        for group_index, (group_key, group) in enumerate(config.synapse_groups.items()):
+            base = _safe_name(group_key)
+            source_population = f"{base}_sources"
+            edge_population = f"{source_population}__{_safe_name(target_name)}__chemical"
+            if source_population in used_names or edge_population in expected_groups:
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' produces a duplicate SONATA population name."
+                )
+            used_names.add(source_population)
+
+            try:
+                placement_strategy = group.placement_strategy.block
+            except Exception as exc:
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' has an unresolved placement strategy: {exc}"
+                ) from exc
+            if not isinstance(placement_strategy, MorphologyLocationsBlock):
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' uses unsupported placement strategy "
+                    f"{type(placement_strategy).__name__}."
+                )
+            locations = _generate_locations(
+                morphology,
+                placement_strategy,
+                group_name=group_key,
+                group_index=group_index,
+            )
+            count = len(locations)
+            source_ids, source_labels = pd.factorize(locations[_PRE_IDX], sort=False)
+            source_ids = source_ids.astype(np.int64, copy=False)
+            source_count = len(source_labels)
+            source_target = pd.DataFrame(
+                {_SOURCE_ID: source_ids, _TARGET_ID: np.zeros(count, dtype=np.int64)}
+            )
+            try:
+                synaptic_model = group.synaptic_model.block
+            except Exception as exc:
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' has an unresolved synaptic model: {exc}"
+                ) from exc
+            if not isinstance(synaptic_model, SynapticModelBase):
+                raise BuildSynaptomeError(
+                    f"Synapse group '{group_key}' uses unsupported physiology model "
+                    f"{type(synaptic_model).__name__}."
+                )
+
+            edge_data = pd.concat(
+                [
+                    _location_edge_properties(morphology, locations),
+                    _sample_physiology(synaptic_model, source_target, group_name=group_key),
+                ],
+                axis=1,
+            )
+            edge_data["afferent_group_id"] = np.full(count, group_index, dtype=np.int32)
+            nodes_relative = Path(source_population) / "nodes.h5"
+            edges_relative = Path(edge_population) / "edges.h5"
+            write_virtual_nodes(output_directory / nodes_relative, source_population, source_count)
+            edges_path = output_directory / edges_relative
+            edges_path.parent.mkdir(parents=True, exist_ok=True)
+            write_edges(
+                edges_path,
+                edge_population,
+                source_target,
+                edge_data,
+                source_population,
+                target_name,
+                n_src=source_count,
+                n_tgt=1,
+            )
+            _append_population_config(
+                circuit_config,
+                nodes_file=nodes_relative,
+                node_population=source_population,
+                edges_file=edges_relative,
+                edge_population=edge_population,
+            )
+            expected_groups[edge_population] = (count, source_count)
+            models_by_edge_population[edge_population] = synaptic_model
+
+        circuit_config_path.write_text(json.dumps(circuit_config, indent=2) + "\n")
+
+        # Copy each group's synaptic-model .mod file(s) into the circuit so a simulator can
+        # compile them, and fold in the ME-model's own biophysical .mod files, so the persisted
+        # circuit keeps every mechanism in the single declared directory. ensure_mechanisms_dir
+        # also stages the intrinsic mini mechanisms. Done after the config is written, since it
+        # resolves the directory through libsonata and needs the edge population declared in the
+        # config. Resolved per population, since the directory can be set per edge population,
+        # not only at the circuit level.
+        mechanisms_dir = None
+        for edge_population, synaptic_model in models_by_edge_population.items():
+            mechanisms_dir = ensure_mechanisms_dir(circuit_config_path, edge_population)
+            _fold_staged_mechanisms_into(mechanisms_dir, output_directory)
+            type(synaptic_model).copy_mod_files(mechanisms_dir)
+
+        # With no synapse groups there is no edge population to resolve against, so fall back to
+        # the circuit-level directory (which still stages the minis) and fold the ME-model's
+        # biophysical mods in here instead.
+        if mechanisms_dir is None:
+            mechanisms_dir = ensure_mechanisms_dir(circuit_config_path)
+            _fold_staged_mechanisms_into(mechanisms_dir, output_directory)
+
+        validate_synaptome_artifact(
+            circuit_config_path,
+            target_population=target_name,
+            expected_groups=expected_groups,
+        )
+    except BuildSynaptomeError:
+        raise
+    except Exception as exc:
+        raise BuildSynaptomeError(f"Failed to write a valid SONATA artifact: {exc}") from exc
+
+    generated_files = tuple(sorted(path for path in output_directory.rglob("*") if path.is_file()))
+    return BuildSynaptomeResult(
+        circuit_config_path=circuit_config_path,
+        output_directory=output_directory,
+        generated_files=generated_files,
+        model_template=model_template,
+    )

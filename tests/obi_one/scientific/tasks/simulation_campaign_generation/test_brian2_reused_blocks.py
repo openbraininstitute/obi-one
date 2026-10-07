@@ -14,7 +14,7 @@ from typing import get_args
 import pytest
 
 import obi_one as obi
-import obi_one.scientific.library.simulation.brian2.simulate_brian2 as brian2_runner
+import obi_one_lazy.scientific.library.simulation.brian2.simulate_brian2 as brian2_runner
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.unions_and_references.recordings import Brian2RecordingUnion
 
