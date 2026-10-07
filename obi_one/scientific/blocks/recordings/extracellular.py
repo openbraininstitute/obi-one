@@ -13,9 +13,6 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    resolve_neuron_set_ref_to_node_set,
-)
 
 
 class ExtracellularElectrodeArrayRecordingBlock(Recording):
@@ -65,14 +62,12 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
     ) -> dict:
         return {
             self.block_name: {
-                "cells": resolve_neuron_set_ref_to_node_set(
-                    self.neuron_set, self._default_node_set
-                ),
+                "cells": self.node_set,
                 "type": "lfp",
                 # LFP sums the membrane current over the whole neuron, not just the soma, and the
                 # weight matrix holds a weight per segment.
                 "sections": "all",
-                "dt": self.dt,
+                "dt": self.recording_timestep,
                 "start_time": self._start_time,
                 "end_time": self._end_time,
                 # The weight matrix covers every segment of the circuit, so it is not downloaded
