@@ -175,11 +175,8 @@ def test_execute_compiles_mechanisms_when_mod_dir_exists(tmp_path, mock_db_clien
     assert mock_db_client.upload_file.call_count == 2
 
 
-@pytest.mark.parametrize(("cpu_count", "expected"), [(16, 4), (2, 2)])
-def test_execute_runs_bluerecording_with_mpi_processes_for_the_circuit(
-    tmp_path, mock_db_client, cpu_count, expected
-):
-    """291 cells get 4 MPI processes, or as many as there are CPUs if that's fewer."""
+def test_execute_runs_bluerecording_with_mpi_processes_for_the_circuit(tmp_path, mock_db_client):
+    """291 cells get 4 MPI processes."""
     task, circuit_path = _make_task(tmp_path)
     circuit, circuit_entity = _resolved_circuit(circuit_path)
 
@@ -194,7 +191,6 @@ def test_execute_runs_bluerecording_with_mpi_processes_for_the_circuit(
         patch(f"{_MODULE}._plot_electrode_array"),
         patch(f"{_MODULE}.compile_mechanisms", return_value=_mechanism_build(tmp_path)),
         patch(f"{_MODULE}._write_electrode_json", return_value=tmp_path / "coord" / "e.json"),
-        patch(f"{_MODULE}.os.cpu_count", return_value=cpu_count),
         patch(
             f"{_MODULE}.run_bluerecording_write_weights",
             return_value=tmp_path / "coord" / "weights.h5",
@@ -202,7 +198,7 @@ def test_execute_runs_bluerecording_with_mpi_processes_for_the_circuit(
     ):
         task.execute(db_client=mock_db_client)
 
-    assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == expected
+    assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == 4
 
 
 def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path, mock_db_client):

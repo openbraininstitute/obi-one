@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import tempfile
 import typing
 from enum import StrEnum
@@ -274,10 +273,9 @@ class CreateExtracellularRecordingArrayTask(Task):
             electrode_json_path,
             weights_output_path,
             nrnmech_lib_path=nrnmech_lib_path.absolute(),
-            # A launch-system job has a CPU for each process; a local run may have fewer CPUs.
-            number_of_mpi_processes=min(
-                get_number_of_mpi_processes(self._circuit_entity.number_neurons),  # ty:ignore[unresolved-attribute]
-                os.cpu_count() or 1,
+            # The resource estimate gives the job a CPU for each of these processes.
+            number_of_mpi_processes=get_number_of_mpi_processes(
+                self._circuit_entity.number_neurons  # ty:ignore[unresolved-attribute]
             ),
         )
         L.info("Weights saved to: %s", weights_output_path)
