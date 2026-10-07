@@ -204,7 +204,6 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_a": MachinePlacementType.ecs_managed_instances,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
-            # The fit compiles the generated mod file with nrnivmodl and then runs it.
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),

@@ -1,5 +1,3 @@
-"""Tests for the ion channel fitting scan config."""
-
 from unittest.mock import Mock
 
 import pytest
@@ -17,16 +15,12 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
 
 
 def test_ion_channel_name_default_satisfies_its_own_pattern():
-    """The default is pre-filled into the form, so a default that fails the field's own
-    pattern blocks every user on first open with no obvious cause.
-    """
     IonChannelFittingScanConfig.Initialize(
         recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}]
     )
 
 
 def test_ion_channel_name_rejects_a_name_neuron_could_not_use():
-    """It becomes the NEURON SUFFIX, so it has to be a valid identifier."""
     with pytest.raises(ValidationError):
         IonChannelFittingScanConfig.Initialize(
             recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}],
@@ -35,9 +29,6 @@ def test_ion_channel_name_rejects_a_name_neuron_could_not_use():
 
 
 def test_recordings_are_kept_together_rather_than_scanned():
-    """Several recordings are fitted into one model, so they are one tuple-valued
-    parameter rather than a scan dimension that would split into one config each.
-    """
     annotation = IonChannelFittingScanConfig.Initialize.model_fields["recordings"].annotation
 
     assert getattr(annotation, "__origin__", None) is tuple
@@ -81,9 +72,6 @@ def _scan_config(**model_type):
 
 
 def test_every_recording_is_an_input_of_the_task_config():
-    """The campaign and each config list all recordings as inputs, so the platform can
-    trace a fitted model back to every recording it was fitted to.
-    """
     recordings = _scan_config().input_entities(db_client=_db_client())
 
     assert [recording.id for recording in recordings] == RECORDING_IDS

@@ -7,8 +7,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 
 
 class EquationKey(StrEnum):
-    """Fitting keys understood by `ion_channel_builder`."""
-
     SIG_FIT_MINF = "sig_fit_minf"
     SIG_FIT_MTAU = "sig_fit_mtau"
     THERMO_FIT_MTAU = "thermo_fit_mtau"

@@ -1,12 +1,4 @@
-"""Ion channel modeling scan config.
-
-Fits a Hodgkin-Huxley channel model to a set of ion channel recordings: one equation per
-gating variable, fitted by `ion_channel_builder`, written out as a mod file and registered
-as an IonChannelModel.
-
-The four equations are keys on one model block rather than separately referenced blocks, so
-the editor draws the whole model as a single element.
-"""
+"""Ion channel modeling scan config."""
 
 import json
 import logging
@@ -89,7 +81,6 @@ except ImportError:
         pass
 
 
-# `ion_channel_builder` fitting inputs that are the same for every fit.
 VOLTAGE_EXCLUSION = {
     "activation": {"above": None, "below": None},
     "inactivation": {"above": None, "below": None},
@@ -110,7 +101,6 @@ STIM_TIMINGS_CORRECTIONS = {
 
 
 def plot_fitted_model(mechanisms_root: Path, **kwargs: Any) -> Any:
-    """Load the compiled mechanism and plot the fitted model with `run_ion_channel_model`."""
     import neuron  # ruff: ignore[import-outside-top-level]
 
     neuron.load_mechanisms(str(mechanisms_root))
@@ -267,7 +257,6 @@ class IonChannelFittingScanConfig(InfoScanConfig):
     )
 
     def input_entities(self, db_client: entitysdk.client.Client) -> list:
-        """The recordings, which must share a temperature: the fitted model records one."""
         entities = [
             recording.entity(db_client=db_client) for recording in self.initialize.recordings
         ]
@@ -463,7 +452,6 @@ class IonChannelFittingTask(Task):
         )
 
         try:  # ruff: ignore[too-many-statements-in-try-clause]
-            # the rest of the model's metadata comes from the first recording
             recording_entity = self.config.input_entities(db_client=db_client)[0]
 
             # download traces asset and metadata given id.
@@ -556,7 +544,6 @@ class IonChannelFittingTask(Task):
                 recording_entity=recording_entity,
             )
 
-            # what the run produced, so the platform can link the model back to the execution
             self._update_execution_activity(
                 db_client=db_client,
                 execution_activity=execution_activity,
