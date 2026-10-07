@@ -18,7 +18,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 
 SectionType = Literal[3, 4]
-SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]] | None
+SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]]
 MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS = 20_000
 
 

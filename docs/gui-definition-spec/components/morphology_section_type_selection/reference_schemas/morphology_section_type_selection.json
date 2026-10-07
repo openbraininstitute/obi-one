@@ -14,12 +14,8 @@
         "type": "array"
       },
       "type": "array"
-    },
-    {
-      "type": "null"
     }
   ],
-  "default": null,
   "title": "Section types",
   "description": "Types of sections to generate locations on.",
   "property_group": "MorphologySource",
