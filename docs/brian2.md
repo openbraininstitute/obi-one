@@ -90,6 +90,9 @@ is Brian2-specific, so any simulator with the same constraint can use them.
 
 Only soma voltage (`variable_name: "v"`) is reported.
 
+A recording holds the samples from its start time up to, but not including, its end time, so a window from 0 to 50 ms at 0.025 ms is 2,000 frames, as SONATA readers such as libsonata expect.
+A start or end time between two samples is rounded to the nearest one, and the report's `mapping/time` gives the times of the frames actually written.
+
 ### Synaptic manipulations
 
 | Block | Notes |
