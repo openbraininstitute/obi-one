@@ -30,9 +30,10 @@ OBI-ONE is a standardized library of workflows for biophysically-detailed brain 
 brew install uv open-mpi boost cmake
 ```
 
-### Private neuromorphomesh from AWS CodeArtifacts
+### Private ultraliser from AWS CodeArtifacts
 
-Certain commands require the installation of `neuromorphomesh`.
+The `meshing` extra (installed by `make install-meshing`, `make install-all` and `make install-dev`) requires `ultraliser`, which is used by the skeletonization and mesh LOD generation tasks and is published only on AWS CodeArtifact.
+The service Docker image does not include the `meshing` extra: those tasks run as launch-system jobs that install `ultraliser` from their own requirements in `launch_scripts/`, so building the image does not need a CodeArtifact token.
 At the OBI [AWS Console](https://openbraininstitute.awsapps.com/start), first check that you have access to the `Container Registry` (AWS Account Id: `985539765147`).
 
 Then setup the the SSO AWS login; steps 1 and 2 from: [Bastion Access](https://github.com/openbraininstitute/aws-terraform-deployment/blob/staging/bastion_host/BASTION_ACCESS.md#database-access-via-port-forwarding)

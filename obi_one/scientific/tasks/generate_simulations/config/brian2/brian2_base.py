@@ -4,7 +4,7 @@ from typing import ClassVar, override
 from libsonata import SimulatorType
 from pydantic import Field, PositiveFloat
 
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.specific import AllPointNeurons
 from obi_one.scientific.library.circuit import Circuit
@@ -91,7 +91,7 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
                 f"A Brian2 simulation needs exactly one point node population; "
                 f"circuit '{circuit.name}' has {len(populations)}: {populations}."
             )
-            raise OBIONEError(msg)
+            raise ConfigValidationError(msg)
 
     class Initialize(BaseSimulationScanConfig.Initialize):
         pass

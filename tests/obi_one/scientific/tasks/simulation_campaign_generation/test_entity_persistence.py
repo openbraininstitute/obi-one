@@ -1,8 +1,9 @@
 """What the task sends to entitycore when a database client is supplied.
 
 Generation is usable offline: with no client it only writes files. With one, it additionally
-records the neuron count on the Simulation entity and uploads the generated artefacts as labelled
-assets. Both the set of labels and the neuron count are part of the contract.
+records the neuron count on the Simulation entity, links it to the recording arrays its LFP
+reports read, and uploads the generated artefacts as labelled assets. The set of labels, the
+neuron count and the links are all part of the contract.
 """
 
 import entitysdk
@@ -25,6 +26,23 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     build_config,
     generate,
 )
+
+ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
+OTHER_ARRAY_ID = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed"
+
+
+def _lfp_recording(array_id):
+    return obi.ExtracellularElectrodeArrayRecordingBlock(
+        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
+    )
+
+
+def _recording_array_links(db_client):
+    return [
+        call
+        for call in db_client.calls_to("update_entity")
+        if "recording_arrays" in call.kwargs["attrs_or_entity"]
+    ]
 
 
 class TestWithoutADatabaseClient:
@@ -183,6 +201,76 @@ class TestNeuronCount:
         update = db_client.calls_to("update_entity")[0]
         assert update.kwargs["entity_id"] == config.single_entity.id
         assert update.kwargs["entity_type"] is entitysdk.models.Simulation
+
+
+class TestRecordingArrayLinks:
+    """entitysdk stages an LFP report's weight matrix at run time, from the arrays linked here."""
+
+    def test_the_simulation_is_linked_to_the_array_it_records_with(
+        self, circuit_config, tmp_path, db_client
+    ):
+        config = circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)})
+
+        generate(config, tmp_path, db_client=db_client)
+
+        (link,) = _recording_array_links(db_client)
+        assert link.kwargs["attrs_or_entity"] == {"recording_arrays": [{"id": ARRAY_ID}]}
+        assert link.kwargs["entity_id"] == config.single_entity.id
+        assert link.kwargs["entity_type"] is entitysdk.models.Simulation
+
+    def test_each_array_is_linked_once(self, circuit_config, tmp_path, db_client):
+        config = circuit_config(
+            blocks={
+                "ProbeA": _lfp_recording(ARRAY_ID),
+                "ProbeB": _lfp_recording(ARRAY_ID),
+                "ProbeC": _lfp_recording(OTHER_ARRAY_ID),
+            }
+        )
+
+        generate(config, tmp_path, db_client=db_client)
+
+        (link,) = _recording_array_links(db_client)
+        linked = link.kwargs["attrs_or_entity"]["recording_arrays"]
+        assert sorted(array["id"] for array in linked) == sorted([ARRAY_ID, OTHER_ARRAY_ID])
+
+    def test_a_simulation_without_lfp_is_linked_to_nothing(
+        self, circuit_config, tmp_path, db_client
+    ):
+        generate(circuit_config(), tmp_path, db_client=db_client)
+
+        assert _recording_array_links(db_client) == []
+
+    def test_the_link_is_made_before_the_config_is_uploaded(
+        self, circuit_config, tmp_path, db_client
+    ):
+        """The SONATA config is the completion marker, so the entity is complete before it."""
+        generate(
+            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}),
+            tmp_path,
+            db_client=db_client,
+        )
+
+        (link,) = _recording_array_links(db_client)
+        config_upload = next(
+            call
+            for call in db_client.calls_to("upload_file")
+            if call.kwargs["asset_label"] == "sonata_simulation_config"
+        )
+        assert db_client.calls.index(link) < db_client.calls.index(config_upload)
+
+    def test_the_weight_matrix_is_neither_downloaded_nor_uploaded(
+        self, circuit_config, tmp_path, db_client
+    ):
+        """FakeDBClient has no download methods, so any attempt would fail this test."""
+        result = generate(
+            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}),
+            tmp_path,
+            db_client=db_client,
+        )
+
+        assert db_client.uploaded_labels() == ["custom_node_sets", "sonata_simulation_config"]
+        assert list(result.directory.glob("*.h5")) == []
+        assert result.reports["LFP"]["electrodes_file"] == f"{ARRAY_ID}.h5"
 
 
 class TestPersistenceOrdering:

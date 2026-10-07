@@ -20,6 +20,32 @@ def _touch(path):
     return path
 
 
+_REPORT_WINDOW = {"cells": "All", "dt": 0.1, "start_time": 0.0, "end_time": 10.0}
+COMPARTMENT_REPORT = _REPORT_WINDOW | {
+    "type": "compartment",
+    "sections": "soma",
+    "variable_name": "v",
+}
+LFP_REPORT = _REPORT_WINDOW | {"type": "lfp", "sections": "all", "electrodes_file": "e.h5"}
+
+
+def _simulation_config(tmp_path, reports):
+    """A minimal SONATA simulation config declaring ``reports``, written into ``tmp_path``."""
+    config_file = tmp_path / "simulation_config.json"
+    config_file.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "network": "circuit_config.json",
+                "run": {"tstop": 10.0, "dt": 0.025, "random_seed": 1},
+                "output": {"output_dir": str(tmp_path)},
+                "reports": reports,
+            }
+        )
+    )
+    return config_file
+
+
 def _neuron_mechanism_build(tmp_path):
     return NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
@@ -41,19 +67,44 @@ def test_get_number_of_mpi_processes():
 
 
 def test_collect_simulation_outputs(tmp_path):
+    config_file = _simulation_config(tmp_path, {"voltage": COMPARTMENT_REPORT})
     spike_file = tmp_path / "spikes.h5"
     spike_file.write_text("spikes")
     voltage_file = tmp_path / "voltage.h5"
     voltage_file.write_text("voltage")
 
-    results = test_module._collect_simulation_outputs(tmp_path)
+    results = test_module._collect_simulation_outputs(tmp_path, config_file)
     assert isinstance(results, SimulationResults)
     assert results.spike_report_file == spike_file
     assert voltage_file in results.voltage_report_files
+    assert results.lfp_report_files == []
 
     spike_file.unlink()
     with pytest.raises(RuntimeError):
-        test_module._collect_simulation_outputs(tmp_path)
+        test_module._collect_simulation_outputs(tmp_path, config_file)
+
+
+def test_collect_simulation_outputs_includes_nwb_voltage_reports(tmp_path):
+    config_file = _simulation_config(tmp_path, {})
+    (tmp_path / "spikes.h5").write_text("spikes")
+    nwb_report = tmp_path / "voltage.nwb"
+    nwb_report.write_text("voltage")
+
+    results = test_module._collect_simulation_outputs(tmp_path, config_file)
+
+    assert results.voltage_report_files == [nwb_report]
+
+
+def test_collect_simulation_outputs_separates_lfp_reports(tmp_path):
+    """An lfp report is the extracellular signal per electrode, not a voltage trace."""
+    config_file = _simulation_config(tmp_path, {"Soma": COMPARTMENT_REPORT, "LFP": LFP_REPORT})
+    for name in ("spikes.h5", "Soma.h5", "LFP.h5"):
+        (tmp_path / name).write_text(name)
+
+    results = test_module._collect_simulation_outputs(tmp_path, config_file)
+
+    assert results.lfp_report_files == [tmp_path / "LFP.h5"]
+    assert results.voltage_report_files == [tmp_path / "Soma.h5"]
 
 
 @patch("obi_one.scientific.library.simulation.neuron.process._run_bluecellulab_simulation")
@@ -78,7 +129,7 @@ def test_run_simulation_bluecellulab(mock_collect, mock_run, tmp_path):
         parameters=parameters,
         simulation_entrypoint_path=test_module.ENTRYPOINT_PATH,
     )
-    mock_collect.assert_called_once_with(results_dir=tmp_path)
+    mock_collect.assert_called_once_with(results_dir=tmp_path, config_file=tmp_path / "config.json")
     assert results == expected_results
 
 
@@ -101,7 +152,7 @@ def test_run_simulation_neurodamus(mock_collect, mock_run, tmp_path):
     results = test_module.run_simulation(parameters, tmp_path, backend)
 
     mock_run.assert_called_once_with(parameters=parameters)
-    mock_collect.assert_called_once_with(results_dir=tmp_path)
+    mock_collect.assert_called_once_with(results_dir=tmp_path, config_file=tmp_path / "config.json")
     assert results == expected_results
 
 

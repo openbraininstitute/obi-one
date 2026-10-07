@@ -85,6 +85,9 @@ class Brian2Network(BaseModel):
 
     neurons: brian2.NeuronGroup
     synapses: brian2.Synapses
+    # The synaptic weights as the circuit defines them. Connection overrides scale these rather
+    # than the current weights, so one override never compounds another.
+    synapse_weights: brian2.Quantity
     spike_monitor: brian2.SpikeMonitor
     state_monitor: brian2.StateMonitor | None
     inputs: list
@@ -726,7 +729,10 @@ class ConnectionOverride:
         selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
 
         if self.config.weight is not None:
-            net.synapses.w[selection.flatten()] = self.config.weight * brian2.units.mV
+            # SONATA's `weight` is a factor on each synapse's own weight, not a weight: 0
+            # disconnects, and 1 restores the circuit's weight whatever came before.
+            edge_ids = selection.flatten()
+            net.synapses.w[edge_ids] = self.config.weight * net.synapse_weights[edge_ids]
 
         if self.config.synapse_delay_override is not None:
             net.synapses.delay[selection.flatten()] = (
@@ -836,6 +842,8 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     net = Brian2Network(
         neurons=neurons,
         synapses=synapses,
+        # A copy: `w[:]` is a view, which would follow the overrides it is meant to anchor.
+        synapse_weights=synapses.w[:].copy(),
         spike_monitor=spike_monitor,
         inputs=inputs,
         state_monitor=state_monitor,
@@ -856,8 +864,16 @@ def _write_soma_report(
     end: float,
     dt: float,
 ) -> None:
-    """Write soma report in SONATA format."""
-    values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
+    """Write soma report in SONATA format.
+
+    SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
+    so a window holds `(end - start) / dt` frames. Both ends are rounded to the nearest sample
+    rather than floored and ceiled, since e.g. `0.3 / 0.1 == 2.9999999999999996`, and the
+    mapping records the times of the frames actually written.
+    """
+    first = round(start / dt)
+    last = min(round(end / dt), values.shape[1])
+    values = values[:, first:last]
     string_dtype = h5py.special_dtype(vlen=str)
     with h5py.File(output_path, "w") as h5f:
         g = h5f.create_group(f"/report/{name}")
@@ -870,9 +886,9 @@ def _write_soma_report(
             "index_pointers", data=np.arange(values.shape[0] + 1), dtype=np.uint64
         )
         mapping.create_dataset("element_ids", data=np.zeros(values.shape[0]), dtype=np.uint32)
-        mapping.create_dataset("time", data=(start, end, dt), dtype=np.double).attrs.create(
-            "units", data="ms", dtype=string_dtype
-        )
+        mapping.create_dataset(
+            "time", data=(first * dt, last * dt, dt), dtype=np.double
+        ).attrs.create("units", data="ms", dtype=string_dtype)
 
 
 def _write_reports(

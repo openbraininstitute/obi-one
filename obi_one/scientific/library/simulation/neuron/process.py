@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import cast
 
+import libsonata
+
 from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
     MechanismBuild,
@@ -40,7 +42,7 @@ def run_simulation(
             _run_neurodamus_simulation(
                 parameters=cast("NeurodamusSimulationParameters", parameters),
             )
-    return _collect_simulation_outputs(results_dir=results_dir)
+    return _collect_simulation_outputs(results_dir=results_dir, config_file=parameters.config_file)
 
 
 def _run_bluecellulab_simulation(
@@ -99,12 +101,30 @@ def _get_number_of_mpi_processes(num_cells: int) -> int:
     return min(max(math.floor(num_cells / 2), 1), 4)
 
 
-def _collect_simulation_outputs(results_dir: Path) -> SimulationResults:
+def _lfp_report_file_names(config_file: Path) -> set[str]:
+    """Names of the files the simulation's lfp reports are written to.
+
+    An lfp report holds the extracellular signal per electrode, not a voltage trace, so it is
+    registered apart from the others. The names are read through libsonata, as neurodamus does.
+    """
+    config = libsonata.SimulationConfig.from_file(str(config_file))
+    return {
+        Path(config.report(name).file_name).name
+        for name in config.list_report_names
+        if config.report(name).type == libsonata.SimulationConfig.Report.Type.lfp
+    }
+
+
+def _collect_simulation_outputs(results_dir: Path, config_file: Path) -> SimulationResults:
+    lfp_file_names = _lfp_report_file_names(config_file)
     spike_report_files = []
     voltage_report_files = []
-    for filepath in list(results_dir.glob("*.h5")) + list(results_dir.glob(".nwb")):
+    lfp_report_files = []
+    for filepath in list(results_dir.glob("*.h5")) + list(results_dir.glob("*.nwb")):
         if filepath.name == "spikes.h5":
             spike_report_files.append(filepath)
+        elif filepath.name in lfp_file_names:
+            lfp_report_files.append(filepath)
         else:
             voltage_report_files.append(filepath)
 
@@ -115,6 +135,7 @@ def _collect_simulation_outputs(results_dir: Path) -> SimulationResults:
     return SimulationResults(
         spike_report_file=spike_report_files[0],
         voltage_report_files=voltage_report_files,
+        lfp_report_files=lfp_report_files,
     )
 
 

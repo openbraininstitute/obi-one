@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 from pydantic import Field, NonNegativeFloat
 
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.stimuli.stimulus import (
@@ -81,7 +81,7 @@ class SpikeStimulus(StimulusWithTimestamps):
             and not target_neuron_set.has_point_neurons(circuit)  # ty:ignore[unresolved-attribute]
         ):
             msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
-            raise OBIONEError(msg)
+            raise ConfigValidationError(msg)
 
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,

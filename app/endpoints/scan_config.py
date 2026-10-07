@@ -10,7 +10,7 @@ from app.dependencies.entitysdk import get_client
 from app.errors import internal_error, invalid_config_error
 from app.logger import L
 from obi_one import run_tasks_for_generated_scan
-from obi_one.core.exception import ConfigValidationError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
@@ -65,6 +65,16 @@ def _error_detail(exc: Exception) -> str:
     return str(exc)
 
 
+def _delete_registered_entities(
+    grid_scan: GridScanGenerationTask, db_client: entitysdk.client.Client
+) -> None:
+    """Take back what a failed generation registered, without masking why it failed."""
+    try:
+        grid_scan.delete_registered_entities(db_client=db_client)
+    except OBIONEError:
+        L.exception("Failed generation left entities behind")
+
+
 def create_endpoint_for_scan_config(
     model: type[ScanConfig],
     *,
@@ -98,14 +108,14 @@ def create_endpoint_for_scan_config(
 
         campaign = None
         with tempfile.TemporaryDirectory() as tdir:
+            grid_scan = GridScanGenerationTask(
+                form=form,
+                # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
+                #        / "grid_scan", => ERA001 Found commented-out code
+                output_root=tdir,
+                coordinate_directory_option="ZERO_INDEX",
+            )
             try:
-                grid_scan = GridScanGenerationTask(
-                    form=form,
-                    # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
-                    #        / "grid_scan", => ERA001 Found commented-out code
-                    output_root=tdir,
-                    coordinate_directory_option="ZERO_INDEX",
-                )
                 grid_scan.execute(db_client=db_client)
                 campaign = grid_scan.form.campaign
                 if execute_single_config_task:
@@ -114,6 +124,7 @@ def create_endpoint_for_scan_config(
             except ConfigValidationError as e:
                 L.info("Rejected unrunnable config: %s", e)
 
+                _delete_registered_entities(grid_scan, db_client)
                 raise invalid_config_error(str(e)) from e
 
             except Exception as e:
@@ -121,6 +132,7 @@ def create_endpoint_for_scan_config(
 
                 L.error(error_msg)
 
+                _delete_registered_entities(grid_scan, db_client)
                 raise internal_error(error_msg) from e
 
             else:
