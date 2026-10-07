@@ -55,8 +55,8 @@ class SkeletonizationTask(Task):
         cell_id = em_cell_mesh.dense_reconstruction_cell_id
         return SkeletonizationInputs(
             metadata=Metadata(
-                subject=em_cell_mesh.subject,  # ty:ignore[invalid-argument-type]
-                brain_region=em_cell_mesh.brain_region,  # ty:ignore[invalid-argument-type]
+                subject=em_cell_mesh.subject,
+                brain_region=em_cell_mesh.brain_region,
                 cell_morphology_protocol_name=CELL_MORPHOLOGY_PROTOCOL_NAME,
                 cell_morphology_protocol_description=CELL_MORPHOLOGY_PROTOCOL_DESCRIPTION,
                 cell_morphology_name=self.config.initialize.cell_mesh.id_str,  # ty:ignore[unresolved-attribute]

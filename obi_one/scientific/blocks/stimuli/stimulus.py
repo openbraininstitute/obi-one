@@ -773,7 +773,7 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         sonata_config[self.block_name] = {
             # cannot have any delay with SEClamp, so timestamps are used in duration_levels
             "delay": 0,
-            "duration": sum(combination.duration for combination in self.duration_voltage),
+            "duration": sum(combination.duration for combination in self.duration_voltage),  # ty:ignore[no-matching-overload]
             "voltage": self.duration_voltage[0].voltage,
             # converts durations into starting times for each level,
             # with the first level starting at time 0

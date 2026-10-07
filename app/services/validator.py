@@ -71,7 +71,7 @@ def run_grid_scan_validation(
         with tempfile.TemporaryDirectory() as tdir:
             grid_scan = GridScanGenerationTask(
                 form=config,
-                output_root=tdir,  # ty:ignore[invalid-argument-type]
+                output_root=tdir,
                 coordinate_directory_option="ZERO_INDEX",
             )
             grid_scan.execute(db_client=mock_client)  # ty:ignore[invalid-argument-type]

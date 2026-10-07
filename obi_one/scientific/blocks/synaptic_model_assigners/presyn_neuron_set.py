@@ -21,7 +21,7 @@ class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
 
     title: ClassVar[str] = "Presynaptic Neuron Set"
 
-    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",

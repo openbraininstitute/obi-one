@@ -64,7 +64,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
 class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
     """Base class for locations sampled across the morphologies of the targeted neurons."""
 
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description=(
