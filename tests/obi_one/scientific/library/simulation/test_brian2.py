@@ -659,6 +659,62 @@ def test_connection_override_mid_simulation(tmp_path):
     assert not any(t > delay for t in spikes[2])
 
 
+def test_connection_override_reconnect_restores_circuit(tmp_path):
+    disconnect, reconnect = 1.5, 3.0
+    config = {
+        # long enough after `reconnect` for 1 & 2 to recharge from rest, where they leak to
+        "run": {"tstop": 8, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 12000000000,
+                "delay": 0,
+                "duration": 8,
+                "node_set": "0",
+            },
+        },
+        "connection_overrides": [
+            {"name": "Cut", "source": "0", "target": "All", "delay": disconnect, "weight": 0.0},
+            {"name": "Restore", "source": "0", "target": "All", "delay": reconnect, "weight": 1.0},
+        ],
+    }
+    net = _run_simulation(tmp_path, config)[1]
+    spikes = dict(net.spike_monitor.spike_trains().items())
+
+    disconnect *= brian2.units.ms
+    reconnect *= brian2.units.ms
+    for i in (1, 2):
+        assert any(t < disconnect for t in spikes[i])
+        assert not any(disconnect < t <= reconnect for t in spikes[i])
+        # A weight of 1 restores the circuit's own 250 mV, not 1 mV
+        assert any(t > reconnect for t in spikes[i])
+
+    npt.assert_allclose(net.synapses.w[:] / brian2.units.mV, 250)
+
+
+def test_connection_override_weight_scales_circuit_weights(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": "Halve", "source": "0", "target": "All", "delay": 0.0, "weight": 0.5},
+            # scales the circuit's weights again, rather than the already halved ones
+            {"name": "HalveAgain", "source": "0", "target": "All", "delay": 1.0, "weight": 0.5},
+        ],
+    }
+    net = _run_simulation(tmp_path, config)[1]
+
+    weights = np.asarray(net.synapses.w[:] / brian2.units.mV)
+    from_0 = np.asarray(net.synapses.i[:]) == 0
+    npt.assert_allclose(weights[from_0], 125)
+    npt.assert_allclose(weights[~from_0], 250)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

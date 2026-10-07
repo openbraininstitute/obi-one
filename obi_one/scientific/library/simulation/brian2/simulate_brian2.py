@@ -85,6 +85,9 @@ class Brian2Network(BaseModel):
 
     neurons: brian2.NeuronGroup
     synapses: brian2.Synapses
+    # The synaptic weights as the circuit defines them. Connection overrides scale these rather
+    # than the current weights, so one override never compounds another.
+    synapse_weights: brian2.Quantity
     spike_monitor: brian2.SpikeMonitor
     state_monitor: brian2.StateMonitor | None
     inputs: list
@@ -726,7 +729,10 @@ class ConnectionOverride:
         selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
 
         if self.config.weight is not None:
-            net.synapses.w[selection.flatten()] = self.config.weight * brian2.units.mV
+            # SONATA's `weight` is a factor on each synapse's own weight, not a weight: 0
+            # disconnects, and 1 restores the circuit's weight whatever came before.
+            edge_ids = selection.flatten()
+            net.synapses.w[edge_ids] = self.config.weight * net.synapse_weights[edge_ids]
 
         if self.config.synapse_delay_override is not None:
             net.synapses.delay[selection.flatten()] = (
@@ -836,6 +842,8 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
     net = Brian2Network(
         neurons=neurons,
         synapses=synapses,
+        # A copy: `w[:]` is a view, which would follow the overrides it is meant to anchor.
+        synapse_weights=synapses.w[:].copy(),
         spike_monitor=spike_monitor,
         inputs=inputs,
         state_monitor=state_monitor,
