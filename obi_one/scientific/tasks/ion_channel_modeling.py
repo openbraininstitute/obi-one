@@ -438,6 +438,9 @@ class IonChannelFittingTask(Task):
 
         # Get recording entity to access metadata
         recording_entity = self.describing_recording(db_client)
+        recording_names = ", ".join(
+            str(recording.entity(db_client=db_client).name) for recording in self.recordings
+        )
 
         # Extract subject and brain_region from recording metadata
         subject = recording_entity.subject
@@ -449,7 +452,7 @@ class IonChannelFittingTask(Task):
                 nmodl_suffix=self.config.initialize.ion_channel_name,
                 description=(
                     f"Ion channel model: {self.config.initialize.ion_channel_name}.mod "
-                    f"made using recording: {recording_entity.name} "
+                    f"made using recordings: {recording_names} "
                     f"for (temperature: {recording_entity.temperature}), "
                     f"brain region: {brain_region.name}, "
                     f"and subject: {subject.name}."
