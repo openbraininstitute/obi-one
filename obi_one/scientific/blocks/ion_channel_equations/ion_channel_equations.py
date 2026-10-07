@@ -18,7 +18,7 @@ class EquationKey(StrEnum):
     SIG_FIT_HTAU = "sig_fit_htau"
 
 
-_TITLE: dict[str, str] = {
+EQUATION_TITLES: dict[str, str] = {
     EquationKey.SIG_FIT_MINF: "Sigmoid equation for m∞",
     EquationKey.SIG_FIT_MTAU: "Sigmoid equation combination for τₘ",
     EquationKey.THERMO_FIT_MTAU: "Double exponential denominator equation for τₘ",
@@ -30,7 +30,7 @@ _TITLE: dict[str, str] = {
     EquationKey.SIG_FIT_HTAU: "Sigmoid equation for τₕ",
 }
 
-_LATEX: dict[str, str] = {
+EQUATION_LATEX: dict[str, str] = {
     EquationKey.SIG_FIT_MINF: r"\frac{1}{1 + e^{\frac{ -(v - v_{half})}{k}}}",
     EquationKey.SIG_FIT_MTAU: (
         r"\frac{1.}{1. + e^{\frac{v - v_{break}}{3.}}}  \cdot "
@@ -60,5 +60,5 @@ def equation_schema_extra(schema: dict[str, Any]) -> None:
     keys = schema.pop("enum", None) or [schema.pop("const")]
     schema["enum"] = keys
     schema[SchemaKey.UI_ELEMENT] = UIElement.STRING_SELECTION_ENHANCED
-    schema[SchemaKey.TITLE_BY_KEY] = {key: _TITLE[key] for key in keys}
-    schema[SchemaKey.LATEX_BY_KEY] = {key: _LATEX[key] for key in keys}
+    schema[SchemaKey.TITLE_BY_KEY] = {key: EQUATION_TITLES[key] for key in keys}
+    schema[SchemaKey.LATEX_BY_KEY] = {key: EQUATION_LATEX[key] for key in keys}

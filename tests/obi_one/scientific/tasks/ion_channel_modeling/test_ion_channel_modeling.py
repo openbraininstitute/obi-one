@@ -6,15 +6,13 @@ import pytest
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 from pydantic import ValidationError
 
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.registry import task_registry
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.ion_channel_modeling import (
     HodgkinHuxleyIonChannelModel,
     IonChannelFittingScanConfig,
-    IonChannelFittingSingleConfig,
-    IonChannelFittingTask,
 )
 
 
@@ -63,6 +61,15 @@ def test_registration_uses_the_generic_ion_channel_modeling_task_entities():
 RECORDING_IDS = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]
 
 
+def _db_client(temperatures=(25.0, 25.0)):
+    db_client = Mock()
+    by_id = dict(zip(RECORDING_IDS, temperatures, strict=True))
+    db_client.get_entity.side_effect = lambda entity_id, **_: Mock(
+        id=entity_id, temperature=by_id[entity_id]
+    )
+    return db_client
+
+
 def _scan_config(**model_type):
     return IonChannelFittingScanConfig.model_validate(
         {
@@ -77,12 +84,9 @@ def test_every_recording_is_an_input_of_the_task_config():
     """The campaign and each config list all recordings as inputs, so the platform can
     trace a fitted model back to every recording it was fitted to.
     """
-    db_client = Mock()
-    db_client.get_entity.side_effect = lambda entity_id, **_: f"recording {entity_id}"
+    recordings = _scan_config().input_entities(db_client=_db_client())
 
-    assert _scan_config().input_entities(db_client=db_client) == [
-        f"recording {id_}" for id_ in RECORDING_IDS
-    ]
+    assert [recording.id for recording in recordings] == RECORDING_IDS
 
 
 def test_exponents_can_be_swept():
@@ -113,23 +117,19 @@ def test_generate_registers_a_campaign_and_one_config_per_exponent(tmp_path, mon
     monkeypatch.setattr(
         db_sdk, "create_generic_activity", lambda **kwargs: activities.append(kwargs)
     )
-    db_client = Mock()
-    db_client.get_entity.side_effect = lambda entity_id, **_: f"recording {entity_id}"
-    recordings = [f"recording {id_}" for id_ in RECORDING_IDS]
-
     GridScanGenerationTask(
         form=_scan_config(m_power=[1, 2]),
         output_root=tmp_path,
         coordinate_directory_option="ZERO_INDEX",
-    ).execute(db_client=db_client)
+    ).execute(db_client=_db_client())
 
     campaign, *configs = task_configs
     assert campaign["task_config_type"] == TaskConfigType.ion_channel_modeling__campaign
-    assert campaign["input_entities"] == recordings
+    assert [r.id for r in campaign["input_entities"]] == RECORDING_IDS
     assert [c["task_config_type"] for c in configs] == [
         TaskConfigType.ion_channel_modeling__config
     ] * 2
-    assert all(c["input_entities"] == recordings for c in configs)
+    assert all([r.id for r in c["input_entities"]] == RECORDING_IDS for c in configs)
     assert all(c["task_config_generator_id"] == "task config 1" for c in configs)
     (generation,) = activities
     assert generation["activity_type"] == TaskActivityType.ion_channel_modeling__config_generation
@@ -137,18 +137,19 @@ def test_generate_registers_a_campaign_and_one_config_per_exponent(tmp_path, mon
 
 
 def test_recordings_at_different_temperatures_are_rejected_even_when_one_is_unknown():
-    task = IonChannelFittingTask(config=_single_config())
-    db_client = Mock()
-    temperatures = {RECORDING_IDS[0]: 25.0, RECORDING_IDS[1]: None}
-    db_client.get_entity.side_effect = lambda entity_id, **_: Mock(
-        temperature=temperatures[entity_id]
-    )
-
-    with pytest.raises(OBIONEError, match="must share a temperature"):
-        task.describing_recording(db_client)
+    with pytest.raises(ConfigValidationError, match="must share a temperature"):
+        _scan_config().input_entities(db_client=_db_client(temperatures=(25.0, None)))
 
 
-def _single_config():
-    return IonChannelFittingSingleConfig.model_validate(
-        _scan_config().model_dump(exclude={"type"}) | {"idx": 0}
-    )
+def test_generate_rejects_mixed_temperatures_before_registering_anything(tmp_path, monkeypatch):
+    register = Mock()
+    monkeypatch.setattr(db_sdk, "register_task_config_with_asset", register)
+
+    with pytest.raises(ConfigValidationError):
+        GridScanGenerationTask(
+            form=_scan_config(),
+            output_root=tmp_path,
+            coordinate_directory_option="ZERO_INDEX",
+        ).execute(db_client=_db_client(temperatures=(25.0, 34.0)))
+
+    register.assert_not_called()

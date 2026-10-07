@@ -12,7 +12,9 @@ import json
 import logging
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import uuid
+from concurrent.futures import ProcessPoolExecutor
 from enum import StrEnum
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal
 
@@ -22,7 +24,7 @@ from entitysdk.types import AssetLabel, ContentType
 from pydantic import Discriminator, Field, StringConstraints
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -88,23 +90,31 @@ except ImportError:
 
 
 # `ion_channel_builder` fitting inputs that are the same for every fit.
-_VOLTAGE_EXCLUSION = {
+VOLTAGE_EXCLUSION = {
     "activation": {"above": None, "below": None},
     "inactivation": {"above": None, "below": None},
 }
 
 # None means "read the timing from the trace"; the corrections shift those read timings, in ms.
-_STIM_TIMINGS = {
+STIM_TIMINGS = {
     "activation": {"start": None, "end": None},
     "inactivation_iv": {"start": None, "end": None},
     "inactivation_tc": {"start": None, "end": None},
 }
 
-_STIM_TIMINGS_CORRECTIONS = {
+STIM_TIMINGS_CORRECTIONS = {
     "activation": {"start": 0.0, "end": -1.0},
     "inactivation_iv": {"start": 5.0, "end": -1.0},
     "inactivation_tc": {"start": 0.0, "end": -1.0},
 }
+
+
+def plot_fitted_model(mechanisms_root: Path, **kwargs: Any) -> Any:
+    """Load the compiled mechanism and plot the fitted model with `run_ion_channel_model`."""
+    import neuron  # ruff: ignore[import-outside-top-level]
+
+    neuron.load_mechanisms(str(mechanisms_root))
+    return run_ion_channel_model(**kwargs)
 
 
 class BlockGroup(StrEnum):
@@ -257,7 +267,18 @@ class IonChannelFittingScanConfig(InfoScanConfig):
     )
 
     def input_entities(self, db_client: entitysdk.client.Client) -> list:
-        return [recording.entity(db_client=db_client) for recording in self.initialize.recordings]
+        """The recordings, which must share a temperature: the fitted model records one."""
+        entities = [
+            recording.entity(db_client=db_client) for recording in self.initialize.recordings
+        ]
+        temperatures = {entity.temperature for entity in entities}  # ty:ignore[unresolved-attribute]
+        if len(temperatures) > 1:
+            msg = (
+                "Ion channel recordings fitted together must share a temperature, because the "
+                f"fitted model records a single one. Got {sorted(temperatures, key=str)}."
+            )
+            raise ConfigValidationError(msg)
+        return entities
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
@@ -270,24 +291,6 @@ class IonChannelFittingTask(Task):
     @property
     def recordings(self) -> tuple[IonChannelRecordingFromID, ...]:
         return self.config.initialize.recordings
-
-    def describing_recording(self, db_client: entitysdk.client.Client) -> Any:
-        """The recording whose metadata describes the fitted model.
-
-        A model carries one temperature, one subject and one brain region, and declares itself
-        temperature-independent — so fitting across recordings that disagree on temperature
-        would label the result with a number that is not true of it. The rest of the metadata
-        comes from the first recording, which that check makes representative of the set.
-        """
-        entities = [recording.entity(db_client=db_client) for recording in self.recordings]
-        temperatures = {entity.temperature for entity in entities}  # ty:ignore[unresolved-attribute]
-        if len(temperatures) > 1:
-            msg = (
-                "Ion channel recordings fitted together must share a temperature, because the "
-                f"fitted model records a single one. Got {sorted(temperatures, key=str)}."
-            )
-            raise OBIONEError(msg)
-        return entities[0]
 
     @property
     def conductance_name(self) -> str:
@@ -460,7 +463,8 @@ class IonChannelFittingTask(Task):
         )
 
         try:  # ruff: ignore[too-many-statements-in-try-clause]
-            recording_entity = self.describing_recording(db_client)
+            # the rest of the model's metadata comes from the first recording
+            recording_entity = self.config.input_entities(db_client=db_client)[0]
 
             # download traces asset and metadata given id.
             # Get ljp (liquid junction potential) voltage corection from metadata
@@ -478,9 +482,9 @@ class IonChannelFittingTask(Task):
                 data_paths=trace_paths,
                 ljps=trace_ljps,
                 eq_names=eq_names,  # ty:ignore[invalid-argument-type]
-                voltage_exclusion=_VOLTAGE_EXCLUSION,
-                stim_timings=_STIM_TIMINGS,
-                stim_timings_corrections=_STIM_TIMINGS_CORRECTIONS,
+                voltage_exclusion=VOLTAGE_EXCLUSION,
+                stim_timings=STIM_TIMINGS,
+                stim_timings_corrections=STIM_TIMINGS_CORRECTIONS,
                 output_folder=self.config.coordinate_output_root,
             )
 
@@ -501,8 +505,7 @@ class IonChannelFittingTask(Task):
             )
 
             # Compile into the coordinate folder rather than the process cwd, which concurrent
-            # fits in one worker share, and load from there explicitly: `run_ion_channel_model`
-            # expects the mechanism to be loaded already.
+            # fits in one worker share.
             subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
                 [  # ruff: ignore[start-process-with-partial-path]
                     "nrnivmodl",
@@ -513,22 +516,24 @@ class IonChannelFittingTask(Task):
                 check=True,
                 cwd=coordinate_root,
             )
-            import neuron  # ruff: ignore[import-outside-top-level]
-
-            neuron.load_mechanisms(str(coordinate_root))
 
             mech_suffix = self.config.initialize.ion_channel_name
-            # run ion_channel_builder mod file runner to produce plots
-            figure_paths_dict = run_ion_channel_model(
-                mech_suffix=mech_suffix,
-                # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current="ik",  # ty:ignore[invalid-argument-type]
-                temperature=recording_entity.temperature,
-                mech_conductance_name=self.conductance_name,
-                output_folder=self.config.coordinate_output_root,
-                savefig=True,
-                show=False,
-            )
+            # A fresh process per fit: NEURON loads a mechanism name only once per process, and
+            # every fit of a sweep compiles its own mechanism under the same name.
+            with ProcessPoolExecutor(max_workers=1, mp_context=get_context("spawn")) as pool:
+                figure_paths_dict = pool.submit(
+                    plot_fitted_model,
+                    coordinate_root,
+                    mech_suffix=mech_suffix,
+                    # current is defined like this in mod file, see
+                    # ion_channel_builder.io.write_output
+                    mech_current="ik",
+                    temperature=recording_entity.temperature,
+                    mech_conductance_name=self.conductance_name,
+                    output_folder=self.config.coordinate_output_root,
+                    savefig=True,
+                    show=False,
+                ).result()
 
             # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
             range_vars = [
@@ -545,7 +550,7 @@ class IonChannelFittingTask(Task):
             # register the mod file and figures to the platform
             model_id = self.save(
                 mod_filepath=output_name,
-                figure_filepaths=figure_paths_dict,  # ty:ignore[invalid-argument-type]
+                figure_filepaths=figure_paths_dict,
                 db_client=db_client,
                 range_vars=range_vars,  # ty:ignore[invalid-argument-type]
                 recording_entity=recording_entity,
