@@ -120,7 +120,7 @@ def _collect_simulation_outputs(results_dir: Path, config_file: Path) -> Simulat
     spike_report_files = []
     voltage_report_files = []
     lfp_report_files = []
-    for filepath in list(results_dir.glob("*.h5")) + list(results_dir.glob(".nwb")):
+    for filepath in list(results_dir.glob("*.h5")) + list(results_dir.glob("*.nwb")):
         if filepath.name == "spikes.h5":
             spike_report_files.append(filepath)
         elif filepath.name in lfp_file_names:

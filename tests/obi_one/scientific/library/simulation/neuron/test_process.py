@@ -84,6 +84,17 @@ def test_collect_simulation_outputs(tmp_path):
         test_module._collect_simulation_outputs(tmp_path, config_file)
 
 
+def test_collect_simulation_outputs_includes_nwb_voltage_reports(tmp_path):
+    config_file = _simulation_config(tmp_path, {})
+    (tmp_path / "spikes.h5").write_text("spikes")
+    nwb_report = tmp_path / "voltage.nwb"
+    nwb_report.write_text("voltage")
+
+    results = test_module._collect_simulation_outputs(tmp_path, config_file)
+
+    assert results.voltage_report_files == [nwb_report]
+
+
 def test_collect_simulation_outputs_separates_lfp_reports(tmp_path):
     """An lfp report is the extracellular signal per electrode, not a voltage trace."""
     config_file = _simulation_config(tmp_path, {"Soma": COMPARTMENT_REPORT, "LFP": LFP_REPORT})
