@@ -43,10 +43,11 @@ what the runner can execute.
 
 The current injections are played into the neurons as a `TimedArray` and summed per target
 neuron set. `Brian2DirectPoissonStimulus` instead kicks the membrane potential directly, bypassing
-the circuit's synapses: every neuron in its target draws an independent Poisson train, built as one
-`brian2.PoissonInput` per contiguous range of node IDs in that target. The spike stimuli generate a
-spike file, which the runner replays through a `SpikeGeneratorGroup` wired with the circuit's *own*
-connectivity.
+the circuit's synapses: every neuron in its target draws an independent Poisson train, from a
+`brian2.PoissonGroup` with one source per targeted neuron, wired one-to-one onto it. Its cost
+follows the size of the target, not how the target's node IDs are laid out. The spike stimuli
+generate a spike file, which the runner replays through a `SpikeGeneratorGroup` wired with the
+circuit's *own* connectivity.
 
 A sinusoid has to be sampled fast enough to be represented, so
 `SimulationDtSinusoidalCurrentClampSomaticStimulus` is refused when its frequency reaches the
