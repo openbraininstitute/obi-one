@@ -56,7 +56,7 @@ hyperframe==6.1.0
 idna==3.20
 igor2==0.5.13
 importlib-resources==7.1.0
-ion-channel-builder @ git+https://github.com/openbraininstitute/ion-channel-builder.git@e9cd61abad5014aee98f7c4aa2af0ce29194da27
+ion-channel-builder==0.0.19
 ipython==9.17.1
 ipython-pygments-lexers==1.1.1
 jedi==0.20.0
