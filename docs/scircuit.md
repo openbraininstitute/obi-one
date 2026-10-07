@@ -188,7 +188,7 @@ Recordings capture network activity:
 
 Records the extracellular signal seen by each electrode of a recording array. Only available for circuit simulations, since the signal is computed from a weight matrix covering the whole circuit, and only offered for circuits larger than a small microcircuit: the circuit's `ShowExtracellularRecordings` usability flag is false at single, pair and small scale, which greys the block out.
 
-- **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built for the circuit being simulated by `CreateExtracellularRecordingArrayTask`
+- **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built for the circuit being simulated by `CreateExtracellularRecordingArrayTask`. Generation refuses an array built for another circuit.
 - **Neuron Set**: Neurons contributing to the signal
 - **Timestep**: Interval between recorded samples in ms
 
