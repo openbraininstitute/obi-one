@@ -448,6 +448,10 @@ def _pipeline_results(**overrides):
 
 
 def _install_registration_helpers(monkeypatch, calls):
+    monkeypatch.setattr(
+        registration, "write_emodel_optimization_output", lambda final_path, *_args: final_path
+    )
+
     def register_emodel(**kwargs):
         calls["emodel"] = kwargs
         return SimpleNamespace(id="emodel-id")

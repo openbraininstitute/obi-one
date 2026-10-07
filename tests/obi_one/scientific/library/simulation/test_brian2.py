@@ -6,6 +6,7 @@
 """
 
 import copy
+import gc
 import json
 import math
 import re
@@ -14,10 +15,12 @@ from types import SimpleNamespace
 
 import bluepysnap
 import brian2.units
+import h5py
 import libsonata
 import numpy as np
 import numpy.testing as npt
 import pytest
+from brian2.utils.logger import catch_logs
 
 import obi_one.scientific.library.simulation.brian2.simulate_brian2 as test_module
 
@@ -184,8 +187,10 @@ def test_spike_replay(tmp_path):
         assert not spikes[i].any()
 
 
-def test_poisson(tmp_path):
-    config = {
+def _poisson_config(node_set, rate=10000):
+    # at dt = 0.1 ms, a rate of 10 kHz kicks every targeted neuron on every step, so the spike
+    # times do not depend on how the random stream is drawn
+    return {
         "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
@@ -194,31 +199,74 @@ def test_poisson(tmp_path):
             "poisson": {
                 "input_type": "spikes",
                 "module": "poisson",
-                "node_set": "0",
+                "node_set": node_set,
                 "delay": 0.0,
                 "duration": 1000,
-                "rate": 1000,
+                "rate": rate,
                 "weight": 1000,
             }
         },
     }
+
+
+def test_poisson(tmp_path):
+    config = _poisson_config("0")
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
-    assert len(spikes[0]) == 1
-    assert spikes[0] == [0.2] * brian2.units.ms
+    # the kick at t=0 takes the neuron over threshold, which is detected on the next step
+    npt.assert_allclose(spikes[0][0] / brian2.units.ms, 0.1)
 
     # delay the onset of poisson stim
     config["inputs"]["poisson"]["delay"] = 0.1
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
-    assert len(spikes[0]) == 1
-    assert spikes[0] == [0.2 + 0.1] * brian2.units.ms
+    npt.assert_allclose(spikes[0][0] / brian2.units.ms, 0.1 + 0.1)
 
-    # have duration too short to spike, delay reminas 0.1
-    config["inputs"]["poisson"]["duration"] = 0.1
+    # stop the stim before the neuron could spike a second time
+    config["inputs"]["poisson"]["delay"] = 0.0
+    config["inputs"]["poisson"]["duration"] = 0.3
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert spikes[0] == [0.1] * brian2.units.ms
+
+    # have duration too short to kick at all
+    config["inputs"]["poisson"]["duration"] = 0.0
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
+
+
+def test_poisson_non_contiguous_node_set(tmp_path):
+    """A node set spanning several id ranges gets one Poisson source per neuron, wired to it."""
+    node_sets_path = tmp_path / "node_sets.json"
+    node_sets_path.write_text(json.dumps({"ends": {"population": "drosophila", "node_id": [0, 2]}}))
+    config = _poisson_config("ends") | {"node_sets_file": str(node_sets_path)}
+
+    _, net = _run_simulation(tmp_path, config)
+    spikes = dict(net.spike_monitor.spike_trains().items())
+
+    # 0 and 2 are kicked directly; 1 is not, so it can only fire later, from their synapses
+    npt.assert_allclose([spikes[0][0] / brian2.units.ms, spikes[2][0] / brian2.units.ms], 0.1)
+    assert all(t > 0.1 * brian2.units.ms for t in spikes[1])
+
+    (poisson,) = {e.func for e in net.events if isinstance(e.func, test_module.InputPoisson)}
+    sources, kicks = poisson._inputs
+    assert len(sources) == 2
+    npt.assert_array_equal(kicks.i[:], [0, 1])
+    npt.assert_array_equal(kicks.j[:], [0, 2])
+
+
+def test_poisson_without_duration(tmp_path):
+    """A zero-length stimulus does nothing, and leaves no unused brian2 objects to warn about."""
+    config = _poisson_config("0")
+    config["inputs"]["poisson"]["duration"] = 0.0
+
+    with catch_logs() as logs:
+        _, net = _run_simulation(tmp_path, config)
+        gc.collect()  # brian2 warns about unused objects when they are collected
+
+    assert not net.spike_monitor.num_spikes
+    assert not [message for _, _, message in logs if "never included in a network" in message]
 
 
 def test_poisson_compartment_set_unsupported(tmp_path):
@@ -537,6 +585,70 @@ def test_current_stim_report(tmp_path):
     soma1 = simulation.reports["soma1"].filter().report.copy()
     assert soma1.shape == (20, 1)
     npt.assert_allclose(soma1["drosophila", 0], soma0["drosophila", 0])
+
+
+@pytest.mark.parametrize(
+    ("start_time", "end_time", "first_frame", "frame_count"),
+    [
+        (0.0, 2.0, 0, 20),  # the whole run
+        (0.5, 1.5, 5, 10),  # a window inside the run used to get a frame at `end_time` as well
+        (0.3, 0.7, 3, 4),  # 0.3 / 0.1 == 2.9999999999999996, which floor() put a frame early
+        (1.0, 5.0, 10, 10),  # a window running past tstop ends with the run
+    ],
+)
+def test_time_window_report(tmp_path, start_time, end_time, first_frame, frame_count):
+    """A window holds (end - start) / dt frames, each the full report's frame at that time.
+
+    SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
+    so an extra frame at `end` is dropped by it but not by a reader of the raw dataset.
+    """
+    dt = 0.1
+    config = {
+        "run": {"tstop": 2, "dt": dt, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "delay": 0.1,
+                "duration": 4,
+                "node_set": "0",
+            }
+        },
+        "reports": {
+            name: {
+                "sections": "soma",
+                "type": "compartment",
+                "variable_name": "v",
+                "unit": "mV",
+                "dt": dt,
+                "start_time": start,
+                "end_time": end,
+            }
+            for name, start, end in (("full", 0, 2), ("window", start_time, end_time))
+        },
+    }
+    simulation, _ = _run_simulation(tmp_path, config)
+
+    path = simulation.to_libsonata.report("window").file_name
+    with h5py.File(path) as h5:
+        assert h5["report/drosophila/data"].shape == (frame_count, 3)
+        npt.assert_allclose(
+            h5["report/drosophila/mapping/time"][:],
+            [first_frame * dt, (first_frame + frame_count) * dt, dt],
+        )
+
+    window = libsonata.ElementReportReader(path)["drosophila"].get()
+    npt.assert_allclose(window.times, (first_frame + np.arange(frame_count)) * dt)
+
+    full = libsonata.ElementReportReader(simulation.to_libsonata.report("full").file_name)
+    full = full["drosophila"].get()
+    npt.assert_array_equal(
+        np.asarray(window.data), np.asarray(full.data)[first_frame : first_frame + frame_count]
+    )
 
 
 def test_current_stim_report_failure(tmp_path):

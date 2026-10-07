@@ -770,19 +770,26 @@ class InputPoisson:
             assert self.config.delay <= t <= self.config.delay + self.config.duration
             simulation = bluepysnap.Simulation(self.sim_config_path)
             population_name = _get_single_node_population(simulation.circuit)
-            selections = simulation.node_sets.to_libsonata.materialize(
+            node_ids = simulation.node_sets.to_libsonata.materialize(
                 self.config.node_set, simulation.circuit.nodes[population_name].to_libsonata
-            )
+            ).flatten()
 
-            for start, end in selections.ranges:
-                p = brian2.PoissonInput(
-                    target=net.neurons[start:end],
-                    target_var="v",
-                    N=1,
-                    rate=self.config.rate * brian2.units.Hz,
-                    weight=self.config.weight * brian2.units.mV,
+            # a stimulus without duration is added and removed before it could ever run
+            if node_ids.size and self.config.duration > 0:
+                # One Poisson source per targeted neuron, wired one-to-one onto it. A PoissonInput
+                # can only target a contiguous range of neurons, and one per range costs seconds
+                # and memory each: FlyWire's olfactory node set alone has 2,220 ranges.
+                sources = brian2.PoissonGroup(
+                    node_ids.size, rates=self.config.rate * brian2.units.Hz
                 )
-                self._inputs.append(p)
+                kicks = brian2.Synapses(
+                    sources,
+                    net.neurons,
+                    on_pre="v_post += weight",
+                    namespace={"weight": self.config.weight * brian2.units.mV},
+                )
+                kicks.connect(i=np.arange(node_ids.size), j=np.array(node_ids, np.int64))
+                self._inputs.extend((sources, kicks))
 
             return NetworkOperation(add=list(self._inputs), remove=[])
 
@@ -864,8 +871,16 @@ def _write_soma_report(
     end: float,
     dt: float,
 ) -> None:
-    """Write soma report in SONATA format."""
-    values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
+    """Write soma report in SONATA format.
+
+    SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
+    so a window holds `(end - start) / dt` frames. Both ends are rounded to the nearest sample
+    rather than floored and ceiled, since e.g. `0.3 / 0.1 == 2.9999999999999996`, and the
+    mapping records the times of the frames actually written.
+    """
+    first = round(start / dt)
+    last = min(round(end / dt), values.shape[1])
+    values = values[:, first:last]
     string_dtype = h5py.special_dtype(vlen=str)
     with h5py.File(output_path, "w") as h5f:
         g = h5f.create_group(f"/report/{name}")
@@ -878,9 +893,9 @@ def _write_soma_report(
             "index_pointers", data=np.arange(values.shape[0] + 1), dtype=np.uint64
         )
         mapping.create_dataset("element_ids", data=np.zeros(values.shape[0]), dtype=np.uint32)
-        mapping.create_dataset("time", data=(start, end, dt), dtype=np.double).attrs.create(
-            "units", data="ms", dtype=string_dtype
-        )
+        mapping.create_dataset(
+            "time", data=(first * dt, last * dt, dt), dtype=np.double
+        ).attrs.create("units", data="ms", dtype=string_dtype)
 
 
 def _write_reports(
