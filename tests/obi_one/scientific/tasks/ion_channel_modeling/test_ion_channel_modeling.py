@@ -1,6 +1,5 @@
 """Tests for the ion channel fitting scan config."""
 
-import re
 from unittest.mock import Mock
 
 import pytest
@@ -18,16 +17,14 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingTask,
 )
 
-ION_CHANNEL_NAME_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
-
 
 def test_ion_channel_name_default_satisfies_its_own_pattern():
     """The default is pre-filled into the form, so a default that fails the field's own
     pattern blocks every user on first open with no obvious cause.
     """
-    default = IonChannelFittingScanConfig.Initialize.model_fields["ion_channel_name"].default
-
-    assert re.match(ION_CHANNEL_NAME_PATTERN, default), default
+    IonChannelFittingScanConfig.Initialize(
+        recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}]
+    )
 
 
 def test_ion_channel_name_rejects_a_name_neuron_could_not_use():
@@ -63,31 +60,6 @@ def test_registration_uses_the_generic_ion_channel_modeling_task_entities():
     )
 
 
-def test_every_recording_is_an_input_of_the_task_config():
-    """The campaign and each config list all recordings as inputs, so the platform can
-    trace a fitted model back to every recording it was fitted to.
-    """
-    config = IonChannelFittingScanConfig.model_validate(
-        {
-            "info": {"campaign_name": "Kv3.1 fit", "campaign_description": "From traces."},
-            "initialize": {
-                "recordings": [
-                    {"id_str": "00000000-0000-0000-0000-000000000001"},
-                    {"id_str": "00000000-0000-0000-0000-000000000002"},
-                ],
-            },
-            "model_type": {"type": "HodgkinHuxleyIonChannelModel"},
-        }
-    )
-    db_client = Mock()
-    db_client.get_entity.side_effect = lambda entity_id, **_: f"recording {entity_id}"
-
-    assert config.input_entities(db_client=db_client) == [
-        "recording 00000000-0000-0000-0000-000000000001",
-        "recording 00000000-0000-0000-0000-000000000002",
-    ]
-
-
 RECORDING_IDS = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]
 
 
@@ -99,6 +71,18 @@ def _scan_config(**model_type):
             "model_type": {"type": "HodgkinHuxleyIonChannelModel", **model_type},
         }
     )
+
+
+def test_every_recording_is_an_input_of_the_task_config():
+    """The campaign and each config list all recordings as inputs, so the platform can
+    trace a fitted model back to every recording it was fitted to.
+    """
+    db_client = Mock()
+    db_client.get_entity.side_effect = lambda entity_id, **_: f"recording {entity_id}"
+
+    assert _scan_config().input_entities(db_client=db_client) == [
+        f"recording {id_}" for id_ in RECORDING_IDS
+    ]
 
 
 def test_exponents_can_be_swept():

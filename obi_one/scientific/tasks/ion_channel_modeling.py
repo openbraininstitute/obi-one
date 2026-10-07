@@ -4,10 +4,8 @@ Fits a Hodgkin-Huxley channel model to a set of ion channel recordings: one equa
 gating variable, fitted by `ion_channel_builder`, written out as a mod file and registered
 as an IonChannelModel.
 
-Several recordings are fitted *together* into one model, not one model each — which is what
-`extract_all_equations` takes lists of traces and ljps for. The four equations are keys on
-one model block rather than separately referenced blocks, so the editor draws the whole model
-as a single element.
+The four equations are keys on one model block rather than separately referenced blocks, so
+the editor draws the whole model as a single element.
 """
 
 import json
@@ -89,8 +87,7 @@ except ImportError:
         pass
 
 
-# `ion_channel_builder` fitting inputs that are the same for every fit. They are not exposed
-# on the config, so they live here rather than being rebuilt inside execute() each run.
+# `ion_channel_builder` fitting inputs that are the same for every fit.
 _VOLTAGE_EXCLUSION = {
     "activation": {"above": None, "below": None},
     "inactivation": {"above": None, "below": None},
@@ -149,7 +146,7 @@ class HodgkinHuxleyIonChannelModel(Block):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         default=EquationKey.SIG_FIT_MINF,
-        json_schema_extra=equation_schema_extra(EquationKey.SIG_FIT_MINF),
+        json_schema_extra=equation_schema_extra,
     )
 
     mtau_eq: Literal[
@@ -165,12 +162,7 @@ class HodgkinHuxleyIonChannelModel(Block):
             r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
         ),
         default=EquationKey.SIG_FIT_MTAU,
-        json_schema_extra=equation_schema_extra(
-            EquationKey.SIG_FIT_MTAU,
-            EquationKey.THERMO_FIT_MTAU,
-            EquationKey.THERMO_FIT_MTAU_V2,
-            EquationKey.BELL_FIT_MTAU,
-        ),
+        json_schema_extra=equation_schema_extra,
     )
 
     hinf_eq: Literal[EquationKey.SIG_FIT_HINF] = Field(
@@ -181,7 +173,7 @@ class HodgkinHuxleyIonChannelModel(Block):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         default=EquationKey.SIG_FIT_HINF,
-        json_schema_extra=equation_schema_extra(EquationKey.SIG_FIT_HINF),
+        json_schema_extra=equation_schema_extra,
     )
 
     htau_eq: Literal[EquationKey.SIG_FIT_HTAU] = Field(
@@ -192,7 +184,7 @@ class HodgkinHuxleyIonChannelModel(Block):
             r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
         ),
         default=EquationKey.SIG_FIT_HTAU,
-        json_schema_extra=equation_schema_extra(EquationKey.SIG_FIT_HTAU),
+        json_schema_extra=equation_schema_extra,
     )
 
 
@@ -277,7 +269,6 @@ class IonChannelFittingTask(Task):
 
     @property
     def recordings(self) -> tuple[IonChannelRecordingFromID, ...]:
-        """The recordings this task fits, jointly, into one model."""
         return self.config.initialize.recordings
 
     def describing_recording(self, db_client: entitysdk.client.Client) -> Any:
@@ -303,36 +294,11 @@ class IonChannelFittingTask(Task):
         """The conductance name for the generated ion channel model."""
         return f"g{self.config.initialize.ion_channel_name}bar"
 
-    @property
-    def equation_keys(self) -> dict[str, str]:
-        """The `ion_channel_builder` equation key chosen for each gating variable."""
-        model = self.config.model_type
-        return {
-            "minf": model.minf_eq,
-            "mtau": model.mtau_eq,
-            "hinf": model.hinf_eq,
-            "htau": model.htau_eq,
-        }
-
-    @property
-    def m_power(self) -> int:
-        """The exponent of m in the Hodgkin-Huxley channel equation."""
-        return self.config.model_type.m_power  # ty:ignore[invalid-return-type]
-
-    @property
-    def h_power(self) -> int:
-        """The exponent of h in the Hodgkin-Huxley channel equation."""
-        return self.config.model_type.h_power  # ty:ignore[invalid-return-type]
-
     def download_input(
         self,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> tuple[list[Path], list[float]]:
-        """Download every recording, and return their traces and ljp values.
-
-        `extract_all_equations` fits one model from all of them together, which is why these
-        are lists rather than a single trace.
-        """
+        """Download every recording, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
         for recording in self.recordings:
@@ -420,6 +386,7 @@ class IonChannelFittingTask(Task):
         figure_filepaths: dict[Path],  # ty:ignore[invalid-type-arguments]
         db_client: entitysdk.client.Client,
         range_vars: list[dict[str, str | None]],
+        recording_entity: Any,
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
@@ -436,8 +403,6 @@ class IonChannelFittingTask(Task):
             nonspecific=[],
         )
 
-        # Get recording entity to access metadata
-        recording_entity = self.describing_recording(db_client)
         recording_names = ", ".join(
             str(recording.entity(db_client=db_client).name) for recording in self.recordings
         )
@@ -490,19 +455,24 @@ class IonChannelFittingTask(Task):
         execution_activity_id: str | None = None,
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
-        # None when the task is run locally rather than launched; the update below is then a
-        # no-op, so the same execute() serves both.
         execution_activity = self._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
         try:  # ruff: ignore[too-many-statements-in-try-clause]
+            recording_entity = self.describing_recording(db_client)
+
             # download traces asset and metadata given id.
             # Get ljp (liquid junction potential) voltage corection from metadata
             trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
-            # prepare data to feed
-            eq_names = self.equation_keys
+            model = self.config.model_type
+            eq_names: dict[str, str] = {
+                "minf": model.minf_eq,
+                "mtau": model.mtau_eq,
+                "hinf": model.hinf_eq,
+                "htau": model.htau_eq,
+            }
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
@@ -525,8 +495,8 @@ class IonChannelFittingTask(Task):
                 eq_popt=eq_popt,  # ty:ignore[invalid-argument-type]
                 suffix=self.config.initialize.ion_channel_name,
                 ion="k",
-                m_power=self.m_power,
-                h_power=self.h_power,
+                m_power=model.m_power,  # ty:ignore[invalid-argument-type]
+                h_power=model.h_power,  # ty:ignore[invalid-argument-type]
                 output_name=output_name,  # ty:ignore[invalid-argument-type]
             )
 
@@ -546,9 +516,6 @@ class IonChannelFittingTask(Task):
             import neuron  # ruff: ignore[import-outside-top-level]
 
             neuron.load_mechanisms(str(coordinate_root))
-
-            # Get recording entity to access temperature
-            recording_entity = self.describing_recording(db_client)
 
             mech_suffix = self.config.initialize.ion_channel_name
             # run ion_channel_builder mod file runner to produce plots
@@ -581,6 +548,7 @@ class IonChannelFittingTask(Task):
                 figure_filepaths=figure_paths_dict,  # ty:ignore[invalid-argument-type]
                 db_client=db_client,
                 range_vars=range_vars,  # ty:ignore[invalid-argument-type]
+                recording_entity=recording_entity,
             )
 
             # what the run produced, so the platform can link the model back to the execution

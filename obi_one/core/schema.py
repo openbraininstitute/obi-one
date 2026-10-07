@@ -18,7 +18,6 @@ class SchemaKey(StrEnum):
     GROUP = "group"
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
-    LATEX_EQUATION = "latex_equation"
     SAMPLED_PARAMETER = "sampled_parameter"
     # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
     # sampled - the column it becomes. It is declared because a field's own name need not match
