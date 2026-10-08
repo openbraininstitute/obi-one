@@ -389,14 +389,14 @@ def validate_morphology_section_type_selection(schema: dict, param: str, ref: st
     )
 
     any_of = schema.get("anyOf", [])
-    if len(any_of) != 3:
+    if len(any_of) != 2:
         msg = (
             f"Validation error at {ref}: morphology_section_type_selection param {param} "
-            "should be a union of array[int], array[array[int]], and null"
+            "should be a union of array[int] and array[array[int]]"
         )
         raise ValidationError(msg)
 
-    single_selection_schema, scan_schema, null_schema = any_of
+    single_selection_schema, scan_schema = any_of
     if (
         single_selection_schema.get("type") != "array"
         or single_selection_schema.get("items", {}).get("type") != "integer"
@@ -419,17 +419,9 @@ def validate_morphology_section_type_selection(schema: dict, param: str, ref: st
         )
         raise ValidationError(msg)
 
-    if null_schema.get("type") != "null":
-        msg = (
-            f"Validation error at {ref}: morphology_section_type_selection param {param} "
-            "should have null as its third union member"
-        )
-        raise ValidationError(msg)
-
     try:
         validate([3, 4], schema)
         validate([[3], [3, 4]], schema)
-        validate(None, schema)
     except ValidationError:
         msg = (
             f"Validation error at {ref}: morphology_section_type_selection param {param} "

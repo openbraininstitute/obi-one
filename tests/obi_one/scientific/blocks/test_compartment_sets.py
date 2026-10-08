@@ -109,7 +109,9 @@ def test_compartment_set_preflight_rejects_oversized_target_before_loading_morph
             node_population="pop",
             population="pop",
             neuron_set=neuron_set,
-            locations_block=obi.RandomMorphologyLocations(number_of_locations=1),
+            locations_block=obi.RandomMorphologyLocations(
+                number_of_locations=1, section_types=(3, 4)
+            ),
         )
 
     circuit.load_morphology.assert_not_called()
@@ -132,7 +134,9 @@ def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
             node_population="pop",
             population="pop",
             neuron_set=neuron_set,
-            locations_block=obi.RandomMorphologyLocations(number_of_locations=1),
+            locations_block=obi.RandomMorphologyLocations(
+                number_of_locations=1, section_types=(3, 4)
+            ),
         )
 
     assert result is expected
@@ -344,7 +348,7 @@ def test_write_compartment_sets_rejects_invalid_file_name(tmp_path, file_name):
 
 
 def test_materialization_uses_default_neuron_set_for_locations_without_target():
-    locations = obi.RandomMorphologyLocations()
+    locations = obi.RandomMorphologyLocations(section_types=(3, 4))
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
         block_dict_name="morphology_locations",
@@ -380,7 +384,7 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
 
 
 def test_materialization_handles_recording_location_targets():
-    locations = obi.RandomMorphologyLocations()
+    locations = obi.RandomMorphologyLocations(section_types=(3, 4))
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
         block_dict_name="morphology_locations",
@@ -418,7 +422,7 @@ def test_materialization_handles_recording_location_targets():
 
 
 def _morphology_location_recording():
-    locations = obi.RandomMorphologyLocations()
+    locations = obi.RandomMorphologyLocations(section_types=(3, 4))
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
         block_dict_name="morphology_locations",
@@ -490,7 +494,7 @@ def test_task_injects_default_into_optional_unified_target():
 
 def test_task_assigns_implicit_default_to_morphology_locations():
     default_ref = MagicMock()
-    locations = obi.RandomMorphologyLocations()
+    locations = obi.RandomMorphologyLocations(section_types=(3, 4))
     task = GenerateSimulationTask.model_construct(
         config=SimpleNamespace(
             morphology_locations={"locations": locations},
