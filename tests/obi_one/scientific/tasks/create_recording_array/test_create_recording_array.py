@@ -67,7 +67,7 @@ def _make_task(tmp_path, *, circuit_path=_CIRCUIT_PATH):
 
 def _resolved_circuit(circuit_path):
     circuit = Circuit(name="tiny", path=str(circuit_path))
-    return circuit, SimpleNamespace(id=uuid4())
+    return circuit, SimpleNamespace(id=uuid4(), number_neurons=291)
 
 
 def test_write_electrode_json_writes_correct_format(tmp_path):
@@ -175,6 +175,39 @@ def test_execute_compiles_mechanisms_when_mod_dir_exists(tmp_path, mock_db_clien
     assert mock_db_client.upload_file.call_count == 2
 
 
+@pytest.mark.parametrize(("job_cpus", "expected"), [("8", 8), (None, 4)])
+def test_execute_runs_an_mpi_process_per_job_cpu(
+    tmp_path, mock_db_client, monkeypatch, job_cpus, expected
+):
+    """One process per CPU in JOB_CPUS; without it, the 4 that 291 cells would be given."""
+    if job_cpus is None:
+        monkeypatch.delenv("JOB_CPUS", raising=False)
+    else:
+        monkeypatch.setenv("JOB_CPUS", job_cpus)
+    task, circuit_path = _make_task(tmp_path)
+    circuit, circuit_entity = _resolved_circuit(circuit_path)
+
+    with (
+        patch.object(
+            CreateExtracellularRecordingArrayTask,
+            "_get_execution_activity",
+            return_value=None,
+        ),
+        patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
+        patch(f"{_MODULE}.db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}._plot_electrode_array"),
+        patch(f"{_MODULE}.compile_mechanisms", return_value=_mechanism_build(tmp_path)),
+        patch(f"{_MODULE}._write_electrode_json", return_value=tmp_path / "coord" / "e.json"),
+        patch(
+            f"{_MODULE}.run_bluerecording_write_weights",
+            return_value=tmp_path / "coord" / "weights.h5",
+        ) as mock_bluerecording,
+    ):
+        task.execute(db_client=mock_db_client)
+
+    assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == expected
+
+
 def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path, mock_db_client):
     circuit_config_path = tmp_path / "circuit" / "circuit_config.json"
     circuit_config_path.parent.mkdir()
@@ -188,7 +221,7 @@ def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path,
         path=str(circuit_config_path),
         sonata_circuit=MagicMock(),
     )
-    circuit_entity = SimpleNamespace(id=uuid4())
+    circuit_entity = SimpleNamespace(id=uuid4(), number_neurons=10)
     mechanism_build = _mechanism_build(tmp_path)
 
     mock_pop_props = MagicMock()
@@ -244,7 +277,7 @@ def test_execute_uses_neocortex_fallback_without_mods(tmp_path, mock_db_client):
         path=str(circuit_config_path),
         sonata_circuit=MagicMock(),
     )
-    circuit_entity = SimpleNamespace(id=uuid4())
+    circuit_entity = SimpleNamespace(id=uuid4(), number_neurons=10)
     electrode_json = tmp_path / "coord" / "electrodes.json"
     weights_path = tmp_path / "coord" / "weights.h5"
 

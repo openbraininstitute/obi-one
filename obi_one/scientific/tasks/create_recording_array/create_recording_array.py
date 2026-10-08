@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import tempfile
 import typing
 from enum import StrEnum
@@ -28,6 +29,7 @@ from obi_one.scientific.library.extracellular_locations import (
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.create_recording_array.process import (
+    get_number_of_mpi_processes,
     run_bluerecording_write_weights,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
@@ -267,11 +269,20 @@ class CreateExtracellularRecordingArrayTask(Task):
             self.config.coordinate_output_root / "electrodes.json",
         )
         weights_output_path = self.config.coordinate_output_root / "weights.h5"
+        # A launch-system job runs a process on each of its CPUs. A local run plans as many as
+        # the resource estimate would ask for.
+        job_cpus = os.environ.get("JOB_CPUS")
+        number_of_mpi_processes = (
+            int(job_cpus)
+            if job_cpus
+            else get_number_of_mpi_processes(self._circuit_entity.number_neurons)  # ty:ignore[unresolved-attribute]
+        )
         run_bluerecording_write_weights(
             circuit_config_path,
             electrode_json_path,
             weights_output_path,
             nrnmech_lib_path=nrnmech_lib_path.absolute(),
+            number_of_mpi_processes=number_of_mpi_processes,
         )
         L.info("Weights saved to: %s", weights_output_path)
 
