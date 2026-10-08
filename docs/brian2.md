@@ -115,12 +115,15 @@ so the mechanism-specific manipulations (`SynapticMgManipulation`,
 `weight` is a factor on each synapse's weight as the circuit defines it, not on its current value,
 so overrides never compound: a Connect (weight 1) after a Disconnect (weight 0) restores the
 circuit exactly, inhibitory signs included. `synapse_delay_override` replaces the delay outright.
+Overrides reach replayed spikes too: a spike stimulus delivers them through copies of the circuit's synapses, and an override changes each copy of the edges it selects as it changes the original.
 
 ### Neuron sets and timestamps
 
 Neuron sets are restricted to the point-neuron sets (`Brian2SimulationNeuronSetUnion`). Timestamps
 blocks are shared with the other simulation configurations and are referenced by the current
 injections and the synaptic manipulations.
+
+The FlyWire converter (`projects/drosophila/drosophila_to_brian2_sonata.py`) names the circuits' predefined node sets after annotation values, alongside `All` and `sugar`. A value found in several annotation columns, such as `descending`, gets one node set, defined by the column that selects the most neurons: `super_class` (1,299 descending neurons) rather than `cell_sub_class` (5). The other definitions are reachable with a `PointPopulationPropertyNeuronSet` filtering on that column.
 
 ## Defaults
 
