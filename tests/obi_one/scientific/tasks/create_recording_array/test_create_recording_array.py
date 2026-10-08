@@ -17,6 +17,7 @@ from obi_one.scientific.tasks.create_recording_array.create_recording_array impo
     CreateExtracellularRecordingArrayTask,
 )
 from obi_one.types import SimulationBackend
+from obi_one.utils.benchmark import BenchmarkTracker
 
 from tests.utils import CIRCUIT_DIR
 
@@ -206,6 +207,37 @@ def test_execute_runs_an_mpi_process_per_job_cpu(
         task.execute(db_client=mock_db_client)
 
     assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == expected
+
+
+def test_execute_benchmarks_each_phase(tmp_path, mock_db_client):
+    task, circuit_path = _make_task(tmp_path)
+    circuit, circuit_entity = _resolved_circuit(circuit_path)
+    BenchmarkTracker.reset()
+    BenchmarkTracker.enable()
+
+    with (
+        patch.object(
+            CreateExtracellularRecordingArrayTask,
+            "_get_execution_activity",
+            return_value=None,
+        ),
+        patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
+        patch(f"{_MODULE}.db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}._plot_electrode_array"),
+        patch(f"{_MODULE}.compile_mechanisms", return_value=_mechanism_build(tmp_path)),
+        patch(f"{_MODULE}._write_electrode_json", return_value=tmp_path / "coord" / "e.json"),
+        patch(
+            f"{_MODULE}.run_bluerecording_write_weights",
+            return_value=tmp_path / "coord" / "weights.h5",
+        ),
+    ):
+        task.execute(db_client=mock_db_client)
+
+    phases = {"resolve_circuit", "compile_mechanisms", "write_weights", "upload_weights"}
+    assert set(BenchmarkTracker._benchmarks) == phases
+    results = json.loads((tmp_path / "coord" / "benchmark_results.json").read_text())
+    assert set(results["benchmarks"]) == phases
+    BenchmarkTracker.reset()
 
 
 def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path, mock_db_client):

@@ -16,6 +16,7 @@ from entitysdk.models import Entity, SimulatableExtracellularRecordingArray
 from entitysdk.types import AssetLabel, ContentType, ElectrodeType
 from pydantic import Field, PrivateAttr
 
+from obi_one.config import settings
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
@@ -40,8 +41,14 @@ from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsUnion,
 )
 from obi_one.types import SimulationBackend
+from obi_one.utils.benchmark import BenchmarkTracker
 
 L = logging.getLogger(__name__)
+
+if settings.extracellular_recording_weights.benchmarking_enabled:
+    BenchmarkTracker.enable()
+else:
+    BenchmarkTracker.disable()
 
 
 class BlockGroup(StrEnum):
@@ -227,13 +234,16 @@ class CreateExtracellularRecordingArrayTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
-            self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
-            db_client=db_client,
-            entity_cache=entity_cache,
-            cache_root=self.config.scan_output_root,
-            temp_dir=self._create_temp_dir(),
-        )
+        BenchmarkTracker.start_tracking()
+
+        with BenchmarkTracker.section("resolve_circuit"):
+            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+                self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
+                entity_cache=entity_cache,
+                cache_root=self.config.scan_output_root,
+                temp_dir=self._create_temp_dir(),
+            )
 
         image_path = self.config.coordinate_output_root / "electrode_array.png"
         _plot_electrode_array(
@@ -254,11 +264,12 @@ class CreateExtracellularRecordingArrayTask(Task):
 
             mods_dir = self.config.coordinate_output_root / "compiled_mods"
             mods_dir.mkdir(exist_ok=True, parents=True)
-            nrnmech_lib_path = compile_mechanisms(
-                output_dir=mods_dir,
-                mechanisms_dirs=list(mechanisms_dirs),
-                simulation_backend=SimulationBackend.neurodamus,
-            ).libnrnmech_path
+            with BenchmarkTracker.section("compile_mechanisms"):
+                nrnmech_lib_path = compile_mechanisms(
+                    output_dir=mods_dir,
+                    mechanisms_dirs=list(mechanisms_dirs),
+                    simulation_backend=SimulationBackend.neurodamus,
+                ).libnrnmech_path
         else:
             # fallback to neocortex if no mod file locations specified
             nrnmech_lib_path = Path("/opt/obi/neocortex/x86_64/libnrnmech.so")
@@ -277,13 +288,14 @@ class CreateExtracellularRecordingArrayTask(Task):
             if job_cpus
             else get_number_of_mpi_processes(self._circuit_entity.number_neurons)  # ty:ignore[unresolved-attribute]
         )
-        run_bluerecording_write_weights(
-            circuit_config_path,
-            electrode_json_path,
-            weights_output_path,
-            nrnmech_lib_path=nrnmech_lib_path.absolute(),
-            number_of_mpi_processes=number_of_mpi_processes,
-        )
+        with BenchmarkTracker.section("write_weights"):
+            run_bluerecording_write_weights(
+                circuit_config_path,
+                electrode_json_path,
+                weights_output_path,
+                nrnmech_lib_path=nrnmech_lib_path.absolute(),
+                number_of_mpi_processes=number_of_mpi_processes,
+            )
         L.info("Weights saved to: %s", weights_output_path)
 
         entity = SimulatableExtracellularRecordingArray(
@@ -317,16 +329,21 @@ class CreateExtracellularRecordingArrayTask(Task):
 
         L.info("Uploaded electrode locations to recording array %s.", entity.id)
 
-        db_client.upload_file(
-            entity_id=entity.id,
-            entity_type=SimulatableExtracellularRecordingArray,
-            file_path=weights_output_path,
-            file_content_type=ContentType.application_x_hdf5,
-            asset_label=AssetLabel.electrode_array_weight_matrix,
-        )
+        with BenchmarkTracker.section("upload_weights"):
+            db_client.upload_file(
+                entity_id=entity.id,
+                entity_type=SimulatableExtracellularRecordingArray,
+                file_path=weights_output_path,
+                file_content_type=ContentType.application_x_hdf5,
+                asset_label=AssetLabel.electrode_array_weight_matrix,
+            )
 
         CreateExtracellularRecordingArrayTask._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
             generated=[str(entity.id)],
+        )
+
+        BenchmarkTracker.print_summary(
+            output_path=self.config.coordinate_output_root / "benchmark_results.json"
         )
