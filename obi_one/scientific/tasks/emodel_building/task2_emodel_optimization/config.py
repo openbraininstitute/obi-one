@@ -32,6 +32,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     to_bpem_custom_distributions,
     to_bpem_distributions,
 )
+from obi_one.types import TaskType
 
 
 class BlockGroup(StrEnum):
@@ -152,6 +153,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     registers the result. See ``EModelOptimizationTask.execute()`` for the
     optional local diagnostic path.
     """
+
+    task_type: ClassVar[TaskType] = TaskType.emodel_optimization
 
     single_coord_class_name: ClassVar[str] = "EModelOptimizationSingleConfig"
     name: ClassVar[str] = "EModel Optimization"

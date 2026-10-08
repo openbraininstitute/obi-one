@@ -53,6 +53,7 @@ from obi_one.scientific.unions_and_references.stimuli import (
     StimulusReference,
 )
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="t
 
 class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     """CircuitSimulationScanConfig."""
+
+    task_type: ClassVar[TaskType] = TaskType.circuit_simulation
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,

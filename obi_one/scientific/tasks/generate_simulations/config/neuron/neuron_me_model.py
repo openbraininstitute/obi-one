@@ -30,6 +30,7 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
 )
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discrimin
 
 class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
+
+    task_type: ClassVar[TaskType] = TaskType.me_model_simulation
 
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"

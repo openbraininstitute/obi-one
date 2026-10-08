@@ -62,6 +62,8 @@ class BlockGroup(StrEnum):
 class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     """Description."""
 
+    task_type: ClassVar[TaskType] = TaskType.extracellular_recording_weights_calculation
+
     name: ClassVar[str] = "Create Extracellular Recording Array"
     description: ClassVar[str] = "Description."
 

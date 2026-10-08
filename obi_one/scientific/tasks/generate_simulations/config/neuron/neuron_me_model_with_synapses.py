@@ -24,6 +24,7 @@ from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
     MorphologyLocationUnion,
 )
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ MEModelWithSynapsesCircuitDiscriminator = Annotated[
 
 class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig):
     """MEModelWithSynapsesCircuitSimulationScanConfig."""
+
+    task_type: ClassVar[TaskType] = TaskType.me_model_with_synapses_circuit_simulation
 
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"

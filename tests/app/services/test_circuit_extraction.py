@@ -179,8 +179,8 @@ def _run_estimate_task_resources(
             return_value=fake_config,
         ),
         patch(
-            "app.services.resource_estimation.circuit_extraction.task_registry.get_task_type_config_asset_label",
-            return_value="circuit_extraction_config",
+            "app.services.resource_estimation.circuit_extraction.get_task_spec_for_task_type",
+            return_value=SimpleNamespace(asset_label="circuit_extraction_config"),
         ),
         patch(
             "app.services.resource_estimation.circuit_extraction.db_sdk.get_entity_asset_by_label"

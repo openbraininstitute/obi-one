@@ -20,6 +20,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ class MorphologyContainerizationScanConfig(ScanConfig):
     Important: The original circuit won't be modified! The circuit will be copied
                to the output location where all operations take place.
     """
+
+    task_type: ClassVar[TaskType] = TaskType.morphology_containerization
 
     name: ClassVar[str] = "Morphology Containerization"
     description: ClassVar[str] = (

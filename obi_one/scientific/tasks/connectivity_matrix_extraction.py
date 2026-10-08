@@ -12,6 +12,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -28,6 +29,8 @@ class ConnectivityMatrixExtractionScanConfig(ScanConfig):
     connectivity matrix with the number of synapses for each connection, together with a
     table (dataframe) of selected node attributes.
     """
+
+    task_type: ClassVar[TaskType] = TaskType.connectivity_matrix_extraction
 
     name: ClassVar[str] = "Connectivity Matrix Extraction"
     description: ClassVar[str] = (

@@ -50,6 +50,7 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -148,6 +149,8 @@ class BlockGroup(StrEnum):
 
 class SynapseParameterizationScanConfig(InfoScanConfig):
     """Generate or replace a physiological parameterization of an anatomical circuit."""
+
+    task_type: ClassVar[TaskType] = TaskType.circuit_synaptic_physiology_assignment
 
     name: ClassVar[str] = "Synapse parameterization"
     description: ClassVar[str] = (
