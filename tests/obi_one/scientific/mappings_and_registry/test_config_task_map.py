@@ -4,6 +4,8 @@ import pytest
 from entitysdk.types import AssetLabel
 
 from obi_one.core import run_tasks
+from obi_one.core.base import OBIBaseModel
+from obi_one.core.task import Task
 from obi_one.scientific.mappings_and_registry import config_task_map as test_module
 from obi_one.scientific.tasks.build_synaptome import (
     MEModelSynapticModelPlacementSingleConfig,
@@ -39,6 +41,74 @@ from obi_one.scientific.tasks.skeletonization import (
     SkeletonizationTask,
 )
 from obi_one.types import TaskType
+
+# Every ``case TaskType.…`` branch in ``config_task_map.get_task_spec_for_task_type``.
+CONFIG_TASK_MAP_CASES = (
+    TaskType.circuit_extraction,
+    TaskType.circuit_simulation,
+    TaskType.circuit_synaptic_physiology_assignment,
+    TaskType.em_synapse_mapping,
+    TaskType.efeature_extraction,
+    TaskType.extracellular_recording_weights_calculation,
+    TaskType.ion_channel_model_simulation_execution,
+    TaskType.single_neuron_simulation_execution,
+    TaskType.single_neuron_synaptome_simulation_execution,
+    TaskType.mesh_lod_generation,
+    TaskType.morphology_skeletonization,
+    TaskType.basic_connectivity_plots,
+    TaskType.brian2_circuit_simulation,
+    TaskType.connectivity_matrix_extraction,
+    TaskType.electrophysiology_metrics,
+    TaskType.folder_compression,
+    TaskType.ion_channel_fitting,
+    TaskType.ion_channel_model_simulation,
+    TaskType.me_model_simulation,
+    TaskType.learning_engine_circuit_simulation,
+    TaskType.me_model_with_synapses_circuit_simulation,
+    TaskType.morphology_containerization,
+    TaskType.morphology_decontainerization,
+    TaskType.morphology_locations,
+    TaskType.morphology_metrics,
+    TaskType.circuit_simulation_neurodamus_machine,
+    TaskType.circuit_single_build,
+    TaskType.emodel_optimization,
+)
+
+# Launch-system task types that are not registered in ``config_task_map``.
+LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP = (
+    TaskType.circuit_simulation_inait_machine,
+    TaskType.circuit_simulation_neuron,
+    TaskType.circuit_simulation_neurodamus_cluster,
+    TaskType.circuit_simulation_brian2_machine,
+)
+
+
+def test_config_task_map_cases_partition_task_type_enum():
+    mapped = set(CONFIG_TASK_MAP_CASES)
+    unmapped = set(LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP)
+    assert mapped.isdisjoint(unmapped)
+    assert mapped | unmapped == set(TaskType)
+
+
+@pytest.mark.parametrize("task_type", CONFIG_TASK_MAP_CASES)
+def test_config_task_map_match_case_resolves(task_type: TaskType):
+    task_spec = test_module.get_task_spec_for_task_type(task_type)
+
+    assert issubclass(task_spec.task_cls, Task)
+    assert issubclass(task_spec.single_config_cls, OBIBaseModel)
+    assert getattr(task_spec.single_config_cls, "task_type", None) is task_type
+
+    assert test_module.get_task_spec_for_single_config(task_spec.single_config_cls) is task_spec
+
+    if task_spec.scan_config_cls is not None:
+        assert getattr(task_spec.scan_config_cls, "task_type", None) is task_type
+        assert test_module.get_task_spec_for_scan_config(task_spec.scan_config_cls) is task_spec
+
+
+@pytest.mark.parametrize("task_type", LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP)
+def test_config_task_map_unregistered_task_type_raises(task_type: TaskType):
+    with pytest.raises(KeyError, match="No task spec"):
+        test_module.get_task_spec_for_task_type(task_type)
 
 
 @pytest.mark.parametrize(
