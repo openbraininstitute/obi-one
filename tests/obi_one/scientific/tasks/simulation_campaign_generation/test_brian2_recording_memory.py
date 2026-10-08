@@ -11,7 +11,7 @@ is lowered to a size those numbers can cross.
 import pytest
 
 import obi_one as obi
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.tasks.generate_simulations.config.brian2 import brian2_base
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
@@ -49,7 +49,7 @@ class TestBrian2RecordingMemory:
             blocks={"Voltage": obi.SimulationDtSomaVoltageRecording()},
         )
 
-        with pytest.raises(OBIONEError) as error:
+        with pytest.raises(ConfigValidationError) as error:
             generate(config, tmp_path)
 
         message = str(error.value)
@@ -112,7 +112,7 @@ class TestBrian2RecordingMemory:
             },
         )
 
-        with pytest.raises(OBIONEError, match="8,000 samples"):
+        with pytest.raises(ConfigValidationError, match="8,000 samples"):
             generate(config, tmp_path)
 
     @pytest.mark.usefixtures("limit_of_one_neuron")
@@ -129,7 +129,7 @@ class TestBrian2RecordingMemory:
             initialize={"simulation_length": 200.0},
         )
 
-        with pytest.raises(OBIONEError, match="8,000 samples"):
+        with pytest.raises(ConfigValidationError, match="8,000 samples"):
             generate(config, tmp_path)
 
     def test_no_recordings_are_always_accepted(self, point_circuit, tmp_path, monkeypatch):

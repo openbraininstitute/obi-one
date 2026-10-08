@@ -151,7 +151,7 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
             "still fit in its job's memory. A recording without a neuron set records every "
             "neuron in the circuit: record a smaller neuron set, or shorten the simulation."
         )
-        raise OBIONEError(msg)
+        raise ConfigValidationError(msg)
 
     class Initialize(BaseSimulationScanConfig.Initialize):
         pass
