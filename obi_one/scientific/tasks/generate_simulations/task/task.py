@@ -696,6 +696,7 @@ class GenerateSimulationTask(Task):
             self._check_recording_arrays_belong_to_circuit(db_client, circuit.id_str)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
+        self.config.validate_recordings(self._circuit)  # ty:ignore[invalid-argument-type]
         self._materialize_location_targets()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports(db_client)
