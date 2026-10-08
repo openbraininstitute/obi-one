@@ -32,6 +32,13 @@ _PLACED = {
 }
 
 
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
+def _reset_tracker():
+    BenchmarkTracker.reset()
+    yield
+    BenchmarkTracker.reset()
+
+
 @pytest.fixture
 def mock_db_client():
     client = Mock()
@@ -212,8 +219,6 @@ def test_execute_runs_an_mpi_process_per_job_cpu(
 def test_execute_benchmarks_each_phase(tmp_path, mock_db_client):
     task, circuit_path = _make_task(tmp_path)
     circuit, circuit_entity = _resolved_circuit(circuit_path)
-    BenchmarkTracker.reset()
-    BenchmarkTracker.enable()
 
     with (
         patch.object(
@@ -233,11 +238,13 @@ def test_execute_benchmarks_each_phase(tmp_path, mock_db_client):
     ):
         task.execute(db_client=mock_db_client)
 
-    phases = {"resolve_circuit", "compile_mechanisms", "write_weights", "upload_weights"}
-    assert set(BenchmarkTracker._benchmarks) == phases
-    results = json.loads((tmp_path / "coord" / "benchmark_results.json").read_text())
-    assert set(results["benchmarks"]) == phases
-    BenchmarkTracker.reset()
+    results = json.loads((tmp_path / "coord__BENCHMARK__" / "benchmark_results.json").read_text())
+    assert set(results["benchmarks"]) == {
+        "resolve_circuit",
+        "compile_mechanisms",
+        "write_weights",
+        "upload_weights",
+    }
 
 
 def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path, mock_db_client):

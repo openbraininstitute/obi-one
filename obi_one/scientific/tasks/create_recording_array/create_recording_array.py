@@ -11,7 +11,7 @@ import bluepysnap as snap
 import libsonata
 import matplotlib.pyplot as plt
 import numpy as np
-from entitysdk import Client
+from entitysdk import Client, models
 from entitysdk.models import Entity, SimulatableExtracellularRecordingArray
 from entitysdk.types import AssetLabel, ContentType, ElectrodeType
 from pydantic import Field, PrivateAttr
@@ -23,6 +23,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.extracellular_locations import (
     extracellular_locations_block_dictionary_summary,
     plot_extracellular_arrays,
@@ -205,6 +206,8 @@ class CreateExtracellularRecordingArrayTask(Task):
     config: CreateExtracellularRecordingArraySingleConfig
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
+    _circuit: Circuit | None = PrivateAttr(default=None)
+    _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
 
     def _create_temp_dir(self) -> Path:
         """Creation of a new temporary directory."""
@@ -226,10 +229,6 @@ class CreateExtracellularRecordingArrayTask(Task):
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
         """Run the task."""
-        _ = CreateExtracellularRecordingArrayTask._get_execution_activity(
-            db_client=db_client, execution_activity_id=execution_activity_id
-        )
-
         execution_activity = CreateExtracellularRecordingArrayTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
@@ -344,6 +343,7 @@ class CreateExtracellularRecordingArrayTask(Task):
             generated=[str(entity.id)],
         )
 
-        BenchmarkTracker.print_summary(
-            output_path=self.config.coordinate_output_root / "benchmark_results.json"
+        benchmark_dir = self.config.coordinate_output_root.parent / (
+            self.config.coordinate_output_root.name + "__BENCHMARK__"
         )
+        BenchmarkTracker.print_summary(output_path=benchmark_dir / "benchmark_results.json")
