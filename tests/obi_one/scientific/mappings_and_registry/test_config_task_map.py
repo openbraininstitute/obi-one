@@ -95,8 +95,7 @@ def test_get_task_spec_for_task_type_task_cls(task_type, task_class):
 )
 def test_get_task_spec_for_task_type_single_config_cls(task_type, single_config_class):
     assert (
-        test_module.get_task_spec_for_task_type(task_type).single_config_cls
-        is single_config_class
+        test_module.get_task_spec_for_task_type(task_type).single_config_cls is single_config_class
     )
 
 
