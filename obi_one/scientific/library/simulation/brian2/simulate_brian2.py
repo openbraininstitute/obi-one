@@ -80,6 +80,18 @@ class Event(BaseModel):
         return self.at < other.at
 
 
+class ReplaySynapses(BaseModel):
+    """The synapses that deliver replayed spikes: copies of some of the circuit's edges."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    synapses: brian2.Synapses
+    # Synapse `k` copies circuit edge `edge_ids[k]`, which is how a connection override finds it.
+    edge_ids: np.ndarray
+    # As `Brian2Network.synapse_weights`, for these synapses.
+    synapse_weights: brian2.Quantity
+
+
 class Brian2Network(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -91,6 +103,7 @@ class Brian2Network(BaseModel):
     spike_monitor: brian2.SpikeMonitor
     state_monitor: brian2.StateMonitor | None
     inputs: list
+    replay_synapses: list[ReplaySynapses]
     report_id_mapping: np.ndarray
     events: list[Event]
 
@@ -352,12 +365,13 @@ def _get_spike_replay(
     input_: bluepysnap.input.SynapseReplay,
     n0: brian2.NeuronGroup,
     synapse_template: SynapseTemplate,
-) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses] | None:
+) -> tuple[brian2.SpikeGeneratorGroup, ReplaySynapses] | None:
     """Create a SpikeGeneratorGroup from a spike file and network connectivity.
 
     Unfortunately, a new set of synapses needs to be created, and
     network connectivity needs to be recreated - one cannot piggy-back on the
-    existing network.
+    existing network. They are returned with the edges they copy, so that connection
+    overrides can reach them as they reach the network's own synapses.
     """
     assert len(input_.reader.get_population_names()) == 1
     population_name = next(iter(input_.reader.get_population_names()))
@@ -414,7 +428,15 @@ def _get_spike_replay(
         selection=selection,
     )
 
-    return (replay, replay_connectivity)
+    return (
+        replay,
+        ReplaySynapses(
+            synapses=replay_connectivity,
+            # `_build_synapses` connects the edges in the order `flatten` lists them.
+            edge_ids=selection.flatten(),
+            synapse_weights=replay_connectivity.w[:].copy(),
+        ),
+    )
 
 
 class Inputs:
@@ -486,21 +508,24 @@ def _get_non_current_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
     synapse_template: SynapseTemplate,
-) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
+) -> tuple[brian2.NeuronGroup, list[brian2.Group], list[ReplaySynapses]]:
     """Filter inputs that are known from the SONATA config, return simulatable brian objects."""
     inputs = []
+    replay_synapses = []
     for name, input_ in simulation.inputs.items():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
             new_inputs = _get_spike_replay(simulation, input_, n0, synapse_template)
             if new_inputs:
-                inputs += new_inputs
+                replay, synapses = new_inputs
+                inputs += [replay, synapses.synapses]
+                replay_synapses.append(synapses)
         elif isinstance(input_, libsonata.SimulationConfig.Poisson):
             pass
         elif type(input_) not in STIMULATION_TYPES:
             msg = f"Input {name} of type: `{type(input_)}` is not currently supported."
             raise RuntimeError(msg)
 
-    return n0, inputs
+    return n0, inputs, replay_synapses
 
 
 def _get_reports(
@@ -726,20 +751,30 @@ class ConnectionOverride:
         edges = circuit.edges[next(iter(circuit.edges.population_names))]
         edge_pop = edges.to_libsonata
         # All synapses have been instantiated, so we can index using the `connecting_edges`
-        selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
+        edge_ids = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten()).flatten()
+        self._apply(net.synapses, net.synapse_weights, edge_ids)
 
-        if self.config.weight is not None:
-            # SONATA's `weight` is a factor on each synapse's own weight, not a weight: 0
-            # disconnects, and 1 restores the circuit's weight whatever came before.
-            edge_ids = selection.flatten()
-            net.synapses.w[edge_ids] = self.config.weight * net.synapse_weights[edge_ids]
-
-        if self.config.synapse_delay_override is not None:
-            net.synapses.delay[selection.flatten()] = (
-                self.config.synapse_delay_override * brian2.units.ms
+        # Replayed spikes travel through copies of the same edges, which the override changes too.
+        for replay in net.replay_synapses:
+            self._apply(
+                replay.synapses,
+                replay.synapse_weights,
+                np.flatnonzero(np.isin(replay.edge_ids, edge_ids)),
             )
 
         return NetworkOperation(add=[], remove=[])
+
+    def _apply(
+        self, synapses: brian2.Synapses, weights: brian2.Quantity, indices: np.ndarray
+    ) -> None:
+        """Override the synapses at `indices`, whose circuit weights are `weights`."""
+        if self.config.weight is not None:
+            # SONATA's `weight` is a factor on each synapse's own weight, not a weight: 0
+            # disconnects, and 1 restores the circuit's weight whatever came before.
+            synapses.w[indices] = self.config.weight * weights[indices]
+
+        if self.config.synapse_delay_override is not None:
+            synapses.delay[indices] = self.config.synapse_delay_override * brian2.units.ms
 
 
 class InputPoisson:
@@ -844,7 +879,9 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     state_monitor, report_id_mapping = _get_reports(simulation, neurons)
 
-    neurons, inputs = _get_non_current_inputs(simulation, neurons, synapse_template)
+    neurons, inputs, replay_synapses = _get_non_current_inputs(
+        simulation, neurons, synapse_template
+    )
 
     net = Brian2Network(
         neurons=neurons,
@@ -853,6 +890,7 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
         synapse_weights=synapses.w[:].copy(),
         spike_monitor=spike_monitor,
         inputs=inputs,
+        replay_synapses=replay_synapses,
         state_monitor=state_monitor,
         report_id_mapping=report_id_mapping,
         events=events,

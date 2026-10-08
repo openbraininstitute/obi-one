@@ -115,6 +115,7 @@ so the mechanism-specific manipulations (`SynapticMgManipulation`,
 `weight` is a factor on each synapse's weight as the circuit defines it, not on its current value,
 so overrides never compound: a Connect (weight 1) after a Disconnect (weight 0) restores the
 circuit exactly, inhibitory signs included. `synapse_delay_override` replaces the delay outright.
+Overrides reach replayed spikes too: a spike stimulus delivers them through copies of the circuit's synapses, and an override changes each copy of the edges it selects as it changes the original.
 
 ### Neuron sets and timestamps
 
