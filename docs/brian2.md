@@ -94,6 +94,11 @@ Only soma voltage (`variable_name: "v"`) is reported.
 A recording holds the samples from its start time up to, but not including, its end time, so a window from 0 to 50 ms at 0.025 ms is 2,000 frames, as SONATA readers such as libsonata expect.
 A start or end time between two samples is rounded to the nearest one, and the report's `mapping/time` gives the times of the frames actually written.
 
+Recordings are held in memory until the run ends: the runner records the union of every recording's neurons at every timestep of the simulation, and a time window only applies when a recording is written.
+Generation therefore refuses a configuration that would record more than 150,000,000 samples (recorded neurons × timesteps), which is what the Brian2 job's machine can hold alongside a whole-brain network.
+At the 0.025 ms timestep that is 3,750 neurons for a full second, or every neuron of `FlyWire-v783-Brian2-LIF` for about 27 ms.
+A recording without a neuron set records every neuron in the circuit, so on a whole-brain circuit it is refused for anything longer than that.
+
 ### Synaptic manipulations
 
 | Block | Notes |
