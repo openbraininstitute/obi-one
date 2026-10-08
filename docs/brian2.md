@@ -117,6 +117,8 @@ Neuron sets are restricted to the point-neuron sets (`Brian2SimulationNeuronSetU
 blocks are shared with the other simulation configurations and are referenced by the current
 injections and the synaptic manipulations.
 
+The FlyWire converter (`projects/drosophila/drosophila_to_brian2_sonata.py`) names the circuits' predefined node sets after annotation values, alongside `All` and `sugar`. A value found in several annotation columns, such as `descending`, gets one node set, defined by the column that selects the most neurons: `super_class` (1,299 descending neurons) rather than `cell_sub_class` (5). The other definitions are reachable with a `PointPopulationPropertyNeuronSet` filtering on that column.
+
 ## Defaults
 
 Every untargeted block — the simulation itself, recordings, stimuli and synaptic manipulations —
