@@ -42,20 +42,23 @@ def run_bluerecording_write_weights(
 
     L.info("Running bluerecording: %s", " ".join(cmd))
 
+    # Output is not captured, so bluerecording's progress reaches the job log as it runs.
+    # ENVIRONMENT=BATCH turns off neurodamus's colours.
     result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
         cmd,
-        capture_output=True,
-        text=True,
         check=False,
-        env={**os.environ, "NRNMECH_LIB_PATH": str(nrnmech_lib_path)},
+        env={
+            **os.environ,
+            "NRNMECH_LIB_PATH": str(nrnmech_lib_path),
+            "PYTHONUNBUFFERED": "1",
+            "ENVIRONMENT": "BATCH",
+        },
     )
 
     if result.returncode != 0:
-        L.error("bluerecording stderr: %s", result.stderr)
-        msg = f"bluerecording write_weights failed (exit {result.returncode}):\n{result.stderr}"
+        msg = (
+            f"bluerecording write_weights failed (exit {result.returncode}); see its output above."
+        )
         raise RuntimeError(msg)
-
-    if result.stdout:
-        L.debug("bluerecording stdout: %s", result.stdout.strip())
 
     return output_path

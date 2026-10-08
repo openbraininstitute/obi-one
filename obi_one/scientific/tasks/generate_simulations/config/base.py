@@ -296,11 +296,11 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         self,
         simulations: list[entitysdk.models.Simulation],  # ty:ignore[possibly-missing-submodule]
         db_client: entitysdk.client.Client,
-    ) -> None:  # ty:ignore[invalid-method-override]
+    ) -> entitysdk.models.SimulationGeneration:  # ty:ignore[invalid-method-override, possibly-missing-submodule]
         L.info("3. Saving completed simulation campaign generation")
 
         L.info("-- Register SimulationGeneration Entity")
-        db_client.register_entity(
+        return db_client.register_entity(
             entitysdk.models.SimulationGeneration(  # ty:ignore[possibly-missing-submodule]
                 start_time=datetime.now(UTC),
                 used=[self._campaign],

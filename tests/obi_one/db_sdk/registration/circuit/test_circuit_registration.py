@@ -1044,13 +1044,20 @@ def test_register_circuit_passes_include_overview_images():
     assert mock_gen.call_args.kwargs["include_overview_images"] is False
 
 
+def _tmp_circuit_config(tmp_path):
+    """Copy the tiny circuit so the sibling __CIRCUIT_VIZ__ dir is created under tmp_path."""
+    circuit_dir = tmp_path / "circuits" / "N_10__top_nodes_dim6"
+    shutil.copytree(CIRCUIT_DIR / "N_10__top_nodes_dim6", circuit_dir)
+    return circuit_dir / "circuit_config.json"
+
+
 def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_assets(tmp_path):
     """A user-uploaded image is registered synchronously even with skip_additional_assets=True.
 
     The draft path skips generated assets (deferred to the post-validation job) but must still
     attach the image the user supplied, so it is present before that job runs.
     """
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     overview = tmp_path / "overview.png"
     overview.write_bytes(b"fake png")
     client = MagicMock()
@@ -1101,7 +1108,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
     The real image helpers run (only add_image_assets is mocked) so the viz_dir derivation and
     the file copy are exercised end-to-end.
     """
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     overview = tmp_path / "overview.png"
     overview.write_bytes(b"fake overview")
     sim_designer = tmp_path / "sim.png"
@@ -1148,7 +1155,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
 
 def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
     """When only a sim-designer image is provided, it is attached and the overview one is not."""
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     sim_designer = tmp_path / "sim.png"
     sim_designer.write_bytes(b"fake sim")
     client = MagicMock()
@@ -1194,7 +1201,7 @@ def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
 
 def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
     """A dry run registers nothing, so a provided image is not attached."""
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     overview = tmp_path / "overview.png"
     overview.write_bytes(b"fake png")
     client = MagicMock()

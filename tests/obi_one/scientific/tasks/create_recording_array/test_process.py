@@ -37,19 +37,23 @@ def test_run_bluerecording_write_weights_calls_subprocess_with_correct_args(tmp_
     assert "NRNMECH_LIB_PATH" in mock_run.call_args[1]["env"]
 
 
-def test_run_bluerecording_write_weights_logs_stdout_on_success(tmp_path):
+def test_run_bluerecording_write_weights_streams_its_output(tmp_path):
+    """bluerecording writes straight to the job's output, unbuffered and without colours."""
     mock_result = MagicMock()
     mock_result.returncode = 0
-    mock_result.stdout = "weights written"
-    mock_result.stderr = ""
 
-    with patch("subprocess.run", return_value=mock_result):
+    with patch("subprocess.run", return_value=mock_result) as mock_run:
         run_bluerecording_write_weights(
             tmp_path / "config.json",
             tmp_path / "electrodes.json",
             tmp_path / "weights.h5",
             nrnmech_lib_path=tmp_path / "libnrnmech.so",
         )
+
+    kwargs = mock_run.call_args[1]
+    assert not {"capture_output", "stdout", "stderr"} & kwargs.keys()
+    assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
+    assert kwargs["env"]["ENVIRONMENT"] == "BATCH"
 
 
 def test_run_bluerecording_write_weights_raises_on_failure(tmp_path):
@@ -60,7 +64,7 @@ def test_run_bluerecording_write_weights_raises_on_failure(tmp_path):
 
     with (
         patch("subprocess.run", return_value=mock_result),
-        pytest.raises(RuntimeError, match="bluerecording write_weights failed"),
+        pytest.raises(RuntimeError, match=r"bluerecording write_weights failed \(exit 1\)"),
     ):
         run_bluerecording_write_weights(
             tmp_path / "config.json",

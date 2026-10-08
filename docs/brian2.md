@@ -43,10 +43,11 @@ what the runner can execute.
 
 The current injections are played into the neurons as a `TimedArray` and summed per target
 neuron set. `Brian2DirectPoissonStimulus` instead kicks the membrane potential directly, bypassing
-the circuit's synapses: every neuron in its target draws an independent Poisson train, built as one
-`brian2.PoissonInput` per contiguous range of node IDs in that target. The spike stimuli generate a
-spike file, which the runner replays through a `SpikeGeneratorGroup` wired with the circuit's *own*
-connectivity.
+the circuit's synapses: every neuron in its target draws an independent Poisson train, from a
+`brian2.PoissonGroup` with one source per targeted neuron, wired one-to-one onto it. Its cost
+follows the size of the target, not how the target's node IDs are laid out. The spike stimuli
+generate a spike file, which the runner replays through a `SpikeGeneratorGroup` wired with the
+circuit's *own* connectivity.
 
 A sinusoid has to be sampled fast enough to be represented, so
 `SimulationDtSinusoidalCurrentClampSomaticStimulus` is refused when its frequency reaches the
@@ -90,6 +91,9 @@ is Brian2-specific, so any simulator with the same constraint can use them.
 
 Only soma voltage (`variable_name: "v"`) is reported.
 
+A recording holds the samples from its start time up to, but not including, its end time, so a window from 0 to 50 ms at 0.025 ms is 2,000 frames, as SONATA readers such as libsonata expect.
+A start or end time between two samples is rounded to the nearest one, and the report's `mapping/time` gives the times of the frames actually written.
+
 Recordings are held in memory until the run ends: the runner records the union of every recording's neurons at every timestep of the simulation, and a time window only applies when a recording is written.
 Generation therefore refuses a configuration that would record more than 150,000,000 samples (recorded neurons × timesteps), which is what the Brian2 job's machine can hold alongside a whole-brain network.
 At the 0.025 ms timestep that is 3,750 neurons for a full second, or every neuron of `FlyWire-v783-Brian2-LIF` for about 27 ms.
@@ -99,7 +103,7 @@ A recording without a neuron set records every neuron in the circuit, so on a wh
 
 | Block | Notes |
 | --- | --- |
-| `ConnectSynapticManipulation` | Sets the weight of every synapse between two neuron sets |
+| `ConnectSynapticManipulation` | Restores the circuit's own weight of every synapse between two neuron sets |
 | `DisconnectSynapticManipulation` | Sets that weight to zero |
 
 Both become SONATA `connection_overrides`, applied part-way through the run at the timestamps the
@@ -107,6 +111,10 @@ block references. Brian2 honours a connection override's `weight` and `synapse_d
 and raises on `spont_minis`, `synapse_configure`, `modoverride` and the neuromodulation fields —
 so the mechanism-specific manipulations (`SynapticMgManipulation`,
 `ScaleAcetylcholineUSESynapticManipulation`) are not offered.
+
+`weight` is a factor on each synapse's weight as the circuit defines it, not on its current value,
+so overrides never compound: a Connect (weight 1) after a Disconnect (weight 0) restores the
+circuit exactly, inhibitory signs included. `synapse_delay_override` replaces the delay outright.
 
 ### Neuron sets and timestamps
 

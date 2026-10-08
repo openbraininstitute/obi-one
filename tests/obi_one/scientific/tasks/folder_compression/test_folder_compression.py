@@ -1,3 +1,4 @@
+import tarfile
 from pathlib import Path
 
 import obi_one as obi
@@ -68,3 +69,41 @@ def test_compressed_circuit_filename_matches_compression_output():
     )
 
     assert initialize.output_filename == COMPRESSED_CIRCUIT_FILENAME
+
+
+def test_compression_dereferences_symlinks(tmp_path):
+    """Symlinks in the source folder are archived as real files, not as links.
+
+    Circuits staged by the launch-system are symlinks into the mounted asset store, so the
+    archive must contain the dereferenced file contents to be usable once extracted elsewhere.
+    """
+    # External target the symlink points to (outside the compressed folder).
+    external = tmp_path / "external_target.txt"
+    external.write_text("real content")
+
+    source = tmp_path / "circuit"
+    source.mkdir()
+    (source / "plain.txt").write_text("plain content")
+    (source / "linked.txt").symlink_to(external)
+
+    compression_init = obi.FolderCompressionScanConfig.Initialize(
+        folder_path=obi.NamedPath(name="circuit", path=str(source)),
+        file_format="gz",
+        file_name="circuit",
+    )
+    form = obi.FolderCompressionScanConfig(initialize=compression_init)
+    grid_scan = obi.GridScanGenerationTask(
+        form=form,
+        output_root=tmp_path / "grid_scan",
+        coordinate_directory_option="NONE",
+    )
+    grid_scan.execute()
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    archive = grid_scan.single_configs[0].output_path
+    with tarfile.open(archive, "r:gz") as tar:
+        linked_member = tar.getmember("circuit/linked.txt")
+        # The link must be stored as a regular file (dereferenced), not a symlink.
+        assert linked_member.isfile()
+        assert not linked_member.issym()
+        assert tar.extractfile(linked_member).read() == b"real content"

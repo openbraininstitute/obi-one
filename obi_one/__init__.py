@@ -51,6 +51,7 @@ __all__ = [
     "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
     "CircuitFromID",
+    "CircuitRecordingUnion",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
     "CircuitStimulusUnion",
@@ -98,6 +99,7 @@ __all__ = [
     "ExponentialDistanceDependentDistribution",
     "ExponentialDistribution",
     "ExponentialNaDendDistanceDependentDistribution",
+    "ExtracellularElectrodeArrayRecordingBlock",
     "ExtracellularLocations",
     "ExtracellularLocationsReference",
     "ExtracellularLocationsUnion",
@@ -221,6 +223,7 @@ __all__ = [
     "SigmoidKADApicDistanceDependentDistribution",
     "SigmoidKADDistanceDependentDistribution",
     "SigmoidKDBMApicDistanceDependentDistribution",
+    "SimulatableExtracellularRecordingArrayFromID",
     "Simulation",
     "SimulationDtSinusoidalCurrentClampSomaticStimulus",
     "SimulationDtSomaVoltageRecording",
@@ -392,6 +395,9 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllVirtualNeurons,
 )
 from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
 from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
     TimeWindowMorphologyLocationVoltageRecording,
@@ -479,6 +485,9 @@ from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -647,6 +656,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.recordings import (
     Brian2RecordingUnion,
+    CircuitRecordingUnion,
     RecordingReference,
     RecordingUnion,
 )

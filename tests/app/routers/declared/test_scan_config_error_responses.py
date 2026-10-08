@@ -1,11 +1,13 @@
 """The count and generate endpoints must fail in the same shape, since the UI posts to both."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
 import obi_one as obi
 from app.dependencies.entitysdk import get_client
+from app.endpoints import scan_config
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.blocks.neuron_sets.predefined import (
@@ -144,3 +146,104 @@ def test_coordinate_count_succeeds_for_a_valid_config(client, payload):
 
     assert response.status_code == 200, response.text
     assert response.json() == 1
+
+
+class FakeEntity:
+    def __init__(self, entity_id):
+        self.id = entity_id
+
+
+class FakeCampaign(FakeEntity):
+    pass
+
+
+class FakeSimulation(FakeEntity):
+    pass
+
+
+class FakeGeneration(FakeEntity):
+    pass
+
+
+class RecordingDbClient:
+    def __init__(self, *, fail=False):
+        self.deleted = []
+        self.fail = fail
+
+    def delete_entity(self, *, entity_id, entity_type):
+        if self.fail:
+            msg = "entitycore is unavailable"
+            raise RuntimeError(msg)
+        self.deleted.append((entity_type.__name__, entity_id))
+
+
+def _register_entities(self, **_kwargs):
+    """Stands in for execute(): what it leaves registered once it returns."""
+    self.form._campaign = FakeCampaign("campaign")
+    self._single_configs = [
+        SimpleNamespace(single_entity=FakeSimulation(f"simulation-{idx}")) for idx in range(2)
+    ]
+    self._campaign_generation = FakeGeneration("generation")
+
+
+REGISTERED_IN_DELETION_ORDER = [
+    ("FakeGeneration", "generation"),
+    ("FakeSimulation", "simulation-1"),
+    ("FakeSimulation", "simulation-0"),
+    ("FakeCampaign", "campaign"),
+]
+
+
+def _use_db_client(client, monkeypatch, db_client):
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    monkeypatch.setattr(GridScanGenerationTask, "execute", _register_entities)
+
+
+def _fail_generation_with(monkeypatch, error):
+    def _raise(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr(scan_config, "run_tasks_for_generated_scan", _raise)
+
+
+def test_a_rejected_generation_deletes_what_it_registered(client, monkeypatch, payload):
+    db_client = RecordingDbClient()
+    _use_db_client(client, monkeypatch, db_client)
+    _fail_generation_with(monkeypatch, ConfigValidationError("Node set 'nope' not found"))
+
+    response = client.post(GENERATE_ENDPOINT, json=payload)
+
+    assert_error_envelope(response, status=422, reason="Node set 'nope' not found")
+    assert db_client.deleted == REGISTERED_IN_DELETION_ORDER
+
+
+def test_an_unexpected_failure_also_deletes_what_it_registered(client, monkeypatch, payload):
+    db_client = RecordingDbClient()
+    _use_db_client(client, monkeypatch, db_client)
+    _fail_generation_with(monkeypatch, RuntimeError("circuit file is corrupt"))
+
+    response = client.post(GENERATE_ENDPOINT, json=payload)
+
+    assert_error_envelope(response, status=500, reason="circuit file is corrupt")
+    assert db_client.deleted == REGISTERED_IN_DELETION_ORDER
+
+
+def test_a_failed_cleanup_does_not_replace_the_original_error(client, monkeypatch, payload):
+    _use_db_client(client, monkeypatch, RecordingDbClient(fail=True))
+    _fail_generation_with(monkeypatch, ConfigValidationError("Node set 'nope' not found"))
+
+    response = client.post(GENERATE_ENDPOINT, json=payload)
+
+    assert_error_envelope(response, status=422, reason="Node set 'nope' not found")
+
+
+def test_a_successful_generation_deletes_nothing(client, monkeypatch, payload):
+    db_client = RecordingDbClient()
+    _use_db_client(client, monkeypatch, db_client)
+    monkeypatch.setattr(scan_config, "run_tasks_for_generated_scan", lambda *_a, **_k: None)
+
+    response = client.post(GENERATE_ENDPOINT, json=payload)
+
+    assert response.status_code == 200, response.text
+    assert response.json() == "campaign"
+    assert db_client.deleted == []

@@ -1,4 +1,4 @@
-"""Register cell morphologies with assets, morphometrics, and optional mesh."""
+"""Register cell morphologies with assets and morphometrics."""
 
 import logging
 import pathlib
@@ -12,7 +12,6 @@ from entitysdk.models.asset import Asset
 from entitysdk.models.measurement_annotation import MeasurementKind
 from entitysdk.types import AssetLabel, ContentType, MeasurableEntity
 
-from obi_one.scientific.library import morphology_mesh
 from obi_one.scientific.library.morphology_measurement_annotation import compute_morphometrics
 
 L = logging.getLogger(__name__)
@@ -88,40 +87,15 @@ def register_morphometrics(
     return client.register_entity(entity=measurement_annotation)
 
 
-def try_generate_and_upload_mesh(
-    client: Client,
-    entity_id: UUID,
-    swc_path: Path | None = None,
-    swc_bytes: bytes | None = None,
-) -> Asset | None:
-    """Attempt to generate a GLB mesh from SWC data and upload it."""
-    if not morphology_mesh.HAS_MESHING:
-        L.debug("Meshing dependencies not available, skipping GLB generation")
-        return None
-
-    if swc_path and not swc_bytes:
-        swc_bytes = swc_path.read_bytes()
-    elif not swc_bytes:
-        L.debug("No SWC data provided for mesh generation, skipping")
-        return None
-
-    try:
-        return morphology_mesh.mesh_and_upload(client, entity_id, swc_bytes)
-    except Exception:  # ruff: ignore[blind-except]
-        L.warning("GLB mesh generation failed for entity %s", entity_id, exc_info=True)
-        return None
-
-
 def register_morphology_with_assets_and_metrics(
     client: Client,
     morphology: CellMorphology,
     morphology_files: dict[str, Path],
     *,
     metrics_source_path: Path | None = None,
-    generate_mesh: bool = True,
     extra_assets: dict[AssetLabel, Path] | None = None,
-) -> tuple[CellMorphology, MeasurementAnnotation | None, Asset | None]:
-    """Register a CellMorphology entity, upload assets, compute metrics, and optionally mesh."""
+) -> CellMorphology:
+    """Register a CellMorphology entity, upload assets, and compute metrics."""
     registered_morphology = client.register_entity(entity=morphology)
     entity_id = registered_morphology.id
     if entity_id is None:
@@ -142,7 +116,6 @@ def register_morphology_with_assets_and_metrics(
                 asset_label=asset_label,
             )
 
-    measurement_annotation = None
     analysis_path = metrics_source_path
     if analysis_path is None:
         analysis_path = morphology_files.get(".h5") or morphology_files.get(".swc")
@@ -150,13 +123,8 @@ def register_morphology_with_assets_and_metrics(
     if analysis_path and analysis_path.exists():
         try:
             measurement_kinds = compute_morphometrics(analysis_path)
-            measurement_annotation = register_morphometrics(client, entity_id, measurement_kinds)
+            register_morphometrics(client, entity_id, measurement_kinds)
         except Exception:  # ruff: ignore[blind-except]
             L.warning("Morphometrics computation failed for %s", entity_id, exc_info=True)
 
-    mesh_asset = None
-    if generate_mesh:
-        swc_path = morphology_files.get(".swc")
-        mesh_asset = try_generate_and_upload_mesh(client, entity_id, swc_path=swc_path)
-
-    return registered_morphology, measurement_annotation, mesh_asset
+    return registered_morphology
