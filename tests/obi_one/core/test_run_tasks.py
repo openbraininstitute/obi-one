@@ -6,6 +6,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from obi_one.core import run_tasks as test_module
+from obi_one.scientific.tasks.circuit_extraction import (
+    CircuitExtractionSingleConfig,
+    CircuitExtractionTask,
+)
 from obi_one.types import TaskType
 
 
@@ -124,3 +128,108 @@ def test_run_task_type_without_asset_label_creates_default_config(
         entity_cache=False,
         execution_activity_id="act-1",
     )
+
+
+@patch.object(CircuitExtractionTask, "execute", return_value="done")
+def test_run_task_for_single_config_executes_registered_task(mock_execute):
+    config = CircuitExtractionSingleConfig.model_construct()
+
+    result = test_module.run_task_for_single_config(config, db_client=MagicMock())
+
+    assert result == "done"
+    mock_execute.assert_called_once()
+
+
+@patch("obi_one.core.run_tasks.get_task_spec_for_single_config")
+def test_run_task_for_single_config_unknown_class_raises(mock_get_task_spec, mock_single_config):
+    mock_get_task_spec.return_value = None
+
+    with pytest.raises(KeyError, match="No task registered"):
+        test_module.run_task_for_single_config(mock_single_config)
+
+    mock_get_task_spec.assert_called_once_with(mock_single_config.__class__)
+
+
+@patch("obi_one.core.run_tasks.get_task_spec_for_single_config")
+def test_run_task_for_single_config_subclass_mismatch_raises(
+    mock_get_task_spec, mock_single_config
+):
+    other_config_cls = type("OtherSingleConfig", (), {})
+    mock_get_task_spec.return_value = SimpleNamespace(
+        single_config_cls=other_config_cls,
+        task_cls=MagicMock(),
+    )
+
+    with pytest.raises(KeyError, match="No task registered"):
+        test_module.run_task_for_single_config(mock_single_config)
+
+
+@patch("obi_one.core.run_tasks.run_task_for_single_config")
+def test_run_task_for_single_configs_runs_each(mock_run_single, mock_single_config):
+    configs = [mock_single_config, mock_single_config]
+    mock_run_single.return_value = "ok"
+
+    result = test_module.run_task_for_single_configs(configs, db_client=MagicMock())
+
+    assert result == ["ok", "ok"]
+    assert mock_run_single.call_count == 2
+
+
+@patch("obi_one.core.run_tasks.run_task_for_single_configs")
+def test_run_tasks_for_generated_scan_delegates(mock_run_configs):
+    scan = MagicMock()
+    scan.single_configs = [MagicMock()]
+    db_client = MagicMock()
+
+    test_module.run_tasks_for_generated_scan(scan, db_client=db_client, entity_cache=True)
+
+    mock_run_configs.assert_called_once_with(
+        scan.single_configs,
+        db_client=db_client,
+        entity_cache=True,
+        execution_activity_id=None,
+    )
+
+
+@patch("obi_one.core.run_tasks.run_task_for_single_config")
+@patch("obi_one.core.run_tasks.deserialize_obi_object_from_json_data")
+def test_run_task_for_single_config_asset_deserializes_and_runs(
+    mock_deserialize, mock_run_single, db_client, mock_single_config
+):
+    mock_deserialize.return_value = mock_single_config
+
+    test_module.run_task_for_single_config_asset(
+        entity_type=MagicMock(),
+        entity_id="ent-1",
+        config_asset_id="asset-1",
+        scan_output_root="/out",
+        db_client=db_client,
+    )
+
+    call_json_dict = mock_deserialize.call_args[0][0]
+    assert call_json_dict["scan_output_root"] == "/out"
+    assert call_json_dict["coordinate_output_root"] == Path("/out") / "0"
+    mock_single_config.set_single_entity.assert_called_once()
+    mock_run_single.assert_called_once()
+
+
+@patch("obi_one.core.run_tasks.db_sdk.get_entity_asset_by_label")
+@patch("obi_one.core.run_tasks.get_task_spec_for_task_type")
+def test_run_task_type_raises_when_config_asset_has_no_id(
+    mock_get_task_spec_for_task_type, mock_get_asset, db_client
+):
+    mock_get_task_spec_for_task_type.return_value = SimpleNamespace(
+        asset_label=MagicMock(),
+        task_cls=MagicMock(),
+        single_config_cls=MagicMock(),
+    )
+    mock_get_asset.return_value = SimpleNamespace(id=None)
+
+    with pytest.raises(ValueError, match="Config asset must have an id"):
+        test_module.run_task_type(
+            TaskType.circuit_extraction,
+            entity_type=MagicMock(),
+            entity_id="ent-1",
+            scan_output_root="/out",
+            db_client=db_client,
+        )

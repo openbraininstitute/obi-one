@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from entitysdk.types import AssetLabel
@@ -229,3 +229,60 @@ def test_get_task_spec_for_task_type_caches():
     first = test_module.get_task_spec_for_task_type(TaskType.circuit_extraction)
     second = test_module.get_task_spec_for_task_type(TaskType.circuit_extraction)
     assert first is second
+
+
+def test_is_task_type_resolved_reflects_cache():
+    task_type = TaskType.folder_compression
+    test_module._CACHE.pop(task_type, None)
+    assert test_module.is_task_type_resolved(task_type) is False
+    test_module.get_task_spec_for_task_type(task_type)
+    assert test_module.is_task_type_resolved(task_type) is True
+
+
+def test_get_task_spec_for_scan_config_resolves_via_task_type_when_not_indexed():
+    test_module._BY_SCAN_CONFIG_CLS.clear()
+    test_module._CACHE.clear()
+    test_module._BY_SINGLE_CONFIG_CLS.clear()
+
+    task_spec = test_module.get_task_spec_for_scan_config(CircuitExtractionScanConfig)
+
+    assert task_spec is not None
+    assert task_spec.task_cls is CircuitExtractionTask
+
+
+def test_get_task_spec_for_scan_config_without_task_type_returns_none():
+    class ScanConfigWithoutTaskType:
+        pass
+
+    assert test_module.get_task_spec_for_scan_config(ScanConfigWithoutTaskType) is None
+
+
+def test_get_task_spec_for_scan_config_unregistered_task_type_returns_none():
+    class UnregisteredScanConfig:
+        task_type = TaskType.circuit_simulation_inait_machine
+
+    assert test_module.get_task_spec_for_scan_config(UnregisteredScanConfig) is None
+
+
+def test_get_task_spec_for_single_config_without_task_type_returns_none():
+    class ConfigWithoutTaskType:
+        pass
+
+    assert test_module.get_task_spec_for_single_config(ConfigWithoutTaskType) is None
+
+
+def test_get_task_spec_for_single_config_unregistered_task_type_returns_none():
+    class UnregisteredSingleConfig:
+        task_type = TaskType.circuit_simulation_brian2_machine
+
+    assert test_module.get_task_spec_for_single_config(UnregisteredSingleConfig) is None
+
+
+@patch(
+    "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.HAS_EMODEL_OPTIMIZATION",
+    new=False,
+)
+def test_get_task_spec_for_task_type_emodel_unavailable_raises():
+    test_module._CACHE.pop(TaskType.emodel_optimization, None)
+    with pytest.raises(KeyError, match="No task spec"):
+        test_module.get_task_spec_for_task_type(TaskType.emodel_optimization)
