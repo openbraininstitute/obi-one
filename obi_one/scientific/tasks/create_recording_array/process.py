@@ -12,14 +12,14 @@ if TYPE_CHECKING:
 
 L = logging.getLogger(__name__)
 
-# write_weights splits the cells between its MPI processes. These are the CPU counts a
-# launch-system job can have, so the job is given one CPU per process.
+# write_weights runs an MPI process on each CPU and splits the cells between them. These are
+# the CPU counts a launch-system job can have.
 MPI_PROCESS_COUNTS = (1, 2, 4, 8, 16)
 CELLS_PER_MPI_PROCESS = 100
 
 
 def get_number_of_mpi_processes(n_cells: int) -> int:
-    """Number of MPI processes to run write_weights with for a circuit of n_cells cells."""
+    """Number of MPI processes, and so CPUs, to calculate the weights of n_cells cells with."""
     return next(
         (n for n in MPI_PROCESS_COUNTS if n * CELLS_PER_MPI_PROCESS >= n_cells),
         MPI_PROCESS_COUNTS[-1],

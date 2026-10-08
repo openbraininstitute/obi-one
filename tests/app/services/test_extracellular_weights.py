@@ -79,10 +79,10 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
         )
 
 
-# Formulas in estimate_task_resources, with processes = 1, 2, 4, 8 or 16 for up to 100 cells each:
-#   memory_gb = processes * 0.5 + cells * (0.01 + electrodes * 3e-5), on at least `processes`
-#   CPUs and never below the default 8 GB
-#   hours = ceil((900 + cells * 2 / processes) / 3600), never below the default (2 h)
+# Formulas in estimate_task_resources, with at least 1, 2, 4, 8 or 16 CPUs for up to 100 cells each,
+# and an MPI process on each CPU:
+#   memory_gb = cpus * 0.5 + cells * (0.01 + electrodes * 3e-5), never below the default 8 GB
+#   hours = ceil((900 + cells * 2 / cpus) / 3600), never below the default (2 h)
 
 
 @pytest.mark.parametrize(
@@ -104,6 +104,9 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
         (CircuitScale.microcircuit, 291, (960,), 4, 16, "02:00"),
         # electrodes from every probe count: 291 cells, 2 x 480 electrodes, the same 13.3 GB
         (CircuitScale.microcircuit, 291, (480, 480), 4, 16, "02:00"),
+        # 400 cells and 2100 electrodes: 31.2 GB is over 4 CPUs' 30 GB, and 8 CPUs run 8
+        # processes: 33.2 GB -> (8, 48)
+        (CircuitScale.microcircuit, 400, (2100,), 8, 48, "02:00"),
     ],
     ids=[
         "small",
@@ -114,6 +117,7 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
         "large",
         "many_electrodes",
         "two_probes",
+        "more_cpus_for_memory",
     ],
 )
 def test_resources_scale_with_cells_and_electrodes(

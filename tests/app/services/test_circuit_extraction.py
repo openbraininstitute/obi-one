@@ -55,6 +55,24 @@ def test_get_required_cpu_memory_combo_with_min_cpus(mem_required, min_cpus, exp
     assert test_module.get_required_cpu_memory_combo(mem_required, min_cpus=min_cpus) == expected
 
 
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        # 4 CPUs: 5 + 4 * 0.5 = 7 GB
+        (5, 4, (4, 8)),
+        # 4 CPUs: 29.2 + 2 = 31.2 GB is over their 30 GB, and 8 CPUs need 29.2 + 4 = 33.2 GB
+        (29.2, 4, (8, 48)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_memory_per_cpu(mem_required, min_cpus, expected):
+    assert (
+        test_module.get_required_cpu_memory_combo(
+            mem_required, min_cpus=min_cpus, mem_gb_per_cpu=0.5
+        )
+        == expected
+    )
+
+
 def test_get_required_cpu_memory_combo_too_large():
     with pytest.raises(ValueError, match="No CPU/memory combination found"):
         test_module.get_required_cpu_memory_combo(200)

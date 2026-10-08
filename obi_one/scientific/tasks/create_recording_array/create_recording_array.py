@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import tempfile
 import typing
 from enum import StrEnum
@@ -268,15 +269,20 @@ class CreateExtracellularRecordingArrayTask(Task):
             self.config.coordinate_output_root / "electrodes.json",
         )
         weights_output_path = self.config.coordinate_output_root / "weights.h5"
+        # A launch-system job runs a process on each of its CPUs. A local run plans as many as
+        # the resource estimate would ask for.
+        job_cpus = os.environ.get("JOB_CPUS")
+        number_of_mpi_processes = (
+            int(job_cpus)
+            if job_cpus
+            else get_number_of_mpi_processes(self._circuit_entity.number_neurons)  # ty:ignore[unresolved-attribute]
+        )
         run_bluerecording_write_weights(
             circuit_config_path,
             electrode_json_path,
             weights_output_path,
             nrnmech_lib_path=nrnmech_lib_path.absolute(),
-            # The resource estimate gives the job a CPU for each of these processes.
-            number_of_mpi_processes=get_number_of_mpi_processes(
-                self._circuit_entity.number_neurons  # ty:ignore[unresolved-attribute]
-            ),
+            number_of_mpi_processes=number_of_mpi_processes,
         )
         L.info("Weights saved to: %s", weights_output_path)
 

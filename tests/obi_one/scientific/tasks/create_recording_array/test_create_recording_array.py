@@ -175,8 +175,15 @@ def test_execute_compiles_mechanisms_when_mod_dir_exists(tmp_path, mock_db_clien
     assert mock_db_client.upload_file.call_count == 2
 
 
-def test_execute_runs_bluerecording_with_mpi_processes_for_the_circuit(tmp_path, mock_db_client):
-    """291 cells get 4 MPI processes."""
+@pytest.mark.parametrize(("job_cpus", "expected"), [("8", 8), (None, 4)])
+def test_execute_runs_an_mpi_process_per_job_cpu(
+    tmp_path, mock_db_client, monkeypatch, job_cpus, expected
+):
+    """One process per CPU in JOB_CPUS; without it, the 4 that 291 cells would be given."""
+    if job_cpus is None:
+        monkeypatch.delenv("JOB_CPUS", raising=False)
+    else:
+        monkeypatch.setenv("JOB_CPUS", job_cpus)
     task, circuit_path = _make_task(tmp_path)
     circuit, circuit_entity = _resolved_circuit(circuit_path)
 
@@ -198,7 +205,7 @@ def test_execute_runs_bluerecording_with_mpi_processes_for_the_circuit(tmp_path,
     ):
         task.execute(db_client=mock_db_client)
 
-    assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == 4
+    assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == expected
 
 
 def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path, mock_db_client):

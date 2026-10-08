@@ -55,6 +55,32 @@ def _count_electrodes(
     )
 
 
+def _too_large_error(
+    circuit: models.Circuit, n_cells: int, n_electrodes: int, n_processes: int
+) -> ApiError:
+    """The error for weights that need more memory than the largest machine has."""
+    memory_gb_for_cells = n_processes * MEMORY_GB_PER_PROCESS + n_cells * MEMORY_GB_PER_CELL
+    memory_gb_required = (
+        memory_gb_for_cells + n_cells * n_electrodes * MEMORY_GB_PER_CELL_AND_ELECTRODE
+    )
+    # Fewer electrodes only helps if the cells alone would fit.
+    hint = (
+        "Use fewer electrodes or a smaller circuit."
+        if memory_gb_for_cells < MAX_MEMORY_GB
+        else "Use a smaller circuit."
+    )
+    msg = (
+        f"Calculating extracellular recording weights for '{circuit.name}' ({n_cells:,} cells,"
+        f" {n_electrodes:,} electrodes) needs about {memory_gb_required:.0f} GB of memory, more"
+        f" than the largest machine has ({MAX_MEMORY_GB} GB). {hint}"
+    )
+    return ApiError(
+        message=msg,
+        error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+        http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+    )
+
+
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
@@ -64,10 +90,10 @@ def estimate_task_resources(
 ) -> Resources:
     """Estimate machine resources for an extracellular recording weights calculation.
 
-    Gives the job a CPU for each of write_weights' MPI processes, and scales memory and time
-    with the number of cells in the circuit and electrodes in the array, never below the
-    defaults from TASK_DEFINITIONS. Circuits larger than a microcircuit, or too large for any
-    machine, are rejected.
+    Asks for a CPU per 100 cells, as write_weights runs an MPI process on each CPU, and scales
+    memory and time with the number of cells in the circuit and electrodes in the array, never
+    below the defaults from TASK_DEFINITIONS. Circuits larger than a microcircuit, or too large
+    for any machine, are rejected.
     """
     config = db_client.get_entity(entity_id=json_model.config_id, entity_type=models.TaskConfig)
 
@@ -102,36 +128,22 @@ def estimate_task_resources(
     n_processes = get_number_of_mpi_processes(n_cells)
     defaults = task_definition.resources
 
-    memory_gb_for_cells = n_processes * MEMORY_GB_PER_PROCESS + n_cells * MEMORY_GB_PER_CELL
-    memory_gb_required = (
-        memory_gb_for_cells + n_cells * n_electrodes * MEMORY_GB_PER_CELL_AND_ELECTRODE
-    )
     try:
-        cores, memory_gb = get_required_cpu_memory_combo(memory_gb_required, min_cpus=n_processes)
+        # The job runs a process on each of its CPUs, so each CPU needs MEMORY_GB_PER_PROCESS.
+        cores, memory_gb = get_required_cpu_memory_combo(
+            n_cells * (MEMORY_GB_PER_CELL + n_electrodes * MEMORY_GB_PER_CELL_AND_ELECTRODE),
+            min_cpus=n_processes,
+            mem_gb_per_cpu=MEMORY_GB_PER_PROCESS,
+        )
     except ValueError as e:
-        # Fewer electrodes only helps if the cells alone would fit.
-        hint = (
-            "Use fewer electrodes or a smaller circuit."
-            if memory_gb_for_cells < MAX_MEMORY_GB
-            else "Use a smaller circuit."
-        )
-        msg = (
-            f"Calculating extracellular recording weights for '{circuit.name}' ({n_cells:,} cells,"
-            f" {n_electrodes:,} electrodes) needs about {memory_gb_required:.0f} GB of memory, more"
-            f" than the largest machine has ({MAX_MEMORY_GB} GB). {hint}"
-        )
-        raise ApiError(
-            message=msg,
-            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
-            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        ) from e
+        raise _too_large_error(circuit, n_cells, n_electrodes, n_processes) from e
     # Small circuits keep the default memory, which also covers compiling the mechanisms.
     memory_gb = max(memory_gb, defaults.memory)  # ty:ignore[unresolved-attribute]
 
     default_hours = int(defaults.timelimit.split(":")[0])  # ty:ignore[unresolved-attribute]
     hours = max(
         default_hours,
-        math.ceil((OVERHEAD_SECONDS + n_cells * SECONDS_PER_CELL / n_processes) / 3600),
+        math.ceil((OVERHEAD_SECONDS + n_cells * SECONDS_PER_CELL / cores) / 3600),
     )
 
     return defaults.model_copy(
