@@ -1,7 +1,12 @@
+from types import SimpleNamespace
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
-from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
+from entitysdk.models.brain_region import BrainRegion
+from entitysdk.models.subject import Subject
+from entitysdk.models.taxonomy import Species
+from entitysdk.types import AssetLabel, Sex, TaskActivityType, TaskConfigType
 from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError
@@ -11,6 +16,8 @@ from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.ion_channel_modeling import (
     HodgkinHuxleyIonChannelModel,
     IonChannelFittingScanConfig,
+    IonChannelFittingSingleConfig,
+    IonChannelFittingTask,
 )
 
 
@@ -55,8 +62,14 @@ RECORDING_IDS = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-000
 def _db_client(temperatures=(25.0, 25.0)):
     db_client = Mock()
     by_id = dict(zip(RECORDING_IDS, temperatures, strict=True))
-    db_client.get_entity.side_effect = lambda entity_id, **_: Mock(
-        id=entity_id, temperature=by_id[entity_id]
+    db_client.get_entity.side_effect = lambda entity_id, **_: SimpleNamespace(
+        id=entity_id,
+        temperature=by_id[entity_id],
+        ljp=-float(entity_id[-1]),
+        name=f"Recording {entity_id[-1]}",
+    )
+    db_client.download_assets.side_effect = lambda _entity, output_path, **_: Mock(
+        one=Mock(return_value=Mock(path=output_path / "trace.nwb"))
     )
     return db_client
 
@@ -141,3 +154,50 @@ def test_generate_rejects_mixed_temperatures_before_registering_anything(tmp_pat
         ).execute(db_client=_db_client(temperatures=(25.0, 34.0)))
 
     register.assert_not_called()
+
+
+def _task(tmp_path):
+    form = _scan_config().model_dump(exclude={"type"})
+    return IonChannelFittingTask(
+        config=IonChannelFittingSingleConfig.model_validate(
+            form | {"idx": 0, "coordinate_output_root": tmp_path}
+        )
+    )
+
+
+def test_each_recording_is_downloaded_to_its_own_folder(tmp_path):
+    trace_paths, trace_ljps = _task(tmp_path).download_input(db_client=_db_client())
+
+    assert trace_paths == [tmp_path / "recordings" / id_ / "trace.nwb" for id_ in RECORDING_IDS]
+    assert trace_ljps == [-1.0, -2.0]
+
+
+def test_the_registered_model_names_every_recording(tmp_path):
+    db_client = _db_client()
+    db_client.register_entity.side_effect = lambda model: model
+    recording_entity = Mock(
+        temperature=25.0,
+        subject=Subject(
+            sex=Sex.male, species=Species(name="Mus musculus", taxonomy_id="NCBITaxon:10090")
+        ),
+        brain_region=BrainRegion(
+            name="my-region",
+            annotation_value=1,
+            acronym="region",
+            parent_structure_id=uuid4(),
+            hierarchy_id=uuid4(),
+            color_hex_triplet="red",
+        ),
+    )
+
+    _task(tmp_path).save(
+        mod_filepath=tmp_path / "DefaultIonChannelName.mod",
+        figure_filepaths={},
+        db_client=db_client,
+        range_vars=[],
+        recording_entity=recording_entity,
+    )
+
+    ((model,), _) = db_client.register_entity.call_args
+    assert "made using recordings: Recording 1, Recording 2 " in model.description
+    assert model.conductance_name == "gDefaultIonChannelNamebar"
