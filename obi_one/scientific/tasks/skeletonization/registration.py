@@ -81,7 +81,6 @@ def register_output_resource(
     - Uploads SWC, ASC, and HDF5 morphology files as assets.
     - Uploads the combined H5 morphology (with spines) as an extra asset.
     - Computes and registers morphometric measurements.
-    - Attempts to generate and upload a GLB surface mesh.
     - Creates a Derivation linking EMDenseReconstructionDataset to Morphology.
 
     Note:
@@ -110,7 +109,7 @@ def register_output_resource(
         name=metadata.cell_morphology_name,
         description=metadata.cell_morphology_description,
         has_segmented_spines=True,
-        cell_morphology_protocol=protocol,  # ty:ignore[invalid-argument-type]
+        cell_morphology_protocol=protocol,
         brain_region=metadata.brain_region,
         subject=metadata.subject,
         license=license,
@@ -126,12 +125,11 @@ def register_output_resource(
         AssetLabel.morphology_with_spines: outputs.h5_combined_morphology_file,
     }
 
-    registered_morphology, _measurement, _mesh = register_morphology_with_assets_and_metrics(
+    registered_morphology = register_morphology_with_assets_and_metrics(
         client=client,
         morphology=morphology,
         morphology_files=morphology_files,
         metrics_source_path=outputs.h5_morphology_file,
-        generate_mesh=True,
         extra_assets=extra_assets,
     )
 

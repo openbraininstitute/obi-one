@@ -75,6 +75,36 @@ def test_register_simulation_results_registers_entity_and_uploads_files(
         )
 
 
+def test_register_simulation_results_uploads_lfp_reports_as_lfp_reports(
+    mock_client, simulation_id, spike_report_file, tmp_path
+):
+    """An lfp report is the extracellular signal per electrode, not a voltage trace."""
+    lfp_report_file = tmp_path / "LFP.h5"
+    lfp_report_file.write_text("lfp")
+    simulation_result = MagicMock(id="result-123")
+    mock_client.register_entity.return_value = simulation_result
+
+    test_module.register_simulation_results(
+        client=mock_client,
+        simulation_id=simulation_id,
+        spike_report_file=spike_report_file,
+        voltage_report_files=[],
+        lfp_report_files=[lfp_report_file],
+        name="Simulation result",
+        description="Simulation result",
+    )
+
+    mock_client.upload_file.assert_any_call(
+        entity_id=simulation_result.id,
+        entity_type=type(simulation_result),
+        file_path=lfp_report_file,
+        file_content_type=test_module.ContentType.application_x_hdf5,
+        asset_label=test_module.AssetLabel.lfp_report,
+    )
+    labels = [call.kwargs["asset_label"] for call in mock_client.upload_file.call_args_list]
+    assert labels == [test_module.AssetLabel.spike_report, test_module.AssetLabel.lfp_report]
+
+
 def test_register_simulation_results_passes_through_name_and_description(
     mock_client, simulation_id, spike_report_file
 ):

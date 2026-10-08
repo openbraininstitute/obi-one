@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -6,6 +7,7 @@ import entitysdk
 import pytest
 from obp_accounting_sdk.constants import ServiceSubtype
 
+from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import TaskLaunchSubmit, TaskType
@@ -37,12 +39,43 @@ def db_client():
     ],
 )
 def test_get_required_cpu_memory_combo(mem_required, expected):
-    assert test_module._get_required_cpu_memory_combo(mem_required) == expected
+    assert test_module.get_required_cpu_memory_combo(mem_required) == expected
+
+
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        (1, 2, (2, 4)),
+        (5, 4, (4, 8)),
+        (10, 4, (4, 16)),
+        (59, 16, (16, 64)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_min_cpus(mem_required, min_cpus, expected):
+    assert test_module.get_required_cpu_memory_combo(mem_required, min_cpus=min_cpus) == expected
+
+
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        # 4 CPUs: 5 + 4 * 0.5 = 7 GB
+        (5, 4, (4, 8)),
+        # 4 CPUs: 29.2 + 2 = 31.2 GB is over their 30 GB, and 8 CPUs need 29.2 + 4 = 33.2 GB
+        (29.2, 4, (8, 48)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_memory_per_cpu(mem_required, min_cpus, expected):
+    assert (
+        test_module.get_required_cpu_memory_combo(
+            mem_required, min_cpus=min_cpus, mem_gb_per_cpu=0.5
+        )
+        == expected
+    )
 
 
 def test_get_required_cpu_memory_combo_too_large():
     with pytest.raises(ValueError, match="No CPU/memory combination found"):
-        test_module._get_required_cpu_memory_combo(200)
+        test_module.get_required_cpu_memory_combo(200)
 
 
 def test_get_required_extra_storage_space_default():
@@ -227,8 +260,29 @@ def test_estimate_task_resources_allocation(
 )
 def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
-    with pytest.raises(ValueError, match="Not enough disk space"):
+    with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual)
+
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert "about 1,100,000,000 synapses" in exc_info.value.message
+    assert "more than the 200 GB of storage a task can have" in exc_info.value.message
+    # Leaving out virtual neurons is only suggested when they were included.
+    assert ("turn off Include Virtual Populations" in exc_info.value.message) == do_virtual
+
+
+def test_estimate_task_resources_memory_limit(db_client):
+    """3M input neurons need 1 + 55e-6 * 3e6 = 166 GB, more than the largest machine."""
+    metrics = _make_circuit_metrics(3_000_000, 0, 1000, 0)
+    with pytest.raises(ApiError) as exc_info:
+        _run_estimate_task_resources(db_client, metrics, do_virtual=False)
+
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert exc_info.value.message == (
+        "Extracting 3,000,000 neurons needs about 166 GB of memory, more than the largest"
+        " machine has (120 GB). Extract fewer neurons."
+    )
 
 
 @pytest.mark.parametrize(
@@ -294,7 +348,7 @@ def test_estimate_task_resources_with_accounting_parameters_disk_limit(db_client
         count=100_000,
         service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
     )
-    with pytest.raises(ValueError, match="Not enough disk space"):
+    with pytest.raises(ApiError, match="more than the 200 GB of storage a task can have"):
         _run_estimate_task_resources(
             db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
         )

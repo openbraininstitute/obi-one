@@ -44,6 +44,7 @@ class MorphologySourceMappedProperties(StrEnum):
 
 class CircuitUsability(StrEnum):
     SHOW_ELECTRIC_FIELD_STIMULI = "ShowElectricFieldStimuli"
+    SHOW_EXTRACELLULAR_RECORDINGS = "ShowExtracellularRecordings"
     SHOW_INPUT_RESISTANCE_BASED_STIMULI = "InputResistanceBasedStimuli"
     SHOW_MORPHOLOGY_LOCATIONS = "ShowMorphologyLocations"
     SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS = "ShowExplicitMorphologyLocations"

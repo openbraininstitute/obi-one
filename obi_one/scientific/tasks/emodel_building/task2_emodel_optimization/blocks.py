@@ -1036,7 +1036,7 @@ AXON_MODIFIER_TITLES: dict[str, str] = {
 class MorphologySettings(Block):
     """Morphology transformation settings used by BluePyEModel."""
 
-    axon_modifier: AxonModifier = Field(
+    axon_modifier: AxonModifier = Field(  # ty:ignore[no-matching-overload]
         default=AxonModifier.replace_axon_with_taper,
         title="Axon replacement",
         description=(
@@ -1189,7 +1189,7 @@ class MechanismsBySectionList(Block):
             "Assign selected ion channel models to BluePyEModel section lists. The same model "
             "may be assigned to multiple section lists."
         ),
-        json_schema_extra={
+        json_schema_extra={  # ty:ignore[invalid-argument-type]
             "choices": DEFAULT_SECTION_LIST_CATALOG.schema_choices(),
             "availability_by_axon_modifier": (
                 DEFAULT_SECTION_LIST_CATALOG.schema_availability_by_modifier()
@@ -1222,7 +1222,7 @@ class EModelOptimisationParameters(Block):
         title="Global parameters",
         description="Editable global values such as v_init and celsius.",
     )
-    base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
+    base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(  # ty:ignore[no-matching-overload]
         default_factory=_default_base_parameters,
         title="Base and passive parameters",
         description="Editable built-in parameters assigned to section lists.",
@@ -1294,7 +1294,7 @@ class ParametersSelection(Block):
             SchemaKey.ENTITY_QUERY: {"type": EntityType.ion_channel_model},
         },
     )
-    mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(
+    mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
         title="Mechanisms by region",
         description=(
@@ -1325,7 +1325,7 @@ class ParametersSelection(Block):
             "derived_view": "parameter_group_view",
         },
     )
-    base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(
+    base_parameters: dict[SectionListName, dict[str, ParameterSelectionUnion]] = Field(  # ty:ignore[no-matching-overload]
         default_factory=_default_base_parameters,
         title="Base and passive parameters",
         description=(

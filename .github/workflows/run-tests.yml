@@ -16,12 +16,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "latest"
           enable-cache: true
       - name: Setup python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version-file: "pyproject.toml"
       - name: Configure AWS credentials
@@ -38,7 +38,6 @@ jobs:
           echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
           echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
           echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
-          echo "CODEARTIFACT_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
       - name: Check requirements
         run: make check-deps
       - name: Install mandatory and optional requirements

@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
     MultiPopulationPredefinedNeuronSet,
@@ -74,7 +75,7 @@ def test_predefined_neuron_set_invalid_node_set(circuit):
     nset = MultiPopulationPredefinedNeuronSet(node_set="NONEXISTENT")
     nset.set_block_name("predef_invalid")
 
-    with pytest.raises(ValueError, match="not found in circuit"):
+    with pytest.raises(ConfigValidationError, match="not found in circuit"):
         nset.get_neuron_ids(circuit)
 
 

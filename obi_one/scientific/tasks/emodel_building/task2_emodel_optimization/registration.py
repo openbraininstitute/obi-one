@@ -8,10 +8,15 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
+if TYPE_CHECKING:
+    import os
+
 import entitysdk
+from bluepyemodel.emodel_pipeline.emodel import EModel as BPEMEModel, format_dict_for_resource
+from bluepyemodel.emodel_pipeline.emodel_metadata import EModelMetadata
 from entitysdk import MultipartDirectoryUploadTransferConfig
 from entitysdk.models import (
     CellMorphology,
@@ -123,6 +128,65 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
     }
 
 
+def find_emodel_data(data: dict, emodel_name: str, seed: int) -> dict | None:
+    """Return the ``final.json`` entry matching ``emodel_name`` and ``seed``, if any."""
+    for entry in data.values():
+        if entry.get("emodel") == emodel_name and entry.get("seed") == seed:
+            return entry
+    return None
+
+
+def write_emodel_optimization_output(
+    final_path: Path, emodel_name: str, seed: int, out_dir: Path
+) -> Path:
+    """Convert a ``final.json`` entry into the EModel optimisation-output resource format.
+
+    ``final.json`` is BluePyEModel's LocalAccessPoint store (keyed by ``<emodel>__<seed>``,
+    dict-valued fields). The ``emodel_optimization_output`` asset is expected in the
+    resource format of ``EModel.as_dict()`` (``fitness``, ``parameter``, ``score``,
+    ``features``, ``scoreValidation``, ``passedValidation``, ``seed``), written to
+    ``emodel_optimization_output.json``.
+    """
+    data = json.loads(final_path.read_text(encoding="utf-8"))
+    model_data = find_emodel_data(data, emodel_name, seed)
+    if model_data is None:
+        msg = f"No entry for emodel={emodel_name!r}, seed={seed} in {final_path}."
+        raise ValueError(msg)
+
+    metadata = EModelMetadata(
+        emodel=model_data.get("emodel"),
+        etype=model_data.get("etype"),
+        ttype=model_data.get("ttype"),
+        mtype=model_data.get("mtype"),
+        species=model_data.get("species"),
+        brain_region=model_data.get("brain_region"),
+        iteration_tag=model_data.get("iteration"),
+        synapse_class=model_data.get("synapse_class"),
+    )
+    emodel = BPEMEModel(
+        parameter=model_data.get("parameters"),
+        score=model_data.get("fitness"),
+        features=model_data.get("features"),
+        scoreValidation=model_data.get("validation_fitness"),
+        passedValidation=model_data.get("validated"),
+        seed=seed,
+        emodel_metadata=metadata,
+    )
+    optimization_output = {
+        "fitness": sum(emodel.scores.values()),
+        "parameter": format_dict_for_resource(emodel.parameters),
+        "score": format_dict_for_resource(emodel.scores),
+        "features": format_dict_for_resource(emodel.features),
+        "scoreValidation": format_dict_for_resource(emodel.scores_validation),
+        "passedValidation": emodel.passed_validation,
+        "seed": seed,
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "emodel_optimization_output.json"
+    out_path.write_text(json.dumps(optimization_output, indent=2), encoding="utf-8")
+    return out_path
+
+
 def upload_optimization_assets(
     coord_root: Path,
     task_result_id: ID,
@@ -232,7 +296,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         raise RuntimeError(msg)
 
     figures_dir = coord_root / "figures"
-    figure_files: dict[Path, Path] = {}
+    figure_files: dict[os.PathLike, os.PathLike] = {}
     if figures_dir.exists():
         figure_files = {
             p.relative_to(figures_dir): p for p in sorted(figures_dir.rglob("*")) if p.is_file()
@@ -287,7 +351,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     db_client.upload_directory(
         entity_id=task_result.id,
         entity_type=TaskResult,
-        paths=dict(figure_files),
+        paths=figure_files,
         name="analysis_figures",
         label=AssetLabel.emodel_analysis_figures,
         transfer_config=MultipartDirectoryUploadTransferConfig(),
@@ -330,7 +394,9 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         lifecycle_status=EntityLifecycleStatus.active,
         etype_class=etype_class,
         hoc_file=hoc_file,  # ty:ignore[invalid-argument-type]
-        emodel_summary_file=emodel_summary_file,
+        emodel_summary_file=write_emodel_optimization_output(
+            emodel_summary_file, emodel_name, seed, coord_root / "emodel_optimization_output"
+        ),
         electrical_cell_recording_ids=trace_ids or [],
         validation_result_figure_files=emodel_figures,
         validation_result_status=False,

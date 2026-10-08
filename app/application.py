@@ -1,6 +1,6 @@
 import asyncio
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Any
@@ -24,7 +24,6 @@ from app.endpoints import (
     circuit_visualization,
     config_validation,
     contributor,
-    convert_morphology_to_registered_mesh,
     count_scan_coordinates,
     distance_function_validation,
     electrical_cell_recording_properties,
@@ -51,7 +50,7 @@ from app.schemas.base import ErrorResponse
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[dict[str, Any], None]:
     """Execute actions on server startup and shutdown."""
     L.info(
         "Starting application [PID=%s, CPU_COUNT=%s, ENVIRONMENT=%s]",
@@ -185,7 +184,6 @@ app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
 app.include_router(distance_function_validation.router)
-app.include_router(convert_morphology_to_registered_mesh.router)
 app.include_router(count_scan_coordinates.router)
 app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)

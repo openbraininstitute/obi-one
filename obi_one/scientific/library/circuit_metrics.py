@@ -5,6 +5,7 @@ from collections.abc import Iterator, Mapping
 from enum import IntEnum, StrEnum, auto
 from os.path import realpath
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 import numpy as np
@@ -337,7 +338,7 @@ def properties_from_nodes_files(
     circuit_id: str,
     asset_id: str | UUID,
     level_of_detail_specs: dict[str, CircuitStatsLevelOfDetail],
-) -> dict:
+) -> dict[str, dict[str, Any]]:
     default_lod = level_of_detail_specs[ALL_POPULATIONS]
     lst_req_props = [
         "population_length",
@@ -345,7 +346,7 @@ def properties_from_nodes_files(
         "property_unique_values",
         "property_value_counts",
     ]
-    properties_dict = {}
+    properties_dict: dict[str, dict[str, Any]] = {}
     config = circ.to_libsonata
     for nodepop in get_names_of_typed_node_populations(
         config, TYPES_OF_VIRTUAL_NODES + TYPES_OF_BIOPHYS_NODES + TYPES_OF_POINT_NODES
@@ -386,10 +387,10 @@ def properties_from_edges_files(
     circuit_id: str,
     asset_id: str | UUID,
     level_of_detail_specs: dict[str, CircuitStatsLevelOfDetail],
-) -> dict:
+) -> dict[str, dict[str, Any]]:
     default_lod = level_of_detail_specs[ALL_POPULATIONS]
     lst_req_props = ["number_of_edges", "property_list", "property_stats", "degrees"]
-    properties_dict = {}
+    properties_dict: dict[str, dict[str, Any]] = {}
     config = circ.to_libsonata
     for edgepop in get_names_of_typed_edge_populations(
         config, TYPES_OF_CHEMICAL_SYNS + TYPES_OF_ELECTRICAL_SYNS

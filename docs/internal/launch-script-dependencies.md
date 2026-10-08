@@ -9,6 +9,8 @@ Each requirements file has two versions:
 - **`*.in`**: the source of truth. Edit this to add or change dependencies.
 - **`*.txt`**: generated from the `*.in` and fully pinned. Do not edit by hand. The launch-system installs from it at task run time.
 
+A task may additionally have an **`*.override`** file, pinning packages that its runtime image provides. See [Image overrides](#image-overrides).
+
 ## TL;DR for task developers
 
 - **Add a task:** create `launch_scripts/<task>/dependencies/<name>.in` with a bare `obi-one[<extras>]` line (no version) plus any extra packages, run `make compile-launch-deps FILE=<path to the .in>`, and commit both the `*.in` and the generated `*.txt`. Tasks run by `launch_scripts/launch_task_for_single_config_asset/main.py` use `_obi_one_code("<name>.txt")` in `app/mappings.py`.
@@ -16,10 +18,21 @@ Each requirements file has two versions:
 - **Change obi-one's own dependencies** (`pyproject.toml`): also run `make compile-launch-deps`, or `check-launch-deps` fails in CI.
 - **Upgrade the pinned versions:** compiling never upgrades existing pins; raise a lower bound in the `*.in` for one package, or run `make upgrade-launch-deps FILE=<path to the .in>` for the whole closure, then test the task (see [Compiling](#compiling)).
 - **Private packages** (CodeArtifact, e.g. `ultraliser`): add them to `PRIVATE_PACKAGES` in `launch_scripts/tools/launch_deps_compile.py` and set the CodeArtifact credentials before compiling (see [Compiling](#compiling)).
+- **Pin a build that only exists in the runtime image** (e.g. the NEURON dev build of the neurodamus image): add a `<name>.override` file next to the `<name>.in`. Task developers don't touch it (see [Image overrides](#image-overrides)).
 - **Don't touch the obi-one pin** (`obi-one[...]==X` in the `*.txt`): the release workflow updates it, and compiling keeps it.
 - **Test a task against your branch's obi-one code:** see [Testing a task against an obi-one feature branch](#testing-a-task-against-an-obi-one-feature-branch), and revert the `*.txt` edit before merging.
 
 ## Compiling
+
+The everyday developer loop for a task's dependencies is edit the `*.in`, compile to regenerate the `*.txt`, then check (locally or in CI) before committing both files. Which command to run depends on what you want to happen to the pins:
+
+```mermaid
+flowchart TD
+    S{"Goal?"}
+    S -->|"add/remove a dep,<br/>or react to a pyproject.toml change"| C1["edit .in →<br/>make compile-launch-deps<br/>(keeps existing pins)"]
+    S -->|"upgrade ONE package"| C2["raise its lower bound in .in →<br/>make compile-launch-deps"]
+    S -->|"upgrade EVERYTHING<br/>to latest"| C3["make upgrade-launch-deps →<br/>test the affected tasks<br/>(may bring breaking changes)"]
+```
 
 ```bash
 # Compile all launch-script requirements
@@ -40,6 +53,24 @@ To upgrade one package, raise its lower bound in the `*.in` and compile. `make u
 
 Some tasks depend on private packages from AWS CodeArtifact (currently `ultraliser`, used by `skeletonization` and `mesh_lod_generation`). The CodeArtifact index is used only for files that require a package listed in `PRIVATE_PACKAGES` (`launch_deps_compile.py`), directly or in their compiled `.txt`: it proxies PyPI but sends no caching headers, so using it everywhere makes every run slow. Add new private packages to that list. Compiling or checking these files needs `UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws` and `UV_INDEX_OBI_CODEARTIFACT_PASSWORD` set to a CodeArtifact token (`aws codeartifact get-authorization-token --domain openbraininstitute --query authorizationToken --output text`).
 
+## Image overrides
+
+Some executor images ship a build that is not published on any index, such as the NEURON dev build of `python_3_12_openmpi5_neuron9_neurodamus` (`app/types.py`). Putting that version in the `*.in` would make the resolution unsatisfiable, so it goes in a sibling `<name>.override` instead:
+
+```
+# neurodamus_simulation.override
+# Provided by the python_3_12_openmpi5_neuron9_neurodamus launch-system image.
+# Maintained with that image; not edited by task developers.
+neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
+h5py==3.16.0
+libsonata==0.2.2
+mpi4py==4.1.2
+```
+
+**`*.override` files are owned by the maintainers of the launch-system images** and are updated when the image changes; task developers only edit the `*.in`. Only a task whose `image_type` provides the build may have one, and an `*.override` without a matching `*.in` is an error.
+
+Compiling excludes those packages from the resolver output and writes the `*.override` requirements into the `*.txt` in their place, so editing one makes its `*.txt` stale. The rest of the closure is still resolved against the version on the index, which suits a dev build of an already-resolvable package (NEURON dev builds share the dependencies of the matching release).
+
 ## Checking
 
 ```bash
@@ -52,26 +83,62 @@ It resolves every task, including the private ones. Without CodeArtifact access,
 
 ## Releases
 
-Launch jobs check out the release tag `X`, whose requirements pin obi-one to that release:
+The release workflow is driven by `release-pin.yml`, which fires twice for one release: once on the `release: published` event (to re-dispatch itself on `main`) and once on the resulting `workflow_dispatch` run on `main` (to check, pin, move the tag and dispatch the builds).
+
+```mermaid
+sequenceDiagram
+    actor M as Maintainer
+    participant GH as GitHub<br/>(release/tags)
+    participant RP1 as release-pin.yml<br/>(tagged commit)
+    participant RP2 as release-pin.yml<br/>(main)
+    participant CL as check-launch-deps
+    participant PUB as publish.yml /<br/>publish-pypi.yml
+
+    M->>GH: Publish release X (tag at main HEAD = A)
+    GH->>RP1: release: published
+    Note over RP1: dispatch job<br/>validates calver tag
+    RP1->>RP2: gh workflow run --ref main (workflow_dispatch)
+    RP2->>CL: run check-launch-deps on tag X
+    CL-->>RP2: OK (closure consistent)
+    Note over RP2: pin job (environment: release)<br/>verify tag X == main HEAD
+    alt tag X not yet pinned
+        RP2->>RP2: launch_deps_pin.py --version X<br/>rewrite obi-one lines to ==X
+        RP2->>GH: atomic push: commit B on main + move tag X→B
+    end
+    RP2->>PUB: dispatch builds on tag X
+    PUB-->>RP2: success / failure
+    Note over RP2: run fails if any build failed
+    RP2-->>M: Release X complete (tag X pins obi-one==X)
+```
+
+Launch jobs check out the release tag `X`, whose requirements pin obi-one to that release.
+
+### The release flow
 
 1. A maintainer creates release `X` from the GitHub UI as usual (calver `YYYY.M.N`, e.g. `2026.9.15`), targeting `main` HEAD. This creates tag `X` at `main` HEAD, and nothing is built yet.
-2. The release triggers `.github/workflows/release-pin.yml`, which re-dispatches itself on `main`: the job that uses the release App key must run workflow code from `main`, not from the tagged commit.
-3. The dispatched run first runs `check-launch-deps` on tag `X`, since the release fixes that commit's closure. It then checks that tag `X` is `main` HEAD, runs `launch_deps_pin.py --version X` to rewrite every obi-one line of `launch_scripts/*/dependencies/*.txt` to `obi-one[extras]==X`, and verifies that nothing else changed. It commits the result on `main` and moves tag `X` to that commit, in one atomic push with the `obi-one-release` GitHub App token (a bypass actor of the `main` ruleset).
+2. The release triggers `release-pin.yml` on the tagged commit. That run holds no credentials; its only job re-dispatches the workflow on `main` (see [Why two runs](#why-two-runs)).
+3. The dispatched run (on `main`) first runs `check-launch-deps` on tag `X`, since the release fixes that commit's closure. It then checks that tag `X` is `main` HEAD, runs `launch_deps_pin.py --version X` to rewrite every obi-one line of `launch_scripts/*/dependencies/*.txt` to `obi-one[extras]==X`, verifies that nothing else changed, commits the result on `main` and moves tag `X` to that commit — in one atomic push with the `obi-one-release` GitHub App token (a bypass actor of the `main` ruleset).
 4. It then dispatches the Docker (`publish.yml`) and PyPI (`publish-pypi.yml`) builds on tag `X` and waits for them. Both run only on a release tag whose obi-one lines are pinned to it (`launch_deps_pin.py --check`).
-5. The service running version `X` submits jobs with `ref=tag:X` (`release_tag_ref` in `obi_one/utils/versions.py`), so the executor installs the obi-one `X` wheel together with the closure frozen at `X`. A dev build (e.g. `2026.9.15-3-g49a1641-dirty`) uses the tag of its last release.
+5. The service running version `X` submits jobs with `ref=tag:X` (`release_tag_ref` in `obi_one/utils/versions.py`), so the executor installs the obi-one `X` wheel together with the closure frozen at `X`.
 
 Pinning only the obi-one line is consistent because `check-launch-deps` keeps `main`'s closure in sync with obi-one's requirements, so the closure committed at `X` was compiled against `X`'s source. Between releases, `main` keeps the pin of the last release.
 
-Nothing should be merged to `main` while a release is running: the workflow fails if tag `X` is no longer `main` HEAD.
+### Why two runs
 
-The workflow needs the `release` environment (deployment restricted to `main`), with the variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY` of the `obi-one-release` GitHub App. Don't allow tags in that environment: a tag-triggered run uses the workflow files of the tagged commit.
+A `release: published` event runs the workflow file as it exists at the **tagged commit**, not on `main`. The `pin` job needs the `obi-one-release` App token (push to `main`, move tags), which must never be reachable from unreviewed workflow code. The `release` environment enforces this: it is restricted to `main` and does not allow tags. So the first run (on the tag) has no secrets and only re-dispatches the workflow on `main`; the second run (on `main`) runs reviewed code, can mint the token, and does the real work. The job `if` conditions implement the split (`dispatch` on the `release` event, `check-launch-deps` and `pin` on `workflow_dispatch`).
 
-To try the pin locally, then revert it (this discards any local change to those files):
+### Operational notes
 
-```bash
-make pin-launch-deps VERSION=2026.9.15
-git restore 'launch_scripts/*/dependencies/*.txt'
-```
+- **Don't merge to `main` while a release is running:** the workflow fails if tag `X` is no longer `main` HEAD.
+- **Required configuration:** the `release` environment with the variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY` of the `obi-one-release` GitHub App. Keep the environment restricted to `main` and never allow tags.
+- **Try the pin locally, then revert** (this discards any local change to those files):
+
+  ```bash
+  make pin-launch-deps VERSION=2026.9.15
+  git restore 'launch_scripts/*/dependencies/*.txt'
+  ```
+
+### Recovery
 
 If `release-pin.yml` fails, the release is published but nothing is built, and tag `X` may still point at the unpinned commit. Fix the cause and re-run the failed run, or run the workflow on `main` from the Actions tab with the release tag as input: if the tag is already pinned, it only dispatches the builds. If only a build failed, re-run that build. If `check-launch-deps` fails on tag `X`, delete release `X` and its tag, fix `main` and release again.
 
