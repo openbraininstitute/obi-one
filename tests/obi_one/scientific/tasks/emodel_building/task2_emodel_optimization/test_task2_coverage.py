@@ -296,13 +296,12 @@ def test_distance_distribution_validates_function_placeholders(payload, message)
 
 def test_distance_distribution_serializes_legacy_fields():
     distribution = DistanceDependentDistribution(
-        name="custom",
         function="{value} * {distance} * {constant}",
         soma_ref_location=0.75,
         parameters=("constant",),
     )
 
-    assert distribution.to_emc_dict() == {
+    assert distribution.to_emc_dict(name="custom") == {
         "name": "custom",
         "function": "{value} * {distance} * {constant}",
         "soma_ref_location": 0.75,
@@ -712,7 +711,6 @@ def _config_data_for_selection(selection, distributions=None, **overrides):
 
 def _decay_distribution():
     return CustomDistanceDependentDistribution(
-        name="decay",
         function="math.exp({distance}*{constant})*{value}",
         parameters=("constant",),
     )
@@ -775,11 +773,13 @@ def test_scan_config_rejects_empty_ion_channel_model_selection():
 
 def test_remaining_block_validation_and_serialization_paths():
     distribution = DistanceDependentDistribution(function="{value} * {distance}")
-    assert distribution.to_emc_dict() == {
-        "name": None,
+    assert distribution.to_emc_dict(name="base") == {
+        "name": "base",
         "function": "{value} * {distance}",
         "soma_ref_location": 0.5,
     }
+    with pytest.raises(ValueError, match="has no name"):
+        distribution.to_emc_dict()
 
     with pytest.raises(ValueError, match="Bounds cannot be provided"):
         OptimizationValue(mode="fixed", value=1.0, bounds=(0.0, 2.0))

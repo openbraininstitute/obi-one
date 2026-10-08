@@ -64,13 +64,13 @@ def to_bpem_parameters_selection(selection: Any) -> ParametersSelection:
 def bpem_distribution_name(key: str, distribution: Any) -> str:
     """Name parameters use to reference a declared distribution.
 
-    Custom distributions are referenced by their dictionary key. Standard distributions keep
-    their frozen BluePyEModel ``name`` (e.g. ``step``, which BluePyEModel special-cases at
+    Custom distributions are referenced by their dictionary key. Standard distributions use
+    their class-intrinsic ``default_name`` (e.g. ``step``, which BluePyEModel special-cases at
     runtime), whatever key the user gave them.
     """
     if isinstance(distribution, CustomDistanceDependentDistribution):
         return key
-    return distribution.name
+    return type(distribution).default_name
 
 
 def to_bpem_distributions(

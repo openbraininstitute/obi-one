@@ -429,14 +429,8 @@ class DistanceDependentDistribution(Block):
     """
 
     _runtime_placeholders: ClassVar[frozenset[str]] = frozenset()
+    default_name: ClassVar[str | None] = None
 
-    name: str | None = Field(
-        default=None,
-        min_length=1,
-        title="Distribution name",
-        description="Optional name used by BluePyEModel parameter definitions.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str | None = Field(
         default=None,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
@@ -504,9 +498,20 @@ class DistanceDependentDistribution(Block):
         return self
 
     def to_emc_dict(self, name: str | None = None) -> dict[str, Any]:
-        """Convert the block to the legacy EMC distribution representation."""
+        """Convert the block to the legacy EMC distribution representation.
+
+        The distribution name comes from ``name`` (the dictionary key the user gave it) or,
+        for standard distributions, falls back to the class-intrinsic ``default_name``.
+
+        Raises:
+            ValueError: If neither a ``name`` argument nor a class ``default_name`` is available.
+        """
+        resolved_name = name or self.default_name
+        if resolved_name is None:
+            msg = "Distance-dependent distribution has no name: pass one or set default_name."
+            raise ValueError(msg)
         emc_dict: dict[str, Any] = {
-            "name": name or self.name,
+            "name": resolved_name,
             "function": self.function,
             "soma_ref_location": self.soma_ref_location,
         }
@@ -522,14 +527,9 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
     """
 
     title: ClassVar[str] = "Uniform (constant)"
+    default_name: ClassVar[str] = "uniform"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "uniform"}
 
-    name: str = Field(
-        default="uniform",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: None = Field(
         default=None,
         frozen=True,
@@ -546,14 +546,9 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
     """
 
     title: ClassVar[str] = "Exponential increase (SSCX/thalamus)"
+    default_name: ClassVar[str] = "exp"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "exp"}
 
-    name: str = Field(
-        default="exp",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
         frozen=True,
@@ -578,14 +573,9 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
 
     title: ClassVar[str] = "Step: Ca hot-spot"
     _runtime_placeholders: ClassVar[frozenset[str]] = frozenset({"step_begin", "step_end"})
+    default_name: ClassVar[str] = "step"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "step"}
 
-    name: str = Field(
-        default="step",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
         "({distance} < {step_end})))",
@@ -604,14 +594,9 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
     """
 
     title: ClassVar[str] = "Exponential decay, dendritic Na (hippocampus)"
+    default_name: ClassVar[str] = "exp_na_dend"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "exp_na_dend"}
 
-    name: str = Field(
-        default="exp_na_dend",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="math.exp((-{distance})/50.)*{value}",
         frozen=True,
@@ -630,14 +615,9 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
     """
 
     title: ClassVar[str] = "Linear increase (Ih)"
+    default_name: ClassVar[str] = "linear_hd_apic"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "linear_hd_apic"}
 
-    name: str = Field(
-        default="linear_hd_apic",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="(1. + 3./100. * {distance})*{value}",
         frozen=True,
@@ -655,14 +635,9 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
     """
 
     title: ClassVar[str] = "Sigmoid increase, apical KA (hippocampus)"
+    default_name: ClassVar[str] = "sigmoid_kad_apic"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "sigmoid_kad_apic"}
 
-    name: str = Field(
-        default="sigmoid_kad_apic",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
         frozen=True,
@@ -680,14 +655,9 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
     """
 
     title: ClassVar[str] = "Linear decrease, apical e_pas (additive)"
+    default_name: ClassVar[str] = "linear_e_pas_apic"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "linear_e_pas_apic"}
 
-    name: str = Field(
-        default="linear_e_pas_apic",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="({value}-5.*{distance}/150.)",
         frozen=True,
@@ -705,14 +675,9 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
     """
 
     title: ClassVar[str] = "Sigmoid increase, KA (mouse)"
+    default_name: ClassVar[str] = "sigmoid_kad"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "sigmoid_kad"}
 
-    name: str = Field(
-        default="sigmoid_kad",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
         frozen=True,
@@ -730,14 +695,9 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
     """
 
     title: ClassVar[str] = "Sigmoid decrease, apical KD (mouse)"
+    default_name: ClassVar[str] = "sigmoid_kdbm_apic"
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.DEFAULT_NAME: "sigmoid_kdbm_apic"}
 
-    name: str = Field(
-        default="sigmoid_kdbm_apic",
-        frozen=True,
-        title="Distribution name",
-        description="Fixed BluePyEModel distribution name.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
     function: str = Field(
         default="(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
         frozen=True,
@@ -755,6 +715,11 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
     """
 
     title: ClassVar[str] = "Custom formula"
+    default_name: ClassVar[str] = "custom distance dependent distribution"
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.DEFAULT_NAME: "custom distance dependent distribution",
+    }
+
     function: str = Field(
         min_length=1,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,

@@ -99,12 +99,11 @@ class TestDistanceDependentDistributions:
 
     def test_custom_distribution_is_validated_and_serialized(self):
         distribution = obi.CustomDistanceDependentDistribution(
-            name="custom_profile",
             function="({value} + {distance}) / 2.0",
             soma_ref_location=0.25,
         )
 
-        assert distribution.to_emc_dict() == {
+        assert distribution.to_emc_dict(name="custom_profile") == {
             "name": "custom_profile",
             "function": "({value} + {distance}) / 2.0",
             "soma_ref_location": 0.25,
@@ -112,12 +111,11 @@ class TestDistanceDependentDistributions:
 
     def test_custom_distribution_serializes_parameters(self):
         distribution = obi.CustomDistanceDependentDistribution(
-            name="decay",
             function="math.exp({distance}*{constant})*{value}",
             parameters=["constant"],
         )
 
-        assert distribution.to_emc_dict() == {
+        assert distribution.to_emc_dict(name="decay") == {
             "name": "decay",
             "function": "math.exp({distance}*{constant})*{value}",
             "soma_ref_location": 0.5,
@@ -126,16 +124,14 @@ class TestDistanceDependentDistributions:
 
     def test_empty_distribution_parameters_are_not_serialized(self):
         distribution = obi.CustomDistanceDependentDistribution(
-            name="custom_profile",
             function="({value} + {distance}) / 2.0",
             parameters=[],
         )
 
-        assert "parameters" not in distribution.to_emc_dict()
+        assert "parameters" not in distribution.to_emc_dict(name="custom_profile")
 
     def test_distribution_parameter_names_are_not_scan_dimensions(self):
         distribution = obi.CustomDistanceDependentDistribution(
-            name="decay",
             function="math.exp({distance}*{constant})*{value}",
             parameters=["constant"],
         )
@@ -145,15 +141,14 @@ class TestDistanceDependentDistributions:
 
     def test_custom_distribution_requires_value_and_distance(self):
         with pytest.raises(ValueError, match=r"\{value\} placeholder"):
-            obi.CustomDistanceDependentDistribution(name="custom", function="{distance}")
+            obi.CustomDistanceDependentDistribution(function="{distance}")
 
         with pytest.raises(ValueError, match=r"\{distance\} placeholder"):
-            obi.CustomDistanceDependentDistribution(name="custom", function="{value}")
+            obi.CustomDistanceDependentDistribution(function="{value}")
 
     def test_custom_distribution_requires_declared_parameters(self):
         with pytest.raises(ValueError, match=r"\{constant\} placeholder"):
             obi.CustomDistanceDependentDistribution(
-                name="custom",
                 function="math.exp({distance})*{value}",
                 parameters=["constant"],
             )
@@ -240,7 +235,7 @@ class TestDistanceFunctionSafety:
     )
     def test_unsafe_custom_distribution_is_rejected(self, unsafe_function):
         with pytest.raises(ValueError, match="Distance function"):
-            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+            obi.CustomDistanceDependentDistribution(function=unsafe_function)
 
     @pytest.mark.parametrize(
         "safe_function",
@@ -253,7 +248,7 @@ class TestDistanceFunctionSafety:
         ],
     )
     def test_safe_custom_distribution_is_accepted(self, safe_function):
-        distribution = obi.CustomDistanceDependentDistribution(name="safe", function=safe_function)
+        distribution = obi.CustomDistanceDependentDistribution(function=safe_function)
         assert distribution.function == safe_function
 
     @pytest.mark.parametrize(
@@ -269,30 +264,30 @@ class TestDistanceFunctionSafety:
     def test_int_producing_calls_are_rejected(self, unsafe_function):
         """int() and int-returning math functions are forbidden (unbounded-integer DoS)."""
         with pytest.raises(ValueError, match="Distance function"):
-            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+            obi.CustomDistanceDependentDistribution(function=unsafe_function)
 
     def test_overly_complex_function_is_rejected(self):
         """A structurally large expression (under the length cap) is rejected by the node cap."""
         long_function = "{value}" + "+{distance}" * 30
         with pytest.raises(ValueError, match="too complex"):
-            obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
+            obi.CustomDistanceDependentDistribution(function=long_function)
 
     def test_integer_literals_are_rejected(self):
         """Integer literals are forbidden (arbitrary-precision); users must write floats."""
         with pytest.raises(ValueError, match="must be floats"):
-            obi.CustomDistanceDependentDistribution(name="evil", function="{value}*{distance} + 3")
+            obi.CustomDistanceDependentDistribution(function="{value}*{distance} + 3")
 
     def test_power_operator_is_rejected(self):
         """`**` is forbidden: integer exponentiation is an unbounded-memory DoS."""
         with pytest.raises(ValueError, match="Pow"):
-            obi.CustomDistanceDependentDistribution(name="evil", function="{value} ** {distance}")
+            obi.CustomDistanceDependentDistribution(function="{value} ** {distance}")
 
     def test_overly_long_function_is_rejected(self):
         """A giant raw string is rejected before parsing (bounds parse-time cost)."""
         long_function = "{value}+{distance}+" + "9." * 300
         # The field-level ``max_length`` constraint rejects it (Pydantic message).
         with pytest.raises(ValueError, match="at most 500 characters"):
-            obi.CustomDistanceDependentDistribution(name="evil", function=long_function)
+            obi.CustomDistanceDependentDistribution(function=long_function)
 
     def test_check_distance_function_reports_valid(self):
         result = check_distance_function("math.exp((-{distance})/50.)*{value}")
@@ -436,7 +431,7 @@ class TestDistanceFunctionSafety:
     def test_comment_and_format_spec_channels_are_rejected(self, unsafe_function):
         """The distance function must not smuggle format specs via comments or brace fields."""
         with pytest.raises(ValueError, match="Distance function"):
-            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+            obi.CustomDistanceDependentDistribution(function=unsafe_function)
 
     def test_check_distance_function_flags_comment_position(self):
         fn = "{value}*{distance} # {value:>999999999}"
@@ -469,7 +464,7 @@ class TestDistanceFunctionSafety:
     )
     def test_unbalanced_braces_are_rejected(self, unsafe_function):
         with pytest.raises(ValueError, match="unbalanced"):
-            obi.CustomDistanceDependentDistribution(name="evil", function=unsafe_function)
+            obi.CustomDistanceDependentDistribution(function=unsafe_function)
 
     def test_unsafe_distribution_config_rejects_comment_dos(self):
         """The comment/format-spec DoS must block config creation, not just the block."""

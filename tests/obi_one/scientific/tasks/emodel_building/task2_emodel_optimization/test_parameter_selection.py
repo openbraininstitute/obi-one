@@ -173,7 +173,6 @@ def _compiler_fixture():
         distance_dependent_distributions={
             "uniform": UniformDistanceDependentDistribution(),
             "decay": CustomDistanceDependentDistribution(
-                name="decay",
                 function="math.exp({distance}*{constant})*{value}",
                 parameters=["constant"],
             ),
@@ -605,7 +604,6 @@ def test_global_parameters_default_is_validated_into_blocks():
 def test_distance_dependent_distribution_rejects_undeclared_placeholders():
     with pytest.raises(ValueError, match="undeclared placeholders"):
         CustomDistanceDependentDistribution(
-            name="custom",
             function="{value}+{distance}+{typo}",
         )
 
@@ -901,7 +899,6 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
     data["distance_dependent_distributions"] = {
         "decay": {
             "type": "CustomDistanceDependentDistribution",
-            "name": "decay",
             "function": "math.exp({distance}*{constant})*{value}",
             "parameters": ["constant"],
         }
