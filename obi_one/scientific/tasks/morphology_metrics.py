@@ -13,13 +13,11 @@ from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFro
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )
-from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
 
 class MorphologyMetricsScanConfig(ScanConfig):
-    task_type: ClassVar[TaskType] = TaskType.morphology_metrics
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 

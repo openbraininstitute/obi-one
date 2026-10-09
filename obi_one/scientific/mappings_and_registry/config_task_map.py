@@ -398,15 +398,16 @@ def get_task_spec_for_task_type(task_type: TaskType) -> TaskSpec:
 
 
 def lookup_task_spec(index: dict[str, TaskType], config_cls: type) -> TaskSpec | None:
-    """Return the task spec for a config class or the nearest registered base class."""
+    """Return the task spec for a config class or the nearest registered base class.
+
+    ``index`` is keyed by class name, which is the ``type`` discriminator value, so a
+    config class is matched without importing the task module that defines it.
+    """
     for klass in config_cls.__mro__:
         task_type = index.get(klass.__qualname__)
         if task_type is not None and is_task_type_available(task_type):
             return TASK_SPECS[task_type]
-    task_type = getattr(config_cls, "task_type", None)
-    if task_type is None or not is_task_type_available(task_type):
-        return None
-    return TASK_SPECS[task_type]
+    return None
 
 
 def get_task_spec_for_scan_config(config_cls: type) -> TaskSpec | None:

@@ -35,15 +35,12 @@ from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
-from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
 
 class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
-
-    task_type: ClassVar[TaskType] = TaskType.ion_channel_model_simulation
 
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"

@@ -41,7 +41,7 @@ from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
-from obi_one.types import SimulationBackend, TaskType
+from obi_one.types import SimulationBackend
 from obi_one.utils.benchmark import BenchmarkTracker
 
 L = logging.getLogger(__name__)
@@ -61,8 +61,6 @@ class BlockGroup(StrEnum):
 
 class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
     """Description."""
-
-    task_type: ClassVar[TaskType] = TaskType.extracellular_recording_weights_calculation
 
     name: ClassVar[str] = "Create Extracellular Recording Array"
     description: ClassVar[str] = "Description."

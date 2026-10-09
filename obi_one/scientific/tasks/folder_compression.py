@@ -12,7 +12,6 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.types import TaskType
 from obi_one.utils.io import compressed_archive_filename
 
 L = logging.getLogger(__name__)
@@ -25,8 +24,6 @@ class FolderCompressionScanConfig(ScanConfig):
 
     The following compression formats are available: gzip (.gz; default), bzip2 (.bz2), LZMA (.xz)
     """
-
-    task_type: ClassVar[TaskType] = TaskType.folder_compression
 
     name: ClassVar[str] = "Folder Compression"
     description: ClassVar[str] = "Compresses a folder using the specified compression format."

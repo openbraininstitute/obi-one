@@ -1,19 +1,16 @@
 """Configuration schemas for the level-of-detail (LOD) mesh generation pipeline."""
 
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 from uuid import UUID
 
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.types import TaskType
 
 
 class MeshLodGenerationSingleConfig(OBIBaseModel):
     """Configuration schema for processing LOD mesh scans."""
-
-    task_type: ClassVar[TaskType] = TaskType.mesh_lod_generation
 
     idx: int = -1
     scan_output_root: Path = Path()

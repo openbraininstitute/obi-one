@@ -26,7 +26,6 @@ from obi_one.scientific.blocks.ion_channel_equations import (
     ion_channel_equations as equations_module,
 )
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
-from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -92,8 +91,6 @@ class BlockGroup(StrEnum):
 
 class IonChannelFittingScanConfig(ScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
-
-    task_type: ClassVar[TaskType] = TaskType.ion_channel_fitting
 
     name: ClassVar[str] = "IonChannelFittingScanConfig"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."

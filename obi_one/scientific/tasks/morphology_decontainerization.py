@@ -17,7 +17,6 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.types import TaskType
 
 N_NEURONS_FOR_CHECK = 20
 
@@ -36,8 +35,6 @@ class MorphologyDecontainerizationScanConfig(ScanConfig):
     Important: The original circuit won't be modified! The circuit will be copied
                to the output location where all operations take place.
     """
-
-    task_type: ClassVar[TaskType] = TaskType.morphology_decontainerization
 
     name: ClassVar[str] = "Morphology Decontainerization"
     description: ClassVar[str] = (

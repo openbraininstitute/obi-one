@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import ClassVar, override
+from typing import override
 
 import entitysdk
 from entitysdk import models
@@ -12,14 +12,13 @@ from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )
-from obi_one.types import TaskType
 from obi_one.utils.filesystem import create_dir
 
 L = logging.getLogger(__name__)
 
 
 class CircuitSimulationExecutionSingleConfig(SimulationExecutionSingleConfig):
-    task_type: ClassVar[TaskType] = TaskType.circuit_simulation_neurodamus_machine
+    pass
 
 
 class CircuitSimulationExecutionTask(SimulationExecutionTask):

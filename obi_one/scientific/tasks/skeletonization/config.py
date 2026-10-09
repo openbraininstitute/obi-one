@@ -14,7 +14,6 @@ from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -27,8 +26,6 @@ class BlockGroup(StrEnum):
 
 class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for skeletonization scan configurations."""
-
-    task_type: ClassVar[TaskType] = TaskType.morphology_skeletonization
 
     name: ClassVar[str] = "Skeletonization Campaign"
     description: ClassVar[str] = "Skeletonization campaign"

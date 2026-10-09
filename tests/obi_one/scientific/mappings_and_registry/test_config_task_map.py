@@ -112,12 +112,9 @@ def test_config_task_map_spec_resolves(task_type: TaskType):
 
     assert issubclass(task_spec.task_cls, Task)
     assert issubclass(task_spec.single_config_cls, OBIBaseModel)
-    assert getattr(task_spec.single_config_cls, "task_type", None) is task_type
-
     assert test_module.get_task_spec_for_single_config(task_spec.single_config_cls) is task_spec
 
     if task_spec.scan_config_cls is not None:
-        assert getattr(task_spec.scan_config_cls, "task_type", None) is task_type
         assert test_module.get_task_spec_for_scan_config(task_spec.scan_config_cls) is task_spec
 
 
@@ -266,32 +263,39 @@ def test_get_task_spec_for_task_type_returns_the_registered_spec():
     assert first is second is TASK_SPECS[TaskType.circuit_extraction]
 
 
-def test_get_task_spec_for_scan_config_without_task_type_returns_none():
-    class ScanConfigWithoutTaskType:
-        pass
-
-    assert test_module.get_task_spec_for_scan_config(ScanConfigWithoutTaskType) is None
-
-
-def test_get_task_spec_for_scan_config_unregistered_task_type_returns_none():
+def test_get_task_spec_for_scan_config_unregistered_class_returns_none():
     class UnregisteredScanConfig:
-        task_type = TaskType.circuit_simulation_inait_machine
+        pass
 
     assert test_module.get_task_spec_for_scan_config(UnregisteredScanConfig) is None
 
 
-def test_get_task_spec_for_single_config_without_task_type_returns_none():
-    class ConfigWithoutTaskType:
+def test_get_task_spec_for_single_config_unregistered_class_returns_none():
+    class UnregisteredSingleConfig:
         pass
 
-    assert test_module.get_task_spec_for_single_config(ConfigWithoutTaskType) is None
-
-
-def test_get_task_spec_for_single_config_unregistered_task_type_returns_none():
-    class UnregisteredSingleConfig:
-        task_type = TaskType.circuit_simulation_brian2_machine
-
     assert test_module.get_task_spec_for_single_config(UnregisteredSingleConfig) is None
+
+
+def test_lookup_is_by_class_name_not_by_identity():
+    """A class that merely shares a registered name resolves to that spec.
+
+    The indexes are keyed by ``__qualname__`` because that is the ``type`` discriminator
+    value, which is what a serialized config carries. ``run_tasks`` still guards dispatch
+    with an ``issubclass`` check, so a same-named impostor cannot be executed.
+    """
+    impostor = type("CircuitExtractionSingleConfig", (), {})
+
+    task_spec = test_module.get_task_spec_for_single_config(impostor)
+
+    assert task_spec is TASK_SPECS[TaskType.circuit_extraction]
+    with pytest.raises(KeyError, match="No task registered"):
+        run_tasks.run_task_for_single_config(impostor())
+
+
+def test_scan_config_class_is_not_in_the_single_config_index():
+    """A ScanConfig must not resolve through the SingleConfig lookup."""
+    assert test_module.get_task_spec_for_single_config(CircuitExtractionScanConfig) is None
 
 
 def test_emodel_optimization_declares_its_optional_dependency():

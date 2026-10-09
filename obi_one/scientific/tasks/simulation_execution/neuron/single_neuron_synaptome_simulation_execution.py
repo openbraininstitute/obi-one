@@ -1,14 +1,11 @@
-from typing import ClassVar
-
 from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
     CircuitSimulationExecutionSingleConfig,
     CircuitSimulationExecutionTask,
 )
-from obi_one.types import TaskType
 
 
 class SingleNeuronSynaptomeSimulationExecutionSingleConfig(CircuitSimulationExecutionSingleConfig):
-    task_type: ClassVar[TaskType] = TaskType.single_neuron_synaptome_simulation_execution
+    pass
 
 
 class SingleNeuronSynaptomeSimulationExecutionTask(CircuitSimulationExecutionTask):

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast, override
+from typing import TYPE_CHECKING, cast, override
 
 import entitysdk
 from entitysdk import models
@@ -17,7 +17,6 @@ from obi_one.scientific.tasks.simulation_execution.neuron.base import (
     SimulationExecutionSingleConfig,
     SimulationExecutionTask,
 )
-from obi_one.types import TaskType
 from obi_one.utils.filesystem import create_dir
 
 if TYPE_CHECKING:
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class SingleNeuronSimulationExecutionSingleConfig(SimulationExecutionSingleConfig):
-    task_type: ClassVar[TaskType] = TaskType.single_neuron_simulation_execution
+    pass
 
 
 class SingleNeuronSimulationExecutionTask(SimulationExecutionTask):

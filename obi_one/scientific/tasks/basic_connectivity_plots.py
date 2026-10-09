@@ -21,7 +21,6 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.types import TaskType
 
 # Since there are some scientific modules importing this module, but not necessarily using its
 # classes, we protect the imports without crashing at load time. In any case, if the
@@ -69,8 +68,6 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
       - "property_table_extra": Extended property table with synapse class column (but no
         color legend) for small connectomes (<= 20 nodes).
     """
-
-    task_type: ClassVar[TaskType] = TaskType.basic_connectivity_plots
 
     name: ClassVar[str] = "Basic Connectivity Plots"
     description: ClassVar[str] = (

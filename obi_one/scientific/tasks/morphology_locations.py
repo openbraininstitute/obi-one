@@ -27,15 +27,12 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_OFF,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
-from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
 
 class MorphologyLocationsScanConfig(ScanConfig):
     """ScanConfig for generating locations on a morphology skeleton."""
-
-    task_type: ClassVar[TaskType] = TaskType.morphology_locations
 
     name: ClassVar[str] = "Point locations on neurite skeletons"
     description: ClassVar[str] = (

@@ -18,13 +18,10 @@ from obi_one.scientific.library.ephys_extraction import (
     ElectrophysiologyMetricsOutput,
     get_electrophysiology_metrics,
 )
-from obi_one.types import TaskType
 
 
 class ElectrophysiologyMetricsScanConfig(ScanConfig):
     """ScanConfig for extracting electrophysiological metrics from a trace."""
-
-    task_type: ClassVar[TaskType] = TaskType.electrophysiology_metrics
 
     name: ClassVar[str] = "Electrophysiology Metrics"
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."

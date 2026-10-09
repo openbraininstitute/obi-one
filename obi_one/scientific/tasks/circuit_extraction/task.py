@@ -46,7 +46,6 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
 )
-from obi_one.types import TaskType
 from obi_one.utils import circuit as circuit_utils
 from obi_one.utils.benchmark import BenchmarkTracker
 
@@ -67,8 +66,6 @@ class BlockGroup(StrEnum):
 
 class CircuitExtractionScanConfig(InfoScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
-
-    task_type: ClassVar[TaskType] = TaskType.circuit_extraction
 
     name: ClassVar[str] = "Circuit Extraction"
     description: ClassVar[str] = (
