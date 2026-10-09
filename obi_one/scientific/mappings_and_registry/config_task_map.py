@@ -209,6 +209,18 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
             TaskActivityType.extracellular_recording_weights_calculation__execution
         ),
     ),
+    TaskType.ion_channel_fitting: TaskRegistration(
+        task_cls=IonChannelFittingTask,
+        single_config_cls=IonChannelFittingSingleConfig,
+        scan_config_cls=IonChannelFittingScanConfig,
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.ion_channel_modeling__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.ion_channel_modeling__config_generation
+        ),
+        single_task_config_type=TaskConfigType.ion_channel_modeling__config,
+        single_task_activity_type=TaskActivityType.ion_channel_modeling__execution,
+    ),
     TaskType.ion_channel_model_simulation_execution: TaskRegistration(
         task_cls=IonChannelModelSimulationExecutionTask,
         single_config_cls=IonChannelModelSimulationExecutionSingleConfig,
@@ -272,12 +284,6 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
         task_cls=FolderCompressionTask,
         single_config_cls=FolderCompressionSingleConfig,
         scan_config_cls=FolderCompressionScanConfig,
-        asset_label=None,
-    ),
-    TaskType.ion_channel_fitting: TaskRegistration(
-        task_cls=IonChannelFittingTask,
-        single_config_cls=IonChannelFittingSingleConfig,
-        scan_config_cls=IonChannelFittingScanConfig,
         asset_label=None,
     ),
     TaskType.ion_channel_model_simulation: TaskRegistration(
