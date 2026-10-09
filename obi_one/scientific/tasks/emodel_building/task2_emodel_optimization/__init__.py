@@ -22,7 +22,6 @@ try:  # ruff: ignore[non-empty-init-module]
         ExponentialNaDendDistanceDependentDistribution,
         LinearEPasApicDistanceDependentDistribution,
         LinearHDApicDistanceDependentDistribution,
-        LinearHDPasDistanceDependentDistribution,
         SigmoidKADApicDistanceDependentDistribution,
         SigmoidKADDistanceDependentDistribution,
         SigmoidKDBMApicDistanceDependentDistribution,
@@ -49,7 +48,6 @@ except ImportError:
     ExponentialNaDendDistanceDependentDistribution: type | None = None
     LinearEPasApicDistanceDependentDistribution: type | None = None
     LinearHDApicDistanceDependentDistribution: type | None = None
-    LinearHDPasDistanceDependentDistribution: type | None = None
     SigmoidKADApicDistanceDependentDistribution: type | None = None
     SigmoidKADDistanceDependentDistribution: type | None = None
     SigmoidKDBMApicDistanceDependentDistribution: type | None = None
@@ -76,7 +74,6 @@ __all__ = [
     "ExponentialNaDendDistanceDependentDistribution",
     "LinearEPasApicDistanceDependentDistribution",
     "LinearHDApicDistanceDependentDistribution",
-    "LinearHDPasDistanceDependentDistribution",
     "SigmoidKADApicDistanceDependentDistribution",
     "SigmoidKADDistanceDependentDistribution",
     "SigmoidKDBMApicDistanceDependentDistribution",
