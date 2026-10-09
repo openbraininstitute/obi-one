@@ -166,6 +166,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 count=1,
                 service_subtype=ServiceSubtype.SYNAPSE_PARAMETERIZATION_SMALL,
             )
+        case TaskType.extracellular_recording_weights_calculation:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EXTRACELLULAR_RECORDING_ARRAY_BUILD,
+            )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1
             service_subtype = ServiceSubtype.ION_CHANNEL_SIM

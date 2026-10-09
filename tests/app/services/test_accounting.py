@@ -428,6 +428,7 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, mo
         TaskType.efeature_extraction,
         TaskType.emodel_optimization,
         TaskType.circuit_synaptic_physiology_assignment,
+        TaskType.extracellular_recording_weights_calculation,
         TaskType.circuit_simulation_inait_machine,
         TaskType.circuit_simulation_neurodamus_machine,
         TaskType.circuit_simulation_neurodamus_cluster,
@@ -451,6 +452,9 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.circuit_synaptic_physiology_assignment: (
             ServiceSubtype.SYNAPSE_PARAMETERIZATION_SMALL
         ),
+        TaskType.extracellular_recording_weights_calculation: (
+            ServiceSubtype.EXTRACELLULAR_RECORDING_ARRAY_BUILD
+        ),
         TaskType.circuit_simulation_neurodamus_cluster: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_neurodamus_machine: ServiceSubtype.SMALL_SIM,
         TaskType.circuit_simulation_inait_machine: ServiceSubtype.SMALL_SIM,
@@ -467,6 +471,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         TaskType.efeature_extraction: 1,
         TaskType.emodel_optimization: 1,
         TaskType.circuit_synaptic_physiology_assignment: 1,
+        TaskType.extracellular_recording_weights_calculation: 1,
         TaskType.circuit_simulation_neurodamus_cluster: 1,
         TaskType.circuit_simulation_neurodamus_machine: 1,
         TaskType.circuit_simulation_inait_machine: 1,
