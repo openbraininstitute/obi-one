@@ -23,10 +23,11 @@ SUPPORTED_CIRCUIT_SCALES = frozenset(
 )
 
 # write_weights splits the cells between its MPI processes, each of which also loads NEURON and
-# neurodamus. Fitted to runs measured in #1062, budgeting every cell like an L5 pyramidal cell.
+# neurodamus. Measured on staging with #1084: up to 7.1 MB per cell (an rCA1 slice), and about
+# 18 bytes per segment for each electrode, up to 12 KB per cell for the largest cells.
 MEMORY_GB_PER_PROCESS = 0.5  # measured 0.35 GB in the launch image
 MEMORY_GB_PER_CELL = 0.01
-MEMORY_GB_PER_CELL_AND_ELECTRODE = 3e-5
+MEMORY_GB_PER_CELL_AND_ELECTRODE = 1.5e-5
 SECONDS_PER_CELL = 2.0  # in one process; nbS1-HEX0-L23 took over 0.8 s per cell
 OVERHEAD_SECONDS = 900  # staging the circuit and compiling its mechanisms
 
