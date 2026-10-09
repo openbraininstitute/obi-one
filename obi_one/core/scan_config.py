@@ -25,10 +25,13 @@ from obi_one.core.fill_none_references import (
     fill_none_references_in_config,
     resolve_block_default,
 )
-from obi_one.core.registry import block_ref_registry, task_registry
+from obi_one.core.registry import block_ref_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_scan_config,
+)
 
 L = logging.getLogger(__name__)
 
@@ -334,17 +337,13 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_scan_config(type(self))
-        return registration.campaign_task_config_type if registration is not None else None
+        task_spec = get_task_spec_for_scan_config(type(self))
+        return task_spec.campaign_task_config_type if task_spec is not None else None
 
     @property
     def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
-        registration = task_registry.get_registration_for_scan_config(type(self))
-        return (
-            registration.campaign_generation_task_activity_type
-            if registration is not None
-            else None
-        )
+        task_spec = get_task_spec_for_scan_config(type(self))
+        return task_spec.campaign_generation_task_activity_type if task_spec is not None else None
 
     def create_campaign_entity_with_config(
         self,
@@ -556,15 +555,15 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def single_config_class(self) -> type[OBIBaseModel]:
-        """The SingleConfig class this ScanConfig expands into, from TASK_MAP."""
-        registration = task_registry.get_registration_for_scan_config(type(self))
-        if registration is None:
+        """The SingleConfig class this ScanConfig expands into, from its task spec."""
+        task_spec = get_task_spec_for_scan_config(type(self))
+        if task_spec is None:
             msg = (
-                f"'{type(self).__name__}' has no entry in TASK_MAP, so the SingleConfig "
+                f"'{type(self).__name__}' has no task spec, so the SingleConfig "
                 "class it expands into cannot be resolved."
             )
             raise OBIONEError(msg)
-        return registration.single_config_cls
+        return task_spec.single_config_cls
 
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""
