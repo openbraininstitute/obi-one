@@ -134,7 +134,7 @@ def test_tasks_union_omits_emodel_optimization_without_bluepyemodel():
 def test_config_task_map_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.mappings_and_registry.config_task_map")
 
-    assert module.is_task_type_available(module.TaskType.emodel_optimization) is False
+    assert module._is_task_type_available(module.TaskType.emodel_optimization) is False
     with pytest.raises(KeyError, match="emodel_optimization"):
         module.get_task_spec_for_task_type(module.TaskType.emodel_optimization)
 

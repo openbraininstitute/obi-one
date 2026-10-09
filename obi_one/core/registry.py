@@ -12,7 +12,7 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.utils.lazy_import import ClassRef, import_class
 
 
-def import_config_class(class_ref: ClassRef) -> type[OBIBaseModel]:
+def _import_config_class(class_ref: ClassRef) -> type[OBIBaseModel]:
     """Import a config class by reference, rejecting refs that do not name an OBIBaseModel."""
     cls = import_class(class_ref)
     if not issubclass(cls, OBIBaseModel):
@@ -54,14 +54,14 @@ class TaskSpec:
     @property
     def single_config_cls(self) -> type[OBIBaseModel]:
         """The SingleConfig class, imported on first access."""
-        return import_config_class(self.single_config_ref)
+        return _import_config_class(self.single_config_ref)
 
     @property
     def scan_config_cls(self) -> type[OBIBaseModel] | None:
         """The ScanConfig class, imported on first access, or None if the task has none."""
         if self.scan_config_ref is None:
             return None
-        return import_config_class(self.scan_config_ref)
+        return _import_config_class(self.scan_config_ref)
 
     @property
     def config_refs(self) -> tuple[ClassRef, ...]:

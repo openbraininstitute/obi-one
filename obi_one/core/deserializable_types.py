@@ -14,9 +14,9 @@ from obi_one.scientific.mappings_and_registry.config_task_map import TASK_SPECS
 from obi_one.types import TaskType
 from obi_one.utils.lazy_import import ClassRef, class_name, import_class
 
-SIMULATION_ALIASES = "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases"
+_SIMULATION_ALIASES = "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases"
 
-CORE_TYPE_REFS: tuple[ClassRef, ...] = (
+_CORE_TYPE_REFS: tuple[ClassRef, ...] = (
     ("obi_one.core.block", "Block"),
     ("obi_one.core.block_reference", "BlockReference"),
     ("obi_one.core.scan_generation", "CoupledScanGenerationTask"),
@@ -27,17 +27,17 @@ CORE_TYPE_REFS: tuple[ClassRef, ...] = (
     ("obi_one.core.scan_config", "ScanConfig"),
 )
 
-ALIAS_TYPE_REFS: tuple[ClassRef, ...] = (
+_ALIAS_TYPE_REFS: tuple[ClassRef, ...] = (
     ("obi_one", "CoupledScan"),
     ("obi_one", "GridScan"),
-    (SIMULATION_ALIASES, "Simulation"),
-    (SIMULATION_ALIASES, "SimulationsForm"),
+    (_SIMULATION_ALIASES, "Simulation"),
+    (_SIMULATION_ALIASES, "SimulationsForm"),
 )
 
 
-def build_type_map(
-    core_type_refs: tuple[ClassRef, ...] = CORE_TYPE_REFS,
-    alias_type_refs: tuple[ClassRef, ...] = ALIAS_TYPE_REFS,
+def _build_type_map(
+    core_type_refs: tuple[ClassRef, ...] = _CORE_TYPE_REFS,
+    alias_type_refs: tuple[ClassRef, ...] = _ALIAS_TYPE_REFS,
     task_specs: dict[TaskType, TaskSpec] = TASK_SPECS,
 ) -> dict[str, ClassRef]:
     """Index every deserializable class reference by the ``type`` value it is stored under."""
@@ -57,7 +57,7 @@ def build_type_map(
     return type_map
 
 
-TYPE_MAP: dict[str, ClassRef] = build_type_map()
+TYPE_MAP: dict[str, ClassRef] = _build_type_map()
 
 
 def load_class(type_name: str) -> type:

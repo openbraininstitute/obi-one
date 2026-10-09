@@ -67,7 +67,7 @@ DECLARED_CLASS_REFS = tuple(
 
 def skip_if_unavailable(task_type: TaskType) -> None:
     """Skip a case whose task needs an optional dependency that is not installed."""
-    if not test_module.is_task_type_available(task_type):
+    if not test_module._is_task_type_available(task_type):
         pytest.skip(f"{task_type!r} requires an optional dependency that is not installed")
 
 
@@ -123,12 +123,12 @@ def test_config_name_indexes_cover_every_spec():
     assert {
         class_name(task_spec.single_config_ref): task_type
         for task_type, task_spec in TASK_SPECS.items()
-    } == test_module.SINGLE_CONFIG_NAME_INDEX
+    } == test_module._SINGLE_CONFIG_NAME_INDEX
     assert {
         class_name(task_spec.scan_config_ref): task_type
         for task_type, task_spec in TASK_SPECS.items()
         if task_spec.scan_config_ref is not None
-    } == test_module.SCAN_CONFIG_NAME_INDEX
+    } == test_module._SCAN_CONFIG_NAME_INDEX
 
 
 def test_config_class_names_are_unique_across_task_specs():
@@ -318,5 +318,5 @@ def test_get_task_spec_for_task_type_emodel_unavailable_raises(mock_find_spec):
     side_effect=ImportError("blocked"),
 )
 def test_is_task_type_available_treats_blocked_package_as_missing(mock_find_spec):
-    assert test_module.is_task_type_available(TaskType.emodel_optimization) is False
+    assert test_module._is_task_type_available(TaskType.emodel_optimization) is False
     mock_find_spec.assert_called_once_with("bluepyemodel")

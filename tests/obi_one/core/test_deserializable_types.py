@@ -1,15 +1,15 @@
 import pytest
 
 from obi_one.core.deserializable_types import (
-    ALIAS_TYPE_REFS,
-    CORE_TYPE_REFS,
+    _ALIAS_TYPE_REFS,
+    _CORE_TYPE_REFS,
     TYPE_MAP,
-    build_type_map,
+    _build_type_map,
     load_class,
 )
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     TASK_SPECS,
-    is_task_type_available,
+    _is_task_type_available,
 )
 from obi_one.utils.lazy_import import class_name
 
@@ -22,7 +22,7 @@ def test_type_map_entry_resolves(type_name):
         for task_type, task_spec in TASK_SPECS.items()
         if TYPE_MAP[type_name] in task_spec.config_refs
     ]
-    if task_types and not any(is_task_type_available(task_type) for task_type in task_types):
+    if task_types and not any(_is_task_type_available(task_type) for task_type in task_types):
         pytest.skip(f"{type_name} requires an optional dependency that is not installed")
 
     cls = load_class(type_name)
@@ -46,14 +46,14 @@ def test_every_task_config_class_is_deserializable(task_type):
 
 
 def test_type_map_covers_core_and_alias_refs():
-    declared = {class_name(ref): ref for ref in (*CORE_TYPE_REFS, *ALIAS_TYPE_REFS)}
+    declared = {class_name(ref): ref for ref in (*_CORE_TYPE_REFS, *_ALIAS_TYPE_REFS)}
 
     assert declared.items() <= TYPE_MAP.items()
 
 
 def test_build_type_map_rejects_duplicate_type_names():
     with pytest.raises(ValueError, match="Duplicate deserializable type 'Block'"):
-        build_type_map(
+        _build_type_map(
             core_type_refs=(
                 ("obi_one.core.block", "Block"),
                 ("obi_one.core.other", "Block"),
