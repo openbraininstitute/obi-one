@@ -80,6 +80,13 @@ class TestSubmitCircuitJobs:
         assert job["callbacks"][0]["config"]["url"] == (
             f"http://localhost:8100/declared/circuit/{circuit_id}/generate-assets"
         )
+        # The generate-assets callback must forward the project context so the endpoint can
+        # resolve the compute cell and entitysdk client (otherwise it fails with
+        # "No virtual lab ID found").
+        assert job["callbacks"][0]["config"]["headers"] == {
+            "virtual-lab-id": str(virtual_lab_id),
+            "project-id": str(project_id),
+        }
 
     def test_validation_job_without_asset_callback(self):
         ls_client = MagicMock()
