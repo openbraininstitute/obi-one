@@ -1,9 +1,11 @@
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, cast, get_args, get_type_hints
 from uuid import UUID
 
 import entitysdk
+from libsonata import SimulatorType
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
@@ -18,6 +20,7 @@ from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
+from obi_one.scientific.blocks.stimuli.electric_field import SpatiallyUniformElectricFieldStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -30,6 +33,7 @@ from obi_one.scientific.library.compartment_sets import MaterializedCompartmentS
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_node_set_to_circuit,
     write_circuit_compartment_set_file,
     write_circuit_node_set_file,
 )
@@ -76,6 +80,10 @@ class GenerateSimulationTask(Task):
     _materialized_compartment_sets: dict[str, MaterializedCompartmentSet] = PrivateAttr(
         default_factory=dict
     )
+    # Names without whitespace that a CoreNEURON simulation's reports target instead of the
+    # originals, alias -> original. See _switch_to_coreneuron.
+    _node_set_aliases: dict[str, str] = PrivateAttr(default_factory=dict)
+    _compartment_set_aliases: dict[str, str] = PrivateAttr(default_factory=dict)
 
     def _needs_circuit_morphologies(self) -> bool:
         """Whether generation has to read morphologies out of the circuit.
@@ -519,7 +527,17 @@ class GenerateSimulationTask(Task):
                 sonata_circuit,
             )
 
-        # 3. Write node sets from SONATA circuit object to .json file
+        # 3. Add the aliases a CoreNEURON simulation's reports target, each naming its original
+        for alias, node_set in self._node_set_aliases.items():
+            if alias in sonata_circuit.node_sets.content:
+                msg = (
+                    f"Cannot name node set '{node_set}' '{alias}' for CoreNEURON, which reads "
+                    "report targets without whitespace: a node set of that name already exists."
+                )
+                raise ConfigValidationError(msg)
+            add_node_set_to_circuit(sonata_circuit, {alias: [node_set]})
+
+        # 4. Write node sets from SONATA circuit object to .json file
         write_circuit_node_set_file(
             sonata_circuit,
             self.config.coordinate_output_root,  # ty:ignore[invalid-argument-type]
@@ -539,6 +557,17 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 compartment_sets_dict.update(comp_set.to_sonata_dict())
+
+            # A compartment set cannot reference another, so an alias is a copy.
+            for alias, compartment_set in self._compartment_set_aliases.items():
+                if alias in compartment_sets_dict:
+                    msg = (
+                        f"Cannot name compartment set '{compartment_set}' '{alias}' for "
+                        "CoreNEURON, which reads report targets without whitespace: a compartment "
+                        "set of that name already exists."
+                    )
+                    raise ConfigValidationError(msg)
+                compartment_sets_dict[alias] = compartment_sets_dict[compartment_set]
 
             write_circuit_compartment_set_file(
                 sonata_circuit,
@@ -583,6 +612,74 @@ class GenerateSimulationTask(Task):
         return sorted(
             {recording.electrode_array.id_str for recording in self._extracellular_recordings()}
         )
+
+    def _refuse_electric_fields_with_lfp(self) -> None:
+        """Refuse a simulation that both records LFP and applies an electric field.
+
+        Neurodamus computes LFP reports only under CoreNEURON, and applies electric fields through
+        NEURON's extracellular mechanism, which CoreNEURON cannot simulate. No simulator runs the
+        two together, so the config is refused before anything is staged or written.
+        """
+        recordings = [recording.block_name for recording in self._extracellular_recordings()]
+        fields = [
+            stimulus.block_name
+            for stimulus in getattr(self.config, "stimuli", {}).values()
+            if isinstance(stimulus, SpatiallyUniformElectricFieldStimulus)
+        ]
+        if recordings and fields:
+            msg = (
+                f"LFP recordings ({', '.join(map(repr, recordings))}) cannot be combined with "
+                f"electric field stimuli ({', '.join(map(repr, fields))}): LFP is only computed "
+                "under CoreNEURON, which cannot simulate an electric field."
+            )
+            raise ConfigValidationError(msg)
+
+    def _switch_to_coreneuron(self) -> None:
+        """Simulate under CoreNEURON, the only simulator neurodamus computes LFP reports with.
+
+        CoreNEURON reads each report's name and target from a whitespace-separated file
+        (report.conf), so a name holding whitespace, like the web app's "Recording 0" or the
+        default "Default: All Biophysical Neurons", shifts every field after it. Such reports are
+        renamed, and their targets replaced by aliases without whitespace. Nothing else is renamed:
+        report.conf is the only place CoreNEURON reads a name from.
+        """
+
+        def space_free(name: str) -> str:
+            return re.sub(r"\s+", "_", name)
+
+        self._sonata_config["target_simulator"] = SimulatorType.CORENEURON.name
+        reports: dict[str, dict] = {}
+        original_names: dict[str, str] = {}
+        for name, report in self._sonata_config["reports"].items():
+            report_name = space_free(name)
+            if report_name in reports:
+                msg = (
+                    f"Recordings '{original_names[report_name]}' and '{name}' would both be named "
+                    f"'{report_name}' under CoreNEURON, which reads report names without "
+                    "whitespace. Rename one of them."
+                )
+                raise ConfigValidationError(msg)
+            original_names[report_name] = name
+
+            targets = {}
+            for key, aliases in (
+                ("cells", self._node_set_aliases),
+                ("compartment_set", self._compartment_set_aliases),
+            ):
+                target = report.get(key)
+                if target is None or space_free(target) == target:
+                    continue
+                alias = space_free(target)
+                if aliases.setdefault(alias, target) != target:
+                    msg = (
+                        f"Report targets '{aliases[alias]}' and '{target}' would both be named "
+                        f"'{alias}' under CoreNEURON, which reads report targets without "
+                        "whitespace. Rename one of them."
+                    )
+                    raise ConfigValidationError(msg)
+                targets[key] = alias
+            reports[report_name] = report | targets
+        self._sonata_config["reports"] = reports
 
     def _check_recording_arrays_belong_to_circuit(
         self, db_client: entitysdk.client.Client, circuit_id: str
@@ -687,6 +784,7 @@ class GenerateSimulationTask(Task):
     ) -> None:
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
+        self._refuse_electric_fields_with_lfp()
         self._sonata_config = self.config.base_sonata_config()
         self._resolve_circuit(db_client)
         self.config.validate_circuit(self._circuit)
@@ -700,6 +798,8 @@ class GenerateSimulationTask(Task):
         self._materialize_location_targets()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports(db_client)
+        if self._extracellular_recordings():
+            self._switch_to_coreneuron()
         self._add_sonata_simulation_config_manipulations()
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._write_materialized_compartment_sets_file()

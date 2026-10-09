@@ -21,6 +21,9 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
     The array's weight matrix maps the membrane current of every segment of the recorded neurons
     onto every electrode, so the recorded neuron set must be part of the circuit the array was
     built for.
+
+    A simulation with an LFP recording runs under CoreNEURON, so it cannot also apply an electric
+    field stimulus.
     """
 
     json_schema_extra_additions: ClassVar[dict] = {

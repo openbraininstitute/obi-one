@@ -214,6 +214,14 @@ The signal the simulation records is registered on its SimulationResult as an `l
 
 LFP reports always record the membrane current (`i_membrane`), so unlike compartment reports they take no `variable_name`.
 
+A simulation with an LFP recording is generated with `"target_simulator": "CORENEURON"`, since neurodamus computes LFP reports only under CoreNEURON, as the SONATA spec also requires. Simulations without one keep `NEURON`, and both run through the same launch tasks.
+
+CoreNEURON reads each report's name and target from `report.conf`, a whitespace-separated file. So in such a simulation, a report whose name holds whitespace is renamed, `Recording 0` becoming `Recording_0` along with its output file. A report target holding whitespace is replaced by an alias without it: a node set referencing the original, such as `"Default:_All_Biophysical_Neurons": ["Default: All Biophysical Neurons"]`, or a copy of a compartment set. Nothing else is renamed, since `report.conf` is the only place CoreNEURON reads a name from.
+
+Electric field stimuli are applied through NEURON's `extracellular` mechanism, which CoreNEURON cannot simulate, so generation refuses a simulation with both an LFP recording and an electric field stimulus.
+
+The weight matrix's scaling factors are in V/nA, as the SONATA spec defines them, so the recorded LFP is in volts, even though CoreNEURON labels the report's data `mV`.
+
 ## Running Simulations
 
 ### Using GenerateSimulationTask
