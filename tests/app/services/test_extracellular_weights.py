@@ -81,7 +81,7 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
 
 # Formulas in estimate_task_resources, with at least 1, 2, 4, 8 or 16 CPUs for up to 100 cells each,
 # and an MPI process on each CPU:
-#   memory_gb = cpus * 0.5 + cells * (0.01 + electrodes * 3e-5), never below the default 8 GB
+#   memory_gb = cpus * 0.5 + cells * (0.01 + electrodes * 1.5e-5), never below the default 8 GB
 #   hours = ceil((900 + cells * 2 / cpus) / 3600), never below the default (2 h)
 
 
@@ -90,23 +90,23 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
     [
         # 10 cells, 1 process: 0.6 GB, under the defaults
         (CircuitScale.small, 10, (16,), 1, 8, "02:00"),
-        # 150 cells, 2 processes: 2.6 GB -> (2, 4), raised to the default 8 GB
+        # 150 cells, 2 processes: 2.5 GB -> (2, 4), raised to the default 8 GB
         (CircuitScale.small, 150, (16,), 2, 8, "02:00"),
         # nbS1-HEX0-L1: 291 cells, 4 processes: 5.0 GB -> (4, 8)
         (CircuitScale.microcircuit, 291, (16,), 4, 8, "02:00"),
-        # 800 cells, 8 processes: 12.4 GB -> (8, 16)
+        # 800 cells, 8 processes: 12.2 GB -> (8, 16)
         (CircuitScale.microcircuit, 800, (16,), 8, 16, "02:00"),
-        # nbS1-HEX0-L4: 4870 cells, 16 processes: 59.0 GB -> (16, 64), 0.42 h
+        # nbS1-HEX0-L4: 4870 cells, 16 processes: 57.9 GB -> (16, 64), 0.42 h
         (CircuitScale.microcircuit, 4870, (16,), 16, 64, "02:00"),
-        # 10000 cells, 16 processes: 112.8 GB -> (16, 120), 0.6 h
+        # 10000 cells, 16 processes: 110.4 GB -> (16, 120), 0.6 h
         (CircuitScale.microcircuit, 10_000, (16,), 16, 120, "02:00"),
-        # 291 cells and a 960-electrode array, 4 processes: 13.3 GB -> (4, 16)
+        # 291 cells and a 960-electrode array, 4 processes: 9.1 GB -> (4, 16)
         (CircuitScale.microcircuit, 291, (960,), 4, 16, "02:00"),
-        # electrodes from every probe count: 291 cells, 2 x 480 electrodes, the same 13.3 GB
+        # electrodes from every probe count: 291 cells, 2 x 480 electrodes, the same 9.1 GB
         (CircuitScale.microcircuit, 291, (480, 480), 4, 16, "02:00"),
-        # 400 cells and 2100 electrodes: 31.2 GB is over 4 CPUs' 30 GB, and 8 CPUs run 8
+        # 400 cells and 4200 electrodes: 31.2 GB is over 4 CPUs' 30 GB, and 8 CPUs run 8
         # processes: 33.2 GB -> (8, 48)
-        (CircuitScale.microcircuit, 400, (2100,), 8, 48, "02:00"),
+        (CircuitScale.microcircuit, 400, (4200,), 8, 48, "02:00"),
     ],
     ids=[
         "small",
@@ -143,21 +143,21 @@ def test_timelimit_is_split_between_processes(json_model, task_definition, monke
 @pytest.mark.parametrize(
     ("n_cells", "electrodes", "expected"),
     [
-        # nbS1-HEX0: 8 + 30190 * 0.01048 = 324 GB, and still 310 GB without electrodes
+        # nbS1-HEX0: 8 + 30190 * 0.01024 = 317 GB, and still 310 GB without electrodes
         (
             30_190,
             (16,),
             (
-                "(30,190 cells, 16 electrodes) needs about 324 GB of memory, more than the"
+                "(30,190 cells, 16 electrodes) needs about 317 GB of memory, more than the"
                 " largest machine has (120 GB). Use a smaller circuit."
             ),
         ),
-        # 8 + 5000 * 0.0388 = 202 GB, but 58 GB without electrodes
+        # 8 + 5000 * 0.0244 = 130 GB, but 58 GB without electrodes
         (
             5_000,
             (960,),
             (
-                "(5,000 cells, 960 electrodes) needs about 202 GB of memory, more than the"
+                "(5,000 cells, 960 electrodes) needs about 130 GB of memory, more than the"
                 " largest machine has (120 GB). Use fewer electrodes or a smaller circuit."
             ),
         ),
