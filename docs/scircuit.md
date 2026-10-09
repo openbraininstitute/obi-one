@@ -217,7 +217,7 @@ LFP reports always record the membrane current (`i_membrane`), so unlike compart
 
 A simulation with an LFP recording is generated with `"target_simulator": "CORENEURON"`, since neurodamus computes LFP reports only under CoreNEURON, as the SONATA spec also requires. Simulations without one keep `NEURON`, and both run through the same launch tasks.
 
-CoreNEURON reads each report's name and target from `report.conf`, a whitespace-separated file. So in such a simulation, a report whose name holds whitespace is renamed, `Recording 0` becoming `Recording_0` along with its output file. A report target holding whitespace is replaced by an alias without it: a node set referencing the original, such as `"Default:_All_Biophysical_Neurons": ["Default: All Biophysical Neurons"]`, or a copy of a compartment set. Nothing else is renamed, since `report.conf` is the only place CoreNEURON reads a name from.
+Report names and targets keep their whitespace, such as the web app's `Recording 0` and the default `Default: All Biophysical Neurons`. CoreNEURON reads them from `report.conf`, a whitespace-separated file, so neurodamus replaces the whitespace there and renames each report's file back afterwards ([neurodamus#590](https://github.com/openbraininstitute/neurodamus/pull/590)). Older neurodamus versions abort on such names.
 
 Electric field stimuli are applied through NEURON's `extracellular` mechanism, which CoreNEURON cannot simulate, so generation refuses a simulation with both an LFP recording and an electric field stimulus.
 
