@@ -52,12 +52,10 @@ call into `registration/morphology/`.
 
 ### 2. `tasks/ion_channel_modeling.py` — extract, don't move
 
-The largest remaining registration surface: roughly 180 of 620 lines across
-`create_campaign_entity_with_config` (:222), `create_campaign_generation_entity` (:254),
-`create_single_entity_with_config` (:275), `register_json` (:353), `register_thumbnail`
-(:365), `register_plots` (:384), `register_plots_and_json` (:396) and `save` (:420),
-registering `IonChannelModelingCampaign`, `IonChannelModelingConfig`, `IonChannelModel`,
-`UseIon` and `NeuronBlock`.
+Campaign and config registration now goes through the generic `TaskConfig` path. What remains
+is the model registration: roughly 130 of 580 lines across `register_json` (:336),
+`register_thumbnail` (:348), `register_plots` (:367), `register_plots_and_json` (:379) and
+`save` (:403), registering `IonChannelModel`, `UseIon` and `NeuronBlock`.
 
 These are methods on `IonChannelFittingTask`, interleaved with fitting compute. Untangling
 them is a real refactor, not a file move.

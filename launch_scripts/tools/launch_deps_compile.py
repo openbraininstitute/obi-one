@@ -64,7 +64,7 @@ OBI_CODEARTIFACT_INDEX = (
 )
 # Packages published only on CodeArtifact (normalized names). The index is used only for files
 # needing one of them, since it sends no caching headers and makes every resolution slow.
-PRIVATE_PACKAGES = frozenset({"ultraliser"})
+PRIVATE_PACKAGES = frozenset({"ultraliser", "ion-channel-builder"})
 
 # Requirement name at the start of a requirement line (PEP 508).
 REQUIREMENT_NAME_REGEX = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
