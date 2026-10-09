@@ -42,6 +42,28 @@ from obi_one.scientific.tasks.skeletonization import (
 )
 from obi_one.types import TaskType
 
+
+def _snapshot_config_task_map_caches() -> tuple[dict, dict, dict]:
+    return (
+        dict(test_module._CACHE),
+        dict(test_module._BY_SINGLE_CONFIG_CLS),
+        dict(test_module._BY_SCAN_CONFIG_CLS),
+    )
+
+
+def _restore_config_task_map_caches(
+    cache_snapshot: dict,
+    by_single_snapshot: dict,
+    by_scan_snapshot: dict,
+) -> None:
+    test_module._CACHE.clear()
+    test_module._CACHE.update(cache_snapshot)
+    test_module._BY_SINGLE_CONFIG_CLS.clear()
+    test_module._BY_SINGLE_CONFIG_CLS.update(by_single_snapshot)
+    test_module._BY_SCAN_CONFIG_CLS.clear()
+    test_module._BY_SCAN_CONFIG_CLS.update(by_scan_snapshot)
+
+
 # Every ``case TaskType.…`` branch in ``config_task_map.get_task_spec_for_task_type``.
 CONFIG_TASK_MAP_CASES = (
     TaskType.circuit_extraction,
@@ -232,22 +254,30 @@ def test_get_task_spec_for_task_type_caches():
 
 
 def test_is_task_type_resolved_reflects_cache():
-    task_type = TaskType.folder_compression
-    test_module._CACHE.pop(task_type, None)
-    assert test_module.is_task_type_resolved(task_type) is False
-    test_module.get_task_spec_for_task_type(task_type)
-    assert test_module.is_task_type_resolved(task_type) is True
+    cache_snapshot, by_single_snapshot, by_scan_snapshot = _snapshot_config_task_map_caches()
+    try:
+        task_type = TaskType.folder_compression
+        test_module._CACHE.pop(task_type, None)
+        assert test_module.is_task_type_resolved(task_type) is False
+        test_module.get_task_spec_for_task_type(task_type)
+        assert test_module.is_task_type_resolved(task_type) is True
+    finally:
+        _restore_config_task_map_caches(cache_snapshot, by_single_snapshot, by_scan_snapshot)
 
 
 def test_get_task_spec_for_scan_config_resolves_via_task_type_when_not_indexed():
-    test_module._BY_SCAN_CONFIG_CLS.clear()
-    test_module._CACHE.clear()
-    test_module._BY_SINGLE_CONFIG_CLS.clear()
+    cache_snapshot, by_single_snapshot, by_scan_snapshot = _snapshot_config_task_map_caches()
+    try:
+        test_module._BY_SCAN_CONFIG_CLS.clear()
+        test_module._CACHE.clear()
+        test_module._BY_SINGLE_CONFIG_CLS.clear()
 
-    task_spec = test_module.get_task_spec_for_scan_config(CircuitExtractionScanConfig)
+        task_spec = test_module.get_task_spec_for_scan_config(CircuitExtractionScanConfig)
 
-    assert task_spec is not None
-    assert task_spec.task_cls is CircuitExtractionTask
+        assert task_spec is not None
+        assert task_spec.task_cls is CircuitExtractionTask
+    finally:
+        _restore_config_task_map_caches(cache_snapshot, by_single_snapshot, by_scan_snapshot)
 
 
 def test_get_task_spec_for_scan_config_without_task_type_returns_none():
@@ -283,6 +313,10 @@ def test_get_task_spec_for_single_config_unregistered_task_type_returns_none():
     new=False,
 )
 def test_get_task_spec_for_task_type_emodel_unavailable_raises():
-    test_module._CACHE.pop(TaskType.emodel_optimization, None)
-    with pytest.raises(KeyError, match="No task spec"):
-        test_module.get_task_spec_for_task_type(TaskType.emodel_optimization)
+    cache_snapshot, by_single_snapshot, by_scan_snapshot = _snapshot_config_task_map_caches()
+    try:
+        test_module._CACHE.pop(TaskType.emodel_optimization, None)
+        with pytest.raises(KeyError, match="No task spec"):
+            test_module.get_task_spec_for_task_type(TaskType.emodel_optimization)
+    finally:
+        _restore_config_task_map_caches(cache_snapshot, by_single_snapshot, by_scan_snapshot)

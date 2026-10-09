@@ -90,6 +90,12 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - Create only modules that are actually needed.
 - For helpers and shared utilities, follow Code Conventions (reuse / centralization).
 
+When registering a new **`TaskType`** in the framework (not only a launch-only legacy job):
+
+- Add a `case TaskType.…` branch in `obi_one/scientific/mappings_and_registry/config_task_map.py` with the correct `TaskSpec` fields.
+- Set `task_type: ClassVar[TaskType] = …` on the task’s `ScanConfig` (and on execution `SingleConfig` classes when they differ from the scan type).
+- Extend `CONFIG_TASK_MAP_CASES` or `LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP` in `tests/obi_one/scientific/mappings_and_registry/test_config_task_map.py` so `test_config_task_map_cases_partition_task_type_enum` still partitions every enum member.
+
 ## entitysdk / database
 
 - Prefer `entitysdk.Client` and its methods over reimplementing the same behavior.

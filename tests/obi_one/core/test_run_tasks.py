@@ -10,6 +10,9 @@ from obi_one.scientific.tasks.circuit_extraction import (
     CircuitExtractionSingleConfig,
     CircuitExtractionTask,
 )
+from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
+    CircuitSimulationExecutionTask,
+)
 from obi_one.types import TaskType
 
 
@@ -25,6 +28,71 @@ def db_client():
 def mock_single_config():
     config = MagicMock()
     return config
+
+
+@patch("obi_one.core.run_tasks.deserialize_obi_object_from_json_data")
+@patch("obi_one.core.run_tasks.db_sdk.get_entity_asset_by_label")
+def test_run_task_type_resolves_lazy_task_spec_with_asset_label(
+    mock_get_asset,
+    mock_deserialize,
+    db_client,
+):
+    """Uses real ``config_task_map`` (no mock on ``get_task_spec_for_task_type``)."""
+    entity_type = MagicMock()
+    mock_get_asset.return_value = SimpleNamespace(id="asset-1")
+    db_client.download_content.return_value = json.dumps(
+        {"type": "CircuitExtractionSingleConfig", "idx": 0}
+    ).encode("utf-8")
+    single_config = CircuitExtractionSingleConfig.model_construct()
+    mock_deserialize.return_value = single_config
+    captured: dict[str, object] = {}
+
+    def capture_execute(self, **kwargs):
+        captured["task"] = self
+        captured["kwargs"] = kwargs
+
+    with patch.object(CircuitExtractionTask, "execute", capture_execute):
+        test_module.run_task_type(
+            TaskType.circuit_extraction,
+            entity_type=entity_type,
+            entity_id="ent-1",
+            scan_output_root="/out",
+            db_client=db_client,
+            entity_cache=True,
+            execution_activity_id="act-1",
+        )
+
+    mock_get_asset.assert_called_once()
+    assert isinstance(captured["task"], CircuitExtractionTask)
+    assert captured["kwargs"] == {
+        "db_client": db_client,
+        "entity_cache": True,
+        "execution_activity_id": "act-1",
+    }
+
+
+def test_run_task_type_resolves_lazy_task_spec_without_asset_label(db_client):
+    entity_type = MagicMock()
+    captured: dict[str, object] = {}
+
+    def capture_execute(self, **kwargs):
+        captured["task"] = self
+        captured["kwargs"] = kwargs
+
+    with patch.object(CircuitSimulationExecutionTask, "execute", capture_execute):
+        test_module.run_task_type(
+            TaskType.circuit_simulation_neurodamus_machine,
+            entity_type=entity_type,
+            entity_id="ent-1",
+            scan_output_root="/out",
+            db_client=db_client,
+        )
+
+    db_client.download_content.assert_not_called()
+    assert isinstance(captured["task"], CircuitSimulationExecutionTask)
+    execute_kwargs = captured["kwargs"]
+    assert isinstance(execute_kwargs, dict)
+    assert execute_kwargs["db_client"] is db_client
 
 
 @patch("obi_one.core.run_tasks.db_sdk.get_entity_asset_by_label")

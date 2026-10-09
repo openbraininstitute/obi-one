@@ -4,15 +4,11 @@ Task dispatch maps live in ``config_task_map`` (lazy resolve + cache).
 Block references are registered at import time via ``block_ref_registry``.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
+from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
-    from obi_one.core.base import OBIBaseModel
+from obi_one.core.base import OBIBaseModel
 
 
 @dataclass(frozen=True)
