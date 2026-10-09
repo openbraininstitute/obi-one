@@ -19,6 +19,6 @@ Generation registers an `ion_channel_modeling__campaign` TaskConfig and one `ion
 
 ## Running
 
-On the platform the fit runs in Bluenaas, which takes the id of a single config. The task is also registered with the launch system (`ion_channel_fitting` dependencies in `launch_scripts/launch_task_for_single_config_asset/dependencies/`), and the example notebook in `examples/obi_one/scientific/tasks/ion_channel_modeling/` runs a sweep locally.
+On the platform the fit runs in Bluenaas, which takes the id of a single config. The task is also registered with the launch system (`ion_channel_fitting` dependencies in `launch_scripts/launch_task_for_single_config_asset/dependencies/`), and the example notebook in `examples/obi_one/scientific/tasks/ion_channel_modeling/` runs a single fit locally.
 
-Each fit compiles its mechanism into its own coordinate folder and plots it in a fresh process, since NEURON loads a mechanism name only once per process and every fit of a sweep uses the same name.
+Each fit compiles its mechanism into its own coordinate folder and plots it in a fresh Python interpreter, since NEURON loads a mechanism name only once per process and every fit of a sweep uses the same name.
