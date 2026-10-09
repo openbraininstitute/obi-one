@@ -48,7 +48,7 @@ The core uses a **block-based compositional pattern**:
 
 - **`OBIBaseModel`** (`base.py`) - Pydantic base model with discriminator-based type field for polymorphic serialization. All domain models inherit from this.
 - **`Block`** (`block.py`) - Composable, parameterizable component. Any field set to a list becomes a dimension in a parameter scan.
-- **`ScanConfig`** (`scan_config.py`) - Abstract configuration composed of Blocks. Defines a modeling use case (e.g., `CircuitSimulationScanConfig`). Has class variables `name` and `description`. The SingleConfig it expands into comes from its `TaskSpec` in `config_task_map` (looked up by the config class name via `get_task_spec_for_scan_config`), via the `single_config_class` property.
+- **`ScanConfig`** (`scan_config.py`) - Abstract configuration composed of Blocks. Defines a modeling use case (e.g., `CircuitSimulationScanConfig`). Has class variables `name` and `description`. The SingleConfig it expands into comes from its `TaskSpec` in `config_task_map.TASK_SPECS`, via the `single_config_class` property.
 - **`SingleConfigMixin`** (`single.py`) - Enforces that all parameters are single values (no lists). Used for execution-ready configs after scan expansion.
 - **`Task`** (`task.py`) - Abstract execution unit with an `execute()` method.
 - **`ScanGenerationTask`** (`scan_generation.py`) - Expands a ScanConfig into SingleConfigs via Cartesian product of multi-value parameters, then runs each.
@@ -90,11 +90,10 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - Create only modules that are actually needed.
 - For helpers and shared utilities, follow Code Conventions (reuse / centralization).
 
-When registering a new **`TaskType`** in the framework (not only a launch-only legacy job):
+When registering a new **`TaskType`**:
 
-- Add a `TASK_SPECS[TaskType.…] = TaskSpec(...)` entry in `obi_one/scientific/mappings_and_registry/config_task_map.py`. Classes are declared as `("package.module", "ClassName")` reference tuples and imported lazily by the spec's `task_cls` / `single_config_cls` / `scan_config_cls` properties, so do not import task modules there. Reuse the module-prefix constants at the top of the file (`TASKS`, `NEURON_CONFIG`, …). Gate tasks needing an optional dependency with `requires_package=`.
-- Do not add the config classes to `TYPE_MAP` in `obi_one/core/deserializable_types.py`: it is derived from `TASK_SPECS`. Only framework classes and `__init__`/alias re-exports are listed there explicitly.
-- Add the new type to `LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP` in `tests/obi_one/scientific/mappings_and_registry/test_config_task_map.py` only if it is launch-only; registered types are derived from `TASK_SPECS`, so `test_config_task_map_cases_partition_task_type_enum` keeps partitioning the enum on its own.
+- Add a `TASK_SPECS` entry in `obi_one/scientific/mappings_and_registry/config_task_map.py`. Declare classes as `("package.module", "ClassName")` tuples, reusing the `_TASKS` / `_NEURON_CONFIG` / … module prefixes; never import task modules there. Optional dependencies go in `requires_package=`.
+- Nothing else needs updating: `TYPE_MAP` in `obi_one/core/deserializable_types.py` and the test case list are derived from `TASK_SPECS`. Only launch-only types are added by hand, to `LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP` in `tests/obi_one/scientific/mappings_and_registry/test_config_task_map.py`.
 
 ## entitysdk / database
 
