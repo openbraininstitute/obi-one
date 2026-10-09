@@ -44,6 +44,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
                 "cells": "AllBiophysical",
                 "type": "lfp",
                 "sections": "all",
+                "unit": "V",
                 "dt": 0.1,
                 "start_time": 0.0,
                 "end_time": 100.0,
@@ -86,6 +87,23 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         report = parsed.report("LFPRecording")
         assert report.type == libsonata.SimulationConfig.Report.Type.lfp
         assert report.electrodes_file == str(tmp_path / f"{ARRAY_ID}.h5")
+
+    def test_the_signal_is_labelled_in_volts(self, tmp_path):
+        """The weights are in V/nA (SONATA spec); libsonata would otherwise default the unit to mV.
+
+        neurodamus passes the report's unit to the writer, which labels the output file with it.
+        """
+        reports = _recording().config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)
+        sonata_config = {
+            "version": 1,
+            "network": "circuit_config.json",
+            "run": {"tstop": 100.0, "dt": 0.025, "random_seed": 1},
+            "reports": reports,
+        }
+
+        parsed = libsonata.SimulationConfig(json.dumps(sonata_config), str(tmp_path))
+
+        assert parsed.report("LFPRecording").unit == "V"
 
 
 class TestCircuitUsability:

@@ -200,6 +200,7 @@ class TestRecordingArrayCircuit:
                     )
                 )
             },
+            initialize={"simulator": "CORENEURON"},
         )
 
     def test_an_array_built_for_the_simulated_circuit_is_accepted(self, tmp_path):
