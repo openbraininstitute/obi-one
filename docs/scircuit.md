@@ -200,6 +200,7 @@ The block emits a SONATA report of type `lfp` whose `electrodes_file` is named a
     "cells": "AllBiophysical",
     "type": "lfp",
     "sections": "all",
+    "unit": "V",
     "dt": 0.1,
     "start_time": 0.0,
     "end_time": 100.0,
@@ -220,7 +221,7 @@ CoreNEURON reads each report's name and target from `report.conf`, a whitespace-
 
 Electric field stimuli are applied through NEURON's `extracellular` mechanism, which CoreNEURON cannot simulate, so generation refuses a simulation with both an LFP recording and an electric field stimulus.
 
-The weight matrix's scaling factors are in V/nA, as the SONATA spec defines them, so the recorded LFP is in volts, even though CoreNEURON labels the report's data `mV`.
+The weight matrix's scaling factors are in V/nA, as the SONATA spec defines them, so the recorded LFP is in volts. The report says so with `"unit": "V"`, which neurodamus passes on to label the output file. Left unset, libsonata defaults every report's unit to `mV`, and the file would claim millivolts.
 
 ## Running Simulations
 

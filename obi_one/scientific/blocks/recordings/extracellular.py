@@ -70,6 +70,9 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
                 # LFP sums the membrane current over the whole neuron, not just the soma, and the
                 # weight matrix holds a weight per segment.
                 "sections": "all",
+                # The weight matrix's scaling factors are in V/nA, as the SONATA spec defines
+                # them, so the signal is in volts. Unset, libsonata labels every report mV.
+                "unit": "V",
                 "dt": self.recording_timestep,
                 "start_time": self._start_time,
                 "end_time": self._end_time,
