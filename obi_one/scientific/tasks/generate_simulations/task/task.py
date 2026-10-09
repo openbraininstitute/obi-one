@@ -586,24 +586,30 @@ class GenerateSimulationTask(Task):
             {recording.electrode_array.id_str for recording in self._extracellular_recordings()}
         )
 
-    def _refuse_electric_fields_with_lfp(self) -> None:
-        """Refuse a simulation that both records LFP and applies an electric field.
+    def _check_the_simulator_runs_every_block(self) -> None:
+        """Refuse blocks the chosen simulator cannot run, before anything is staged or written.
 
         Neurodamus computes LFP reports only under CoreNEURON, and applies electric fields through
-        NEURON's extracellular mechanism, which CoreNEURON cannot simulate. No simulator runs the
-        two together, so the config is refused before anything is staged or written.
+        NEURON's extracellular mechanism, which CoreNEURON cannot simulate.
         """
+        simulator = self._sonata_config["target_simulator"]
         recordings = [recording.block_name for recording in self._extracellular_recordings()]
         fields = [
             stimulus.block_name
             for stimulus in getattr(self.config, "stimuli", {}).values()
             if isinstance(stimulus, SpatiallyUniformElectricFieldStimulus)
         ]
-        if recordings and fields:
+        if simulator == SimulatorType.NEURON.name and recordings:
             msg = (
-                f"LFP recordings ({', '.join(map(repr, recordings))}) cannot be combined with "
-                f"electric field stimuli ({', '.join(map(repr, fields))}): LFP is only computed "
-                "under CoreNEURON, which cannot simulate an electric field."
+                f"LFP recordings ({', '.join(map(repr, recordings))}) need CoreNEURON: select it "
+                "as the simulator."
+            )
+            raise ConfigValidationError(msg)
+        if simulator == SimulatorType.CORENEURON.name and fields:
+            msg = (
+                f"Electric field stimuli ({', '.join(map(repr, fields))}) need NEURON: CoreNEURON "
+                "cannot simulate the extracellular mechanism they are applied through. Select "
+                "NEURON as the simulator."
             )
             raise ConfigValidationError(msg)
 
@@ -710,11 +716,8 @@ class GenerateSimulationTask(Task):
     ) -> None:
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
-        self._refuse_electric_fields_with_lfp()
         self._sonata_config = self.config.base_sonata_config()
-        if self._extracellular_recordings():
-            # Neurodamus computes LFP reports only under CoreNEURON.
-            self._sonata_config["target_simulator"] = SimulatorType.CORENEURON.name
+        self._check_the_simulator_runs_every_block()
         self._resolve_circuit(db_client)
         self.config.validate_circuit(self._circuit)
         # Only a circuit from entitycore has an id to compare a recording array's circuit with.

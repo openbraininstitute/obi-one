@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
@@ -114,6 +114,24 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
         )
+        simulator: Literal["NEURON", "CORENEURON"] = Field(
+            default="NEURON",
+            title="Simulator",
+            description=(
+                "Simulator to run the simulation with. LFP recordings need CoreNEURON, and "
+                "electric field stimuli need NEURON."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
+                SchemaKey.TITLE_BY_KEY: {"NEURON": "NEURON", "CORENEURON": "CoreNEURON"},
+                SchemaKey.DESCRIPTION_BY_KEY: {
+                    "NEURON": "Supports electric field stimuli, but not LFP recordings.",
+                    "CORENEURON": (
+                        "Required for LFP recordings, but cannot apply electric field stimuli."
+                    ),
+                },
+            },
+        )
 
     initialize: Initialize = Field(
         title="Initialization",
@@ -221,6 +239,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
         sonata_config = super().base_sonata_config(sonata_config)
+        sonata_config["target_simulator"] = self.initialize.simulator
 
         sonata_config["conditions"]["extracellular_calcium"] = (
             self.initialize.extracellular_calcium_concentration
