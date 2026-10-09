@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, ClassVar, cast, get_args, get_type_hints
 from uuid import UUID
 
 import entitysdk
+from libsonata import SimulatorType
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
@@ -18,6 +19,7 @@ from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
+from obi_one.scientific.blocks.stimuli.electric_field import SpatiallyUniformElectricFieldStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -584,6 +586,33 @@ class GenerateSimulationTask(Task):
             {recording.electrode_array.id_str for recording in self._extracellular_recordings()}
         )
 
+    def _check_the_simulator_runs_every_block(self) -> None:
+        """Refuse blocks the chosen simulator cannot run, before anything is staged or written.
+
+        Neurodamus computes LFP reports only under CoreNEURON, and applies electric fields through
+        NEURON's extracellular mechanism, which CoreNEURON cannot simulate.
+        """
+        simulator = self._sonata_config["target_simulator"]
+        recordings = [recording.block_name for recording in self._extracellular_recordings()]
+        fields = [
+            stimulus.block_name
+            for stimulus in getattr(self.config, "stimuli", {}).values()
+            if isinstance(stimulus, SpatiallyUniformElectricFieldStimulus)
+        ]
+        if simulator == SimulatorType.NEURON.name and recordings:
+            msg = (
+                f"LFP recordings ({', '.join(map(repr, recordings))}) need CoreNEURON: select it "
+                "as the simulator."
+            )
+            raise ConfigValidationError(msg)
+        if simulator == SimulatorType.CORENEURON.name and fields:
+            msg = (
+                f"Electric field stimuli ({', '.join(map(repr, fields))}) need NEURON: CoreNEURON "
+                "cannot simulate the extracellular mechanism they are applied through. Select "
+                "NEURON as the simulator."
+            )
+            raise ConfigValidationError(msg)
+
     def _check_recording_arrays_belong_to_circuit(
         self, db_client: entitysdk.client.Client, circuit_id: str
     ) -> None:
@@ -688,6 +717,7 @@ class GenerateSimulationTask(Task):
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
+        self._check_the_simulator_runs_every_block()
         self._resolve_circuit(db_client)
         self.config.validate_circuit(self._circuit)
         # Only a circuit from entitycore has an id to compare a recording array's circuit with.
