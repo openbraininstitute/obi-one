@@ -2,11 +2,11 @@
 
 import json
 import logging
+import pickle  # ruff: ignore[suspicious-pickle-import]
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import sys
 import uuid
-from concurrent.futures import ProcessPoolExecutor
 from enum import StrEnum
-from multiprocessing import get_context
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal
 
@@ -26,6 +26,7 @@ from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations impor
 )
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.utils.process import run_and_log
 
 L = logging.getLogger(__name__)
 
@@ -100,11 +101,38 @@ STIM_TIMINGS_CORRECTIONS = {
 }
 
 
-def plot_fitted_model(mechanisms_root: Path, **kwargs: Any) -> Any:
+PLOT_FITTED_MODEL_COMMAND = (
+    "import sys\n"
+    "from obi_one.scientific.tasks.ion_channel_modeling import plot_fitted_model\n"
+    "plot_fitted_model(sys.argv[1])"
+)
+
+
+def plot_fitted_model(io_path: str) -> None:
+    """Child side of plot_in_fresh_process: reads its arguments from io_path, writes the result."""
     import neuron  # ruff: ignore[import-outside-top-level]
 
-    neuron.load_mechanisms(str(mechanisms_root))
-    return run_ion_channel_model(**kwargs)
+    mechanisms_root, kwargs = pickle.loads(Path(io_path).read_bytes())  # ruff: ignore[suspicious-pickle-usage]
+    if not neuron.load_mechanisms(str(mechanisms_root)):
+        msg = f"No compiled mechanisms found in {mechanisms_root}"
+        raise RuntimeError(msg)
+    Path(io_path).write_bytes(pickle.dumps(run_ion_channel_model(**kwargs)))
+
+
+def plot_in_fresh_process(mechanisms_root: Path, **kwargs: Any) -> Any:
+    """NEURON loads a mechanism name only once per process, and every fit of a sweep compiles its
+    own mechanism under the same name.
+
+    A new interpreter rather than multiprocessing's spawn, which re-runs the caller's script.
+    """
+    io_path = mechanisms_root / "plot_fitted_model.pkl"
+    io_path.write_bytes(pickle.dumps((mechanisms_root, kwargs)))
+    try:
+        run_and_log([sys.executable, "-c", PLOT_FITTED_MODEL_COMMAND, str(io_path)])
+    except subprocess.CalledProcessError as e:
+        # The child's exception, rather than its exit status.
+        raise RuntimeError(e.stderr.strip().rpartition("\n")[2] or str(e)) from e
+    return pickle.loads(io_path.read_bytes())  # ruff: ignore[suspicious-pickle-usage]
 
 
 class BlockGroup(StrEnum):
@@ -493,35 +521,26 @@ class IonChannelFittingTask(Task):
             )
 
             # Compile into the coordinate folder rather than the process cwd, which concurrent
-            # fits in one worker share.
-            subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-                [  # ruff: ignore[start-process-with-partial-path]
-                    "nrnivmodl",
-                    "-incflags",
-                    "-DDISABLE_REPORTINGLIB",
-                    str(mechanisms_dir),
-                ],
-                check=True,
+            # fits in one worker share. The path is relative because make stops on the "=" of
+            # NAME_EQUALS_VALUE coordinate folders.
+            run_and_log(
+                ["nrnivmodl", "-incflags", "-DDISABLE_REPORTINGLIB", mechanisms_dir.name],
                 cwd=coordinate_root,
             )
 
             mech_suffix = self.config.initialize.ion_channel_name
-            # A fresh process per fit: NEURON loads a mechanism name only once per process, and
-            # every fit of a sweep compiles its own mechanism under the same name.
-            with ProcessPoolExecutor(max_workers=1, mp_context=get_context("spawn")) as pool:
-                figure_paths_dict = pool.submit(
-                    plot_fitted_model,
-                    coordinate_root,
-                    mech_suffix=mech_suffix,
-                    # current is defined like this in mod file, see
-                    # ion_channel_builder.io.write_output
-                    mech_current="ik",
-                    temperature=recording_entity.temperature,
-                    mech_conductance_name=self.conductance_name,
-                    output_folder=self.config.coordinate_output_root,
-                    savefig=True,
-                    show=False,
-                ).result()
+            figure_paths_dict = plot_in_fresh_process(
+                coordinate_root,
+                mech_suffix=mech_suffix,
+                # current is defined like this in mod file, see
+                # ion_channel_builder.io.write_output
+                mech_current="ik",
+                temperature=recording_entity.temperature,
+                mech_conductance_name=self.conductance_name,
+                output_folder=self.config.coordinate_output_root,
+                savefig=True,
+                show=False,
+            )
 
             # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
             range_vars = [
