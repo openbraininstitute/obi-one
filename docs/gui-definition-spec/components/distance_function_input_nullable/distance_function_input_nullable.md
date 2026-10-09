@@ -39,7 +39,8 @@ class DistanceDependentDistribution(Block):
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description=(
-            "Python expression of {value} and {distance}, plus any names listed in parameters."
+            "Expression using {value} and {distance}; custom expressions may also use "
+            "placeholders defined by the corresponding parameter configuration."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE},
     )

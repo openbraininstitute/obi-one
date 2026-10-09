@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from typing import Annotated, Any, ClassVar, Literal
 
 from bluepyemodel.preprocessing.schemas import (
-    AXON_MODIFIER_DESCRIPTIONS,
     DEFAULT_SECTION_LIST_CATALOG,
     REGIONAL_SECTION_LIST_NAMES,
     AxonModifier,
@@ -134,6 +133,17 @@ _ALLOWED_MATH_ATTRIBUTES = _ALLOWED_MATH_FUNCTIONS | _ALLOWED_MATH_CONSTANTS
 _MAX_AST_NODES = 50
 # Cap the raw string length before parsing.
 MAX_DISTANCE_FUNCTION_LENGTH = 500
+AXON_REPLACEMENT_DOC_URL = (
+    "https://sonata-extension.readthedocs.io/en/latest/hoc-emodel.html"
+    "#bbp-obi-default-bluepyemodel-replace-axon-hoc-procedure"
+)
+AXON_REPLACEMENT_SPEC_URL = (
+    "https://sonata-extension.readthedocs.io/en/latest/hoc-emodel.html#axon-replacement"
+)
+PLACEHOLDER_DEFINITIONS = (
+    "{value} is the parameter value found by the optimisation, which the formula scales; "
+    "{distance} is the path distance (um) from the soma reference point."
+)
 # Placeholders BluePyEModel fills at runtime from the morphology (not user-declared parameters).
 # Only the ``step`` distribution uses them; they are always allowed in placeholder validation.
 RUNTIME_PLACEHOLDERS = frozenset({"step_begin", "step_end"})
@@ -424,8 +434,9 @@ def _distance_placeholder_error(
 class DistanceDependentDistribution(Block):
     """Scales a parameter along the dendrites as a function of distance from the soma.
 
-    Formulas in subclass docstrings use ``x`` = path distance from soma (um) and
-    ``v`` = optimised value at soma.
+    Subclass docstrings show each ``function`` string as stored in the EMC/hoc files:
+    ``{value}`` is the parameter value found by the optimisation, which the formula scales, and
+    ``{distance}`` is the path distance (um) from the soma reference point.
     """
 
     _runtime_placeholders: ClassVar[frozenset[str]] = frozenset()
@@ -436,7 +447,8 @@ class DistanceDependentDistribution(Block):
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
         description=(
-            "Python expression of {value} and {distance}, plus any names listed in parameters."
+            "Python expression of {value} and {distance}, plus any names listed in parameters. "
+            + PLACEHOLDER_DEFINITIONS
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE},
     )
@@ -445,7 +457,11 @@ class DistanceDependentDistribution(Block):
         ge=0.0,
         le=1.0,
         title="Soma reference location",
-        description="Reference location of the soma along the morphology.",
+        description=(
+            "Point on the soma that distances are measured from, as a fraction along the "
+            "soma: 0 = one end, 0.5 = middle (default), 1 = other end. Leave at 0.5 unless "
+            "you need a different origin."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
     )
     parameters: tuple[str, ...] | None = Field(
@@ -523,7 +539,7 @@ class DistanceDependentDistribution(Block):
 class UniformDistanceDependentDistribution(DistanceDependentDistribution):
     """Constant value on all sections; the default for EMC parameters.
 
-    Formula: ``v``.
+    Formula: no function; every section gets ``{value}``.
     """
 
     title: ClassVar[str] = "Uniform (constant)"
@@ -534,7 +550,7 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
         default=None,
         frozen=True,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description="No function: every section gets {value}. " + PLACEHOLDER_DEFINITIONS,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
@@ -542,7 +558,7 @@ class UniformDistanceDependentDistribution(DistanceDependentDistribution):
 class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
     """Exponential rise with distance; used by SSCX and thalamus models.
 
-    Formula: ``v * (-0.8696 + 2.087 * exp(0.0031 * x))``.
+    Formula: ``(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}``.
     """
 
     title: ClassVar[str] = "Exponential increase (SSCX/thalamus)"
@@ -554,7 +570,10 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}``. "
+            + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -562,7 +581,8 @@ class ExponentialDistanceDependentDistribution(DistanceDependentDistribution):
 class StepDistanceDependentDistribution(DistanceDependentDistribution):
     """Calcium hot-spot step on the apical dendrite; used by detailed SSCX models.
 
-    Formula: ``v`` for ``step_begin < x < step_end``, else ``0.1 * v``.
+    Formula:
+    ``{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & ({distance} < {step_end})))``.
 
     ``{step_begin}`` and ``{step_end}`` are not user-declared placeholders.
     BluePyEModel's ``define_distributions()`` special-cases the name ``step`` and
@@ -582,7 +602,13 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
+            "({distance} < {step_end})))``. "
+            + PLACEHOLDER_DEFINITIONS
+            + " {step_begin} and {step_end} are computed at runtime from the morphology's "
+            "Ca hot-spot."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -590,7 +616,7 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
 class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistribution):
     """Exponential decay of dendritic Na with distance; used by hippocampus models.
 
-    Formula: ``v * exp(-x / 50)``.
+    Formula: ``math.exp((-{distance})/50.)*{value}``.
     """
 
     title: ClassVar[str] = "Exponential decay, dendritic Na (hippocampus)"
@@ -602,7 +628,9 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``math.exp((-{distance})/50.)*{value}``. " + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -611,7 +639,7 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Linear rise of Ih (hd) with distance; used by hippocampus (rat and mouse) models.
 
     Replaces BluePyEModel ``linear_hd_apic`` and ``linear_hdpas`` (same formula).
-    Formula: ``v * (1 + 0.03 * x)``.
+    Formula: ``(1. + 3./100. * {distance})*{value}``.
     """
 
     title: ClassVar[str] = "Linear increase (Ih)"
@@ -623,7 +651,9 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``(1. + 3./100. * {distance})*{value}``. " + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -631,7 +661,7 @@ class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
 class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Sigmoid rise of apical KA with distance; used by hippocampus models.
 
-    Formula: ``v * 15 / (1 + exp((300 - x) / 50))``.
+    Formula: ``(15./(1. + math.exp((300.-{distance})/50.)))*{value}``.
     """
 
     title: ClassVar[str] = "Sigmoid increase, apical KA (hippocampus)"
@@ -643,7 +673,10 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``(15./(1. + math.exp((300.-{distance})/50.)))*{value}``. "
+            + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -651,7 +684,7 @@ class SigmoidKADApicDistanceDependentDistribution(DistanceDependentDistribution)
 class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Linear drop of apical e_pas with distance (additive); used by hippocampus models.
 
-    Formula: ``v - x / 30``.
+    Formula: ``({value}-5.*{distance}/150.)``.
     """
 
     title: ClassVar[str] = "Linear decrease, apical e_pas (additive)"
@@ -663,7 +696,9 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``({value}-5.*{distance}/150.)``. " + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -671,7 +706,7 @@ class LinearEPasApicDistanceDependentDistribution(DistanceDependentDistribution)
 class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
     """Sigmoid rise of KA with distance; used by mouse hippocampus models.
 
-    Formula: ``v * 15 / (1 + exp((150 - x) / 10))``.
+    Formula: ``(15./(1. + math.exp((150.-{distance})/10.)))*{value}``.
     """
 
     title: ClassVar[str] = "Sigmoid increase, KA (mouse)"
@@ -683,7 +718,10 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``(15./(1. + math.exp((150.-{distance})/10.)))*{value}``. "
+            + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -691,7 +729,7 @@ class SigmoidKADDistanceDependentDistribution(DistanceDependentDistribution):
 class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Sigmoid drop of apical KD with distance; used by mouse hippocampus models.
 
-    Formula: ``v * 15 / (1 + exp((x - 50) / 50))``.
+    Formula: ``(15./(1. + math.exp(({distance}-50.)/50.)))*{value}``.
     """
 
     title: ClassVar[str] = "Sigmoid decrease, apical KD (mouse)"
@@ -703,7 +741,10 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
         frozen=True,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Distance function",
-        description="Expression using {value} and {distance}.",
+        description=(
+            "Stored formula: ``(15./(1. + math.exp(({distance}-50.)/50.)))*{value}``. "
+            + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -711,7 +752,8 @@ class SigmoidKDBMApicDistanceDependentDistribution(DistanceDependentDistribution
 class CustomDistanceDependentDistribution(DistanceDependentDistribution):
     """User-defined distribution for any parameter.
 
-    Formula: the user expression in ``{value}``, ``{distance}`` and declared parameters.
+    Formula: a user expression in ``{value}``, ``{distance}`` and the declared parameters,
+    e.g. ``math.exp({distance}*{constant})*{value}`` with ``parameters=("constant",)``.
     """
 
     title: ClassVar[str] = "Custom formula"
@@ -724,7 +766,11 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
         min_length=1,
         max_length=MAX_DISTANCE_FUNCTION_LENGTH,
         title="Custom distance function",
-        description="Python expression containing at least {value} and {distance}.",
+        description=(
+            "Python expression containing at least {value} and {distance}, e.g. "
+            "``math.exp({distance}*{constant})*{value}`` with ``constant`` in parameters. "
+            + PLACEHOLDER_DEFINITIONS
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
 
@@ -771,7 +817,7 @@ class TargetEFeaturesInput(Block):
     """Extracted e-features used as the optimisation target (Inputs card)."""
 
     task_result: TaskResultFromID = Field(
-        title="Target EFeatures",
+        title="Target e-features",
         description=(
             "TaskResult entity from the 01_efeature_extraction stage. Its extracted-features "
             "asset is staged as the optimization target configuration."
@@ -996,6 +1042,43 @@ AXON_MODIFIER_TITLES: dict[str, str] = {
     AxonModifier.bluepyopt_replace_axon.value: "BluePyOpt replace axon",
     AxonModifier.none.value: "No replacement",
 }
+# Commit-pinned links to each option's ``proc replace_axon`` hoc code (line anchors on ``main``
+# drift when the file changes).
+BLUEPYEMODEL_MODIFIERS_URL = (
+    "https://github.com/openbraininstitute/BluePyEModel/blob/"
+    "200dd991310991f1997272eed424c4bc12a068f4/bluepyemodel/evaluation/modifiers.py"
+)
+BLUEPYOPT_MORPHOLOGIES_URL = (
+    "https://github.com/openbraininstitute/BluePyOpt/blob/"
+    "0c0ce005fa7fc6e17854f41232d575350b61165f/bluepyopt/ephys/morphologies.py"
+)
+# What each option does to the axon (markdown), from the BluePyEModel / BluePyOpt replace_axon
+# code and the sonata-extension hoc-emodel documentation.
+AXON_MODIFIER_OPTION_DESCRIPTIONS: dict[str, str] = {
+    AxonModifier.replace_axon_with_taper.value: (
+        "**BBP/OBI default** (BluePyEModel). Removes the original axon and adds two tapered "
+        "axon sections (60 um in total, diameters taken from the original axon) followed by a "
+        "1000 um myelinated section. Requires at least 3 axon sections. "
+        f"See the [hoc code]({BLUEPYEMODEL_MODIFIERS_URL}#L279)."
+    ),
+    AxonModifier.replace_axon_legacy.value: (
+        "Used in legacy thalamus models. Removes the original axon and adds two axon "
+        "sections (60 um in total) *without* a myelinated section. Requires at least 2 axon "
+        f"sections. See the [hoc code]({BLUEPYEMODEL_MODIFIERS_URL}#L439)."
+    ),
+    AxonModifier.replace_axon_olfactory_bulb.value: (
+        "Used in olfactory bulb models. Removes the original axon and builds a 5 um hillock, "
+        "a 30 um initial segment, 5 nodes (1 um each) and 5 myelin sections (1000 um each). "
+        f"See the [hoc code]({BLUEPYEMODEL_MODIFIERS_URL}#L586)."
+    ),
+    AxonModifier.bluepyopt_replace_axon.value: (
+        "BluePyOpt default. Removes the original axon and adds two axon sections (60 um in "
+        "total, diameters taken from the original axon, 1 um if there is none) *without* a "
+        "myelinated section. Works with any number of axon sections, including none. "
+        f"See the [hoc code]({BLUEPYOPT_MORPHOLOGIES_URL}#L226)."
+    ),
+    AxonModifier.none.value: "Keeps the original axon unchanged.",
+}
 
 
 class MorphologySettings(Block):
@@ -1005,18 +1088,15 @@ class MorphologySettings(Block):
         default=AxonModifier.replace_axon_with_taper,
         title="Axon replacement",
         description=(
-            "BluePyEModel axon strategy. The default tapered modifier creates a myelinated "
-            "section list. Legacy and BluePyOpt replacement do not create one; no replacement "
-            "preserves the source morphology, but staged SWC preflight cannot establish a "
-            "populated myelinated section list."
+            "BluePyEModel morphology modifier (``morph_modifiers``) applied to the axon. "
+            "Replace axon with taper is the BBP/OBI default. Only the default and olfactory "
+            "bulb options create a myelinated section list. See "
+            f"[BBP/OBI default replace_axon hoc procedure]({AXON_REPLACEMENT_DOC_URL})."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.AXON_MODIFIER,
             SchemaKey.TITLE_BY_KEY: AXON_MODIFIER_TITLES,
-            SchemaKey.DESCRIPTION_BY_KEY: {
-                modifier.value: description
-                for modifier, description in AXON_MODIFIER_DESCRIPTIONS.items()
-            },
+            SchemaKey.DESCRIPTION_BY_KEY: AXON_MODIFIER_OPTION_DESCRIPTIONS,
         },
     )
 
@@ -1570,24 +1650,18 @@ class SineSpecSettings(Block):
 
 
 class OptimizationParams(Block):
-    """Algorithm-specific ``optimisation_params`` passed to BluePyEModel."""
+    """Algorithm-specific ``optimisation_params`` passed to BluePyEModel.
 
-    offspring_size: OffspringSize | list[OffspringSize] = Field(
-        default=5,
-        title="Offspring size",
-        description=(
-            "Population size per generation. The L5PC example uses 20; we default"
-            " to a small value so the bundled example completes quickly."
-            f" Capped at {MAX_OFFSPRING_SIZE}; CMA optimisers need at least 2."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
-    )
+    ``offspring_size`` lives in :class:`OptimizationSettings`; every field here is optional
+    and only serialized for the optimiser that consumes it, so the block may be empty.
+    """
+
     sigma: PositiveFloat | list[PositiveFloat] | None = Field(
         default=None,
         title="CMA initial sigma",
         description=(
-            "Initial standard deviation for SO-CMA or MO-CMA. Leave empty to use "
-            "BluePyEModel's optimizer default."
+            "SO-CMA and MO-CMA only: initial standard deviation of the CMA-ES Gaussian search "
+            "distribution. Empty uses the BluePyOpt default of 0.4."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -1595,33 +1669,46 @@ class OptimizationParams(Block):
         default=None,
         title="MO-CMA hypervolume weight",
         description=(
-            "Weight of the hypervolume score for MO-CMA. Only valid for MO-CMA; "
-            "leave empty to use the BluePyEModel default."
+            "MO-CMA only: weight (0-1) of the hypervolume contribution when scoring "
+            "individuals; the fitness contribution gets 1 - weight_hv. Empty uses the "
+            "BluePyOpt default of 0.5."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     eta: PositiveFloat | list[PositiveFloat] | None = Field(
         default=None,
         title="IBEA distribution index",
-        description="Distribution index for IBEA crossover/mutation. Only valid for IBEA.",
+        description=(
+            "IBEA only: distribution index controlling how far crossover and mutation move "
+            "offspring from their parents. Empty uses the BluePyOpt default of 10."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     mutpb: ProbabilityValue | None = Field(
         default=None,
         title="IBEA mutation probability",
-        description="Mutation probability for IBEA; only valid for IBEA.",
+        description=(
+            "IBEA only: probability (0-1) that an offspring is mutated. Empty uses the "
+            "BluePyOpt default of 1.0."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     cxpb: ProbabilityValue | None = Field(
         default=None,
         title="IBEA crossover probability",
-        description="Crossover probability for IBEA; only valid for IBEA.",
+        description=(
+            "IBEA only: probability (0-1) that a pair of offspring is crossed over. Empty "
+            "uses the BluePyOpt default of 1.0."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     centroids: tuple[float, ...] | None = Field(
         default=None,
         title="CMA centroids",
-        description="Optional fixed initial CMA centroid vector; valid for SO-CMA and MO-CMA.",
+        description=(
+            "SO-CMA and MO-CMA only: initial guess (one value per optimized parameter) used "
+            "as the CMA-ES starting point. Empty lets BluePyOpt choose the start."
+        ),
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
@@ -1654,23 +1741,14 @@ class OptimizationParams(Block):
         if optimiser == "SO-CMA" and self.weight_hv is not None:
             msg = "weight_hv is only valid for MO-CMA."
             raise ValueError(msg)
-        if optimiser in {"SO-CMA", "MO-CMA"}:
-            offspring_sizes = (
-                self.offspring_size
-                if isinstance(self.offspring_size, list)
-                else [self.offspring_size]
-            )
-            if any(size < MIN_CMA_OFFSPRING_SIZE for size in offspring_sizes):
-                msg = (
-                    "CMA offspring_size must be at least "
-                    f"{MIN_CMA_OFFSPRING_SIZE} to initialize the optimizer."
-                )
-                raise ValueError(msg)
 
     def to_dict(self, optimiser: str = "MO-CMA") -> dict[str, Any]:
-        """Serialize only parameters accepted by the selected BluePyEModel optimizer."""
+        """Serialize only parameters accepted by the selected BluePyEModel optimizer.
+
+        ``offspring_size`` is added by :meth:`OptimizationSettings.to_dict`.
+        """
         self.validate_for_optimiser(optimiser)
-        result: dict[str, Any] = {"offspring_size": self.offspring_size}
+        result: dict[str, Any] = {}
         if optimiser in {"SO-CMA", "MO-CMA"}:
             if self.sigma is not None:
                 result["sigma"] = self.sigma
@@ -1693,115 +1771,160 @@ class OptimizationSettings(Block):
         default="SO-CMA",
         title="Optimiser",
         description=(
-            "BluePyEModel optimiser. ``SO-CMA`` is single-objective CMA, ``MO-CMA`` is "
-            "multi-objective CMA, and ``IBEA`` is the Indicator-Based Evolutionary Algorithm."
+            "Evolutionary algorithm: ``SO-CMA`` (single-objective CMA-ES), ``MO-CMA`` "
+            "(multi-objective CMA-ES) or ``IBEA`` (Indicator-Based Evolutionary Algorithm)."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
     max_ngen: GenerationCount | list[GenerationCount] = Field(
         default=20,
         title="Max generations",
-        description=f"Maximum number of optimizer generations (at most {MAX_NGEN}).",
+        description=(
+            f"Maximum number of optimisation generations (at most {MAX_NGEN}); more "
+            "generations increase runtime."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    offspring_size: OffspringSize | list[OffspringSize] = Field(
+        default=5,
+        title="Offspring size",
+        description=(
+            "Individuals per generation (all optimisers). BluePyEModel suggests 20 for CMA, "
+            "100 for IBEA; the small default keeps the example fast. Capped at "
+            f"{MAX_OFFSPRING_SIZE}; CMA optimisers need at least 2."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    seed: NonNegativeInt | list[NonNegativeInt] = Field(
+        default=1,
+        title="Random seed",
+        description=(
+            "Random-number seed of the optimiser; different seeds give independent "
+            "optimisation runs. Execution-only: it is not written into recipes.json."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
     optimisation_timeout: PositiveFloat | list[PositiveFloat] = Field(
         default=300.0,
         title="Optimisation timeout",
-        description="Maximum duration in seconds for an optimization evaluation.",
+        description=(
+            "Time in seconds after which the evaluation of a single protocol is interrupted. "
+            "An interrupted response is invalid and its e-feature scores are set to the "
+            "maximum (250 by default)."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     optimisation_checkpoint_period: NonNegativeFloat | list[NonNegativeFloat] | None = Field(
         default=None,
         title="Checkpoint period",
         description=(
-            "Minimum seconds between optimization checkpoint writes; empty uses the "
-            "backend default."
+            "Minimum time in seconds between two optimisation checkpoint saves. Empty saves a "
+            "checkpoint every generation regardless of elapsed time."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL},
     )
     use_stagnation_criterion: bool = Field(
         default=True,
         title="Use stagnation criterion",
-        description="Enable optimizer stagnation stopping in addition to max generations.",
+        description=(
+            "SO-CMA and MO-CMA only: also stop when the optimisation stagnates, on top of the "
+            "maximum-generation criterion. Ignored by IBEA."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     threshold_efeature_std: NonNegativeFloat | list[NonNegativeFloat] | None = Field(
         default=None,
         title="E-feature standard-deviation threshold",
         description=(
-            "Optional minimum standard deviation relative to each e-feature mean "
-            "during optimization."
+            "If set, each e-feature std is raised to at least "
+            "``abs(threshold_efeature_std * efeature_mean)`` during optimisation only; the "
+            "stored std is unchanged. Empty applies no threshold."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL},
     )
     minimum_protocol_delay: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
         title="Minimum protocol delay",
-        description="Minimum initial protocol delay in seconds used by optimization evaluations.",
+        description=(
+            "During optimisation, protocols whose initial delay is shorter than this value get "
+            "their delay raised to it. 0 leaves delays unchanged."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     stochasticity: bool | tuple[str, ...] = Field(
         default=False,
         title="Stochasticity",
-        description="Enable stochastic mechanisms globally or only for the listed protocol names.",
+        description=(
+            "Make channels stochastic where supported: true for all protocols, or a list of "
+            "protocol names for only those."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STOCHASTICITY},
     )
     validation_function: Literal["max_score", "mean_score"] = Field(
         default="max_score",
         title="Validation function",
-        description="Safe built-in validation score function used by downstream validation.",
+        description=(
+            "How e-feature scores are combined for validation: ``max_score`` uses the worst "
+            "score, ``mean_score`` the mean. The result is compared to the validation threshold."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
     )
     validation_threshold: PositiveFloat | list[PositiveFloat] = Field(
         default=5.0,
         title="Validation threshold",
-        description="Score threshold below which a model is considered validated.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    seed: NonNegativeInt | list[NonNegativeInt] = Field(
-        default=1,
-        title="Random seed",
         description=(
-            "Seed forwarded to setup_and_run_optimisation. It is execution-only and is not "
-            "written into recipes.json."
+            "Threshold under which the ``max_score`` or ``mean_score`` of a model must fall for "
+            "it to pass validation."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
 
     neuron_dt: PositiveFloat | list[PositiveFloat] | None = Field(
         default=None,
         title="NEURON fixed time step",
-        description="Simulation time step; empty selects BluePyEModel CVode behavior.",
+        description=(
+            "Fixed time step of the NEURON simulator. Empty uses the variable-step CVode "
+            "integrator instead."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL},
     )
     cvode_minstep: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.0,
         title="CVode minimum step",
-        description="Minimum time step permitted by CVode.",
+        description=(
+            "Minimum time step allowed when CVode is used, i.e. when the NEURON fixed time "
+            "step is empty."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     use_params_for_seed: bool = Field(
         default=True,
         title="Seed simulator from parameters",
-        description="Use a hash of the parameter dictionary as the simulator seed.",
+        description=(
+            "Use a hashed version of the parameter dictionary as the simulator seed (relevant "
+            "for stochastic mechanisms)."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     current_precision: PositiveFloat | list[PositiveFloat] = Field(
         default=0.01,
         title="Current search precision",
-        description="Current interval precision for threshold and rheobase searches.",
+        description=("Width of the current interval at which the threshold-current search stops."),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     max_threshold_voltage: float | list[float] = Field(
         default=-30.0,
         title="Maximum threshold voltage",
-        description="Upper voltage bound used during threshold and rheobase searches.",
+        description="Upper bound for the voltage during the threshold or rheobase current search.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     strict_holding_bounds: bool = Field(
         default=True,
         title="Strict holding-current bounds",
-        description="Keep the configured holding-current search bounds fixed.",
+        description=(
+            "Keep the holding-current search bounds fixed. If off, the bounds widen "
+            "dynamically when the holding current lies outside them."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     max_depth_holding_search: PositiveInt | list[PositiveInt] = Field(
@@ -1819,184 +1942,254 @@ class OptimizationSettings(Block):
     spikecount_timeout: PositiveFloat | list[PositiveFloat] = Field(
         default=50.0,
         title="Spike-count timeout",
-        description="Timeout in seconds for spike-count searches.",
+        description=(
+            "Spike-count timeout in the threshold-current search; when reached, the spike count "
+            "is set to 2 to speed up the bisection."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
 
     default_std_value: PositiveFloat | list[PositiveFloat] = Field(
         default=0.01,
         title="Default std value",
-        description="Replacement standard deviation for zero-variance extracted features.",
+        description=(
+            "Standard deviation assigned to extracted e-features whose standard deviation is 0."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     efel_settings: EfelSettings = Field(
         default=EfelSettings(),
         title="eFEL settings",
-        description="Common eFEL settings forwarded to optimization evaluations.",
+        description=(
+            "eFEL settings applied to all e-features; per-e-feature settings in the targets take "
+            "priority."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     validation_protocols: tuple[str, ...] = Field(
         default=(),
         title="Validation protocols",
-        description="Protocol names held out from optimization and used only for validation.",
+        description=(
+            "Protocol names (e.g. ``APWaveform_300``) used only for validation and excluded "
+            "from optimisation. Empty holds out no protocol."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_INPUT},
     )
     name_rin_protocol: str | None = Field(
         default=None,
         title="Rin protocol name",
-        description="Protocol used to compute input resistance; empty disables Rin correction.",
+        description=(
+            "Protocol and amplitude (e.g. ``IV_-20``) from which the input resistance is taken; "
+            "it must target ``ohmic_input_resistance_vb_ssse``."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     name_rmp_protocol: str | None = Field(
         default=None,
         title="RMP protocol name",
-        description="Protocol for resting membrane potential; empty disables RMP correction.",
+        description=(
+            "Protocol and amplitude (e.g. ``IV_0``) from which the resting membrane potential "
+            "is taken; it must target ``voltage_base``."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
 
     plot_optimisation_progress: bool = Field(
         default=True,
         title="Plot optimization progress",
-        description="Plot optimizer progress from checkpoints.",
+        description="Plot the optimisation progress from the optimisation checkpoint.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_parameter_evolution: bool = Field(
         default=True,
         title="Plot parameter evolution",
-        description="Plot parameter evolution during optimization.",
+        description="Plot how the optimized parameter values evolve across generations.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_distributions: bool = Field(
         default=True,
         title="Plot distributions",
-        description="Plot optimized parameter distributions.",
+        description="Plot the distributions of the optimized parameters.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_scores: bool = Field(
         default=True,
         title="Plot scores",
-        description="Plot optimization scores.",
+        description="Plot the e-feature scores of the resulting model.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_traces: bool = Field(
         default=True,
         title="Plot traces",
-        description="Plot simulated and target traces.",
+        description="Plot the simulated traces of the resulting model.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_thumbnail: bool = Field(
         default=True,
         title="Plot thumbnail",
-        description="Plot a thumbnail trace for the resulting model.",
+        description="Plot a single trace of the resulting model that can be used as its thumbnail.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_currentscape: bool = Field(
         default=True,
         title="Plot currentscape",
-        description="Plot currentscapes for optimization recordings.",
+        description="Plot currentscapes for the recordings.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_dendritic_ISI_CV: bool = Field(  # ruff: ignore[mixed-case-variable-in-class-scope]
         default=True,
         title="Plot dendritic ISI CV",
-        description="Plot dendritic inter-spike-interval coefficient of variation when available.",
+        description=(
+            "Plot the dendritic inter-spike-interval coefficient of variation, if present."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_dendritic_rheobase: bool = Field(
         default=True,
         title="Plot dendritic rheobase",
-        description="Plot dendritic rheobase when available.",
+        description="Plot the dendritic rheobase, if present.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_bAP_EPSP: bool = Field(  # ruff: ignore[mixed-case-variable-in-class-scope]
         default=False,
         title="Plot bAP/EPSP",
-        description="Run and plot back-propagating action-potential and EPSP protocols.",
+        description=(
+            "Run and plot back-propagating AP and EPSP protocols; pyramidal cells only (needs "
+            "an apical dendrite)."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_IV_curves: bool = Field(  # ruff: ignore[mixed-case-variable-in-class-scope]
         default=False,
         title="Plot IV curves",
-        description="Plot IV curves; requires extracted BluePyEfe pickle data.",
+        description=(
+            "Plot peak-voltage and voltage-deflection IV curves of sub-threshold IV protocols. "
+            "Needs the BluePyEfe cells pickle."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_FI_curve_comparison: bool = Field(  # ruff: ignore[mixed-case-variable-in-class-scope]
         default=False,
         title="Plot FI curve comparison",
-        description="Plot experimental versus simulated FI curves.",
+        description=(
+            "Plot experimental versus simulated FI curves. Needs the BluePyEfe cells pickle."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     plot_traces_comparison: bool = Field(
         default=False,
         title="Plot trace comparison",
-        description="Plot simulated traces over experimental traces.",
+        description=(
+            "Plot simulated traces over experimental traces. Needs the BluePyEfe pickles."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     run_plot_custom_sinspec: bool = Field(
         default=False,
         title="Run SineSpec plot",
-        description="Run and plot the optional SineSpec protocol.",
+        description=(
+            "Run a SineSpec protocol and plot its voltage and current traces with the impedance."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     IV_curve_prot_name: str = Field(
         default="iv",
         min_length=1,
         title="IV curve protocol",
-        description="Protocol name used by IV curve analysis.",
+        description="Name of the protocol used to plot the IV curves.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     FI_curve_prot_name: str = Field(
         default="idrest",
         min_length=1,
         title="FI curve protocol",
-        description="Protocol name used by FI curve comparison.",
+        description=(
+            "Name of the protocol used for the FI curve comparison; it must be supra-threshold "
+            "and target the ``mean_frequency`` e-feature."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     plot_phase_plot: bool = Field(
         default=False,
         title="Plot phase plot",
-        description="Plot the phase trajectory for the configured protocol.",
+        description="Plot the phase plot (dV/dt versus V) for the protocols in the settings below.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
     phase_plot_settings: PhasePlotSettings = Field(
         default=PhasePlotSettings(),
         title="Phase plot settings",
-        description="Protocol and amplitude settings for phase-plot analysis.",
+        description=(
+            "Protocols, amplitude and amplitude window used to select traces for the phase plot."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     sinespec_settings: SineSpecSettings = Field(
         default=SineSpecSettings(),
         title="SineSpec settings",
-        description="Amplitude settings for optional SineSpec analysis.",
+        description=(
+            "Amplitude of the SineSpec protocol: a percentage of threshold if threshold-based, "
+            "otherwise in nA."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.OBJECT},
     )
     custom_bluepyefe_cells_pklpath: str | None = Field(
         default=None,
         title="Custom BluePyEfe cells pickle",
-        description="Optional path to a non-standard BluePyEfe cells.pkl file.",
+        description=(
+            "Non-standard path to the BluePyEfe cells.pkl (empty: usual path); used by the IV, "
+            "FI and phase plots."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     custom_bluepyefe_protocols_pklpath: str | None = Field(
         default=None,
         title="Custom BluePyEfe protocols pickle",
-        description="Optional path to a non-standard BluePyEfe protocols.pkl file.",
+        description=(
+            "Non-standard path to the BluePyEfe protocols.pkl (empty: usual path); used by the "
+            "trace comparison plot."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     save_recordings: bool = Field(
         default=False,
         title="Save recordings",
-        description="Save optimization response recordings under the task output directory.",
+        description=(
+            "Save the simulated response data in a ``recordings`` folder of the task output."
+        ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
 
+    @model_validator(mode="after")
+    def validate_cma_offspring_size(self) -> "OptimizationSettings":
+        """Reject offspring sizes too small to initialize a CMA optimizer."""
+        if self.optimiser in {"SO-CMA", "MO-CMA"}:
+            offspring_sizes = (
+                self.offspring_size
+                if isinstance(self.offspring_size, list)
+                else [self.offspring_size]
+            )
+            if any(size < MIN_CMA_OFFSPRING_SIZE for size in offspring_sizes):
+                msg = (
+                    "CMA offspring_size must be at least "
+                    f"{MIN_CMA_OFFSPRING_SIZE} to initialize the optimizer."
+                )
+                raise ValueError(msg)
+        return self
+
     def to_dict(self, optimisation_params: OptimizationParams) -> dict[str, Any]:
-        """Serialize validated fields using BluePyEModel's recipe setting names."""
-        optimisation_params.validate_for_optimiser(self.optimiser)
+        """Serialize validated fields using BluePyEModel's recipe setting names.
+
+        ``offspring_size`` is a settings field but BluePyEModel reads it from
+        ``optimisation_params``, so it is emitted there first.
+        """
         d: dict[str, Any] = {
             "optimiser": self.optimiser,
             "max_ngen": self.max_ngen,
             "optimisation_timeout": self.optimisation_timeout,
-            "optimisation_params": optimisation_params.to_dict(self.optimiser),
+            "optimisation_params": {
+                "offspring_size": self.offspring_size,
+                **optimisation_params.to_dict(self.optimiser),
+            },
             "validation_function": self.validation_function,
             "validation_threshold": self.validation_threshold,
             "default_std_value": self.default_std_value,

@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
+    EModelOptimisationParameters,
     GlobalParameterSelection,
     MechanismRegionSelection,
     OptimizationParams,
@@ -326,22 +327,23 @@ def test_optimization_params_validates_limits_and_serializes_all_algorithms():
     with pytest.raises(ValueError, match="centroids"):
         OptimizationParams(centroids=(float("nan"),))
     with pytest.raises(ValueError, match="less than or equal to 20"):
-        OptimizationParams(offspring_size=21)
+        OptimizationSettings(offspring_size=21)
     with pytest.raises(ValueError, match="less than or equal to 20"):
-        OptimizationParams(offspring_size=[10, 21])
+        OptimizationSettings(offspring_size=[10, 21])
     with pytest.raises(ValueError, match="less than or equal to 50"):
         OptimizationSettings(max_ngen=51)
     with pytest.raises(ValueError, match="less than or equal to 50"):
         OptimizationSettings(max_ngen=[20, 51])
 
-    cma = OptimizationParams(offspring_size=[2, 4], sigma=[0.1, 0.2], centroids=(1.0, 2.0))
-    assert cma.to_dict("SO-CMA") == {
+    cma = OptimizationParams(sigma=[0.1, 0.2], centroids=(1.0, 2.0))
+    assert OptimizationSettings(offspring_size=[2, 4]).to_dict(cma)["optimisation_params"] == {
         "offspring_size": [2, 4],
         "sigma": [0.1, 0.2],
         "centroids": [1.0, 2.0],
     }
-    ibea = OptimizationParams(offspring_size=10, eta=2.0, mutpb=0.2, cxpb=[0.3, 0.4])
-    assert ibea.to_dict("IBEA") == {
+    ibea = OptimizationParams(eta=2.0, mutpb=0.2, cxpb=[0.3, 0.4])
+    ibea_settings = OptimizationSettings(optimiser="IBEA", offspring_size=10)
+    assert ibea_settings.to_dict(ibea)["optimisation_params"] == {
         "offspring_size": 10,
         "eta": 2.0,
         "mutpb": 0.2,
@@ -358,7 +360,7 @@ def test_optimization_settings_serializes_optional_recipe_paths():
         stochasticity=True,
     )
 
-    recipe = settings.to_dict(OptimizationParams(offspring_size=2))
+    recipe = settings.to_dict(OptimizationParams())
 
     assert recipe["name_Rin_protocol"] == "rin"
     assert recipe["name_rmp_protocol"] == "rmp"
@@ -703,7 +705,11 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
 
 
 def _config_data_for_selection(selection, distributions=None, **overrides):
-    data = _scan_config_data(parameters_selection=selection.model_dump(mode="json"))
+    data = _scan_config_data(
+        emodel_optimisation_parameters=EModelOptimisationParameters.from_parameters_selection(
+            selection
+        ).model_dump(mode="json")
+    )
     data["distance_dependent_distributions"] = distributions or {}
     data.update(overrides)
     return data
@@ -807,7 +813,7 @@ def test_remaining_block_validation_and_serialization_paths():
         )
         assert config.morphology_settings.expected_myelinated is expected
 
-    assert OptimizationParams(offspring_size=2).to_dict("IBEA") == {"offspring_size": 2}
+    assert OptimizationParams().to_dict("IBEA") == {}
 
 
 def test_remaining_parameter_builder_paths():

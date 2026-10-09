@@ -23,6 +23,7 @@ from bluepyemodel.preprocessing.schemas import (
     SectionListChoice,
     SectionListDefinition,
 )
+from pydantic import ValidationError
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
@@ -85,14 +86,7 @@ def _scan_config_data(**overrides):
             }
         },
     }
-    legacy = overrides.pop("parameters_selection", None)
-    canonical = overrides.pop("emodel_optimisation_parameters", None)
     config_data.update(overrides)
-    if canonical is not None:
-        config_data["emodel_optimisation_parameters"] = canonical
-    if legacy is not None:
-        config_data.pop("emodel_optimisation_parameters", None)
-        config_data["parameters_selection"] = legacy
     return config_data
 
 
@@ -194,10 +188,12 @@ def test_parameter_selection_round_trips_and_serializes_axon_settings():
     config = EModelOptimizationScanConfig.model_validate(
         _scan_config_data(
             morphology_settings={"axon_modifier": "none"},
-            parameters_selection=ParametersSelection(
-                ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-                mechanism_regions=_somatic_assignment(),
-                base_parameters={},
+            emodel_optimisation_parameters=EModelOptimisationParameters.from_parameters_selection(
+                ParametersSelection(
+                    ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                    mechanism_regions=_somatic_assignment(),
+                    base_parameters={},
+                )
             ),
         )
     )
@@ -372,7 +368,9 @@ def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 morphology_settings={"axon_modifier": "replace_axon_legacy"},
-                parameters_selection=stale_selection,
+                emodel_optimisation_parameters=(
+                    EModelOptimisationParameters.from_parameters_selection(stale_selection)
+                ),
             )
         )
 
@@ -388,6 +386,7 @@ def test_recipe_contains_multiloc_map_without_all_alias():
 def test_optimization_settings_serialize_bluepyemodel_recipe_fields():
     settings = OptimizationSettings(
         optimiser="MO-CMA",
+        offspring_size=20,
         optimisation_checkpoint_period=30.0,
         use_stagnation_criterion=False,
         threshold_efeature_std=0.2,
@@ -413,7 +412,7 @@ def test_optimization_settings_serialize_bluepyemodel_recipe_fields():
             relative_amp=False,
         ),
     )
-    params = OptimizationParams(offspring_size=20, sigma=0.3, weight_hv=0.7)
+    params = OptimizationParams(sigma=0.3, weight_hv=0.7)
 
     recipe_settings = settings.to_dict(params)
 
@@ -444,11 +443,70 @@ def test_optimization_params_reject_incompatible_algorithm_fields():
         OptimizationParams(weight_hv=0.5).to_dict("SO-CMA")
 
 
-def test_optimization_params_reject_single_member_cma_population():
+def test_optimization_settings_reject_single_member_cma_population():
     with pytest.raises(ValueError, match="at least 2"):
-        OptimizationParams(offspring_size=1).to_dict("SO-CMA")
+        OptimizationSettings(optimiser="SO-CMA", offspring_size=1)
     with pytest.raises(ValueError, match="at least 2"):
-        OptimizationParams(offspring_size=[1, 20]).to_dict("MO-CMA")
+        OptimizationSettings(optimiser="MO-CMA", offspring_size=[1, 20])
+    assert OptimizationSettings(optimiser="IBEA", offspring_size=1).offspring_size == 1
+
+
+def test_offspring_size_field_follows_max_ngen():
+    fields = list(OptimizationSettings.model_fields)
+    assert fields.index("offspring_size") == fields.index("max_ngen") + 1
+    assert "offspring_size" not in OptimizationParams.model_fields
+
+
+def test_offspring_size_under_optimization_params_is_rejected():
+    with pytest.raises(ValidationError) as exc_info:
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(optimization_params={"offspring_size": 7})
+        )
+    assert any(
+        error["loc"][:2] == ("optimization_params", "offspring_size")
+        for error in exc_info.value.errors()
+    )
+    with pytest.raises(ValueError, match="at least 2"):
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(optimization_settings={"offspring_size": 1})
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_efeatures", None),
+        ("target_efeatures", {}),
+        ("target_efeatures", {"task_result": "not-an-object"}),
+        ("morphology", None),
+        ("morphology", {}),
+        ("morphology", {"cell_morphology": "not-an-object"}),
+    ],
+)
+def test_inputs_reject_missing_or_wrong_values_at_new_field_path(field, value):
+    data = _scan_config_data()
+    if value is None:
+        data.pop(field)
+    else:
+        data[field] = value
+    with pytest.raises(ValidationError) as exc_info:
+        EModelOptimizationScanConfig.model_validate(data)
+    assert any(error["loc"][0] == field for error in exc_info.value.errors())
+
+
+def test_inputs_reject_values_at_legacy_initialize_path():
+    data = _scan_config_data()
+    data["initialize"] = {
+        **data["initialize"],
+        "target_efeatures": data.pop("target_efeatures"),
+        "morphology": data.pop("morphology"),
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        EModelOptimizationScanConfig.model_validate(data)
+    locs = {error["loc"] for error in exc_info.value.errors()}
+    assert ("target_efeatures",) in locs
+    assert ("morphology",) in locs
+    assert ("initialize", "target_efeatures") in locs
 
 
 @pytest.mark.parametrize(
@@ -1271,42 +1329,17 @@ def test_single_config_asset_round_trips_plural_parameters_field(tmp_path):
     )
 
 
-def test_legacy_parameters_selection_input_is_migrated_to_root_field():
-    config = EModelOptimizationScanConfig.model_validate(
-        _scan_config_data(
-            parameters_selection=ParametersSelection(
-                ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-                mechanism_regions=_somatic_assignment(),
-                base_parameters={},
-            )
-        )
-    )
-
-    assert config.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
-        IonChannelModelFromID(id_str="icm-1"),
-    )
-    assert "parameters_selection" not in config.model_dump(mode="json")
-
-
-def test_supplying_both_legacy_and_root_parameter_fields_is_rejected():
-    legacy_selection = ParametersSelection(
+def test_root_parameters_selection_payload_is_rejected():
+    data = _scan_config_data()
+    data["parameters_selection"] = ParametersSelection(
         ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        mechanism_regions=_somatic_assignment(),
         base_parameters={},
-    )
-    root_selection = EModelOptimisationParameters(
-        mechanisms=MechanismsBySectionList(
-            ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-            mechanism_regions=_somatic_assignment(),
-        ),
-        base_parameters={},
-    )
-    data = _scan_config_data(
-        parameters_selection=legacy_selection.model_dump(mode="json"),
-    )
-    data["emodel_optimisation_parameters"] = root_selection.model_dump(mode="json")
+    ).model_dump(mode="json")
 
-    with pytest.raises(ValueError, match="Use either emodel_optimisation_parameters or"):
+    with pytest.raises(ValidationError) as exc_info:
         EModelOptimizationScanConfig.model_validate(data)
+    assert any(error["loc"][0] == "parameters_selection" for error in exc_info.value.errors())
 
 
 def test_root_parameter_configuration_preserves_compiler_output():
@@ -1429,22 +1462,6 @@ def test_morphology_settings_rejects_removed_source_myelinated_override():
         )
 
 
-def test_legacy_parameters_selection_json_payload_is_migrated():
-    legacy = ParametersSelection(
-        ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-        mechanism_regions=_somatic_assignment(),
-        base_parameters={},
-    ).model_dump(mode="json")
-
-    config = EModelOptimizationScanConfig.model_validate(
-        _scan_config_data(parameters_selection=legacy)
-    )
-
-    assert config.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
-        IonChannelModelFromID(id_str="icm-1"),
-    )
-
-
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
@@ -1554,10 +1571,6 @@ def test_input_entities_resolves_nested_root_mechanism_references(monkeypatch):
     monkeypatch.setattr("obi_one.core.entity_from_id.EntityFromID.entity", fake_entity)
 
     assert config.input_entities(object()) == ["target", "morphology", "icm-1"]
-
-
-def test_legacy_migration_preserves_non_mapping_input():
-    assert EModelOptimizationScanConfig.migrate_legacy_parameters_selection(None) is None
 
 
 def test_section_list_choice_exposes_enabled_alias():

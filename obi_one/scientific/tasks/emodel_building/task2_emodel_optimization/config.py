@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Literal
 
 from bluepyemodel.preprocessing import TASK2_CONFIG_CONTRACT_VERSION
 from bluepyemodel.preprocessing.distributions import resolve_distance_dependent_distribution
@@ -17,6 +17,7 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    AXON_REPLACEMENT_SPEC_URL,
     CellMorphologyInput,
     DistanceDependentDistributionUnion,
     EModelOptimisationParameters,
@@ -177,26 +178,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         TaskActivityType.emodel_optimization__config_generation
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_legacy_parameters_selection(cls, data: Any) -> Any:
-        """Accept the old root field and normalize it to the new representation."""
-        if not isinstance(data, dict):
-            return data
-        values = dict(data)
-        legacy = values.pop("parameters_selection", None)
-        if legacy is None:
-            return values
-        if "emodel_optimisation_parameters" in values:
-            msg = "Use either emodel_optimisation_parameters or parameters_selection, not both."
-            raise ValueError(msg)
-        if not isinstance(legacy, ParametersSelection):
-            legacy = ParametersSelection.model_validate(legacy)
-        values["emodel_optimisation_parameters"] = (
-            EModelOptimisationParameters.from_parameters_selection(legacy)
-        )
-        return values
-
     @property
     def parameters_selection(self) -> ParametersSelection:
         """Canonical selection used by existing runtime code."""
@@ -326,7 +307,10 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     morphology_settings: MorphologySettings = Field(
         default_factory=MorphologySettings,
         title="Morphology settings",
-        description="Axon replacement and morphology section-list behavior.",
+        description=(
+            "Axon replacement and morphology section-list behavior. See "
+            f"[axon replacement in the SONATA hoc e-model spec]({AXON_REPLACEMENT_SPEC_URL})."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETTINGS,
@@ -349,8 +333,11 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     optimization_params: OptimizationParams = Field(
         default_factory=OptimizationParams,
-        title="Optimization params",
-        description="``optimisation_params`` (offspring size).",
+        title="Optimisation parameters",
+        description=(
+            "Algorithm-specific ``optimisation_params`` (CMA sigma, IBEA probabilities, ...). "
+            "Offspring size is set in the optimization settings."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETTINGS,

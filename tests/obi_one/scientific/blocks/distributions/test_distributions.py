@@ -27,9 +27,11 @@ def _optimization_config(**overrides):
         },
         "target_efeatures": {"task_result": {"id_str": "target"}},
         "morphology": {"cell_morphology": {"id_str": "morphology"}},
-        "parameters_selection": {
-            "ion_channel_models": [{"id_str": "icm"}],
-            "mechanism_regions": {"somatic": [{"ion_channel_model": {"id_str": "icm"}}]},
+        "emodel_optimisation_parameters": {
+            "mechanisms": {
+                "ion_channel_models": [{"id_str": "icm"}],
+                "mechanism_regions": {"somatic": [{"ion_channel_model": {"id_str": "icm"}}]},
+            }
         },
     }
     config_data.update(overrides)
