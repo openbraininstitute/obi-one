@@ -280,7 +280,7 @@ class EModelOptimizationTask(Task):
         mtype = staging.derive_mtype(self.config, db_client)
 
         # --- 1. Download extracted features ---
-        extraction_tr = self.config.initialize.target_efeatures
+        extraction_tr = self.config.target_efeatures.task_result
         staging.download_extraction_features(self.config, extraction_tr, coord_root, db_client)
 
         # --- 2. Download and preflight morphology ---
@@ -316,8 +316,8 @@ class EModelOptimizationTask(Task):
 
         # --- 7. Run optimisation / plot / export / calibration / validation ---
         etype_entity = init.etype.entity(db_client=db_client)
-        species_entity, brain_region_entity = self.config.initialize.morphology.metadata_entities(
-            db_client=db_client
+        species_entity, brain_region_entity = (
+            self.config.morphology.cell_morphology.metadata_entities(db_client=db_client)
         )
         pipeline_results = run_optimization_pipeline(
             config=self.config,

@@ -23,6 +23,7 @@ from bluepyemodel.preprocessing.schemas import (
     SectionListChoice,
     SectionListDefinition,
 )
+from pydantic import ValidationError
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.schema import UIElement
@@ -75,9 +76,9 @@ def _scan_config_data(**overrides):
         "initialize": {
             "emodel": "test",
             "etype": {"id_str": "etype"},
-            "target_efeatures": {"id_str": "target"},
-            "morphology": {"id_str": "morphology"},
         },
+        "target_efeatures": {"task_result": {"id_str": "target"}},
+        "morphology": {"cell_morphology": {"id_str": "morphology"}},
         "emodel_optimisation_parameters": {
             "mechanisms": {
                 "ion_channel_models": [{"id_str": "icm-1"}],
@@ -85,14 +86,7 @@ def _scan_config_data(**overrides):
             }
         },
     }
-    legacy = overrides.pop("parameters_selection", None)
-    canonical = overrides.pop("emodel_optimisation_parameters", None)
     config_data.update(overrides)
-    if canonical is not None:
-        config_data["emodel_optimisation_parameters"] = canonical
-    if legacy is not None:
-        config_data.pop("emodel_optimisation_parameters", None)
-        config_data["parameters_selection"] = legacy
     return config_data
 
 
@@ -173,7 +167,6 @@ def _compiler_fixture():
         distance_dependent_distributions={
             "uniform": UniformDistanceDependentDistribution(),
             "decay": CustomDistanceDependentDistribution(
-                name="decay",
                 function="math.exp({distance}*{constant})*{value}",
                 parameters=["constant"],
             ),
@@ -195,10 +188,12 @@ def test_parameter_selection_round_trips_and_serializes_axon_settings():
     config = EModelOptimizationScanConfig.model_validate(
         _scan_config_data(
             morphology_settings={"axon_modifier": "none"},
-            parameters_selection=ParametersSelection(
-                ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-                mechanism_regions=_somatic_assignment(),
-                base_parameters={},
+            emodel_optimisation_parameters=EModelOptimisationParameters.from_parameters_selection(
+                ParametersSelection(
+                    ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                    mechanism_regions=_somatic_assignment(),
+                    base_parameters={},
+                )
             ),
         )
     )
@@ -260,14 +255,26 @@ def test_schema_groups_match_figma_navigation():
 
     assert properties["info"]["group"] == "Setup"
     assert properties["initialize"]["group"] == "Setup"
-    assert initialize_schema["target_efeatures"]["title"] == "Target EFeatures"
-    assert initialize_schema["target_efeatures"]["ui_element"] == UIElement.TASK_RESULT_SELECTOR
-    assert (
-        initialize_schema["target_efeatures"]["task_result_type"] == "efeature_extraction__result"
-    )
-    assert "entity_query" not in initialize_schema["target_efeatures"]
-    assert initialize_schema["morphology"]["title"] == "Cell morphology"
-    assert initialize_schema["morphology"]["entity_query"] == {"type": "cell_morphology"}
+    assert set(initialize_schema) == {"type", "emodel", "etype"}
+    inputs = {
+        name: prop["group_order"]
+        for name, prop in properties.items()
+        if prop.get("group") == "Inputs"
+    }
+    assert inputs == {
+        "target_efeatures": 0,
+        "morphology": 1,
+        "emodel_optimisation_parameters": 2,
+        "distance_dependent_distributions": 3,
+    }
+    target_schema = schema["$defs"]["TargetEFeaturesInput"]["properties"]["task_result"]
+    morphology_schema = schema["$defs"]["CellMorphologyInput"]["properties"]["cell_morphology"]
+    assert properties["target_efeatures"]["title"] == "Target e-features"
+    assert properties["morphology"]["title"] == "Cell morphology"
+    assert target_schema["ui_element"] == UIElement.TASK_RESULT_SELECTOR
+    assert target_schema["task_result_type"] == "efeature_extraction__result"
+    assert "entity_query" not in target_schema
+    assert morphology_schema["entity_query"] == {"type": "cell_morphology"}
     assert properties["emodel_optimisation_parameters"]["group"] == "Inputs"
     assert properties["emodel_optimisation_parameters"]["title"] == "Mechanisms"
     assert properties["emodel_optimisation_parameters"]["ui_element"] == (
@@ -283,7 +290,10 @@ def test_schema_groups_match_figma_navigation():
     assert global_parameter_schema["ion_channel_model"]["entity_query"] == {
         "type": "ion_channel_model"
     }
-    assert properties["distance_dependent_distributions"]["group"] == "Inputs"
+    distributions = properties["distance_dependent_distributions"]
+    assert distributions["title"] == "Distance-dependent distributions"
+    assert distributions["singular_name"] == "Distance-dependent distribution"
+    assert len(distributions["additionalProperties"]["oneOf"]) == 10
     assert properties["morphology_settings"]["group"] == "Settings"
     assert properties["morphology_settings"]["title"] == "Morphology settings"
     assert properties["optimization_settings"]["group"] == "Settings"
@@ -358,7 +368,9 @@ def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 morphology_settings={"axon_modifier": "replace_axon_legacy"},
-                parameters_selection=stale_selection,
+                emodel_optimisation_parameters=(
+                    EModelOptimisationParameters.from_parameters_selection(stale_selection)
+                ),
             )
         )
 
@@ -374,6 +386,7 @@ def test_recipe_contains_multiloc_map_without_all_alias():
 def test_optimization_settings_serialize_bluepyemodel_recipe_fields():
     settings = OptimizationSettings(
         optimiser="MO-CMA",
+        offspring_size=20,
         optimisation_checkpoint_period=30.0,
         use_stagnation_criterion=False,
         threshold_efeature_std=0.2,
@@ -399,7 +412,7 @@ def test_optimization_settings_serialize_bluepyemodel_recipe_fields():
             relative_amp=False,
         ),
     )
-    params = OptimizationParams(offspring_size=20, sigma=0.3, weight_hv=0.7)
+    params = OptimizationParams(sigma=0.3, weight_hv=0.7)
 
     recipe_settings = settings.to_dict(params)
 
@@ -430,11 +443,70 @@ def test_optimization_params_reject_incompatible_algorithm_fields():
         OptimizationParams(weight_hv=0.5).to_dict("SO-CMA")
 
 
-def test_optimization_params_reject_single_member_cma_population():
+def test_optimization_settings_reject_single_member_cma_population():
     with pytest.raises(ValueError, match="at least 2"):
-        OptimizationParams(offspring_size=1).to_dict("SO-CMA")
+        OptimizationSettings(optimiser="SO-CMA", offspring_size=1)
     with pytest.raises(ValueError, match="at least 2"):
-        OptimizationParams(offspring_size=[1, 20]).to_dict("MO-CMA")
+        OptimizationSettings(optimiser="MO-CMA", offspring_size=[1, 20])
+    assert OptimizationSettings(optimiser="IBEA", offspring_size=1).offspring_size == 1
+
+
+def test_offspring_size_field_follows_max_ngen():
+    fields = list(OptimizationSettings.model_fields)
+    assert fields.index("offspring_size") == fields.index("max_ngen") + 1
+    assert "offspring_size" not in OptimizationParams.model_fields
+
+
+def test_offspring_size_under_optimization_params_is_rejected():
+    with pytest.raises(ValidationError) as exc_info:
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(optimization_params={"offspring_size": 7})
+        )
+    assert any(
+        error["loc"][:2] == ("optimization_params", "offspring_size")
+        for error in exc_info.value.errors()
+    )
+    with pytest.raises(ValueError, match="at least 2"):
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(optimization_settings={"offspring_size": 1})
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_efeatures", None),
+        ("target_efeatures", {}),
+        ("target_efeatures", {"task_result": "not-an-object"}),
+        ("morphology", None),
+        ("morphology", {}),
+        ("morphology", {"cell_morphology": "not-an-object"}),
+    ],
+)
+def test_inputs_reject_missing_or_wrong_values_at_new_field_path(field, value):
+    data = _scan_config_data()
+    if value is None:
+        data.pop(field)
+    else:
+        data[field] = value
+    with pytest.raises(ValidationError) as exc_info:
+        EModelOptimizationScanConfig.model_validate(data)
+    assert any(error["loc"][0] == field for error in exc_info.value.errors())
+
+
+def test_inputs_reject_values_at_legacy_initialize_path():
+    data = _scan_config_data()
+    data["initialize"] = {
+        **data["initialize"],
+        "target_efeatures": data.pop("target_efeatures"),
+        "morphology": data.pop("morphology"),
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        EModelOptimizationScanConfig.model_validate(data)
+    locs = {error["loc"] for error in exc_info.value.errors()}
+    assert ("target_efeatures",) in locs
+    assert ("morphology",) in locs
+    assert ("initialize", "target_efeatures") in locs
 
 
 @pytest.mark.parametrize(
@@ -491,7 +563,8 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
             return "1  soma  0 0 0 1 -1\\n"
 
     config = SimpleNamespace(
-        initialize=SimpleNamespace(emodel="test", morphology=FakeMorphology()),
+        initialize=SimpleNamespace(emodel="test"),
+        morphology=SimpleNamespace(cell_morphology=FakeMorphology()),
     )
 
     features_path = staging.download_extraction_features(
@@ -589,7 +662,6 @@ def test_global_parameters_default_is_validated_into_blocks():
 def test_distance_dependent_distribution_rejects_undeclared_placeholders():
     with pytest.raises(ValueError, match="undeclared placeholders"):
         CustomDistanceDependentDistribution(
-            name="custom",
             function="{value}+{distance}+{typo}",
         )
 
@@ -885,7 +957,6 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
     data["distance_dependent_distributions"] = {
         "decay": {
             "type": "CustomDistanceDependentDistribution",
-            "name": "decay",
             "function": "math.exp({distance}*{constant})*{value}",
             "parameters": ["constant"],
         }
@@ -1258,42 +1329,17 @@ def test_single_config_asset_round_trips_plural_parameters_field(tmp_path):
     )
 
 
-def test_legacy_parameters_selection_input_is_migrated_to_root_field():
-    config = EModelOptimizationScanConfig.model_validate(
-        _scan_config_data(
-            parameters_selection=ParametersSelection(
-                ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-                mechanism_regions=_somatic_assignment(),
-                base_parameters={},
-            )
-        )
-    )
-
-    assert config.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
-        IonChannelModelFromID(id_str="icm-1"),
-    )
-    assert "parameters_selection" not in config.model_dump(mode="json")
-
-
-def test_supplying_both_legacy_and_root_parameter_fields_is_rejected():
-    legacy_selection = ParametersSelection(
+def test_root_parameters_selection_payload_is_rejected():
+    data = _scan_config_data()
+    data["parameters_selection"] = ParametersSelection(
         ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        mechanism_regions=_somatic_assignment(),
         base_parameters={},
-    )
-    root_selection = EModelOptimisationParameters(
-        mechanisms=MechanismsBySectionList(
-            ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-            mechanism_regions=_somatic_assignment(),
-        ),
-        base_parameters={},
-    )
-    data = _scan_config_data(
-        parameters_selection=legacy_selection.model_dump(mode="json"),
-    )
-    data["emodel_optimisation_parameters"] = root_selection.model_dump(mode="json")
+    ).model_dump(mode="json")
 
-    with pytest.raises(ValueError, match="Use either emodel_optimisation_parameters or"):
+    with pytest.raises(ValidationError) as exc_info:
         EModelOptimizationScanConfig.model_validate(data)
+    assert any(error["loc"][0] == "parameters_selection" for error in exc_info.value.errors())
 
 
 def test_root_parameter_configuration_preserves_compiler_output():
@@ -1416,22 +1462,6 @@ def test_morphology_settings_rejects_removed_source_myelinated_override():
         )
 
 
-def test_legacy_parameters_selection_json_payload_is_migrated():
-    legacy = ParametersSelection(
-        ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
-        mechanism_regions=_somatic_assignment(),
-        base_parameters={},
-    ).model_dump(mode="json")
-
-    config = EModelOptimizationScanConfig.model_validate(
-        _scan_config_data(parameters_selection=legacy)
-    )
-
-    assert config.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
-        IonChannelModelFromID(id_str="icm-1"),
-    )
-
-
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
@@ -1543,10 +1573,6 @@ def test_input_entities_resolves_nested_root_mechanism_references(monkeypatch):
     assert config.input_entities(object()) == ["target", "morphology", "icm-1"]
 
 
-def test_legacy_migration_preserves_non_mapping_input():
-    assert EModelOptimizationScanConfig.migrate_legacy_parameters_selection(None) is None
-
-
 def test_section_list_choice_exposes_enabled_alias():
     assert DEFAULT_SECTION_LIST_CATALOG.choice("somatic").enabled
 
@@ -1571,7 +1597,7 @@ def test_stage_traces_returns_only_derivation_trace_ids():
 def test_derive_mtype_uses_first_label_and_handles_empty_mtypes():
     morphology_entity = SimpleNamespace(mtypes=[SimpleNamespace(pref_label="L5_TTPC")])
     morphology = SimpleNamespace(entity=lambda **_: morphology_entity)
-    config = SimpleNamespace(initialize=SimpleNamespace(morphology=morphology))
+    config = SimpleNamespace(morphology=SimpleNamespace(cell_morphology=morphology))
 
     assert staging.derive_mtype(config, object()) == "L5_TTPC"
 
@@ -1625,9 +1651,9 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(pref_label="cADpyr")))
     config = SimpleNamespace(
         coordinate_output_root=tmp_path,
-        initialize=SimpleNamespace(
-            emodel="test", etype=etype, target_efeatures=object(), morphology=morphology
-        ),
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        target_efeatures=SimpleNamespace(task_result=object()),
+        morphology=SimpleNamespace(cell_morphology=morphology),
         morphology_settings=SimpleNamespace(axon_modifier="none"),
         parameters_selection=SimpleNamespace(ion_channel_model_references=()),
         optimization_settings=SimpleNamespace(seed=7),
@@ -1808,3 +1834,54 @@ def test_default_section_list_catalog_is_the_canonical_catalog():
         "somatic",
         "axonal",
     )
+
+
+def test_distribution_dictionary_accepts_standard_entries_keyed_by_fixed_name():
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "Uniform 1": {"type": "UniformDistanceDependentDistribution"},
+                "Step 1": {"type": "StepDistanceDependentDistribution"},
+                "decay": {
+                    "type": "CustomDistanceDependentDistribution",
+                    "function": "math.exp({distance}*-0.01)*{value}",
+                },
+            }
+        )
+    )
+    # Standard entries are forwarded under their fixed name; custom ones under their key.
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert set(bpem) == {"uniform", "step", "decay"}
+
+
+def test_standard_distribution_settings_reach_bluepyemodel():
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "Exp 1": {
+                    "type": "ExponentialDistanceDependentDistribution",
+                    "soma_ref_location": 0.0,
+                },
+                "Step 1": {
+                    "type": "StepDistanceDependentDistribution",
+                    "soma_ref_location": 0.25,
+                },
+            }
+        )
+    )
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert bpem["exp"].soma_ref_location == pytest.approx(0.0)
+    assert bpem["step"].soma_ref_location == pytest.approx(0.25)
+    assert bpem["step"].to_emc_dict()["name"] == "step"
+
+
+def test_distribution_dictionary_rejects_duplicate_names():
+    with pytest.raises(ValueError, match=r"declared more than once: \['exp'\]"):
+        EModelOptimizationScanConfig.model_validate(
+            _scan_config_data(
+                distance_dependent_distributions={
+                    "a": {"type": "ExponentialDistanceDependentDistribution"},
+                    "b": {"type": "ExponentialDistanceDependentDistribution"},
+                }
+            )
+        )

@@ -29,6 +29,8 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 OTHER_ARRAY_ID = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed"
+# LFP recordings need CoreNEURON.
+CORENEURON = {"simulator": "CORENEURON"}
 
 
 def _lfp_recording(array_id):
@@ -207,7 +209,7 @@ class TestRecordingArrayLinks:
     def test_the_simulation_is_linked_to_the_array_it_records_with(
         self, circuit_config, tmp_path, db_client
     ):
-        config = circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)})
+        config = circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}, initialize=CORENEURON)
 
         generate(config, tmp_path, db_client=db_client)
 
@@ -222,7 +224,8 @@ class TestRecordingArrayLinks:
                 "ProbeA": _lfp_recording(ARRAY_ID),
                 "ProbeB": _lfp_recording(ARRAY_ID),
                 "ProbeC": _lfp_recording(OTHER_ARRAY_ID),
-            }
+            },
+            initialize=CORENEURON,
         )
 
         generate(config, tmp_path, db_client=db_client)
@@ -243,7 +246,7 @@ class TestRecordingArrayLinks:
     ):
         """The SONATA config is the completion marker, so the entity is complete before it."""
         generate(
-            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}),
+            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}, initialize=CORENEURON),
             tmp_path,
             db_client=db_client,
         )
@@ -261,7 +264,7 @@ class TestRecordingArrayLinks:
     ):
         """FakeDBClient has no download methods, so any attempt would fail this test."""
         result = generate(
-            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}),
+            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}, initialize=CORENEURON),
             tmp_path,
             db_client=db_client,
         )

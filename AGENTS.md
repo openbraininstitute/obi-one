@@ -124,6 +124,18 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 - Env vars for testing loaded from `.env.test-local`
 - Always run `make format` before committing test files
 
+## Enabling ScanConfigs in the UI
+
+Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui-definition.md) before working on UI-enabled ScanConfigs. The basics:
+
+- A ScanConfig becomes UI-enabled by setting `ui_enabled = True`; this turns on schema validation in CI (`make test-schema`), and only configs that comply with the spec can be integrated into the UI. Each field declares a `ui_element` in its `json_schema_extra`.
+- There is a strict 1-1 mapping between the JSONSchema a field produces (and therefore its Pydantic annotation) and its `ui_element` string. The frontend renders and reads each `ui_element` from a fixed schema shape, so the validator for a `ui_element` is the contract the frontend relies on.
+- Validators live in the locked `tests/ui_schema/validators/` package (block elements) and `tests/ui_schema/validators/root/` (root elements), one module per `ui_element`. `registry.py` is the single place a validator is registered (the `__init__.py` files re-export nothing; import a validator from its own module). The CI guard (`guard-validators` in `.github/workflows/run-tests.yml`) blocks MODIFIED or DELETED files under the folder; ADDED validator files and the guard-exempt `registry.py` are allowed.
+- If adding a `ui_element` (or changing a field's annotation) breaks validation, do NOT change the existing validators to make it pass. Loosening a validator effectively rewrites the spec the frontend depends on and risks breaking the frontend for every other config using that element.
+- Instead, add a NEW `ui_element`: document it in `gui-definition.md`, add a validator module for it under `tests/ui_schema/validators/`, and register it in `registry.py`. This needs no label (a new file is an addition, not an edit to a locked validator). Even functionally similar elements must have unique `ui_element` identifiers if their schema shapes differ.
+- If a user insists on modifying an existing validator instead of adding a new element, explain why that shouldn't be done (it rewrites the frontend contract and risks breaking the frontend) and propose the alternative: write a new `ui_element`.
+- Under very rare circumstances (this has not happened so far) there may be a genuine need to modify or delete an existing validator. Only then is the `change-validators` label required: point it out explicitly, explain that it requires explicit approval from the frontend team, and instruct the user to add the `change-validators` label to the GitHub PR so a reviewer can sign off.
+
 ## Documentation
 
 - In Markdown files (`README.md`, `docs/`, `AGENTS.md`, etc.), do not hard wrap lines at a fixed width. Write each paragraph or list item on one line; a line break is allowed only at the end of a sentence.

@@ -38,8 +38,9 @@ VALID_FITTING_CONFIG = {
     },
 }
 
-# Minimal valid Task-2 config: only info, initialize and emodel_optimisation_parameters are
-# required; morphology_settings / optimization_settings / optimization_params all default.
+# Minimal valid Task-2 config: only info, initialize, target_efeatures, morphology and
+# emodel_optimisation_parameters are required; morphology_settings / optimization_settings /
+# optimization_params all default.
 # The entity UUIDs are stored, not resolved — resolution happens during generation.
 VALID_OPTIMIZATION_CONFIG = {
     "info": {
@@ -49,9 +50,9 @@ VALID_OPTIMIZATION_CONFIG = {
     "initialize": {
         "emodel": "L5PC",
         "etype": {"id_str": "00000000-0000-0000-0000-000000000000"},
-        "target_efeatures": {"id_str": "11111111-1111-1111-1111-111111111111"},
-        "morphology": {"id_str": "22222222-2222-2222-2222-222222222222"},
     },
+    "target_efeatures": {"task_result": {"id_str": "11111111-1111-1111-1111-111111111111"}},
+    "morphology": {"cell_morphology": {"id_str": "22222222-2222-2222-2222-222222222222"}},
     "emodel_optimisation_parameters": {
         "mechanisms": {
             "ion_channel_models": [{"id_str": "33333333-3333-3333-3333-333333333333"}],
@@ -114,12 +115,39 @@ def test_valid_optimization_config_parses():
 
 
 @requires_emodel_extra
-def test_optimization_config_rejects_incomplete_initialize():
-    """All four `initialize` fields are required; dropping one must fail at parse time."""
-    initialize = {
-        k: v for k, v in VALID_OPTIMIZATION_CONFIG["initialize"].items() if k != "target_efeatures"
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_efeatures", None),
+        ("target_efeatures", {}),
+        ("target_efeatures", {"task_result": "not-an-object"}),
+        ("morphology", None),
+        ("morphology", {}),
+        ("morphology", {"cell_morphology": "not-an-object"}),
+    ],
+)
+def test_optimization_config_rejects_bad_inputs_at_new_path(field, value):
+    """Missing or malformed inputs fail at their top-level field path."""
+    bad = {k: v for k, v in VALID_OPTIMIZATION_CONFIG.items() if k != field}
+    if value is not None:
+        bad[field] = value
+
+    with pytest.raises(ValidationError) as exc_info:
+        SharedStatePartial(emodel_optimization_config=bad)
+    assert any(
+        error["loc"][:2] == ("emodel_optimization_config", field)
+        for error in exc_info.value.errors()
+    )
+
+
+@requires_emodel_extra
+@pytest.mark.parametrize("field", ["target_efeatures", "morphology"])
+def test_optimization_config_rejects_inputs_under_initialize(field):
+    bad = {k: v for k, v in VALID_OPTIMIZATION_CONFIG.items() if k != field}
+    bad["initialize"] = {
+        **VALID_OPTIMIZATION_CONFIG["initialize"],
+        field: VALID_OPTIMIZATION_CONFIG[field],
     }
-    bad = {**VALID_OPTIMIZATION_CONFIG, "initialize": initialize}
 
     with pytest.raises(ValidationError):
         SharedStatePartial(emodel_optimization_config=bad)
