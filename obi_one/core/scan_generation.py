@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import entitysdk
+from entitysdk.models.activity import Activity
 from pydantic import PrivateAttr, SerializeAsAny, ValidationError, field_validator
 
 from obi_one.core.block import Block
@@ -48,6 +49,7 @@ class ScanGenerationTask(Task, abc.ABC):
         return v
 
     _single_configs: list[SingleConfigMixin] = PrivateAttr(default=[])
+    _campaign_generation: Activity | None = PrivateAttr(default=None)
 
     @property
     def output_root_absolute(self) -> Path:
@@ -192,7 +194,7 @@ class ScanGenerationTask(Task, abc.ABC):
                 raise ValidationError(e) from e
 
         # Return single_configs
-        return single_configs
+        return single_configs  # ty:ignore[invalid-return-type]
 
     def serialize(self, output_path: Path) -> dict:
         """Serialize a Scan object.
@@ -281,7 +283,35 @@ class ScanGenerationTask(Task, abc.ABC):
         # Create the campaign generation entity
         if db_client and hasattr(self.form, "create_campaign_generation_entity"):
             single_entities = [sc.single_entity for sc in self._single_configs]
-            self.form.create_campaign_generation_entity(single_entities, db_client=db_client)  # ty:ignore[invalid-argument-type]
+            self._campaign_generation = self.form.create_campaign_generation_entity(
+                single_entities,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
+            )
+
+    def delete_registered_entities(self, db_client: entitysdk.client.Client) -> None:
+        """Delete what execute() registered in the database, to take back a failed generation.
+
+        The generation activity goes first and the campaign last, since each refers to the ones
+        after it. Every deletion is attempted even when one fails; the failures are raised
+        together at the end.
+        """
+        registered = [
+            self._campaign_generation,
+            *reversed([single_config.single_entity for single_config in self._single_configs]),
+            self.form.campaign,
+        ]
+        failures = []
+        for entity in registered:
+            if entity is None:
+                continue
+            try:
+                db_client.delete_entity(entity_id=entity.id, entity_type=type(entity))
+            except Exception as e:  # ruff: ignore[blind-except]
+                failures.append(f"{type(entity).__name__} {entity.id}: {e}")
+
+        if failures:
+            msg = f"Could not delete {len(failures)} registered entities: {'; '.join(failures)}"
+            raise OBIONEError(msg)
 
 
 class GridScanGenerationTask(ScanGenerationTask):
@@ -308,13 +338,13 @@ class GridScanGenerationTask(ScanGenerationTask):
             self._coordinate_parameters = []
             for scan_params in product(*single_values_by_multi_value):
                 self._coordinate_parameters.append(
-                    SingleCoordinateScanParams(scan_params=scan_params)  # ty:ignore[invalid-argument-type]
+                    SingleCoordinateScanParams(scan_params=scan_params)
                 )
 
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
                 )
             ]
 
@@ -363,7 +393,7 @@ class CoupledScanGenerationTask(ScanGenerationTask):
         else:
             self._coordinate_parameters = [
                 SingleCoordinateScanParams(
-                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath  # ty:ignore[invalid-argument-type]
+                    nested_coordinate_subpath_str=self.form.single_coord_scan_default_subpath
                 )
             ]
 

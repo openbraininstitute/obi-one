@@ -6,16 +6,21 @@
 """
 
 import copy
+import gc
 import json
 import math
+import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import bluepysnap
 import brian2.units
+import h5py
 import libsonata
 import numpy as np
 import numpy.testing as npt
 import pytest
+from brian2.utils.logger import catch_logs
 
 import obi_one.scientific.library.simulation.brian2.simulate_brian2 as test_module
 
@@ -182,8 +187,10 @@ def test_spike_replay(tmp_path):
         assert not spikes[i].any()
 
 
-def test_poisson(tmp_path):
-    config = {
+def _poisson_config(node_set, rate=10000):
+    # at dt = 0.1 ms, a rate of 10 kHz kicks every targeted neuron on every step, so the spike
+    # times do not depend on how the random stream is drawn
+    return {
         "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
@@ -192,31 +199,74 @@ def test_poisson(tmp_path):
             "poisson": {
                 "input_type": "spikes",
                 "module": "poisson",
-                "node_set": "0",
+                "node_set": node_set,
                 "delay": 0.0,
                 "duration": 1000,
-                "rate": 1000,
+                "rate": rate,
                 "weight": 1000,
             }
         },
     }
+
+
+def test_poisson(tmp_path):
+    config = _poisson_config("0")
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
-    assert len(spikes[0]) == 1
-    assert spikes[0] == [0.2] * brian2.units.ms
+    # the kick at t=0 takes the neuron over threshold, which is detected on the next step
+    npt.assert_allclose(spikes[0][0] / brian2.units.ms, 0.1)
 
     # delay the onset of poisson stim
     config["inputs"]["poisson"]["delay"] = 0.1
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
-    assert len(spikes[0]) == 1
-    assert spikes[0] == [0.2 + 0.1] * brian2.units.ms
+    npt.assert_allclose(spikes[0][0] / brian2.units.ms, 0.1 + 0.1)
 
-    # have duration too short to spike, delay reminas 0.1
-    config["inputs"]["poisson"]["duration"] = 0.1
+    # stop the stim before the neuron could spike a second time
+    config["inputs"]["poisson"]["delay"] = 0.0
+    config["inputs"]["poisson"]["duration"] = 0.3
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+    assert spikes[0] == [0.1] * brian2.units.ms
+
+    # have duration too short to kick at all
+    config["inputs"]["poisson"]["duration"] = 0.0
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
+
+
+def test_poisson_non_contiguous_node_set(tmp_path):
+    """A node set spanning several id ranges gets one Poisson source per neuron, wired to it."""
+    node_sets_path = tmp_path / "node_sets.json"
+    node_sets_path.write_text(json.dumps({"ends": {"population": "drosophila", "node_id": [0, 2]}}))
+    config = _poisson_config("ends") | {"node_sets_file": str(node_sets_path)}
+
+    _, net = _run_simulation(tmp_path, config)
+    spikes = dict(net.spike_monitor.spike_trains().items())
+
+    # 0 and 2 are kicked directly; 1 is not, so it can only fire later, from their synapses
+    npt.assert_allclose([spikes[0][0] / brian2.units.ms, spikes[2][0] / brian2.units.ms], 0.1)
+    assert all(t > 0.1 * brian2.units.ms for t in spikes[1])
+
+    (poisson,) = {e.func for e in net.events if isinstance(e.func, test_module.InputPoisson)}
+    sources, kicks = poisson._inputs
+    assert len(sources) == 2
+    npt.assert_array_equal(kicks.i[:], [0, 1])
+    npt.assert_array_equal(kicks.j[:], [0, 2])
+
+
+def test_poisson_without_duration(tmp_path):
+    """A zero-length stimulus does nothing, and leaves no unused brian2 objects to warn about."""
+    config = _poisson_config("0")
+    config["inputs"]["poisson"]["duration"] = 0.0
+
+    with catch_logs() as logs:
+        _, net = _run_simulation(tmp_path, config)
+        gc.collect()  # brian2 warns about unused objects when they are collected
+
+    assert not net.spike_monitor.num_spikes
+    assert not [message for _, _, message in logs if "never included in a network" in message]
 
 
 def test_poisson_compartment_set_unsupported(tmp_path):
@@ -537,6 +587,70 @@ def test_current_stim_report(tmp_path):
     npt.assert_allclose(soma1["drosophila", 0], soma0["drosophila", 0])
 
 
+@pytest.mark.parametrize(
+    ("start_time", "end_time", "first_frame", "frame_count"),
+    [
+        (0.0, 2.0, 0, 20),  # the whole run
+        (0.5, 1.5, 5, 10),  # a window inside the run used to get a frame at `end_time` as well
+        (0.3, 0.7, 3, 4),  # 0.3 / 0.1 == 2.9999999999999996, which floor() put a frame early
+        (1.0, 5.0, 10, 10),  # a window running past tstop ends with the run
+    ],
+)
+def test_time_window_report(tmp_path, start_time, end_time, first_frame, frame_count):
+    """A window holds (end - start) / dt frames, each the full report's frame at that time.
+
+    SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
+    so an extra frame at `end` is dropped by it but not by a reader of the raw dataset.
+    """
+    dt = 0.1
+    config = {
+        "run": {"tstop": 2, "dt": dt, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 3000,
+                "delay": 0.1,
+                "duration": 4,
+                "node_set": "0",
+            }
+        },
+        "reports": {
+            name: {
+                "sections": "soma",
+                "type": "compartment",
+                "variable_name": "v",
+                "unit": "mV",
+                "dt": dt,
+                "start_time": start,
+                "end_time": end,
+            }
+            for name, start, end in (("full", 0, 2), ("window", start_time, end_time))
+        },
+    }
+    simulation, _ = _run_simulation(tmp_path, config)
+
+    path = simulation.to_libsonata.report("window").file_name
+    with h5py.File(path) as h5:
+        assert h5["report/drosophila/data"].shape == (frame_count, 3)
+        npt.assert_allclose(
+            h5["report/drosophila/mapping/time"][:],
+            [first_frame * dt, (first_frame + frame_count) * dt, dt],
+        )
+
+    window = libsonata.ElementReportReader(path)["drosophila"].get()
+    npt.assert_allclose(window.times, (first_frame + np.arange(frame_count)) * dt)
+
+    full = libsonata.ElementReportReader(simulation.to_libsonata.report("full").file_name)
+    full = full["drosophila"].get()
+    npt.assert_array_equal(
+        np.asarray(window.data), np.asarray(full.data)[first_frame : first_frame + frame_count]
+    )
+
+
 def test_current_stim_report_failure(tmp_path):
     config: dict = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
@@ -657,6 +771,140 @@ def test_connection_override_mid_simulation(tmp_path):
     assert not any(t > delay for t in spikes[2])
 
 
+def test_connection_override_reconnect_restores_circuit(tmp_path):
+    disconnect, reconnect = 1.5, 3.0
+    config = {
+        # long enough after `reconnect` for 1 & 2 to recharge from rest, where they leak to
+        "run": {"tstop": 8, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            "linear": {
+                "input_type": "current_clamp",
+                "module": "linear",
+                "amp_start": 12000000000,
+                "delay": 0,
+                "duration": 8,
+                "node_set": "0",
+            },
+        },
+        "connection_overrides": [
+            {"name": "Cut", "source": "0", "target": "All", "delay": disconnect, "weight": 0.0},
+            {"name": "Restore", "source": "0", "target": "All", "delay": reconnect, "weight": 1.0},
+        ],
+    }
+    net = _run_simulation(tmp_path, config)[1]
+    spikes = dict(net.spike_monitor.spike_trains().items())
+
+    disconnect *= brian2.units.ms
+    reconnect *= brian2.units.ms
+    for i in (1, 2):
+        assert any(t < disconnect for t in spikes[i])
+        assert not any(disconnect < t <= reconnect for t in spikes[i])
+        # A weight of 1 restores the circuit's own 250 mV, not 1 mV
+        assert any(t > reconnect for t in spikes[i])
+
+    npt.assert_allclose(net.synapses.w[:] / brian2.units.mV, 250)
+
+
+def test_connection_override_weight_scales_circuit_weights(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": "Halve", "source": "0", "target": "All", "delay": 0.0, "weight": 0.5},
+            # scales the circuit's weights again, rather than the already halved ones
+            {"name": "HalveAgain", "source": "0", "target": "All", "delay": 1.0, "weight": 0.5},
+        ],
+    }
+    net = _run_simulation(tmp_path, config)[1]
+
+    weights = np.asarray(net.synapses.w[:] / brian2.units.mV)
+    from_0 = np.asarray(net.synapses.i[:]) == 0
+    npt.assert_allclose(weights[from_0], 125)
+    npt.assert_allclose(weights[~from_0], 250)
+
+
+def _replay_input(path, delay):
+    return {
+        "input_type": "spikes",
+        "module": "synapse_replay",
+        "delay": delay,
+        "duration": 400.0,
+        "spike_file": str(path),
+        "node_set": "All",
+    }
+
+
+def test_connection_override_reaches_spike_replay(tmp_path):
+    timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1])
+    path = test_module._write_spikes(
+        tmp_path / "spikes.h5",
+        population_name="drosophila",
+        timestamps=timestamps,
+        node_ids=np.array([0] * len(timestamps)),
+    )
+    reconnect = 1.5
+    config = {
+        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            # replayed while 0 is disconnected...
+            "early": _replay_input(path, delay=0.0),
+            # ...and again once it is reconnected
+            "late": _replay_input(path, delay=1.9),
+        },
+        "connection_overrides": [
+            {"name": "Cut", "source": "0", "target": "All", "delay": 0.0, "weight": 0.0},
+            {"name": "Restore", "source": "0", "target": "All", "delay": reconnect, "weight": 1.0},
+        ],
+    }
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+
+    assert len(spikes[0]) == 0
+    # The early replay never reaches 1 & 2, so the late one finds them exactly as
+    # `test_spike_replay` does when its only replay is delayed by 1.9
+    npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
+    assert spikes[1] == spikes[2]
+
+
+def test_connection_override_changes_only_the_replayed_edges_it_selects(tmp_path):
+    path = test_module._write_spikes(
+        tmp_path / "spikes.h5",
+        population_name="drosophila",
+        timestamps=np.array([1.0]),
+        node_ids=np.array([0]),
+    )
+    # `sugar` is 0 and 1, so of the replayed edges 0 -> 1 and 0 -> 2 only 0 -> 1 is selected
+    sugar = {"source": "sugar", "target": "sugar"}
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {"replay": _replay_input(path, delay=0.0)},
+        "connection_overrides": [
+            {"name": "Halve", **sugar, "delay": 0.0, "weight": 0.5},
+            # scales the circuit's weights again, rather than the already halved ones
+            {"name": "HalveAgain", **sugar, "delay": 1.0, "weight": 0.5},
+            {"name": "Slow", **sugar, "delay": 0.0, "synapse_delay_override": 2.0},
+        ],
+    }
+    (replay,) = _run_simulation(tmp_path, config)[1].replay_synapses
+
+    targets = np.asarray(replay.synapses.j[:])
+    weights = np.asarray(replay.synapses.w[:] / brian2.units.mV)
+    delays = np.asarray(replay.synapses.delay[:] / brian2.units.ms)
+    npt.assert_allclose(weights[targets == 1], 125)
+    npt.assert_allclose(weights[targets == 2], 250)
+    npt.assert_allclose(delays[targets == 1], 2.0)
+    npt.assert_allclose(delays[targets == 2], 0.0)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
@@ -678,3 +926,50 @@ def test_connection_override_unsupported(tmp_path, field, value):
     }
     with pytest.raises(RuntimeError, match=f"connection_overrides::{field} is not supported"):
         _run_simulation(tmp_path, config)
+
+
+PROGRESS_LINE = re.compile(r"\[t=\s*([\d.]+)\] Completed\s*(\d+)% ETA: \d+:\d\d:\d\d")
+
+
+def test_simulation_progress(monkeypatch, capsys):
+    wall_clock = iter([0.0, 0.0, 30.0, 31.0, 32.0, 33.5, 34.0])
+    monkeypatch.setattr(test_module, "time", SimpleNamespace(monotonic=lambda: next(wall_clock)))
+    progress = test_module.SimulationProgress(tstop=100.0, period=2.0)
+    ms, s = brian2.units.ms, brian2.units.second
+
+    progress(0 * s, 0.0, 0 * ms, 0 * ms)  # nothing simulated yet...
+    progress(0 * s, 0.0, 0 * ms, 50 * ms)  # ...and 30 s compiling are left out of the ETA
+    progress(0 * s, 0.5, 0 * ms, 50 * ms)
+    progress(0 * s, 1.0, 0 * ms, 50 * ms)  # within `period` of the previous line
+    progress(0 * s, 0.2, 50 * ms, 50 * ms)  # a second run, starting where the first ended
+    progress(0 * s, 1.0, 50 * ms, 50 * ms)  # the end is always reported
+
+    assert capsys.readouterr().out.splitlines() == [
+        "[t=25.00] Completed 25% ETA: 0:00:03",
+        "[t=60.00] Completed 60% ETA: 0:00:02",
+        "[t=100.00] Completed 100% ETA: 0:00:00",
+    ]
+
+
+def test_progress_spans_runs_split_by_events(tmp_path, monkeypatch, capsys):
+    """The override splits the simulation in two runs; progress is of the whole simulation."""
+    monkeypatch.setattr(test_module, "PROGRESS_REPORT_PERIOD_SECONDS", 0.0)
+    config = {
+        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": "Disconnect0", "source": "0", "target": "All", "delay": 1.5, "weight": 0.0}
+        ],
+    }
+    _run_simulation(tmp_path, config)
+
+    lines = capsys.readouterr().out.splitlines()
+    matches = [PROGRESS_LINE.fullmatch(line) for line in lines]
+    assert all(matches), lines
+    times = [float(m[1]) for m in matches]
+    assert times == sorted(times)
+    assert any(t < 1.5 for t in times)
+    assert any(t > 1.5 for t in times)
+    assert all(abs(int(m[2]) - t * 100 / 4) <= 0.5 for m, t in zip(matches, times, strict=True))
+    assert lines[-1] == "[t= 4.00] Completed 100% ETA: 0:00:00"

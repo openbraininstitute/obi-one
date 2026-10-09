@@ -8,8 +8,12 @@ from uuid import UUID
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
 
-from obi_one.db_sdk.registration.circuit.assets import register_asset
-from obi_one.db_sdk.registration.circuit.generate import generate_additional_circuit_assets
+from obi_one.db_sdk.registration.circuit.assets import register_sonata_circuit_asset
+from obi_one.db_sdk.registration.circuit.generate import (
+    generate_additional_circuit_assets,
+    generate_overview_image_asset,
+    generate_sim_designer_image_asset,
+)
 from obi_one.db_sdk.registration.circuit.links import (
     register_contributions,
     register_derivation,
@@ -171,7 +175,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     skip_additional_assets: bool = False,
     skip_validation: bool = False,
     include_compressed: bool = True,
-    include_visualization: bool = True,
+    include_overview_images: bool = True,
     lifecycle_status: types.EntityLifecycleStatus | str | None = None,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
@@ -240,7 +244,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         include_compressed: When generating additional assets, also produce the
             compressed circuit archive. Set False when the circuit folder is staged
             as symlinks (circuit customization).
-        include_visualization: When generating additional assets, also produce plots
+        include_overview_images: When generating additional assets, also produce plots
             and overview / sim-designer images. Set False for post-validation jobs that
             only need compressed + connectivity matrices.
         lifecycle_status: Optional lifecycle status (e.g. ``"draft"`` for async
@@ -429,10 +433,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         )
 
     # Register SONATA circuit folder asset
-    register_asset(
+    register_sonata_circuit_asset(
         client=client,
         file_path=circuit_folder,
-        asset_label="sonata_circuit",
         registered_circuit=registered_circuit,
         dry_run=dry_run,
     )
@@ -449,8 +452,31 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             client=client,
             circuit_entity=registered_circuit,
             include_compressed=include_compressed,
-            include_visualization=include_visualization,
+            include_overview_images=include_overview_images,
         )
+    elif not dry_run and (overview_image_path is not None or sim_designer_image_path is not None):
+        # Generated assets are deferred to the post-validation job, but a user-uploaded image is
+        # attached right away so it is present before that job runs (which then skips any image
+        # already present rather than overwriting the user's). Only the provided image(s) are
+        # registered here - no plots, matrices, or figures are generated.
+        config_path = Path(circuit_path)
+        viz_dir = config_path.parents[1] / (config_path.parent.name + "__CIRCUIT_VIZ__")
+        if overview_image_path is not None:
+            generate_overview_image_asset(
+                plot_dir=None,
+                output_dir=viz_dir,
+                image_path=Path(overview_image_path),
+                client=client,
+                circuit_entity=registered_circuit,
+            )
+        if sim_designer_image_path is not None:
+            generate_sim_designer_image_asset(
+                plot_dir=None,
+                output_dir=viz_dir,
+                image_path=Path(sim_designer_image_path),
+                client=client,
+                circuit_entity=registered_circuit,
+            )
 
     if neurodamus_validation and not dry_run and registered_circuit is not None:
         result = run_circuit_validation(
@@ -478,7 +504,7 @@ def register_circuit_from_metadata(
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
-    include_visualization: bool = True,
+    include_overview_images: bool = True,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
     dry_run: bool = False,
@@ -504,7 +530,7 @@ def register_circuit_from_metadata(
         publications: Raw publications dict (DOI -> {type}).
             Will be resolved via get_publications(). Optional.
         authorized_public: Whether to make the circuit publicly accessible.
-        include_visualization: When generating additional assets, also produce plots
+        include_overview_images: When generating additional assets, also produce plots
             and overview / sim-designer images. Defaults to True.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
             If provided, generation is skipped and this file is registered directly (optional).
@@ -560,7 +586,7 @@ def register_circuit_from_metadata(
         contributions=contribution_dict,
         publications=publication_dict,
         authorized_public=authorized_public,
-        include_visualization=include_visualization,
+        include_overview_images=include_overview_images,
         overview_image_path=overview_image_path,
         sim_designer_image_path=sim_designer_image_path,
         dry_run=dry_run,

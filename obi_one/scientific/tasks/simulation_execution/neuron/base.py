@@ -87,7 +87,7 @@ class SimulationExecutionTask(Task):
 
         with log_timing("compile_mechanisms"):
             mechanism_build = compile_mechanisms(
-                mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+                mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
                 output_dir=staged_circuit.directory.resolve(),
                 simulation_backend=self.simulation_backend,
             )
@@ -127,6 +127,7 @@ class SimulationExecutionTask(Task):
                     simulation_id=simulation_metadata.simulation_id,
                     spike_report_file=simulation_results.spike_report_file,
                     voltage_report_files=simulation_results.voltage_report_files,
+                    lfp_report_files=simulation_results.lfp_report_files,
                     name="Simulation result",
                     description="Simulation result",
                 )

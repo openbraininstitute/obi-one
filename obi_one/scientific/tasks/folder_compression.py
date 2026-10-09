@@ -93,7 +93,13 @@ class FolderCompressionTask(Task):
             or Path(self.config.initialize.folder_path.path).name  # ty:ignore[unresolved-attribute]
         )
 
-        with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:  # ty:ignore[no-matching-overload]
+        # dereference=True follows symlinks and archives the files they point to, rather
+        # than the links themselves. Circuits staged by the launch-system are symlinks into
+        # the mounted EFS asset store, so without this the archive would contain only dangling
+        # links once extracted elsewhere.
+        with tarfile.open(  # ty:ignore[no-matching-overload]
+            output_file, f"w:{self.config.initialize.file_format}", dereference=True
+        ) as tar:
             tar.add(
                 self.config.initialize.folder_path.path,  # ty:ignore[unresolved-attribute]
                 arcname=archive_name,

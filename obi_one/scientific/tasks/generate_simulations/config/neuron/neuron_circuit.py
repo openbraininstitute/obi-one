@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
@@ -43,6 +43,10 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
     CircuitNeuronalManipulationReference,
     CircuitNeuronalManipulationUnion,
+)
+from obi_one.scientific.unions_and_references.recordings import (
+    CircuitRecordingUnion,
+    RecordingReference,
 )
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,
@@ -100,7 +104,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
             title="Neuron Set",
             description="Neuron set to simulate.",
@@ -108,6 +112,24 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
+            },
+        )
+        simulator: Literal["NEURON", "CORENEURON"] = Field(
+            default="NEURON",
+            title="Simulator",
+            description=(
+                "Simulator to run the simulation with. LFP recordings need CoreNEURON, and "
+                "electric field stimuli need NEURON."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
+                SchemaKey.TITLE_BY_KEY: {"NEURON": "NEURON", "CORENEURON": "CoreNEURON"},
+                SchemaKey.DESCRIPTION_BY_KEY: {
+                    "NEURON": "Supports electric field stimuli, but not LFP recordings.",
+                    "CORENEURON": (
+                        "Required for LFP recordings, but cannot apply electric field stimuli."
+                    ),
+                },
             },
         )
 
@@ -159,6 +181,18 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
+    recordings: dict[str, CircuitRecordingUnion] = Field(
+        default_factory=dict,
+        description="Recordings for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Recording",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
     distributions: dict[str, AllDistributionsUnion] = Field(
         default_factory=dict,
         title="Distributions",
@@ -172,7 +206,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -205,6 +239,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
         sonata_config = super().base_sonata_config(sonata_config)
+        sonata_config["target_simulator"] = self.initialize.simulator
 
         sonata_config["conditions"]["extracellular_calcium"] = (
             self.initialize.extracellular_calcium_concentration

@@ -1,24 +1,39 @@
 import json
 import logging
+import os
 import tempfile
 import typing
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Literal
 
+import bluepysnap as snap
+import libsonata
+import matplotlib.pyplot as plt
 import numpy as np
-from entitysdk import Client
+from entitysdk import Client, models
 from entitysdk.models import Entity, SimulatableExtracellularRecordingArray
 from entitysdk.types import AssetLabel, ContentType, ElectrodeType
 from pydantic import Field, PrivateAttr
 
+from obi_one.config import settings
 from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.extracellular_locations import (
+    extracellular_locations_block_dictionary_summary,
+    plot_extracellular_arrays,
+)
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
+from obi_one.scientific.tasks.create_recording_array.process import (
+    get_number_of_mpi_processes,
+    run_bluerecording_write_weights,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
@@ -26,8 +41,15 @@ from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
 )
+from obi_one.types import SimulationBackend
+from obi_one.utils.benchmark import BenchmarkTracker
 
 L = logging.getLogger(__name__)
+
+if settings.extracellular_recording_weights.benchmarking_enabled:
+    BenchmarkTracker.enable()
+else:
+    BenchmarkTracker.disable()
 
 
 class BlockGroup(StrEnum):
@@ -125,12 +147,67 @@ class CreateExtracellularRecordingArraySingleConfig(
     """Description."""
 
 
+def _write_electrode_json(
+    electrode_locations: dict,
+    calculation_method: str,
+    output_path: Path,
+) -> Path:  # pragma: no cover
+    """Write electrode positions to a JSON file for the bluerecording CLI.
+
+    Builds global positions from each block's ``get_global_electrode_xyz_locations()``
+    and writes them using ``Electrode.to_json`` from bluerecording.
+
+    Args:
+        electrode_locations: Dict of electrode location blocks (name -> block).
+        calculation_method: One of "PointSource", "LineSource", "ObjectiveCSD".
+        output_path: Path to write the JSON file.
+
+    Returns:
+        The output path.
+    """
+    from bluerecording.electrodes import (  # ruff: ignore[import-outside-top-level] # ty:ignore[unresolved-import]
+        Electrode,
+        ElectrodeType,
+    )
+
+    electrodes = [
+        Electrode(
+            name=f"{block_name}_electrode_{i}",
+            position=np.array([x, y, z], dtype=float),
+            type=ElectrodeType(calculation_method),
+        )
+        for block_name, block in electrode_locations.items()
+        for i, (x, y, z) in enumerate(block.get_global_electrode_xyz_locations())
+    ]
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    Electrode.to_json(electrodes, str(output_path))
+
+    L.info("Wrote %d electrodes to %s", len(electrodes), output_path)
+    return output_path
+
+
+def _plot_electrode_array(
+    sonata_circuit: snap.Circuit,
+    electrode_locations: dict[str, ExtracellularLocationsUnion],
+    image_path: Path,
+) -> None:
+    """Plot the configured electrode array relative to the circuit's somas and save the image."""
+    figure = plot_extracellular_arrays(sonata_circuit, electrode_locations)
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(image_path, dpi=150, bbox_inches="tight")
+    plt.close(figure)
+    L.info("Saved electrode-array plot to: %s", image_path)
+
+
 class CreateExtracellularRecordingArrayTask(Task):
     """Task to create an extracellular recording array."""
 
     config: CreateExtracellularRecordingArraySingleConfig
 
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
+    _circuit: Circuit | None = PrivateAttr(default=None)
+    _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
 
     def _create_temp_dir(self) -> Path:
         """Creation of a new temporary directory."""
@@ -152,84 +229,72 @@ class CreateExtracellularRecordingArrayTask(Task):
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
         """Run the task."""
-        _ = CreateExtracellularRecordingArrayTask._get_execution_activity(
-            db_client=db_client, execution_activity_id=execution_activity_id
-        )
-
         execution_activity = CreateExtracellularRecordingArrayTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
-        self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
-            self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
-            db_client=db_client,
-            entity_cache=entity_cache,
-            cache_root=self.config.scan_output_root,
-            temp_dir=self._create_temp_dir(),
-        )
+        BenchmarkTracker.start_tracking()
 
-        # Plot the configured electrode array relative to the circuit's somas and save the image.
-        import matplotlib.pyplot as plt  # ruff: ignore[import-outside-top-level]
-
-        from obi_one.scientific.library.extracellular_locations import (  # ruff: ignore[import-outside-top-level]
-            extracellular_locations_block_dictionary_summary,
-            plot_extracellular_arrays,
-        )
-
-        figure = plot_extracellular_arrays(
-            self._circuit.sonata_circuit, self.config.electrode_locations
-        )
-        image_path = self.config.coordinate_output_root / "electrode_array.png"
-        image_path.parent.mkdir(parents=True, exist_ok=True)
-        figure.savefig(image_path, dpi=150, bbox_inches="tight")
-        plt.close(figure)
-        L.info("Saved electrode-array plot to: %s", image_path)
-
-        # Use BlueRecording to generate a weights file for the circuit and test locations
-        # Using the value of self.config.initialize.calculation_method
-        from bluerecording import (  # ruff: ignore[import-outside-top-level]  # ty:ignore[unresolved-import]
-            compute_weights,
-        )
-        from bluerecording.weights import (  # ruff: ignore[import-outside-top-level] # ty:ignore[unresolved-import]
-            Electrode,
-            ElectrodeType as BlueRecordingElectrodeType,
-            save_weights,
-        )
-
-        # Build the electrode array from every electrode-locations block in the dictionary, using
-        # each block's global coordinates (origin and direction applied). Electrode names are
-        # prefixed with the block name so electrodes from different blocks stay distinct.
-        electrodes = [
-            Electrode(
-                name=f"{block_name}_electrode_{i}",
-                position=np.array(loc, dtype=float),
-                type=BlueRecordingElectrodeType.POINT_SOURCE,
+        with BenchmarkTracker.section("resolve_circuit"):
+            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+                self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
+                entity_cache=entity_cache,
+                cache_root=self.config.scan_output_root,
+                temp_dir=self._create_temp_dir(),
             )
-            for block_name, locations in self.config.electrode_locations.items()
-            for i, loc in enumerate(locations.get_global_electrode_xyz_locations())
-        ]
+
+        image_path = self.config.coordinate_output_root / "electrode_array.png"
+        _plot_electrode_array(
+            self._circuit.sonata_circuit, self.config.electrode_locations, image_path
+        )
 
         circuit_config_path = Path(self._circuit.path)
-        weights, positions_df, cols, neurite_types, population_name = compute_weights(
-            path_to_config=circuit_config_path,
-            electrodes=electrodes,
-            replace_axons=True,
-        )
-        L.info("weights shape: %s", weights.shape if weights is not None else None)
-        L.info("positions_df shape: %s", positions_df.shape)
-        L.info("cols shape: %s", cols.shape)
-        L.info("neurite_types shape: %s", neurite_types.shape)
-        L.info("population_name: %s", population_name)
+        circuit_config = libsonata.CircuitConfig.from_file(circuit_config_path)
+        mechanisms_dirs = {
+            Path(d)
+            for pop in circuit_config.node_populations
+            if (d := circuit_config.node_population_properties(pop).mechanisms_dir)
+        }
 
-        weights_output_path = self.config.coordinate_output_root / "weights.h5"
-        save_weights(
-            weights=weights,
-            cols=cols,
-            population_name=population_name,
-            outputfile=str(weights_output_path),
-            electrodes=electrodes,
-            neurite_types=neurite_types,
+        if mechanisms_dirs or (circuit_config_path.parent / "mod").exists():
+            if (circuit_config_path.parent / "mod").exists():
+                mechanisms_dirs = [circuit_config_path.parent / "mod"]
+
+            mods_dir = self.config.coordinate_output_root / "compiled_mods"
+            mods_dir.mkdir(exist_ok=True, parents=True)
+            with BenchmarkTracker.section("compile_mechanisms"):
+                nrnmech_lib_path = compile_mechanisms(
+                    output_dir=mods_dir,
+                    mechanisms_dirs=list(mechanisms_dirs),
+                    simulation_backend=SimulationBackend.neurodamus,
+                ).libnrnmech_path
+        else:
+            # fallback to neocortex if no mod file locations specified
+            nrnmech_lib_path = Path("/opt/obi/neocortex/x86_64/libnrnmech.so")
+
+        electrode_json_path = _write_electrode_json(
+            self.config.electrode_locations,
+            self.config.initialize.calculation_method,
+            self.config.coordinate_output_root / "electrodes.json",
         )
+        weights_output_path = self.config.coordinate_output_root / "weights.h5"
+        # A launch-system job runs a process on each of its CPUs. A local run plans as many as
+        # the resource estimate would ask for.
+        job_cpus = os.environ.get("JOB_CPUS")
+        number_of_mpi_processes = (
+            int(job_cpus)
+            if job_cpus
+            else get_number_of_mpi_processes(self._circuit_entity.number_neurons)  # ty:ignore[unresolved-attribute]
+        )
+        with BenchmarkTracker.section("write_weights"):
+            run_bluerecording_write_weights(
+                circuit_config_path,
+                electrode_json_path,
+                weights_output_path,
+                nrnmech_lib_path=nrnmech_lib_path.absolute(),
+                number_of_mpi_processes=number_of_mpi_processes,
+            )
         L.info("Weights saved to: %s", weights_output_path)
 
         entity = SimulatableExtracellularRecordingArray(
@@ -249,35 +314,36 @@ class CreateExtracellularRecordingArrayTask(Task):
             file_content_type=ContentType.image_png,
             asset_label=AssetLabel.electrode_array_image,
         )
-
-        # Write the electrode locations + each block's properties to a JSON asset.
-        locations_path = self.config.coordinate_output_root / "electrode_locations.json"
-        with locations_path.open("w") as locations_file:
-            json.dump(
-                extracellular_locations_block_dictionary_summary(self.config.electrode_locations),
-                locations_file,
-                indent=2,
-            )
-        db_client.upload_file(
+        db_client.upload_content(
             entity_id=entity.id,
             entity_type=SimulatableExtracellularRecordingArray,
-            file_path=locations_path,
+            file_content=json.dumps(
+                extracellular_locations_block_dictionary_summary(self.config.electrode_locations),
+                indent=2,
+            ).encode(),
+            file_name="electrode_locations.json",
             file_content_type=ContentType.application_json,
             asset_label=AssetLabel.electrode_locations,
         )
+
         L.info("Uploaded electrode locations to recording array %s.", entity.id)
 
-        _ = db_client.upload_file(
-            entity_id=entity.id,
-            entity_type=SimulatableExtracellularRecordingArray,
-            file_path=weights_output_path,
-            file_content_type=ContentType.application_x_hdf5,
-            asset_label=AssetLabel.electrode_array_weight_matrix,
-        )
+        with BenchmarkTracker.section("upload_weights"):
+            db_client.upload_file(
+                entity_id=entity.id,
+                entity_type=SimulatableExtracellularRecordingArray,
+                file_path=weights_output_path,
+                file_content_type=ContentType.application_x_hdf5,
+                asset_label=AssetLabel.electrode_array_weight_matrix,
+            )
 
-        # Update execution activity (if any)
         CreateExtracellularRecordingArrayTask._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
             generated=[str(entity.id)],
         )
+
+        benchmark_dir = self.config.coordinate_output_root.parent / (
+            self.config.coordinate_output_root.name + "__BENCHMARK__"
+        )
+        BenchmarkTracker.print_summary(output_path=benchmark_dir / "benchmark_results.json")

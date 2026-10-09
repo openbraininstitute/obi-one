@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from http import HTTPStatus
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
@@ -12,6 +13,7 @@ from obp_accounting_sdk.constants import ServiceSubtype
 from app.application import app
 from app.config import settings
 from app.dependencies.compute_cell import get_compute_cell
+from app.errors import ApiError, ApiErrorCode
 from app.mappings import OBI_ONE_CODE_PATH, OBI_ONE_DEPS_DIR, TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
@@ -141,6 +143,54 @@ def test_task_launch_success(
         assert resp.status_code == 500
 
         accounting_session.finish.assert_called_once_with(exc_type=RuntimeError)
+
+
+def test_task_launch_refused_by_resource_estimation(client, monkeypatch):
+    """An estimator's ApiError reaches the client as it is, before any credits are reserved."""
+    task_type = TaskType.circuit_synaptic_physiology_assignment
+    config_id = uuid4()
+    task_accounting_info = TaskAccountingInfo(
+        cost=1.0,
+        config_id=config_id,
+        parameters=AccountingParameters(count=1, service_subtype=ServiceSubtype.SMALL_SIM),
+        task_type=task_type,
+    )
+    refusal = ApiError(
+        message="Synapse parameterization is not supported for circuits of scale 'microcircuit'.",
+        error_code=ApiErrorCode.INVALID_REQUEST,
+        http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+    )
+    monkeypatch.setitem(app.dependency_overrides, get_compute_cell, lambda: "cell_a")
+    with (
+        patch(
+            "app.services.accounting.estimate_task_cost",
+            return_value=task_accounting_info,
+            autospec=True,
+        ),
+        patch(
+            "app.services.task.estimate_task_resources",
+            side_effect=refusal,
+            autospec=True,
+        ),
+        patch(
+            "app.services.accounting.make_task_reservation",
+            autospec=True,
+        ) as patched_reservation,
+        patch(
+            "app.services.task.submit_task_job",
+            autospec=True,
+        ) as patched_task_job,
+    ):
+        resp = client.post(
+            url="/declared/task/launch",
+            json={"task_type": task_type, "config_id": str(config_id)},
+        )
+
+    assert resp.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert resp.json()["error_code"] == ApiErrorCode.INVALID_REQUEST
+    assert resp.json()["message"] == refusal.message
+    patched_reservation.assert_not_called()
+    patched_task_job.assert_not_called()
 
 
 def _simulation_config(target_simulator: str):
@@ -614,7 +664,7 @@ def test_task_launch_success__circuit_simulation(
                     "location": "https://github.com/openbraininstitute/obi-one.git",
                     "ref": release_tag_ref(settings.APP_VERSION),
                     "path": OBI_ONE_CODE_PATH,
-                    "dependencies": str(OBI_ONE_DEPS_DIR / "default.txt"),
+                    "dependencies": str(OBI_ONE_DEPS_DIR / "neurodamus_simulation.txt"),
                     "capabilities": {"private_packages": False, "env_secrets": []},
                     "staged_directories": [],
                 },

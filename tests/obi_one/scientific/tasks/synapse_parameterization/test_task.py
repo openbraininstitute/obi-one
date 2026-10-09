@@ -423,3 +423,68 @@ def test_fill_is_idempotent_after_a_reload_and_refill():
     reloaded.fill_none_references()
 
     assert reloaded.model_dump(mode="json") == after_first
+
+
+def _inter_set_config_with_source(circuit, source_set, source_ref_dict):
+    """A scan config with one virtual/biophysical source set and an inter-set assigner.
+
+    ``source_ref_dict`` is injected verbatim as the assigner's ``source_neuron_set`` (mimicking
+    a stored config), so the reference ``type`` carried on reload can be asserted.
+    """
+    config = obi.SynapseParameterizationScanConfig.empty_config()
+    config.set(obi.Info(campaign_name="T", campaign_description="d"), name="info")
+    config.set(config.Initialize(circuit=circuit), name="initialize")
+    config.add(source_set, "Ext20-50")
+
+    dumped = config.model_dump(mode="json")
+    dumped["synapse_model_assigners"] = {
+        "a": {
+            "type": "InterNeuronSetSynapticModelAssigner",
+            "edge_population_name": EDGE_POPULATION_NAME,
+            "source_neuron_set": source_ref_dict,
+        }
+    }
+    return obi.SynapseParameterizationScanConfig.model_validate(dumped)
+
+
+def test_reference_type_healed_for_virtual_source_neuron_set():
+    """A source_neuron_set pointing at a virtual set resolves to VirtualNeuronSetReference.
+
+    The frontend omits ``type`` and Pydantic stamps the first union member
+    (BiophysicalNeuronSetReference); stored configs may even carry that wrong ``type``. The
+    reference type must be re-derived from the referenced block's actual (virtual) variant.
+    """
+    circuit = _local_circuit()
+    virtual = obi.VirtualPopulationIDNeuronSet(
+        population="VPM", neuron_ids=obi.NamedTuple(name="s", elements=[0, 1, 2])
+    )
+    # Stored config carries the WRONG type - it must be healed on load.
+    wrong_ref = {
+        "block_dict_name": "neuron_sets",
+        "block_name": "Ext20-50",
+        "type": "BiophysicalNeuronSetReference",
+    }
+    config = _inter_set_config_with_source(circuit, virtual, wrong_ref)
+
+    ref = config.synapse_model_assigners["a"].source_neuron_set
+    assert ref.type == "VirtualNeuronSetReference"
+    # The serialized coordinate config carries the corrected type too.
+    dumped = config.model_dump(mode="json")
+    assert dumped["synapse_model_assigners"]["a"]["source_neuron_set"]["type"] == (
+        "VirtualNeuronSetReference"
+    )
+
+
+def test_reference_type_preserved_for_biophysical_source_neuron_set():
+    """A source_neuron_set pointing at a biophysical set stays BiophysicalNeuronSetReference."""
+    circuit = _local_circuit()
+    biophysical = obi.BiophysicalPopulationIDNeuronSet(
+        population="S1nonbarrel_neurons", neuron_ids=obi.NamedTuple(name="s", elements=[0, 1])
+    )
+    # Type-less reference, as the frontend sends it.
+    ref_dict = {"block_dict_name": "neuron_sets", "block_name": "Ext20-50"}
+    config = _inter_set_config_with_source(circuit, biophysical, ref_dict)
+
+    assert config.synapse_model_assigners["a"].source_neuron_set.type == (
+        "BiophysicalNeuronSetReference"
+    )

@@ -113,6 +113,7 @@ config = CircuitSimulationSingleConfig(
 - **random_seed**: Random seed for reproducibility
 - **timestep**: Simulation time step in ms (default: 0.025 ms)
 - **spike_location**: Location for spike detection - "soma" or "AIS" (default: "soma")
+- **simulator**: `NEURON` (default) or `CORENEURON`, written to the SONATA config's `target_simulator`. LFP recordings need CoreNEURON, and electric field stimuli need NEURON.
 
 ### Neuron Sets
 
@@ -181,7 +182,47 @@ Recordings capture network activity:
 
 - **SomaVoltageRecording**: Voltage traces from soma
 - **TimeWindowSomaVoltageRecording**: Voltage within specific time windows
+- **ExtracellularElectrodeArrayRecordingBlock**: Extracellular signal (LFP) per electrode
 - **Spike detection**: Automatic spike detection and recording
+
+#### ExtracellularElectrodeArrayRecordingBlock
+
+Records the extracellular signal seen by each electrode of a recording array. Only available for circuit simulations, since the signal is computed from a weight matrix covering the whole circuit, and only offered for circuits larger than a small microcircuit: the circuit's `ShowExtracellularRecordings` usability flag is false at single, pair and small scale, which greys the block out.
+
+- **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built for the circuit being simulated by `CreateExtracellularRecordingArrayTask`. Generation refuses an array built for another circuit.
+- **Neuron Set**: Neurons contributing to the signal
+- **Timestep**: Interval between recorded samples in ms
+
+The block emits a SONATA report of type `lfp` whose `electrodes_file` is named after the array, `<array id>.h5`, and generation links the array to the Simulation entity through its `recording_arrays`:
+
+```json
+"reports": {
+  "LFPRecording": {
+    "cells": "AllBiophysical",
+    "type": "lfp",
+    "sections": "all",
+    "unit": "V",
+    "dt": 0.1,
+    "start_time": 0.0,
+    "end_time": 100.0,
+    "electrodes_file": "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44.h5"
+  }
+}
+```
+
+Nothing is downloaded at generation. The weight matrix (the array's `electrode_array_weight_matrix` asset) holds a weight per electrode for every segment of the circuit, so it can be large, and generation has no use for it. It is fetched when the simulation is run: entitysdk's `stage_simulation` downloads the matrix of every array linked to the Simulation, identifies which report each belongs to by the file name, and rewrites `electrodes_file` to point at the staged copy. That is why the file is named after the array and not after the report: `stage_simulation` reads the array's id back out of the name to match each report to an array linked to the Simulation, so any other name fails staging.
+
+The signal the simulation records is registered on its SimulationResult as an `lfp_report` asset, apart from the voltage reports: the run reads the simulation config to tell which of its output files are lfp reports.
+
+LFP reports always record the membrane current (`i_membrane`), so unlike compartment reports they take no `variable_name`.
+
+LFP recordings need CoreNEURON, since neurodamus computes LFP reports only under CoreNEURON, as the SONATA spec also requires. A simulation with one must choose `CORENEURON` as its simulator in the Initialize block, and generation refuses an LFP recording under `NEURON` rather than switching simulator behind the user's back. Both simulators run through the same launch tasks.
+
+Report names and targets keep their whitespace, such as the web app's `Recording 0` and the default `Default: All Biophysical Neurons`. CoreNEURON reads them from `report.conf`, a whitespace-separated file, so neurodamus replaces the whitespace there and renames each report's file back afterwards ([neurodamus#590](https://github.com/openbraininstitute/neurodamus/pull/590)). Older neurodamus versions abort on such names.
+
+Electric field stimuli need NEURON: they are applied through NEURON's `extracellular` mechanism, which CoreNEURON cannot simulate, so generation refuses them under `CORENEURON`. A simulation therefore cannot have both an LFP recording and an electric field stimulus.
+
+The weight matrix's scaling factors are in V/nA, as the SONATA spec defines them, so the recorded LFP is in volts. The report says so with `"unit": "V"`, which neurodamus passes on to label the output file. Left unset, libsonata defaults every report's unit to `mV`, and the file would claim millivolts.
 
 ## Running Simulations
 

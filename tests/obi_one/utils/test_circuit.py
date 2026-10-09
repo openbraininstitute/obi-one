@@ -4,6 +4,7 @@ import json
 import shutil
 from unittest.mock import MagicMock, patch
 
+import libsonata
 import pytest
 from entitysdk import types
 from PIL import Image
@@ -14,15 +15,18 @@ from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENA
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.utils.circuit import (
     copy_mod_files,
+    count_cells_in_simulation_node_set,
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
+    resolve_simulation_node_set_ids,
     run_basic_connectivity_plots,
     run_circuit_folder_compression,
     run_connectivity_matrix_extraction,
     run_validation,
 )
 
+from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
@@ -442,7 +446,7 @@ def _register_and_get_scale(scale_override):
 
     with (
         patch("obi_one.db_sdk.registration.circuit.register.models.Circuit", _FakeCircuitModel),
-        patch("obi_one.db_sdk.registration.circuit.register.register_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
@@ -608,3 +612,100 @@ def test_copy_mod_files_empty_source_dir(tmp_path):
 
     # Destination directory should not be created
     assert not dest_dir.exists()
+
+
+class TestNodeSetResolution:
+    """Resolve a simulation's node set to concrete IDs regardless of definition shape.
+
+    Regression tests for the ``KeyError: 'node_id'`` that occurred when a simulation
+    targeted a node set defined symbolically (by property) or as a compound reference
+    rather than as an explicit ``node_id`` list. Also covers node sets defined only in
+    the simulation's own ``node_sets_file`` (not present in the circuit).
+    """
+
+    @pytest.fixture
+    def circuit_config(self):
+        return (CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json").resolve()
+
+    def _make_simulation(self, tmp_path, circuit_config, *, node_set, extra_node_sets=None):
+        """Build a minimal SONATA simulation config over the real tiny circuit.
+
+        ``extra_node_sets`` are written to the simulation's own node_sets_file to
+        exercise simulation-level node sets that are not defined in the circuit.
+        Returns a ``libsonata.SimulationConfig``.
+        """
+        sim_node_sets = dict(extra_node_sets or {})
+        node_sets_path = tmp_path / "node_sets.json"
+        node_sets_path.write_text(json.dumps(sim_node_sets))
+
+        sim_cfg = {
+            "version": 1,
+            "network": str(circuit_config),
+            "node_sets_file": str(node_sets_path),
+            "node_set": node_set,
+            "run": {"tstop": 10.0, "dt": 0.025, "random_seed": 1},
+            "conditions": {"v_init": -65.0},
+        }
+        sim_cfg_path = tmp_path / "simulation_config.json"
+        sim_cfg_path.write_text(json.dumps(sim_cfg))
+        return libsonata.SimulationConfig.from_file(str(sim_cfg_path))
+
+    def test_count_resolved_id_node_set(self, tmp_path, circuit_config):
+        # "All" is a compound node set (list of mtypes) in the circuit.
+        sim = self._make_simulation(tmp_path, circuit_config, node_set="All")
+        assert count_cells_in_simulation_node_set(sim, "All") == 10
+
+    def test_count_compound_reference_node_set(self, tmp_path, circuit_config):
+        # "Mosaic" -> ["All"]: a compound reference to another node set.
+        sim = self._make_simulation(tmp_path, circuit_config, node_set="Mosaic")
+        assert count_cells_in_simulation_node_set(sim, "Mosaic") == 10
+
+    def test_count_symbolic_property_node_set(self, tmp_path, circuit_config):
+        # "Excitatory" -> {"synapse_class": "EXC"}: symbolic, no explicit node_id list.
+        # Previously raised KeyError: 'node_id'.
+        sim = self._make_simulation(tmp_path, circuit_config, node_set="Excitatory")
+        assert count_cells_in_simulation_node_set(sim, "Excitatory") == 9
+
+    def test_count_simulation_only_symbolic_node_set(self, tmp_path, circuit_config):
+        # A symbolic node set defined ONLY in the simulation's node_sets_file,
+        # not present in the circuit. This is the case the circuit-only resolution
+        # would have missed.
+        sim = self._make_simulation(
+            tmp_path,
+            circuit_config,
+            node_set="MySimOnlySet",
+            extra_node_sets={"MySimOnlySet": {"synapse_class": "EXC"}},
+        )
+        circuit_ns = libsonata.NodeSets.from_file(
+            libsonata.CircuitConfig.from_file(sim.network).node_sets_path
+        )
+        assert "MySimOnlySet" not in circuit_ns.names
+        assert count_cells_in_simulation_node_set(sim, "MySimOnlySet") == 9
+
+    def test_resolve_returns_ids_per_population(self, tmp_path, circuit_config):
+        sim = self._make_simulation(tmp_path, circuit_config, node_set="All")
+        resolved = resolve_simulation_node_set_ids(sim, "All")
+        assert sum(len(ids) for ids in resolved.values()) == 10
+        # Only populations in which the node set resolves are included.
+        assert all(len(ids) > 0 for ids in resolved.values())
+
+    def test_missing_node_set_raises_keyerror(self, tmp_path, circuit_config):
+        sim = self._make_simulation(tmp_path, circuit_config, node_set="All")
+        with pytest.raises(KeyError, match="Node set 'DoesNotExist' not found"):
+            count_cells_in_simulation_node_set(sim, "DoesNotExist")
+
+    def test_population_that_raises_is_skipped(self, monkeypatch):
+        # If materialize raises SonataError for a population, that population is
+        # skipped and resolution continues with the others.
+        simulation_config, node_sets, circuit_config = make_fake_resolution(
+            {"MySet": {"popA": [1, 2, 3]}},
+            node_set="MySet",
+            raising_populations=["popB"],
+        )
+        monkeypatch.setattr(
+            "obi_one.utils.circuit._merged_simulation_node_sets",
+            lambda _sim_cfg: (node_sets, circuit_config),
+        )
+        resolved = resolve_simulation_node_set_ids(simulation_config, "MySet")
+        assert resolved == {"popA": [1, 2, 3]}
+        assert count_cells_in_simulation_node_set(simulation_config, "MySet") == 3
