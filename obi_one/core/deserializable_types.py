@@ -1,83 +1,65 @@
-"""Explicit mapping of type names to their module paths.
+"""Mapping of serialized ``type`` values to the classes that implement them.
 
-Used by core/deserialize.py to resolve the concrete class for a given
-'type' field in serialized JSON without importing all scientific modules
-eagerly. All deserializable types must have an entry in this dictionary.
+Used by core/deserialize.py to resolve the concrete class for a given 'type' field in
+serialized JSON without importing all scientific modules eagerly.
 
-The key is the class name (matching the 'type' field in JSON), and the
-value is the module where that class is defined.
+Task config classes are not listed here: they are derived from the ``TaskSpec`` references
+in ``config_task_map``, so registering a task type also makes its configs deserializable.
+Only framework classes and ``__init__``/alias re-exports, which no task spec declares,
+are listed explicitly.
 """
 
-# ruff: file-ignore[line-too-long] — long lines are unavoidable in a path mapping dict
+from obi_one.core.registry import TaskSpec
+from obi_one.scientific.mappings_and_registry.config_task_map import TASK_SPECS
+from obi_one.types import TaskType
+from obi_one.utils.lazy_import import ClassRef, class_name, import_class
 
-from importlib import import_module
+SIMULATION_ALIASES = "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases"
 
-TYPE_MAP: dict[str, str] = {
-    # Core types
-    "Block": "obi_one.core.block",
-    "BlockReference": "obi_one.core.block_reference",
-    "CoupledScanGenerationTask": "obi_one.core.scan_generation",
-    "GridScanGenerationTask": "obi_one.core.scan_generation",
-    "Info": "obi_one.core.info",
-    "NamedPath": "obi_one.core.path",
-    "NamedTuple": "obi_one.core.tuple",
-    "ScanConfig": "obi_one.core.scan_config",
-    # Scan configs and single configs
-    "BasicConnectivityPlotsScanConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
-    "BasicConnectivityPlotsSingleConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
-    "MEModelSynapticModelPlacementScanConfig": "obi_one.scientific.tasks.build_synaptome",
-    "MEModelSynapticModelPlacementSingleConfig": "obi_one.scientific.tasks.build_synaptome",
-    "CircuitExtractionScanConfig": "obi_one.scientific.tasks.circuit_extraction",
-    "CircuitExtractionSingleConfig": "obi_one.scientific.tasks.circuit_extraction",
-    "CircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
-    "CircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
-    "ConnectivityMatrixExtractionScanConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
-    "ConnectivityMatrixExtractionSingleConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
-    "CreateExtracellularRecordingArrayScanConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
-    "CreateExtracellularRecordingArraySingleConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
-    "ElectrophysiologyMetricsScanConfig": "obi_one.scientific.tasks.ephys_extraction",
-    "ElectrophysiologyMetricsSingleConfig": "obi_one.scientific.tasks.ephys_extraction",
-    "EMSynapseMappingScanConfig": "obi_one.scientific.tasks.em_synapse_mapping.config",
-    "EMSynapseMappingSingleConfig": "obi_one.scientific.tasks.em_synapse_mapping.config",
-    "FolderCompressionScanConfig": "obi_one.scientific.tasks.folder_compression",
-    "FolderCompressionSingleConfig": "obi_one.scientific.tasks.folder_compression",
-    "IonChannelFittingScanConfig": "obi_one.scientific.tasks.ion_channel_modeling",
-    "IonChannelFittingSingleConfig": "obi_one.scientific.tasks.ion_channel_modeling",
-    "IonChannelModelSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models",
-    "IonChannelModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models",
-    "LearningEngineCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit",
-    "LearningEngineCircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit",
-    "MEModelSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
-    "MEModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
-    "MEModelWithSynapsesCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
-    "MEModelWithSynapsesCircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
-    "MeshLodGenerationSingleConfig": "obi_one.scientific.tasks.mesh_lod_generation.config",
-    "MorphologyContainerizationScanConfig": "obi_one.scientific.tasks.morphology_containerization",
-    "MorphologyContainerizationSingleConfig": "obi_one.scientific.tasks.morphology_containerization",
-    "MorphologyDecontainerizationScanConfig": "obi_one.scientific.tasks.morphology_decontainerization",
-    "MorphologyDecontainerizationSingleConfig": "obi_one.scientific.tasks.morphology_decontainerization",
-    "MorphologyLocationsScanConfig": "obi_one.scientific.tasks.morphology_locations",
-    "MorphologyLocationsSingleConfig": "obi_one.scientific.tasks.morphology_locations",
-    "MorphologyMetricsScanConfig": "obi_one.scientific.tasks.morphology_metrics",
-    "MorphologyMetricsSingleConfig": "obi_one.scientific.tasks.morphology_metrics",
-    "SkeletonizationScanConfig": "obi_one.scientific.tasks.skeletonization",
-    "SkeletonizationSingleConfig": "obi_one.scientific.tasks.skeletonization",
-    "SynapseParameterizationScanConfig": "obi_one.scientific.tasks.synapse_parameterization.config",
-    "SynapseParameterizationSingleConfig": "obi_one.scientific.tasks.synapse_parameterization.config",
-    # EModel optimization workflows
-    "EModelEFeatureExtractionScanConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
-    "EModelEFeatureExtractionSingleConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
-    "EModelOptimizationScanConfig": "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config",
-    "EModelOptimizationSingleConfig": "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config",
-    # __init__.py aliases (class is re-exported under this name)
-    "CoupledScan": "obi_one",
-    "GridScan": "obi_one",
-    "SimulationsForm": "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases",
-}
+CORE_TYPE_REFS: tuple[ClassRef, ...] = (
+    ("obi_one.core.block", "Block"),
+    ("obi_one.core.block_reference", "BlockReference"),
+    ("obi_one.core.scan_generation", "CoupledScanGenerationTask"),
+    ("obi_one.core.scan_generation", "GridScanGenerationTask"),
+    ("obi_one.core.info", "Info"),
+    ("obi_one.core.path", "NamedPath"),
+    ("obi_one.core.tuple", "NamedTuple"),
+    ("obi_one.core.scan_config", "ScanConfig"),
+)
+
+ALIAS_TYPE_REFS: tuple[ClassRef, ...] = (
+    ("obi_one", "CoupledScan"),
+    ("obi_one", "GridScan"),
+    (SIMULATION_ALIASES, "Simulation"),
+    (SIMULATION_ALIASES, "SimulationsForm"),
+)
+
+
+def build_type_map(
+    core_type_refs: tuple[ClassRef, ...] = CORE_TYPE_REFS,
+    alias_type_refs: tuple[ClassRef, ...] = ALIAS_TYPE_REFS,
+    task_specs: dict[TaskType, TaskSpec] = TASK_SPECS,
+) -> dict[str, ClassRef]:
+    """Index every deserializable class reference by the ``type`` value it is stored under."""
+    refs = [
+        *core_type_refs,
+        *alias_type_refs,
+        *(ref for task_spec in task_specs.values() for ref in task_spec.config_refs),
+    ]
+    type_map: dict[str, ClassRef] = {}
+    for ref in refs:
+        name = class_name(ref)
+        existing = type_map.get(name)
+        if existing is not None and existing != ref:
+            msg = f"Duplicate deserializable type {name!r}: {existing!r} and {ref!r}"
+            raise ValueError(msg)
+        type_map[name] = ref
+    return type_map
+
+
+TYPE_MAP: dict[str, ClassRef] = build_type_map()
 
 
 def load_class(type_name: str) -> type:
     """Resolve a type name to its class using TYPE_MAP and lazy import."""
-    module_path = TYPE_MAP[type_name]
-    module = import_module(module_path)
-    return getattr(module, type_name)
+    return import_class(TYPE_MAP[type_name])

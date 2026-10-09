@@ -92,9 +92,10 @@ For complex tasks, create `obi_one/scientific/tasks/<task_name>/` and split only
 
 When registering a new **`TaskType`** in the framework (not only a launch-only legacy job):
 
-- Add a `case TaskType.…` branch in `obi_one/scientific/mappings_and_registry/config_task_map.py` with the correct `TaskSpec` fields.
+- Add a `TASK_SPECS[TaskType.…] = TaskSpec(...)` entry in `obi_one/scientific/mappings_and_registry/config_task_map.py`. Classes are declared as `("package.module", "ClassName")` reference tuples and imported lazily by the spec's `task_cls` / `single_config_cls` / `scan_config_cls` properties, so do not import task modules there. Reuse the module-prefix constants at the top of the file (`TASKS`, `NEURON_CONFIG`, …). Gate tasks needing an optional dependency with `requires_package=`.
 - Set `task_type: ClassVar[TaskType] = …` on the task’s `ScanConfig` (and on execution `SingleConfig` classes when they differ from the scan type).
-- Extend `CONFIG_TASK_MAP_CASES` or `LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP` in `tests/obi_one/scientific/mappings_and_registry/test_config_task_map.py` so `test_config_task_map_cases_partition_task_type_enum` still partitions every enum member.
+- Do not add the config classes to `TYPE_MAP` in `obi_one/core/deserializable_types.py`: it is derived from `TASK_SPECS`. Only framework classes and `__init__`/alias re-exports are listed there explicitly.
+- Add the new type to `LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP` in `tests/obi_one/scientific/mappings_and_registry/test_config_task_map.py` only if it is launch-only; registered types are derived from `TASK_SPECS`, so `test_config_task_map_cases_partition_task_type_enum` keeps partitioning the enum on its own.
 
 ## entitysdk / database
 

@@ -6,8 +6,9 @@ not installed: the single guard lives in
 ``task2_emodel_optimization/__init__.py`` (``try/except ImportError`` around the
 Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
 ``scan_configs.py`` and ``tasks.py`` import from that package unconditionally and
-simply omit Task 2 when the classes are ``None``. ``config_task_map.py`` loads
-Task 2 only when ``get_task_spec_for_task_type`` is called for emodel optimization.
+simply omit Task 2 when the classes are ``None``. ``config_task_map.py`` declares Task 2
+by class path and gates it on ``requires_package="bluepyemodel"``, so it never imports
+Task 2 at all and reports the task type as unavailable when the extra is missing.
 The same applies to ``app/endpoints/ion_channel_properties.py``,
 ``app/endpoints/scan_config.py`` and ``app/endpoints/config_validation.py``,
 which import ``fetch_variable_catalog`` and ``EModelOptimizationScanConfig``
@@ -133,7 +134,7 @@ def test_tasks_union_omits_emodel_optimization_without_bluepyemodel():
 def test_config_task_map_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.mappings_and_registry.config_task_map")
 
-    assert not module.is_task_type_resolved(module.TaskType.emodel_optimization)
+    assert module.is_task_type_available(module.TaskType.emodel_optimization) is False
     with pytest.raises(KeyError, match="emodel_optimization"):
         module.get_task_spec_for_task_type(module.TaskType.emodel_optimization)
 
