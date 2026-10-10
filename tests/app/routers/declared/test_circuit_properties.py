@@ -171,6 +171,45 @@ def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch
 
 
 @pytest.mark.parametrize(
+    "scale",
+    [
+        entitysdk.types.CircuitScale.single,
+        entitysdk.types.CircuitScale.pair,
+        entitysdk.types.CircuitScale.small,
+    ],
+)
+def test_extracellular_recordings_are_disabled_up_to_small_microcircuits(scale, monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(scale),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [
+        entitysdk.types.CircuitScale.microcircuit,
+        entitysdk.types.CircuitScale.region,
+        entitysdk.types.CircuitScale.system,
+        entitysdk.types.CircuitScale.whole_brain,
+    ],
+)
+def test_extracellular_recordings_are_enabled_from_microcircuits_up(scale, monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(scale),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is True
+
+
+@pytest.mark.parametrize(
     ("scale", "expected"),
     [
         (entitysdk.types.CircuitScale.single, True),
@@ -231,6 +270,7 @@ def test_memodel_without_circuit_metrics_gets_default_usability(monkeypatch):
 
     assert "MechanismVariablesByIonChannel" not in response
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is True
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
     assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False
 
 
@@ -273,4 +313,5 @@ def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
     )
 
     assert response["usability"][CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] is False
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
     assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False

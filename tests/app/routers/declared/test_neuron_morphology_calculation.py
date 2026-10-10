@@ -13,12 +13,10 @@ from entitysdk.models import CellMorphologyProtocol
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
 from fastapi import HTTPException
 
-from app.dependencies.entitysdk import get_client
 from app.endpoints.morphology_metrics_calculation import (
     MorphologyMetadata,
     _get_h5_analysis_path,
     _prepare_entity_payload,
-    _resolve_swc_bytes_for_mesh,
     _validate_file_extension,
     register_morphology,
     run_morphology_analysis,
@@ -218,65 +216,6 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
     assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
 
 
-def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.try_generate_and_upload_mesh",
-        MagicMock(return_value=None),
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
-    )
-
-    mock_client = MagicMock()
-    mock_client.register_entity.return_value = MagicMock(id=str(uuid.uuid4()))
-    client.app.dependency_overrides[get_client] = lambda: mock_client
-
-    response = client.post(
-        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
-    )
-    assert response.status_code == 200
-    assert response.json()["mesh_asset_id"] is None
-    client.app.dependency_overrides.clear()
-
-
-def test_meshing_api_error_is_graceful(client, monkeypatch, mock_entity_payload):
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.try_generate_and_upload_mesh",
-        MagicMock(return_value=None),
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
-    )
-
-    response = client.post(
-        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
-    )
-    assert response.status_code == 200
-    assert response.json()["mesh_asset_id"] is None
-
-
-def test_meshing_success(client, monkeypatch, mock_entity_payload):
-    mesh_id = str(uuid.uuid4())
-    entity_id = str(uuid.uuid4())
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.try_generate_and_upload_mesh",
-        MagicMock(return_value=MagicMock(id=mesh_id)),
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: MagicMock(id=entity_id),
-    )
-
-    response = client.post(
-        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
-    )
-    assert response.status_code == 200
-    assert response.json()["mesh_asset_id"] == mesh_id
-
-
 def test_h5_upload_uses_original_path(client, monkeypatch):
     monkeypatch.setattr(
         "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
@@ -448,23 +387,6 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
     }
     result = register_morphology(client, payload)
     assert result is not None
-
-
-def test_resolve_swc_bytes_for_mesh_swc_converted_exists(tmp_path):
-    mock_swc = tmp_path / "mock.swc"
-    mock_swc.write_bytes(b"swc data")
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(swc=mock_swc), ".h5", b"original")
-    assert result == b"swc data"
-
-
-def test_resolve_swc_bytes_for_mesh_swc_extension():
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(), ".swc", b"original content")
-    assert result == b"original content"
-
-
-def test_resolve_swc_bytes_for_mesh_non_swc_returns_none():
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(), ".h5", b"original")
-    assert result is None
 
 
 def test_run_morphology_analysis_success(monkeypatch):

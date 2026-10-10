@@ -2,11 +2,24 @@
 
 from pathlib import Path
 
+import launch_deps_compile
 import pytest
 
 from app import mappings
 from app.schemas.task import PythonRepositoryCode
 from app.types import TaskType
+
+REPO_ROOT = Path(mappings.__file__).resolve().parents[1]
+
+
+def _obi_one_codes() -> list[PythonRepositoryCode]:
+    """Code of the task definitions pointing at the obi-one repo, whose files are checked here."""
+    return [
+        task_def.code
+        for task_def in mappings.TASK_DEFINITIONS.values()
+        if isinstance(getattr(task_def, "code", None), PythonRepositoryCode)
+        and task_def.code.location == mappings.settings.OBI_ONE_REPO
+    ]
 
 
 def test_obi_one_code_uses_app_version(monkeypatch):
@@ -34,17 +47,23 @@ def test_referenced_dependencies_files_exist():
     ``dependencies`` is relative to the checkout of ``location``, so only the
     definitions pointing at the obi-one repo can be checked here.
     """
-    repo_root = Path(mappings.__file__).resolve().parents[1]
-    codes = [getattr(task_def, "code", None) for task_def in mappings.TASK_DEFINITIONS.values()]
-    referenced = {
-        code.dependencies
-        for code in codes
-        if isinstance(code, PythonRepositoryCode)
-        and code.location == mappings.settings.OBI_ONE_REPO
-    }
+    referenced = {code.dependencies for code in _obi_one_codes()}
     assert referenced  # guard against the filter silently matching nothing
-    missing = sorted(path for path in referenced if not (repo_root / path).is_file())
+    missing = sorted(path for path in referenced if not (REPO_ROOT / path).is_file())
     assert not missing
+
+
+def test_private_packages_capability_matches_dependencies():
+    """Only tasks whose dependencies need CodeArtifact get its credentials at launch."""
+    mismatched = sorted(
+        code.dependencies
+        for code in _obi_one_codes()
+        if code.capabilities.private_packages
+        != launch_deps_compile.needs_private_index(
+            REPO_ROOT / Path(code.dependencies).with_suffix(".in")
+        )
+    )
+    assert not mismatched
 
 
 def test_build_task_definitions_rejects_duplicates():

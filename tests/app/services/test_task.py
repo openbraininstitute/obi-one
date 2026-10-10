@@ -52,6 +52,7 @@ CLUSTER_TASK_TYPES = [
 # Tasks routed to ECS Managed Instances. Everything else keeps the pre-existing
 # behaviour of running on Fargate on the AWS cell.
 MANAGED_INSTANCES_TASK_TYPES = {
+    TaskType.ion_channel_fitting,
     TaskType.ion_channel_model_simulation_execution,
     TaskType.single_neuron_simulation_execution,
     TaskType.single_neuron_synaptome_simulation_execution,
@@ -906,6 +907,37 @@ def test_estimate_task_resources_synapse_parameterization(db_client):
 
     with patch(
         "app.services.resource_estimation.synapse_parameterization.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    # estimate_task_resources returns a placement-resolved copy, so compare by value.
+    assert result == expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
+        accounting_parameters=None,
+    )
+
+
+def test_estimate_task_resources_extracellular_recording_weights(db_client):
+    """The weights calculation delegates to its own estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.extracellular_recording_weights_calculation]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.extracellular_recording_weights_calculation, config_id=uuid4()
+    )
+    expected = MachineResources(cores=8, memory=60, timelimit="02:00", compute_cell="local")
+
+    with patch(
+        "app.services.resource_estimation.extracellular_weights.estimate_task_resources",
         return_value=expected,
         autospec=True,
     ) as mock_estimate:

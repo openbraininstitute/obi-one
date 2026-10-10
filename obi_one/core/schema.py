@@ -6,6 +6,7 @@ class SchemaKey(StrEnum):
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
     DEFAULT_BLOCK_REFERENCE_LABEL = "default_block_reference_label"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
+    DEFAULT_NAME = "default_name"
     DESCRIPTION_BY_KEY = "description_by_key"
     EFEL_DOC_ANCHOR = "efel_doc_anchor"
     EFEL_DOC_BASE_URL = "efel_doc_base_url"
@@ -18,7 +19,6 @@ class SchemaKey(StrEnum):
     GROUP = "group"
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
-    LATEX_EQUATION = "latex_equation"
     SAMPLED_PARAMETER = "sampled_parameter"
     # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
     # sampled - the column it becomes. It is declared because a field's own name need not match
@@ -65,6 +65,10 @@ class SchemaKey(StrEnum):
     UI_ENABLED = "ui_enabled"
     UI_HIDDEN = "ui_hidden"
     UNITS = "units"
+    # path to a sibling field whose entity id should populate entity_query filters.
+    # Used by the frontend; e.g. "initialize.circuit" for a circuit model_identifier.
+    # A filter whose value is a list is a placeholder for that id; a plain value is static.
+    VALUE_FROM = "value_from"
 
 
 class UIElement(StrEnum):

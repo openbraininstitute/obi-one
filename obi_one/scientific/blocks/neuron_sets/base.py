@@ -9,6 +9,7 @@ from typing import ClassVar
 import bluepysnap as snap
 
 from obi_one.core.block import Block
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.circuit_metrics import (
     TYPES_OF_BIOPHYS_NODES,
@@ -87,7 +88,7 @@ class NeuronSet(Block, abc.ABC):
                 f"Circuit '{circuit.name}' does not have any node populations"
                 f" of type '{self._neuron_set_population_type}'!"
             )
-            raise ValueError(msg)
+            raise ConfigValidationError(msg)
 
         # Check neuron set populations
         missing = [f"'{p}'" for p in nset_popul_names if p not in circuit_popul_names]
@@ -98,7 +99,7 @@ class NeuronSet(Block, abc.ABC):
                 f" not found in circuit '{circuit.name}'!"
                 f" Available node populations: {', '.join(circuit_popul_names)}"
             )
-            raise ValueError(msg)
+            raise ConfigValidationError(msg)
 
     def get_population_types(self, circuit: Circuit) -> dict[str, SonataPopulationType]:
         """Returns population names and types included in the neuron set."""

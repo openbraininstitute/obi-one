@@ -11,6 +11,10 @@ class SynapseParameterizationSettings(BaseModel):
     benchmarking_enabled: bool = True
 
 
+class ExtracellularRecordingWeightsSettings(BaseModel):
+    benchmarking_enabled: bool = True
+
+
 class CaveClientConfig(BaseModel):
     microns_api_key: str = "CAVECLIENT_MICRONS_API_KEY"
     # Retry behaviour for the CAVEClient materialization engine (urllib3 Retry).
@@ -33,6 +37,10 @@ class Settings(BaseSettings):
     circuit_extraction: CircuitExtractionSettings = CircuitExtractionSettings()
 
     synapse_parameterization: SynapseParameterizationSettings = SynapseParameterizationSettings()
+
+    extracellular_recording_weights: ExtracellularRecordingWeightsSettings = (
+        ExtracellularRecordingWeightsSettings()
+    )
 
     cave_client_config: CaveClientConfig = CaveClientConfig()
 

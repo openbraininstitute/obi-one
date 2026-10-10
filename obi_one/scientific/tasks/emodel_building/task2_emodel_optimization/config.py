@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, ClassVar, Literal
+from typing import ClassVar, Literal
 
 from bluepyemodel.preprocessing import TASK2_CONFIG_CONTRACT_VERSION
 from bluepyemodel.preprocessing.distributions import resolve_distance_dependent_distribution
@@ -17,6 +17,8 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+    AXON_REPLACEMENT_SPEC_URL,
+    CellMorphologyInput,
     DistanceDependentDistributionUnion,
     EModelOptimisationParameters,
     MorphologySettings,
@@ -24,9 +26,11 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     OptimizationParams,
     OptimizationSettings,
     ParametersSelection,
+    TargetEFeaturesInput,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
     to_bpem_custom_distributions,
+    to_bpem_distributions,
 )
 
 
@@ -174,26 +178,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         TaskActivityType.emodel_optimization__config_generation
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_legacy_parameters_selection(cls, data: Any) -> Any:
-        """Accept the old root field and normalize it to the new representation."""
-        if not isinstance(data, dict):
-            return data
-        values = dict(data)
-        legacy = values.pop("parameters_selection", None)
-        if legacy is None:
-            return values
-        if "emodel_optimisation_parameters" in values:
-            msg = "Use either emodel_optimisation_parameters or parameters_selection, not both."
-            raise ValueError(msg)
-        if not isinstance(legacy, ParametersSelection):
-            legacy = ParametersSelection.model_validate(legacy)
-        values["emodel_optimisation_parameters"] = (
-            EModelOptimisationParameters.from_parameters_selection(legacy)
-        )
-        return values
-
     @property
     def parameters_selection(self) -> ParametersSelection:
         """Canonical selection used by existing runtime code."""
@@ -201,8 +185,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
-            self.initialize.target_efeatures.entity(db_client=db_client),
-            self.initialize.morphology.entity(db_client=db_client),
+            self.target_efeatures.task_result.entity(db_client=db_client),
+            self.morphology.cell_morphology.entity(db_client=db_client),
         ]
         entities.extend(
             reference.entity(db_client=db_client)
@@ -230,6 +214,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     @model_validator(mode="after")
     def validate_parameter_selection(self) -> "EModelOptimizationScanConfig":
         """Validate section-list and distribution references across sibling blocks."""
+        to_bpem_distributions(self.distance_dependent_distributions)
         _validate_section_list_availability(
             self.morphology_settings,
             self.parameters_selection,
@@ -266,6 +251,26 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     # --- Inputs ---
 
+    target_efeatures: TargetEFeaturesInput = Field(
+        title="Target e-features",
+        description="E-feature extraction result used as the optimisation target.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+
+    morphology: CellMorphologyInput = Field(
+        title="Cell morphology",
+        description="Cell morphology the e-model is optimised on.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.INPUTS,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
     emodel_optimisation_parameters: EModelOptimisationParameters = Field(
         title="Mechanisms",
         description=(
@@ -276,24 +281,24 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.EMODEL_OPTIMISATION_PARAMETERS,
             SchemaKey.GROUP: BlockGroup.INPUTS,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
 
     distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion] = Field(
         default={},
-        title="Custom distance-dependent distributions",
+        title="Distance-dependent distributions",
         description=(
-            "User-defined distance-dependent parameter transformations. The ten standard "
-            "distributions (uniform, exp, step, ...) are always selectable by name on any "
-            "parameter row without being declared here; this field only holds custom "
-            "distributions declared by the user."
+            "Distance-dependent parameter transformations: standard ones (uniform, exp, "
+            "step, ...) or custom formulas. Parameters reference standard distributions by "
+            "their fixed name, which works even if they are not added here, and custom "
+            "distributions by their key."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.INPUTS,
             SchemaKey.GROUP_ORDER: 3,
-            SchemaKey.SINGULAR_NAME: "Custom Distance-Dependent Distribution",
+            SchemaKey.SINGULAR_NAME: "Distance-dependent distribution",
         },
     )
 
@@ -302,7 +307,10 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     morphology_settings: MorphologySettings = Field(
         default_factory=MorphologySettings,
         title="Morphology settings",
-        description="Axon replacement and morphology section-list behavior.",
+        description=(
+            "Axon replacement and morphology section-list behavior. See "
+            f"[axon replacement in the SONATA hoc e-model spec]({AXON_REPLACEMENT_SPEC_URL})."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETTINGS,
@@ -325,8 +333,11 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     optimization_params: OptimizationParams = Field(
         default_factory=OptimizationParams,
-        title="Optimization params",
-        description="``optimisation_params`` (offspring size).",
+        title="Optimisation parameters",
+        description=(
+            "Algorithm-specific ``optimisation_params`` (CMA sigma, IBEA probabilities, ...). "
+            "Offspring size is set in the optimization settings."
+        ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETTINGS,

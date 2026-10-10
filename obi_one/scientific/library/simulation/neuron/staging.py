@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import libsonata
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
@@ -19,6 +20,7 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     SimulationParameters,
 )
 from obi_one.types import SimulationBackend
+from obi_one.utils.circuit import count_cells_in_simulation_node_set
 from obi_one.utils.io import load_json
 
 if TYPE_CHECKING:
@@ -112,16 +114,20 @@ def get_simulation_parameters(
     """Return simulation parameters."""
     config_data = load_json(simulation_config_file)
 
-    node_set_name = config_data.get("node_set", "All")
-    node_sets_file = simulation_config_file.parent / config_data["node_sets_file"]
+    # Resolve the node set to concrete cells via libsonata rather than reading the raw
+    # node sets file. The node set may be defined symbolically (e.g. by population,
+    # mtype or synapse_class) or as a compound reference -- in which case it has no
+    # explicit "node_id" list -- and it may live in the circuit's node sets or in the
+    # simulation's own node_sets_file. libsonata.SimulationConfig resolves the referenced
+    # circuit ("network") and manifest variables, and the circuit + simulation node sets
+    # are merged for resolution.
+    simulation_config = libsonata.SimulationConfig.from_file(str(simulation_config_file))
+    node_set_name = simulation_config.node_set
+    if not node_set_name:
+        msg = "No node set defined in the simulation config."
+        raise ValueError(msg)
+    num_cells = count_cells_in_simulation_node_set(simulation_config, node_set_name)
 
-    node_set_data = load_json(node_sets_file)
-
-    if node_set_name not in node_set_data:
-        msg = f"Node set '{node_set_name}' not found in node sets file"
-        raise KeyError(msg)
-
-    num_cells = len(node_set_data[node_set_name]["node_id"])
     tstop = config_data["run"]["tstop"]
 
     match simulation_backend:

@@ -43,10 +43,11 @@ what the runner can execute.
 
 The current injections are played into the neurons as a `TimedArray` and summed per target
 neuron set. `Brian2DirectPoissonStimulus` instead kicks the membrane potential directly, bypassing
-the circuit's synapses: every neuron in its target draws an independent Poisson train, built as one
-`brian2.PoissonInput` per contiguous range of node IDs in that target. The spike stimuli generate a
-spike file, which the runner replays through a `SpikeGeneratorGroup` wired with the circuit's *own*
-connectivity.
+the circuit's synapses: every neuron in its target draws an independent Poisson train, from a
+`brian2.PoissonGroup` with one source per targeted neuron, wired one-to-one onto it. Its cost
+follows the size of the target, not how the target's node IDs are laid out. The spike stimuli
+generate a spike file, which the runner replays through a `SpikeGeneratorGroup` wired with the
+circuit's *own* connectivity.
 
 A sinusoid has to be sampled fast enough to be represented, so
 `SimulationDtSinusoidalCurrentClampSomaticStimulus` is refused when its frequency reaches the
@@ -90,11 +91,19 @@ is Brian2-specific, so any simulator with the same constraint can use them.
 
 Only soma voltage (`variable_name: "v"`) is reported.
 
+A recording holds the samples from its start time up to, but not including, its end time, so a window from 0 to 50 ms at 0.025 ms is 2,000 frames, as SONATA readers such as libsonata expect.
+A start or end time between two samples is rounded to the nearest one, and the report's `mapping/time` gives the times of the frames actually written.
+
+Recordings are held in memory until the run ends: the runner records the union of every recording's neurons at every timestep of the simulation, and a time window only applies when a recording is written.
+Generation therefore refuses a configuration that would record more than 150,000,000 samples (recorded neurons × timesteps), which is what the Brian2 job's machine can hold alongside a whole-brain network.
+At the 0.025 ms timestep that is 3,750 neurons for a full second, or every neuron of `FlyWire-v783-Brian2-LIF` for about 27 ms.
+A recording without a neuron set records every neuron in the circuit, so on a whole-brain circuit it is refused for anything longer than that.
+
 ### Synaptic manipulations
 
 | Block | Notes |
 | --- | --- |
-| `ConnectSynapticManipulation` | Sets the weight of every synapse between two neuron sets |
+| `ConnectSynapticManipulation` | Restores the circuit's own weight of every synapse between two neuron sets |
 | `DisconnectSynapticManipulation` | Sets that weight to zero |
 
 Both become SONATA `connection_overrides`, applied part-way through the run at the timestamps the
@@ -103,11 +112,18 @@ and raises on `spont_minis`, `synapse_configure`, `modoverride` and the neuromod
 so the mechanism-specific manipulations (`SynapticMgManipulation`,
 `ScaleAcetylcholineUSESynapticManipulation`) are not offered.
 
+`weight` is a factor on each synapse's weight as the circuit defines it, not on its current value,
+so overrides never compound: a Connect (weight 1) after a Disconnect (weight 0) restores the
+circuit exactly, inhibitory signs included. `synapse_delay_override` replaces the delay outright.
+Overrides reach replayed spikes too: a spike stimulus delivers them through copies of the circuit's synapses, and an override changes each copy of the edges it selects as it changes the original.
+
 ### Neuron sets and timestamps
 
 Neuron sets are restricted to the point-neuron sets (`Brian2SimulationNeuronSetUnion`). Timestamps
 blocks are shared with the other simulation configurations and are referenced by the current
 injections and the synaptic manipulations.
+
+The FlyWire converter (`projects/drosophila/drosophila_to_brian2_sonata.py`) names the circuits' predefined node sets after annotation values, alongside `All` and `sugar`. A value found in several annotation columns, such as `descending`, gets one node set, defined by the column that selects the most neurons: `super_class` (1,299 descending neurons) rather than `cell_sub_class` (5). The other definitions are reachable with a `PointPopulationPropertyNeuronSet` filtering on that column.
 
 ## Defaults
 
@@ -122,6 +138,18 @@ the 20-neuron `sugar` set is the natural target.
 
 A Brian2 configuration also refuses, before generating anything, a circuit that does not have
 exactly one point node population, since the runner cannot build a network from it.
+
+## Progress
+
+While simulated time advances, `simulate_brian2.py` prints its progress to stdout in the same form as neurodamus, so a Brian2 job's log reads like a NEURON job's:
+
+```
+[t=250.00] Completed 25% ETA: 0:00:31
+```
+
+A line is printed at most every two seconds of wall time, and always once the simulation ends. The percentage is of the whole simulation, although the runner advances it with one `network.run` per interval between stimulus and manipulation events. The time remaining leaves out building and compiling the network, which happen before simulated time starts to move. Unlike neurodamus, each update is a line of its own rather than one redrawn with a carriage return, because the job log is read a line at a time.
+
+On FlyWire, staging, building and compiling the network take about a minute before the first of those lines. So on the platform the runner's own messages (loading the neurons and synapses, writing the spikes, registering the result) also go to stdout, as `[INFO] ...` lines, whatever the verbosity.
 
 ## Worked example
 

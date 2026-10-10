@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 import obi_one as obi
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     PointPopulationIDNeuronSet,
@@ -378,7 +378,7 @@ class TestSpikeStimuli:
         # Point the target at the virtual source, which the stimulus must refuse.
         config.stimuli["Spikes"].targeted_neuron_set = config.neuron_sets["Source"].ref
 
-        with pytest.raises(OBIONEError):
+        with pytest.raises(ConfigValidationError, match="must be biophysical or point"):
             generate(config, tmp_path)
 
 
@@ -440,7 +440,7 @@ class TestBrian2DirectPoissonStimulus:
             blocks={"DirectPoisson": Brian2DirectPoissonStimulus()},
         )
 
-        with pytest.raises(OBIONEError, match="needs exactly one point node population"):
+        with pytest.raises(ConfigValidationError, match="needs exactly one point node population"):
             generate(config, tmp_path)
 
     def test_the_stimulus_default_is_the_simulation_default(self, brian2_config, tmp_path):
@@ -469,7 +469,7 @@ class TestSinusoidalFrequencyAgainstTimestep:
             blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=1.0, frequency=600.0)},
         )
 
-        with pytest.raises(OBIONEError, match=r"timestep of 1\.0 ms"):
+        with pytest.raises(ConfigValidationError, match=r"timestep of 1\.0 ms"):
             generate(config, tmp_path)
 
     def test_a_frequency_the_timestep_can_carry_is_accepted(self, circuit, tmp_path):
@@ -492,7 +492,7 @@ class TestSinusoidalFrequencyAgainstTimestep:
             blocks={"Sine": obi.SinusoidalCurrentClampSomaticStimulus(dt=5.0, frequency=100.0)},
         )
 
-        with pytest.raises(OBIONEError, match=r"below 100\.0 Hz"):
+        with pytest.raises(ConfigValidationError, match=r"below 100\.0 Hz"):
             generate(config, tmp_path)
 
     def test_the_brian2_variant_is_bounded_by_the_simulation_timestep(
@@ -505,5 +505,5 @@ class TestSinusoidalFrequencyAgainstTimestep:
             }
         )
 
-        with pytest.raises(OBIONEError, match=r"timestep of 0\.025 ms"):
+        with pytest.raises(ConfigValidationError, match=r"timestep of 0\.025 ms"):
             generate(config, tmp_path)

@@ -14,6 +14,8 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import h5py
+from bluepysnap.exceptions import BluepySnapError
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
 
@@ -30,6 +32,10 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 _MOD_DECLARATION_PARTS = 2
+
+# Morphology formats to probe, in SONATA config terms (swc -> morphologies_dir,
+# asc/h5 -> alternate_morphologies).
+_MORPHOLOGY_EXTENSIONS = ("swc", "asc", "h5")
 
 
 def run_circuit_validation(
@@ -133,11 +139,15 @@ def run_circuit_validation(
 
 
 def _validate_morphology_paths(circuit: SnapCircuitType) -> list[str]:
-    """Verify that morphologies referenced by nodes actually exist.
+    """Verify that morphologies referenced by nodes are loadable.
 
-    Uses bluepysnap to resolve morphology file paths for a sample of nodes in each
-    biophysical population. This validates both file-based morphologies_dir and
-    alternate_morphologies (H5 containers) transparently.
+    For each biophysical population, every morphology format declared in the config
+    (``morphologies_dir`` for SWC, ``alternate_morphologies`` for ASC / H5 containers)
+    must be loadable for a sample of nodes. A format that is configured but not loadable
+    is a fatal error, as is a population with no morphology format configured at all.
+
+    Loading goes through bluepysnap/morphio, so file-based directories and H5 containers
+    are both handled transparently (a path-existence check would fail for containers).
     """
     errors = []
 
@@ -159,18 +169,47 @@ def _validate_morphology_paths(circuit: SnapCircuitType) -> list[str]:
             errors.append(f"Population '{pop_name}': could not retrieve node IDs: {e}")
             continue
 
+        errors.extend(_validate_population_morphologies(pop_name, pop, sample_ids))
+
+    return errors
+
+
+def _configured_morphology_extensions(pop: NodePopulation) -> list[str]:
+    """Return the morphology formats declared in the config for this population.
+
+    A format counts as configured when bluepysnap can resolve its base path; an
+    unconfigured format raises ``BluepySnapError``. Uses a private accessor because
+    bluepysnap exposes no public API for this (see ``get_morph_dirs`` in utils).
+    """
+    configured = []
+    for extension in _MORPHOLOGY_EXTENSIONS:
+        try:
+            pop.morph._get_morphology_base(extension)  # ruff: ignore[private-member-access]
+        except BluepySnapError:
+            continue
+        configured.append(extension)
+    return configured
+
+
+def _validate_population_morphologies(
+    pop_name: str, pop: NodePopulation, sample_ids: list
+) -> list[str]:
+    """Validate every configured morphology format is loadable for the sampled nodes."""
+    extensions = _configured_morphology_extensions(pop)
+    if not extensions:
+        return [f"Population '{pop_name}': no morphology format defined in config"]
+
+    errors = []
+    for extension in extensions:
         for node_id in sample_ids:
             try:
-                filepath = pop.morph.get_filepath(node_id)
-                if not Path(filepath).exists():
-                    errors.append(f"Population '{pop_name}': morphology file not found: {filepath}")
-                    break  # one missing file is enough to flag the population
+                pop.morph.get(node_id, extension=extension)
             except Exception as e:  # ruff: ignore[blind-except]
                 errors.append(
-                    f"Population '{pop_name}': morphology not accessible for node {node_id}: {e}"
+                    f"Population '{pop_name}': .{extension} morphology not loadable "
+                    f"for node {node_id}: {e}"
                 )
-                break
-
+                break  # one unloadable morphology is enough to flag this format
     return errors
 
 
@@ -274,6 +313,32 @@ def _mechanism_suffixes_from_mod_dir(mod_dir: Path) -> set[str]:
     return suffixes
 
 
+def _hoc_target_static_error(target: dict) -> str | None:
+    """Return a static-check error for a HOC load target, or None if it may be instantiated.
+
+    Covers: missing HOC file, unresolvable morphology, and an H5-container morphology
+    paired with a HOC template that cannot load from containers.
+    """
+    if not target["hoc_path"].exists():
+        return (
+            f"Population '{target['pop_name']}': HOC template '{target['hoc_path'].name}' "
+            f"not found for model_template '{target['template_ref']}'"
+        )
+    if target["morph_path"] is None:
+        return (
+            f"Population '{target['pop_name']}': could not resolve morphology "
+            f"for model_template '{target['template_ref']}' "
+            f"(needed to load-test HOC '{target['hoc_path'].name}')"
+        )
+    if target["morph_is_container"] and not _hoc_supports_h5_container(target["hoc_path"]):
+        return (
+            f"Population '{target['pop_name']}': HOC template '{target['hoc_path'].name}' "
+            f"does not support H5 container morphologies, but the circuit provides "
+            f"morphologies only via an H5 container (model_template '{target['template_ref']}')"
+        )
+    return None
+
+
 def _validate_hoc_loading(
     circuit: SnapCircuitType,
     working_dir: Path,
@@ -303,19 +368,9 @@ def _validate_hoc_loading(
 
     errors: list[str] = []
     for target in used:
-        if not target["hoc_path"].exists():
-            errors.append(
-                f"Population '{target['pop_name']}': HOC template "
-                f"'{target['hoc_path'].name}' not found for model_template "
-                f"'{target['template_ref']}'"
-            )
-            continue
-        if target["morph_path"] is None:
-            errors.append(
-                f"Population '{target['pop_name']}': could not resolve morphology "
-                f"for model_template '{target['template_ref']}' "
-                f"(needed to load-test HOC '{target['hoc_path'].name}')"
-            )
+        static_error = _hoc_target_static_error(target)
+        if static_error is not None:
+            errors.append(static_error)
             continue
 
         from obi_one.scientific.validations.emodels import (  # ruff: ignore[import-outside-top-level]
@@ -383,13 +438,15 @@ def _collect_used_emodel_load_targets(circuit: SnapCircuitType) -> list[dict]:
 
             kind, name = str(template_ref).split(":", 1)
             hoc_path = hoc_dir / f"{name}.{kind}"
-            morph_path = _resolve_morphology_path(pop, node_id)
+            morph_name = str(row["morphology"]) if "morphology" in row else None
+            morph_path = _resolve_morphology_path(pop, node_id, morph_name)
             targets.append(
                 {
                     "pop_name": pop_name,
                     "template_ref": str(template_ref),
                     "hoc_path": hoc_path,
                     "morph_path": morph_path,
+                    "morph_is_container": _is_h5_container_path(morph_path),
                     "node_id": node_id,
                 }
             )
@@ -431,24 +488,69 @@ def _load_compiled_mechanisms(working_dir: Path) -> None:
     neuron.load_mechanisms(str(working_dir))
 
 
-def _resolve_morphology_path(pop: NodePopulation, node_id: int | str) -> Path | None:
-    """Resolve an on-disk morphology path for a node via bluepysnap MorphHelper."""
-    try:
-        morph_path = Path(pop.morph.get_filepath(node_id))
-        if morph_path.exists():
-            return morph_path
-    except Exception as e:  # ruff: ignore[blind-except]
-        L.debug("get_filepath(%s) failed: %s", node_id, e)
+def _hoc_supports_h5_container(hoc_path: Path) -> bool:
+    """Return True if the HOC template can load morphologies from an H5 container.
 
+    The newer ``cell_template_neurodamus_obi`` template adds an ``.h5`` branch to
+    ``load_morphology`` that calls ``morphio_read``; the older template only handles
+    ``.asc`` / ``.swc`` files. Detected by the presence of the ``morphio_read`` call.
+    """
+    try:
+        content = hoc_path.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        L.warning("Could not read HOC template %s: %s", hoc_path, e)
+        return False
+    return "morphio_read" in content
+
+
+def _is_h5_container_path(morph_path: Path | None) -> bool:
+    """Return True if ``morph_path`` addresses a morphology inside an H5 container.
+
+    Container paths have the form ``<container>.h5/<cell_name>``, where the ``.h5``
+    component is an existing file rather than a directory (bluecellulab's convention).
+    """
+    if morph_path is None:
+        return False
+    return any(parent.suffix == ".h5" and parent.is_file() for parent in morph_path.parents)
+
+
+def _resolve_morphology_path(
+    pop: NodePopulation, node_id: int | str, morph_name: str | None = None
+) -> Path | None:
+    """Resolve a morphology path for a node.
+
+    Returns an on-disk file path for file-based morphologies (swc / asc / single-file h5),
+    or a bluecellulab-style container path ``<container>.h5/<cell_name>`` when the morphology
+    lives inside an H5 container (no standalone file exists).
+    """
     for ext in ("swc", "asc", "h5"):
         try:
             morph_path = Path(pop.morph.get_filepath(node_id, extension=ext))
-            if morph_path.exists():
-                return morph_path
         except Exception as e:  # ruff: ignore[blind-except]
             L.debug("get_filepath(%s, %s) failed: %s", node_id, ext, e)
             continue
+        if morph_path.exists():
+            return morph_path
+
+    # No standalone file resolved: fall back to an H5 container, if configured.
+    try:
+        h5_base = Path(pop.morph._get_morphology_base("h5"))  # ruff: ignore[private-member-access]
+    except Exception as e:  # ruff: ignore[blind-except]
+        L.debug("no h5 morphology base for node %s: %s", node_id, e)
+        return None
+    if h5_base.is_file() and morph_name and _morphology_in_container(h5_base, morph_name):
+        return h5_base / morph_name
     return None
+
+
+def _morphology_in_container(container: Path, morph_name: str) -> bool:
+    """Return True if ``morph_name`` is a dataset key inside the H5 morphology container."""
+    try:
+        with h5py.File(container, "r") as f:
+            return morph_name in f
+    except OSError as e:
+        L.warning("Could not read morphology container %s: %s", container, e)
+        return False
 
 
 def _find_morphology_for_template(template_name: str, circuit: SnapCircuitType) -> Path | None:

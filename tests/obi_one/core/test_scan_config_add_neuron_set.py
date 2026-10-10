@@ -8,6 +8,7 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import OBIONEError
+from obi_one.core.scan_config import _reference_type_name_for_block
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
 )
@@ -74,3 +75,51 @@ def test_add_duplicate_name_raises(sim_conf):
     sim_conf.add(nset1, name="same_name")
     with pytest.raises(OBIONEError, match="already exists"):
         sim_conf.add(nset2, name="same_name")
+
+
+def test_reference_type_name_matches_allowed_block():
+    """Returns the reference whose allowed_block_types lists the block class."""
+    result = _reference_type_name_for_block(
+        "VirtualPopulationIDNeuronSet",
+        ["BiophysicalNeuronSetReference", "VirtualNeuronSetReference"],
+    )
+    assert result == "VirtualNeuronSetReference"
+
+
+def test_reference_type_name_returns_first_accepting_candidate():
+    """Returns the first candidate that accepts the block, honoring order."""
+    result = _reference_type_name_for_block(
+        "BiophysicalPopulationIDNeuronSet",
+        ["BiophysicalNeuronSetReference", "VirtualNeuronSetReference"],
+    )
+    assert result == "BiophysicalNeuronSetReference"
+
+
+def test_reference_type_name_no_candidate_accepts_returns_none():
+    """Returns None when no candidate reference accepts the block class."""
+    result = _reference_type_name_for_block(
+        "VirtualPopulationIDNeuronSet",
+        ["BiophysicalNeuronSetReference"],
+    )
+    assert result is None
+
+
+def test_reference_type_name_unknown_candidate_name_is_skipped():
+    """A name not in the registry is skipped; a later valid candidate still matches."""
+    result = _reference_type_name_for_block(
+        "VirtualPopulationIDNeuronSet",
+        ["NotARegisteredReference", "VirtualNeuronSetReference"],
+    )
+    assert result == "VirtualNeuronSetReference"
+
+
+def test_reference_type_name_empty_candidates_returns_none():
+    """No candidates at all returns None."""
+    assert _reference_type_name_for_block("VirtualPopulationIDNeuronSet", []) is None
+
+
+def test_reference_type_name_unrestricted_reference_accepts_any_block():
+    """A reference with no allowed_block_types restriction accepts any block class."""
+    # SynapticModelReference declares no allowed_block_types, so it accepts anything.
+    result = _reference_type_name_for_block("AnyBlockClass", ["SynapticModelReference"])
+    assert result == "SynapticModelReference"

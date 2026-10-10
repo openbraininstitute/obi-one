@@ -175,7 +175,8 @@ class FakeDBClient:
 
     ``GenerateSimulationTask`` only ever calls ``update_entity`` and ``upload_file`` on the
     client, and only when one is supplied, so a recorder is enough to pin the persistence
-    behaviour.
+    behaviour. The one read is a circuit from entitycore's LFP recording arrays, checked
+    against that circuit; the tests that exercise it serve the arrays themselves.
     """
 
     calls: list[RecordedCall] = field(default_factory=list)

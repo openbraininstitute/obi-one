@@ -3,6 +3,7 @@ import pytest
 from conntility import ConnectivityMatrix
 
 import obi_one as obi
+from obi_one.scientific.tasks import connectivity_matrix_extraction
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
@@ -127,3 +128,42 @@ def test_connectivity_matrix_extraction(tmp_path):
         np.testing.assert_array_equal(cmat_ref.matrix.toarray(), cmat.matrix.toarray())
         assert cmat.vertices.equals(cmat_ref.vertices)
         assert cmat.edges.equals(cmat_ref.edges)
+
+
+def test_connectivity_matrix_extraction_suppresses_tqdm(tmp_path, monkeypatch):
+    """Regression test: from_bluepy must be called with show_progress=False."""
+    circuit = obi.Circuit(
+        name="N_10__top_nodes_dim6",
+        path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+    )
+    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
+        circuit=circuit,
+        edge_population="S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
+        node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
+    )
+    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
+        initialize=extraction_init
+    )
+    grid_scan = obi.GridScanGenerationTask(
+        form=connectivity_matrix_extractions_form,
+        output_root=tmp_path / "grid_scan",
+        coordinate_directory_option="VALUE",
+    )
+    grid_scan.execute()
+
+    captured_kwargs = {}
+    real_from_bluepy = ConnectivityMatrix.from_bluepy
+
+    def spy_from_bluepy(*args, **kwargs):
+        captured_kwargs.update(kwargs)
+        return real_from_bluepy(*args, **kwargs)
+
+    monkeypatch.setattr(
+        connectivity_matrix_extraction.ConnectivityMatrix,
+        "from_bluepy",
+        spy_from_bluepy,
+    )
+
+    obi.run_tasks_for_generated_scan(grid_scan)
+
+    assert captured_kwargs.get("show_progress") is False
