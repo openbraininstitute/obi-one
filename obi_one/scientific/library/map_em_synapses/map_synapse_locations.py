@@ -121,7 +121,7 @@ def synapse_info_df(
     return syns
 
 
-def morph_to_segs_df(morph: Morphology) -> pandas.DataFrame:
+def morph_to_segs_df(morph: MorphologyWithSpines) -> pandas.DataFrame:
     segs = []
     sec_id_keys = []
     for sec in morph.morphology.sections:  # ty:ignore[unresolved-attribute]
@@ -161,7 +161,7 @@ def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
     return spine_and_soma_points
 
 
-def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.DataFrame:
+def map_points_to_segs_df(segs: pandas.DataFrame, pts: pandas.DataFrame) -> pandas.DataFrame:
     chunk_sz = 250
     if len(pts) <= chunk_sz:
         res = _map_points_to_segs_df(segs, pts.to_numpy())  # ty:ignore[unresolved-attribute]
@@ -227,7 +227,7 @@ def _map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas
 
 
 def calc_section_offset(
-    syns: pandas.DataFrame, morph: MorphologyWithSpines, prefix: str = ""
+    syns: pandas.DataFrame, morph: Morphology, prefix: str = ""
 ) -> numpy.ndarray:
     try:
         from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
@@ -253,7 +253,7 @@ def segment_interpolator(seg: tuple, o: float) -> pandas.Series:
     return pandas.Series(a[:3] + o * c / numpy.linalg.norm(c), index=_C_CENTER)
 
 
-def calc_center_positions(df: pandas.DataFrame, morph: MorphologyWithSpines) -> pandas.DataFrame:
+def calc_center_positions(df: pandas.DataFrame, morph: Morphology) -> pandas.DataFrame:
     return df.apply(
         lambda row: segment_interpolator(
             morph.section(int(row[_STR_SEC_ID]) - 1).segments[int(row[_STR_SEG_ID])],  # ty:ignore[unresolved-attribute]
@@ -375,7 +375,7 @@ def map_afferents_to_spiny_morphology(
     m: MorphologyWithSpines,
     syns: pandas.DataFrame,
     add_quality_info: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
-) -> pandas.DataFrame:
+) -> tuple[pandas.DataFrame, float | None]:
     segs_df = morph_to_segs_df(m)  # ty:ignore[invalid-argument-type]
     spine_and_soma_points = morph_to_spine_and_soma_df(m)
 
@@ -406,4 +406,4 @@ def map_afferents_to_spiny_morphology(
         )
         df_concat["competing_distance"] = competing_dist
         return df_concat, estimate_mesh_resolution(spine_and_soma_points)  # ty:ignore[invalid-return-type]
-    return df_concat
+    return df_concat, None

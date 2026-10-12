@@ -45,7 +45,7 @@ def assemble_collection_from_specs(
     cave_version: int,
     specs: dict,
     pt_root_mapping: pandas.DataFrame,
-) -> voxcell.CellCollection:
+) -> tuple[voxcell.CellCollection, list]:
     tables, lst_notices = get_specified_tables(em_dataset, db_client, cave_version, specs)
 
     out_cols = []

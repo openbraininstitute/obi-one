@@ -9,7 +9,6 @@ from matplotlib import pyplot as plt
 
 from obi_one.config import settings
 from obi_one.core.task import Task
-from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.library.map_em_synapses._defaults import (
     default_node_spec_for,
     sonata_config_for,
@@ -37,8 +36,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.register import (
     register_output,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
-    ResolvedNeuron,
-    resolve_neuron,
+    resolve_list_neurons,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.util import (
     merge_spiny_morphologies,
@@ -62,7 +60,7 @@ class EMSynapseMappingTask(Task):
     def execute(  # ruff: ignore[too-many-locals, too-many-statements, complex-structure, too-many-branches]
         self,
         *,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> None:
@@ -87,43 +85,24 @@ class EMSynapseMappingTask(Task):
         spiny_dir.mkdir(parents=True, exist_ok=True)
         swc_morph_subdir.mkdir(parents=True, exist_ok=True)
 
-        # Resolve all neurons: morphology, provenance, ME model
-        L.info("Resolving neurons...")
-        resolved_neurons: list[ResolvedNeuron] = []
-        pt_root_id_names: dict[int, str] = {}
-
-        mechanisms_placed = None
-        for neuron_entry in init.neurons.elements:  # ty:ignore[unresolved-attribute]
-            resolved_neuron, mechanisms_placed_ = resolve_neuron(
-                neuron_entry, db_client, out_root, spiny_dir
-            )
-            mechanisms_placed = mechanisms_placed or mechanisms_placed_
-            if resolved_neuron.pt_root_id in pt_root_id_names:
-                err_str = (
-                    f"Duplicate pt_root_id {resolved_neuron.pt_root_id}: "
-                    f"'{resolved_neuron.morph_entity.name or resolved_neuron.pt_root_id}' "  # ty:ignore[unresolved-attribute]
-                    f"resolves to the same physical neuron as "
-                    f"'{pt_root_id_names[resolved_neuron.pt_root_id]}'."
-                )
-                raise ValueError(err_str)
-            resolved_neurons.append(resolved_neuron)
-            pt_root_id_names[resolved_neuron.pt_root_id] = str(resolved_neuron.morph_entity.name)  # ty:ignore[unresolved-attribute]
-
+        # Resolve all neurons: morphology, provenance, ME model and place locally
+        L.info("Resolving input data...")
+        resolved_neurons, resolved_em_dataset, coll_bio, mechanisms_placed = resolve_list_neurons(
+            init_neurons=init.neurons.elements,
+            db_client=db_client,
+            out_root=out_root,
+            spiny_dir=spiny_dir
+        )
+        
         n_neurons = len(resolved_neurons)
         is_multi = n_neurons > 1
 
-        # All neurons must come from the same EM dataset
-        dataset_ids = {rn.source_dataset.id for rn in resolved_neurons}
-        if len(dataset_ids) != 1:
-            err_str = "All neurons must originate from the same EM dense reconstruction dataset."
-            raise ValueError(err_str)
-
-        source_dataset = resolved_neurons[0].source_dataset
-        cave_version = resolved_neurons[0].cave_version
-        em_dataset = EMDataSetFromID(
-            id_str=str(source_dataset.id),
-            auth_token=os.environ[settings.cave_client_config.microns_api_key],
-        )
+        em_dataset = resolved_em_dataset.dataset_from_id
+        cave_version = resolved_em_dataset.cave_version
+        if (em_dataset is None) or (cave_version is None):
+            raise ValueError("Source EM dataset undetermined!")
+        source_dataset = em_dataset.entity(db_client=db_client)
+        input_pt_root_ids = {nrn.pt_root_id for nrn in resolved_neurons}
 
         # Merge spiny morphologies into a single file (for multi-neuron)
         fn_merged_h5 = "morphologies/merged_spiny_morphologies.h5"
@@ -137,7 +116,7 @@ class EMSynapseMappingTask(Task):
                 include_meshes=True,
             )
 
-        L.info("Reading data from source EM reconstructions...")
+        L.info("Reading connectivity from source EM reconstructions...")
         pt_root_to_bio_id = {rn.pt_root_id: idx for idx, rn in enumerate(resolved_neurons)}
         all_internal_edges = []
         all_internal_pre_post = []
@@ -167,7 +146,7 @@ class EMSynapseMappingTask(Task):
             plt.close("all")
 
             # Split synapses: internal (pre is in the set) vs external
-            is_internal = syns["pre_pt_root_id"].isin(pt_root_id_names)
+            is_internal = syns["pre_pt_root_id"].isin(input_pt_root_ids)
 
             for is_int, edge_list, pre_post_list in [
                 (True, all_internal_edges, all_internal_pre_post),
@@ -205,21 +184,6 @@ class EMSynapseMappingTask(Task):
                 )
                 all_external_pre_post[idx] = pp_df.drop(columns=["pre_pt_root_id"])
 
-        # Build node collections
-        L.info("Building node collections...")
-        node_spec = default_node_spec_for(em_dataset, db_client)
-
-        bio_pt_root_mapping = pandas.DataFrame(
-            {"index": range(n_neurons)},
-            index=pandas.Index([rn.pt_root_id for rn in resolved_neurons], name="pre_pt_root_id"),
-        )
-        coll_bio, _ = assemble_collection_from_specs(
-            em_dataset, db_client, cave_version, node_spec, bio_pt_root_mapping
-        )  # ty:ignore[not-iterable]
-
-        morph_names = [f"morphology/{rn.name_in_circuit}" for rn in resolved_neurons]
-        coll_bio.properties["morphology"] = numpy.array(morph_names)
-
         for bio_idx, rn in enumerate(resolved_neurons):
             if rn.phys_node_props:
                 for col, vals in rn.phys_node_props.items():
@@ -239,6 +203,7 @@ class EMSynapseMappingTask(Task):
                 {"index": range(len(external_pt_roots_sorted))},
                 index=pandas.Index(external_pt_roots_sorted, name="pre_pt_root_id"),
             )
+            node_spec = default_node_spec_for(em_dataset, db_client)
             coll_virtual, _ = assemble_collection_from_specs(
                 em_dataset, db_client, cave_version, node_spec, virt_pt_root_mapping
             )  # ty:ignore[not-iterable]
