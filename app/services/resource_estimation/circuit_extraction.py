@@ -9,11 +9,13 @@ from app.errors import ApiError, ApiErrorCode
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
 from obi_one import deserialize_obi_object_from_json_data
-from obi_one.core.registry import task_registry
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
+)
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_task_type,
 )
 
 # From launch-system: the memory (GB) a task can have for each number of CPUs, and the disk
@@ -86,7 +88,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
+        asset_label=get_task_spec_for_task_type(task_definition.task_type).asset_label,  # ty:ignore[invalid-argument-type]
     ).id
     if config_asset_id is None:
         msg = "Config asset must have an id"

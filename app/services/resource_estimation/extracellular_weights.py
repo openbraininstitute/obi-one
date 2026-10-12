@@ -14,8 +14,10 @@ from app.services.resource_estimation.circuit_extraction import (
     get_required_cpu_memory_combo,
 )
 from obi_one import deserialize_obi_object_from_json_data
-from obi_one.core.registry import task_registry
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_task_type,
+)
 from obi_one.scientific.tasks.create_recording_array.process import get_number_of_mpi_processes
 
 SUPPORTED_CIRCUIT_SCALES = frozenset(
@@ -41,7 +43,7 @@ def _count_electrodes(
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
+        asset_label=get_task_spec_for_task_type(task_definition.task_type).asset_label,  # ty:ignore[invalid-argument-type]
     ).id
     json_str = db_client.download_content(
         entity_id=json_model.config_id,
