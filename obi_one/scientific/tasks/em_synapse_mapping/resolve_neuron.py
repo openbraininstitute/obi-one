@@ -18,6 +18,7 @@ from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, MEModel
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
+from neurom.core import Morphology as NeuromMorphology
 
 from obi_one.config import settings
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
@@ -75,7 +76,7 @@ class ResolvedEMDataset:
         if self.dataset_from_id_ is None:
             self.dataset_from_id_ = new_val
         else:
-            if new_val != self.source_dataset_id:
+            if new_val.id_str != self.source_dataset_id:
                 err_str = "Input neurons originate from different EM datasets!"
                 raise ValueError(err_str)
 
@@ -167,17 +168,21 @@ def resolve_list_neurons(
     coll_bio, _ = assemble_collection_from_specs(
         em_dataset, db_client, cave_version, node_spec, bio_pt_root_mapping
     )
+    xyz_positions = coll_bio.positions
+    if xyz_positions is None:
+        xyz_positions = numpy.zeros((n_neurons, 3), dtype=float)
 
     # Third pass: Place files locally
     L.info("Placing neuron morphology files...")
     resolved_neurons: list[ResolvedNeuron] = []
     pt_root_id_names: dict[int, str] = {}
     mechanisms_placed = None
-    for morph_from_id, me_model_entity, pt_root_id, source_mesh_entity in zip(
+    for morph_from_id, me_model_entity, pt_root_id, source_mesh_entity, xyz in zip(
         lst_morph_from_id,
         lst_memodels,
         lst_pt_root_ids,
-        lst_source_mesh_entity
+        lst_source_mesh_entity,
+        xyz_positions
     ):
         L.info(f"...for neuron id: {pt_root_id}")
         resolved_neuron, mechanisms_placed_ = place_morphologies_and_mechanisms(
@@ -186,6 +191,7 @@ def resolve_list_neurons(
             source_mesh_entity=source_mesh_entity,
             source_dataset=source_dataset,
             pt_root_id=pt_root_id,
+            xyz=xyz,
             db_client=db_client,
             out_root=out_root,
             spiny_morph_out_root=spiny_dir
@@ -207,12 +213,30 @@ def resolve_list_neurons(
     return resolved_neurons, resolved_em_dataset, coll_bio, mechanisms_placed
 
 
+def write_morphology_with_offset(
+        morph: NeuromMorphology,
+        offset: numpy.ndarray,
+        fn_out: Path
+) -> None:
+    """Write morphology to file after applying an x/y/z offset to it."""
+    mut = morph.to_morphio().as_mutable()
+    soma_points = mut.soma.points
+    if len(soma_points) > 0:
+        mut.soma.points = soma_points + offset
+
+    for section in mut.iter():
+        section.points = section.points + offset
+
+    mut.write(fn_out)
+    
+
 def place_morphologies_and_mechanisms(  # ruff: ignore[too-many-locals]
     morph_from_id: CellMorphologyFromID,
     me_model_entity: MEModel | None,
     source_mesh_entity: EMCellMesh,
     source_dataset: EMDenseReconstructionDataset,
     pt_root_id: int,
+    xyz: numpy.ndarray,
     db_client: Client,
     out_root: Path,
     spiny_morph_out_root: Path,
@@ -247,10 +271,13 @@ def place_morphologies_and_mechanisms(  # ruff: ignore[too-many-locals]
         raise ValueError(err_str)
 
     smooth_morph = morph_from_id.neurom_morphology(db_client)
-    smooth_morph.to_morphio().as_mutable().write(out_root / fn_morphology_out_swc)
+    write_morphology_with_offset(smooth_morph, -xyz, out_root / fn_morphology_out_swc)
+    # For now: Spiny morphology not translated!
     morph_from_id.write_spiny_neuron_h5(spiny_morph_out_root / fn_spiny_morph, db_client=db_client)
     spiny_morph = load_morphology_with_spines(str(spiny_morph_out_root / fn_spiny_morph))
-    spiny_morph.morphology.to_morphio().as_mutable().write(out_root / fn_morphology_out_h5)
+    write_morphology_with_offset(spiny_morph.morphology,
+                                  -xyz,
+                                  out_root / fn_morphology_out_h5)
 
     phys_node_props = {}
     if me_model_entity is not None:
