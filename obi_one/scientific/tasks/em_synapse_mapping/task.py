@@ -1,13 +1,11 @@
 import json
 import logging
-import os
 
 import numpy  # ruff: ignore[unconventional-import-alias]
 import pandas  # ruff: ignore[unconventional-import-alias]
 from entitysdk import Client
 from matplotlib import pyplot as plt
 
-from obi_one.config import settings
 from obi_one.core.task import Task
 from obi_one.scientific.library.map_em_synapses._defaults import (
     default_node_spec_for,
@@ -88,19 +86,20 @@ class EMSynapseMappingTask(Task):
         # Resolve all neurons: morphology, provenance, ME model and place locally
         L.info("Resolving input data...")
         resolved_neurons, resolved_em_dataset, coll_bio, mechanisms_placed = resolve_list_neurons(
-            init_neurons=init.neurons.elements,
+            init_neurons=list(init.neurons.elements),
             db_client=db_client,
             out_root=out_root,
-            spiny_dir=spiny_dir
+            spiny_dir=spiny_dir,
         )
-        
+
         n_neurons = len(resolved_neurons)
         is_multi = n_neurons > 1
 
         em_dataset = resolved_em_dataset.dataset_from_id
         cave_version = resolved_em_dataset.cave_version
         if (em_dataset is None) or (cave_version is None):
-            raise ValueError("Source EM dataset undetermined!")
+            err_str = "Source EM dataset undetermined!"
+            raise ValueError(err_str)
         source_dataset = em_dataset.entity(db_client=db_client)
         input_pt_root_ids = {nrn.pt_root_id for nrn in resolved_neurons}
 
@@ -206,7 +205,7 @@ class EMSynapseMappingTask(Task):
             node_spec = default_node_spec_for(em_dataset, db_client)
             coll_virtual, _ = assemble_collection_from_specs(
                 em_dataset, db_client, cave_version, node_spec, virt_pt_root_mapping
-            )  # ty:ignore[not-iterable]
+            )
         else:
             coll_virtual = None
 

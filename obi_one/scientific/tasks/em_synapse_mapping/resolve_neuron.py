@@ -6,8 +6,8 @@ Resolves a neuron reference (CellMorphologyFromID or MEModelFromID) into:
 - ME model properties (if applicable)
 """
 
-import os
 import logging
+import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,15 +19,16 @@ from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, MEModel
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from neurom.core import Morphology as NeuromMorphology
+from voxcell import CellCollection
 
 from obi_one.config import settings
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
-from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import assemble_collection_from_specs
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.map_em_synapses._defaults import default_node_spec_for
-
-from voxcell import CellCollection
+from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
+    assemble_collection_from_specs,
+)
 
 L = logging.getLogger(__name__)
 
@@ -50,21 +51,25 @@ class ResolvedNeuron:
     fn_morph_h5: Path
     fn_morph_swc: Path
 
+
 @dataclass(kw_only=True)
 class ResolvedEMDataset:
     """Result of resolving the source EM dataset of multiple neurons.
-    Ensures all neurons coming from the same dataset at the same version."""
+    Ensures all neurons coming from the same dataset at the same version.
+    """
+
     dataset_from_id_: EMDataSetFromID | None
     cave_version_: int | None
 
     @property
     def dataset_from_id(self) -> EMDataSetFromID | None:
         return self.dataset_from_id_
-    
+
     @property
     def source_dataset_id(self) -> str | None:
         if self.dataset_from_id_ is None:
-            raise ValueError("Not initialized!")
+            err_str = "No EM dataset initialized yet!"
+            raise ValueError(err_str)
         return self.dataset_from_id_.id_str
 
     @property
@@ -72,22 +77,20 @@ class ResolvedEMDataset:
         return self.cave_version_
 
     @dataset_from_id.setter
-    def dataset_from_id(self, new_val) -> None:
+    def dataset_from_id(self, new_val: EMDataSetFromID) -> None:
         if self.dataset_from_id_ is None:
             self.dataset_from_id_ = new_val
-        else:
-            if new_val.id_str != self.source_dataset_id:
-                err_str = "Input neurons originate from different EM datasets!"
-                raise ValueError(err_str)
+        elif new_val.id_str != self.source_dataset_id:
+            err_str = "Input neurons originate from different EM datasets!"
+            raise ValueError(err_str)
 
     @cave_version.setter
-    def cave_version(self, new_val) -> None:
+    def cave_version(self, new_val: int) -> None:
         if self.cave_version_ is None:
             self.cave_version_ = new_val
-        else:
-            if new_val != self.cave_version_:
-                err_str = "Input neurons from different release versions of the EM dataset!"
-                raise ValueError(err_str)
+        elif new_val != self.cave_version_:
+            err_str = "Input neurons from different release versions of the EM dataset!"
+            raise ValueError(err_str)
 
 
 def resolve_provenance(
@@ -112,25 +115,22 @@ def ensure_mechanisms_placed(path_in: Path, path_out: Path) -> None:
         shutil.copy(mod_file, path_out)
 
 
-def resolve_list_neurons(
-        init_neurons: list[CellMorphologyFromID | MEModelFromID],
-        db_client: Client,
-        out_root: Path,
-        spiny_dir: Path
-    ) -> tuple[list[ResolvedNeuron], ResolvedEMDataset, CellCollection, str | None]:
+def resolve_list_neurons(  # ruff: ignore[too-many-locals]
+    init_neurons: list[CellMorphologyFromID | MEModelFromID],
+    db_client: Client,
+    out_root: Path,
+    spiny_dir: Path,
+) -> tuple[list[ResolvedNeuron], ResolvedEMDataset, CellCollection, str | None]:
 
     lst_pt_root_ids = []
     lst_source_mesh_entity = []
     lst_morph_from_id = []
     lst_memodels = []
-    resolved_em_dataset = ResolvedEMDataset(
-        cave_version_=None,
-        dataset_from_id_=None
-    )
+    resolved_em_dataset = ResolvedEMDataset(cave_version_=None, dataset_from_id_=None)
     cave_token = os.environ[settings.cave_client_config.microns_api_key]
 
     # First pass: resolve in entitycore
-    for neuron_entry in init_neurons:  # ty:ignore[unresolved-attribute]
+    for neuron_entry in init_neurons:
         use_me_model = isinstance(neuron_entry, MEModelFromID)
         if use_me_model:
             me_model_entity = neuron_entry.entity(db_client)
@@ -142,20 +142,20 @@ def resolve_list_neurons(
         lst_memodels.append(me_model_entity)
 
         L.info("Resolving skeleton provenance...")
-        pt_root_id, source_mesh_entity, source_dataset = resolve_provenance(db_client, morph_from_id)
+        pt_root_id, source_mesh_entity, source_dataset = resolve_provenance(
+            db_client, morph_from_id
+        )
         lst_pt_root_ids.append(pt_root_id)
         lst_source_mesh_entity.append(source_mesh_entity)
-        em_dataset = EMDataSetFromID(
-            id_str=str(source_dataset.id),
-            auth_token=cave_token
-        )
+        em_dataset = EMDataSetFromID(id_str=str(source_dataset.id), auth_token=cave_token)
         resolved_em_dataset.dataset_from_id = em_dataset
         resolved_em_dataset.cave_version = source_mesh_entity.release_version
 
     em_dataset = resolved_em_dataset.dataset_from_id
     cave_version = resolved_em_dataset.cave_version
     if (em_dataset is None) or (cave_version is None):
-        raise ValueError("Source EM dataset undetermined!")
+        err_str = "Source EM dataset undetermined!"
+        raise ValueError(err_str)
 
     # Second pass: resolve in CAVE
     L.info("Building node collections...")
@@ -182,7 +182,8 @@ def resolve_list_neurons(
         lst_memodels,
         lst_pt_root_ids,
         lst_source_mesh_entity,
-        xyz_positions
+        xyz_positions,
+        strict=True,
     ):
         L.info(f"...for neuron id: {pt_root_id}")
         resolved_neuron, mechanisms_placed_ = place_morphologies_and_mechanisms(
@@ -194,7 +195,7 @@ def resolve_list_neurons(
             xyz=xyz,
             db_client=db_client,
             out_root=out_root,
-            spiny_morph_out_root=spiny_dir
+            spiny_morph_out_root=spiny_dir,
         )
         mechanisms_placed = mechanisms_placed or mechanisms_placed_
         if resolved_neuron.pt_root_id in pt_root_id_names:
@@ -214,9 +215,7 @@ def resolve_list_neurons(
 
 
 def write_morphology_with_offset(
-        morph: NeuromMorphology,
-        offset: numpy.ndarray,
-        fn_out: Path
+    morph: NeuromMorphology, offset: numpy.ndarray, fn_out: Path
 ) -> None:
     """Write morphology to file after applying an x/y/z offset to it."""
     mut = morph.to_morphio().as_mutable()
@@ -225,12 +224,12 @@ def write_morphology_with_offset(
         mut.soma.points = soma_points + offset
 
     for section in mut.iter():
-        section.points = section.points + offset
+        section.points = section.points + offset  # ruff: ignore[non-augmented-assignment]
 
     mut.write(fn_out)
-    
 
-def place_morphologies_and_mechanisms(  # ruff: ignore[too-many-locals]
+
+def place_morphologies_and_mechanisms(
     morph_from_id: CellMorphologyFromID,
     me_model_entity: MEModel | None,
     source_mesh_entity: EMCellMesh,
@@ -244,7 +243,12 @@ def place_morphologies_and_mechanisms(  # ruff: ignore[too-many-locals]
     """Place neuron morphologies locally and return resolution of neuron in terms of provenance etc.
 
     Args:
-        neuron_ref: A CellMorphologyFromID or MEModelFromID reference.
+        morph_from_id: A CellMorphologyFromID reference.
+        me_model_entity: For input neurons that have emodels, a MEModel entity, else None.
+        source_mesh_entity: A EMCellMesh entity that created the morph_from_id.
+        source_dataset: The source EMDenseReconstructionDataset entity that created the neuron.
+        pt_root_id: The id of the neuron within the CAVE version of the EM dataset.
+        xyz: The x/y/z coordinates (in um) annotated in CAVE for the neuron.
         db_client: Entity SDK client.
         out_root: Root output directory for smooth morphology files and emodel hoc files,
         if applicable.
@@ -275,15 +279,13 @@ def place_morphologies_and_mechanisms(  # ruff: ignore[too-many-locals]
     # For now: Spiny morphology not translated!
     morph_from_id.write_spiny_neuron_h5(spiny_morph_out_root / fn_spiny_morph, db_client=db_client)
     spiny_morph = load_morphology_with_spines(str(spiny_morph_out_root / fn_spiny_morph))
-    write_morphology_with_offset(spiny_morph.morphology,
-                                  -xyz,
-                                  out_root / fn_morphology_out_h5)
+    write_morphology_with_offset(spiny_morph.morphology, -xyz, out_root / fn_morphology_out_h5)
 
     phys_node_props = {}
     if me_model_entity is not None:
         L.info("Placing mechanisms and .hoc file...")
         tmp_staging = out_root / f"temp_staging_{morph_entity.name}"
-        memdl_paths = download_memodel(db_client, me_model_entity, str(tmp_staging))  # ty:ignore[invalid-argument-type]
+        memdl_paths = download_memodel(db_client, me_model_entity, str(tmp_staging))
         mechanisms_placed = "mod"
         ensure_mechanisms_placed(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
@@ -293,13 +295,13 @@ def place_morphologies_and_mechanisms(  # ruff: ignore[too-many-locals]
         phys_node_props["model_template"] = numpy.array([f"hoc:{memdl_paths.hoc_path.stem}"])
         phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
         phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
-        if me_model_entity.calibration_result is not None:  # ty:ignore[unresolved-attribute]
+        if me_model_entity.calibration_result is not None:
             phys_node_props["@dynamics:threshold_current"] = numpy.array(
-                [me_model_entity.calibration_result.threshold_current],  # ty:ignore[unresolved-attribute]
+                [me_model_entity.calibration_result.threshold_current],
                 dtype=numpy.float32,
             )
             phys_node_props["@dynamics:holding_current"] = numpy.array(
-                [me_model_entity.calibration_result.holding_current],  # ty:ignore[unresolved-attribute]
+                [me_model_entity.calibration_result.holding_current],
                 dtype=numpy.float32,
             )
 
