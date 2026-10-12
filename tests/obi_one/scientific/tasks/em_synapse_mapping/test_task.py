@@ -55,6 +55,16 @@ def resolved_neuron():
 
 
 @pytest.fixture
+def resolved_em_dataset():
+    """Stand-in for the ResolvedEMDataset returned by resolve_list_neurons."""
+    em_dataset = Mock()
+    em_dataset.entity.return_value = SimpleNamespace(
+        id=uuid4(), name="source-ds", license=SimpleNamespace(id="lic")
+    )
+    return SimpleNamespace(dataset_from_id=em_dataset, cave_version=3)
+
+
+@pytest.fixture
 def synapses_df():
     return pd.DataFrame({"pre_pt_root_id": [100, 100, 200], "post_pt_root_id": [42, 42, 42]})
 
@@ -97,9 +107,16 @@ class TestEMSynapseMappingTask:
             task.execute(db_client=None)
 
     def test_execute_single_neuron_happy_path(
-        self, tmp_path, mock_db_client, resolved_neuron, synapses_df, mapped_synapses_df
+        self,
+        tmp_path,
+        mock_db_client,
+        resolved_neuron,
+        resolved_em_dataset,
+        synapses_df,
+        mapped_synapses_df,
     ):
         task = _make_task(tmp_path)
+        coll_bio = _FakeCollection(1)
 
         def fake_assemble(*_args, **_kwargs):
             mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
@@ -113,10 +130,9 @@ class TestEMSynapseMappingTask:
                 return_value=None,
             ),
             patch(
-                f"{_TASK_MODULE}.resolve_neuron",
-                return_value=(resolved_neuron, None),
-            ),
-            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
+                f"{_TASK_MODULE}.resolve_list_neurons",
+                return_value=([resolved_neuron], resolved_em_dataset, coll_bio, None),
+            ) as mock_resolve,
             patch(
                 f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
                 return_value=(synapses_df, Mock(), Mock(), ["notice"]),
@@ -147,13 +163,19 @@ class TestEMSynapseMappingTask:
             ) as mock_register,
             patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):
-            mock_em_ds.return_value = Mock()
             task.execute(db_client=mock_db_client)
 
+        mock_resolve.assert_called_once()
         mock_register.assert_called_once()
 
     def test_execute_uses_custom_population_names(
-        self, tmp_path, mock_db_client, resolved_neuron, synapses_df, mapped_synapses_df
+        self,
+        tmp_path,
+        mock_db_client,
+        resolved_neuron,
+        resolved_em_dataset,
+        synapses_df,
+        mapped_synapses_df,
     ):
         """Custom population names propagate to the SONATA writers and config."""
         task = _make_task(
@@ -163,6 +185,7 @@ class TestEMSynapseMappingTask:
             custom_biophysical_node_population="my_bio_nodes",
             custom_virtual_node_population="my_virt_nodes",
         )
+        coll_bio = _FakeCollection(1)
 
         def fake_assemble(*_args, **_kwargs):
             mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
@@ -176,10 +199,9 @@ class TestEMSynapseMappingTask:
                 return_value=None,
             ),
             patch(
-                f"{_TASK_MODULE}.resolve_neuron",
-                return_value=(resolved_neuron, None),
+                f"{_TASK_MODULE}.resolve_list_neurons",
+                return_value=([resolved_neuron], resolved_em_dataset, coll_bio, None),
             ),
-            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
             patch(
                 f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
                 return_value=(synapses_df, Mock(), Mock(), ["notice"]),
@@ -210,7 +232,6 @@ class TestEMSynapseMappingTask:
             ),
             patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):
-            mock_em_ds.return_value = Mock()
             task.execute(db_client=mock_db_client)
 
         # Node populations use the custom biophysical / virtual names.
