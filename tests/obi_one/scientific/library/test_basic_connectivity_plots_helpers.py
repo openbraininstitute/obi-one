@@ -10,6 +10,7 @@ from conntility import ConnectivityMatrix
 mpl.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patches import Wedge
 
 from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     CANONICAL_EXC,
@@ -362,5 +363,54 @@ class TestMakePiePlotNaColour:
             allowed = {tuple(cmap(i)) for i in range(n_real)}
             assert set(real_colours) == allowed
             assert tuple(cmap(n_real)) not in set(real_colours)
+        finally:
+            plt.close(fig)
+
+    def test_slices_are_sorted_alphabetically_by_label(self):
+        # value_counts returns categories in count order; make_pie_plot must reorder
+        # them alphabetically by label so e.g. layers read 1, 2, 3, ... not by size.
+        conn = _load_conn("N_10__top_nodes_dim6")
+        vertices = conn.vertices.copy()
+        node_count = len(vertices)
+        # Assign layers so the count order differs from the alphabetical order.
+        layer_sequence = ["3", "3", "3", "3", "1", "1", "1", "2", "2", "6"]
+        vertices["layer"] = [layer_sequence[i % len(layer_sequence)] for i in range(node_count)]
+        conn = ConnectivityMatrix(
+            conn.matrix,
+            vertex_properties=vertices,
+            edge_properties=conn.edges,
+            default_edge_property="data",
+        )
+
+        fig, ax = plt.subplots()
+        try:
+            make_pie_plot(ax, conn, "layer", {"layer": plt.get_cmap("Dark2")})
+            labels = [t.get_text().split(":")[0] for t in ax.texts if t.get_text()]
+            assert labels == sorted(labels)
+            assert labels == ["1", "2", "3", "6"]
+        finally:
+            plt.close(fig)
+
+    def test_slices_are_drawn_clockwise(self):
+        # Sorted categories should run clockwise, i.e. each successive wedge midpoint
+        # angle is smaller than the previous one (angles decrease going clockwise).
+        conn = _load_conn("N_10__top_nodes_dim6")
+        vertices = conn.vertices.copy()
+        node_count = len(vertices)
+        layer_sequence = ["3", "3", "3", "3", "1", "1", "1", "2", "2", "6"]
+        vertices["layer"] = [layer_sequence[i % len(layer_sequence)] for i in range(node_count)]
+        conn = ConnectivityMatrix(
+            conn.matrix,
+            vertex_properties=vertices,
+            edge_properties=conn.edges,
+            default_edge_property="data",
+        )
+
+        fig, ax = plt.subplots()
+        try:
+            make_pie_plot(ax, conn, "layer", {"layer": plt.get_cmap("Dark2")})
+            wedges = [w for w in ax.patches if isinstance(w, Wedge)]
+            midpoints = [(w.theta1 + w.theta2) / 2 for w in wedges]
+            assert midpoints == sorted(midpoints, reverse=True)
         finally:
             plt.close(fig)

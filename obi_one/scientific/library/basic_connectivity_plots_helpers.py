@@ -382,13 +382,19 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
 
     # Group categories with percentages ≤ 2% into "Other"
     total = category_counts.sum()
-    percentages = (category_counts / total) * 100
     small_categories_threshold = 2
-    small_categories = percentages[percentages <= small_categories_threshold].index
+    initial_percentages = (category_counts / total) * 100
+    small_categories = initial_percentages[initial_percentages <= small_categories_threshold].index
     if len(small_categories) > 1:
         other_count = category_counts[small_categories].sum()
         category_counts = category_counts.drop(small_categories)
         category_counts["Other"] = other_count
+
+    # Order slices alphabetically by category label so e.g. layers read 1, 2, 3, ...
+    # rather than in count order. Sort on the string form because the index may be a
+    # pandas Categorical, whose native order is not alphabetical.
+    category_counts = category_counts.reindex(sorted(category_counts.index, key=str))
+    percentages = (category_counts / total) * 100
 
     # Define colors
     cmap = cmaps[grouping_prop]
@@ -410,8 +416,15 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
             for key in category_counts.index
         ]
 
-    # Create the pie chart without percentages inside
-    wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})
+    # Create the pie chart without percentages inside. counterclock=False draws the
+    # sorted categories clockwise, so labels increase in the clockwise direction.
+    wedges, _ = ax.pie(
+        category_counts,
+        startangle=140,
+        counterclock=False,
+        colors=colors,
+        textprops={"fontsize": 8},
+    )
 
     # Add annotations outside the pie chart to avoid overlapping
     for i, wedge in enumerate(wedges):
