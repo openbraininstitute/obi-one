@@ -55,8 +55,14 @@ CANONICAL_NA = "n/a"
 Color = str | tuple[float, float, float, float]
 
 # N/A nodes are always drawn in a neutral grey, independent of the active colormap, so
-# that "unknown" classes read as unknown rather than as a real E/I colour.
+# that "unknown" groups read as unknown rather than as a real colour from the scale.
 CANONICAL_NA_COLOR: Color = (0.5, 0.5, 0.5, 1.0)
+
+
+def is_na_value(value: str) -> bool:
+    """Return whether a grouping-property value denotes an unknown/N/A group."""
+    return value.strip().lower() == CANONICAL_NA
+
 
 # Stats functions
 
@@ -112,13 +118,17 @@ def assemble_property_colormapping(
     conn: ConnectivityMatrix, cmap: Colormap, color_property: str = "synapse_class"
 ) -> dict[str, Color]:
     color_values = list(conn.vertices[color_property].drop_duplicates())
-    value_to_canonical = map_canonical_synapse_classes(color_values)
-    if len(value_to_canonical) == len(color_values):
-        # Anchor each canonical class to a fixed colour so a class looks the same
-        # regardless of how many classes the circuit contains (INH at the cool end,
-        # EXC at the warm end). An EXC-only circuit must still show EXC as warm, not at
-        # index 0. N/A is always grey, never a colormap colour, so unknown classes do
-        # not read as real E/I.
+
+    # Synapse-class properties get E/I anchoring: INH at the cool end, EXC at the warm
+    # end, so a class keeps its colour regardless of how many classes are present (an
+    # EXC-only circuit still shows EXC as warm, not at index 0). Only attempt this when
+    # the values actually look like E/I classes, so generic properties (e.g. layer) are
+    # not forced through synapse-class classification.
+    looks_like_ei = any(
+        CANONICAL_EXC in val.lower() or CANONICAL_INH in val.lower() for val in color_values
+    )
+    value_to_canonical = map_canonical_synapse_classes(color_values) if looks_like_ei else {}
+    if looks_like_ei and len(value_to_canonical) == len(color_values):
         canonical_index = {CANONICAL_INH: 0, CANONICAL_EXC: cmap.N}
 
         def canonical_color(canonical: str) -> Color:
@@ -127,9 +137,13 @@ def assemble_property_colormapping(
             return cmap(canonical_index[canonical])
 
         return {val: canonical_color(value_to_canonical[val]) for val in color_values}
-    # Fallback: at least one non-canonical value; spread what is available evenly.
-    col_idx_ = np.linspace(0, cmap.N, len(color_values)).astype(int)
-    return {val_: cmap(idx_) for val_, idx_ in zip(color_values, col_idx_, strict=True)}
+
+    # Generic grouping property: spread the real groups evenly across the colormap, but
+    # always draw N/A groups in grey so unknowns do not read as a real value.
+    scale_values = [val for val in color_values if not is_na_value(val)]
+    col_idx_ = np.linspace(0, cmap.N, len(scale_values)).astype(int)
+    color_map = dict(zip(scale_values, (cmap(idx) for idx in col_idx_), strict=True))
+    return {val: color_map.get(val, CANONICAL_NA_COLOR) for val in color_values}
 
 
 def connection_probability_pathway(
@@ -383,7 +397,13 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
         color_map = assemble_property_colormapping(conn, cmap, color_property=grouping_prop)
         colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
-        colors = [cmap(i) for i in range(len(category_counts))[::-1]]
+        # Spread the colormap over the real categories, but always draw N/A grey so
+        # unknown groups (e.g. layer "N/A") do not read as a real value.
+        reversed_indices = range(len(category_counts))[::-1]
+        colors = [
+            CANONICAL_NA_COLOR if is_na_value(str(key)) else cmap(idx)
+            for key, idx in zip(category_counts.index, reversed_indices, strict=True)
+        ]
 
     # Create the pie chart without percentages inside
     wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})

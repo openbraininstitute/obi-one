@@ -20,6 +20,7 @@ from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     connection_probability_within_pathway,
     directed_connection_probability_within,
     in_out_degree,
+    make_pie_plot,
     map_canonical_synapse_classes,
     plot_smallMC,
 )
@@ -33,24 +34,29 @@ def _load_conn(name):
     return ConnectivityMatrix.from_h5(str(MATRIX_DIR / name / "connectivity_matrix.h5"))
 
 
-def _conn_with_na_class(name):
-    """Return a copy of a connectome with one node relabelled to synapse_class "N/A".
+def _conn_with_na_value(name, prop, match_value):
+    """Return a copy of a connectome with one node's `prop` relabelled to "N/A".
 
-    No shipped example matrix carries N/A values, so inject one onto an EXC node
-    while keeping at least one EXC and one INH node, giving a 3-class circuit.
+    No shipped example matrix carries N/A values, so inject one onto a node that
+    currently has `match_value`, leaving the remaining values intact.
     """
     conn = _load_conn(name)
     vertices = conn.vertices.copy()
-    classes = vertices["synapse_class"].to_numpy().copy()
-    exc_positions = np.where(classes == "EXC")[0]
-    classes[exc_positions[0]] = "N/A"
-    vertices["synapse_class"] = classes
+    values = vertices[prop].astype(str).to_numpy().copy()
+    positions = np.where(values == match_value)[0]
+    values[positions[0]] = "N/A"
+    vertices[prop] = values
     return ConnectivityMatrix(
         conn.matrix,
         vertex_properties=vertices,
         edge_properties=conn.edges,
         default_edge_property="data",
     )
+
+
+def _conn_with_na_class(name):
+    """Return a copy of a connectome with one EXC node relabelled to synapse_class "N/A"."""
+    return _conn_with_na_value(name, "synapse_class", "EXC")
 
 
 def _load_matrix(name):
@@ -266,6 +272,20 @@ class TestAssemblePropertyColormapping:
         assert color_map["EXC"] == warm
         assert color_map["INH"] == cool
 
+    def test_na_is_grey_for_generic_property(self):
+        # The grey-for-N/A rule applies to any grouping property, not just
+        # synapse_class. Here a layer value is relabelled N/A.
+        conn = _conn_with_na_value("N_10__top_nodes_dim6", "layer", "3")
+        layers = conn.vertices["layer"].astype(str)
+        assert "N/A" in set(layers.unique())
+
+        color_map = assemble_property_colormapping(conn, self.CMAP, color_property="layer")
+
+        assert color_map["N/A"] == CANONICAL_NA_COLOR
+        # Remaining real layers still receive distinct colormap colours.
+        real_colors = [c for val, c in color_map.items() if val != "N/A"]
+        assert all(c != CANONICAL_NA_COLOR for c in real_colors)
+
 
 class TestMapCanonicalSynapseClasses:
     """Canonical classification must recognise EXC/INH and treat the rest as N/A.
@@ -286,3 +306,32 @@ class TestMapCanonicalSynapseClasses:
     def test_substring_matches_are_case_insensitive(self):
         mapping = map_canonical_synapse_classes(["excitatory", "Inhibitory"])
         assert mapping == {"excitatory": CANONICAL_EXC, "Inhibitory": CANONICAL_INH}
+
+
+class TestMakePiePlotNaColour:
+    """Pie charts must draw N/A groups grey for any grouping property.
+
+    The layer/mtype pie slices sample the colormap directly (they do not go through
+    assemble_property_colormapping), so N/A handling must be enforced there too.
+    """
+
+    def _wedge_colours(self, ax):
+        return [tuple(wedge.get_facecolor()) for wedge in ax.patches]
+
+    def test_layer_na_slice_is_grey(self):
+        cmaps = {
+            "synapse_class": LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"]),
+            "layer": plt.get_cmap("Dark2"),
+            "mtype": plt.get_cmap("GnBu"),
+        }
+        conn = _conn_with_na_value("N_10__top_nodes_dim6", "layer", "3")
+        fig, ax = plt.subplots()
+        try:
+            make_pie_plot(ax, conn, "layer", cmaps)
+            grey = tuple(CANONICAL_NA_COLOR)
+            colours = self._wedge_colours(ax)
+            # Exactly one slice (the N/A layer) is grey; the rest are colormap colours.
+            assert colours.count(grey) == 1
+            assert any(c != grey for c in colours)
+        finally:
+            plt.close(fig)
