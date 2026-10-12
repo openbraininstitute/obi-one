@@ -12,9 +12,11 @@ from entitysdk.types import AssetLabel, Sex, TaskActivityType, TaskConfigType
 from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError
-from obi_one.core.registry import task_registry
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_scan_config,
+)
 from obi_one.scientific.tasks import ion_channel_modeling
 from obi_one.scientific.tasks.ion_channel_modeling import (
     HodgkinHuxleyIonChannelModel,
@@ -47,18 +49,17 @@ def test_recordings_are_kept_together_rather_than_scanned():
 
 
 def test_registration_uses_the_generic_ion_channel_modeling_task_entities():
-    registration = task_registry.get_registration_for_scan_config(IonChannelFittingScanConfig)
+    task_spec = get_task_spec_for_scan_config(IonChannelFittingScanConfig)
 
-    assert registration.asset_label == AssetLabel.task_config
-    assert registration.campaign_task_config_type == TaskConfigType.ion_channel_modeling__campaign
-    assert registration.single_task_config_type == TaskConfigType.ion_channel_modeling__config
+    assert task_spec is not None
+    assert task_spec.asset_label == AssetLabel.task_config
+    assert task_spec.campaign_task_config_type == TaskConfigType.ion_channel_modeling__campaign
+    assert task_spec.single_task_config_type == TaskConfigType.ion_channel_modeling__config
     assert (
-        registration.campaign_generation_task_activity_type
+        task_spec.campaign_generation_task_activity_type
         == TaskActivityType.ion_channel_modeling__config_generation
     )
-    assert (
-        registration.single_task_activity_type == TaskActivityType.ion_channel_modeling__execution
-    )
+    assert task_spec.single_task_activity_type == TaskActivityType.ion_channel_modeling__execution
 
 
 RECORDING_IDS = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]
