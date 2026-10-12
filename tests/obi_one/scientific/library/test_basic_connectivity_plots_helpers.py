@@ -15,6 +15,7 @@ from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     CANONICAL_EXC,
     CANONICAL_INH,
     CANONICAL_NA,
+    CANONICAL_NA_COLOR,
     assemble_property_colormapping,
     connection_probability_within_pathway,
     directed_connection_probability_within,
@@ -30,6 +31,26 @@ MATRIX_NAMES = ["N_10__top_nodes_dim6", "N_10__top_rc_nodes_dim2_rc"]
 
 def _load_conn(name):
     return ConnectivityMatrix.from_h5(str(MATRIX_DIR / name / "connectivity_matrix.h5"))
+
+
+def _conn_with_na_class(name):
+    """Return a copy of a connectome with one node relabelled to synapse_class "N/A".
+
+    No shipped example matrix carries N/A values, so inject one onto an EXC node
+    while keeping at least one EXC and one INH node, giving a 3-class circuit.
+    """
+    conn = _load_conn(name)
+    vertices = conn.vertices.copy()
+    classes = vertices["synapse_class"].to_numpy().copy()
+    exc_positions = np.where(classes == "EXC")[0]
+    classes[exc_positions[0]] = "N/A"
+    vertices["synapse_class"] = classes
+    return ConnectivityMatrix(
+        conn.matrix,
+        vertex_properties=vertices,
+        edge_properties=conn.edges,
+        default_edge_property="data",
+    )
 
 
 def _load_matrix(name):
@@ -230,6 +251,20 @@ class TestAssemblePropertyColormapping:
         dual = assemble_property_colormapping(_load_conn("N_10__top_nodes_dim6"), self.CMAP)
         # EXC must look identical whether or not INH is also present.
         assert single["EXC"] == dual["EXC"]
+
+    def test_na_class_is_grey_not_a_colormap_colour(self):
+        cool, warm = self._cool_warm()
+        conn = _conn_with_na_class("N_10__top_nodes_dim6")
+        assert sorted(conn.vertices["synapse_class"].unique()) == ["EXC", "INH", "N/A"]
+
+        color_map = assemble_property_colormapping(conn, self.CMAP)
+
+        # N/A is always the fixed grey, never sampled from the colormap.
+        assert color_map["N/A"] == CANONICAL_NA_COLOR
+        assert color_map["N/A"] not in {cool, warm}
+        # E/I colours are unaffected by the presence of an N/A class.
+        assert color_map["EXC"] == warm
+        assert color_map["INH"] == cool
 
 
 class TestMapCanonicalSynapseClasses:

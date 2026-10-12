@@ -54,6 +54,10 @@ CANONICAL_NA = "n/a"
 # A matplotlib colour, either a named/hex string or an RGBA tuple (as returned by a Colormap).
 Color = str | tuple[float, float, float, float]
 
+# N/A nodes are always drawn in a neutral grey, independent of the active colormap, so
+# that "unknown" classes read as unknown rather than as a real E/I colour.
+CANONICAL_NA_COLOR: Color = (0.5, 0.5, 0.5, 1.0)
+
 # Stats functions
 
 
@@ -110,16 +114,19 @@ def assemble_property_colormapping(
     color_values = list(conn.vertices[color_property].drop_duplicates())
     value_to_canonical = map_canonical_synapse_classes(color_values)
     if len(value_to_canonical) == len(color_values):
-        # Anchor each canonical class to a fixed colormap position so a class keeps
-        # the same colour regardless of how many classes the circuit contains (INH at
-        # the cool end, EXC at the warm end). An EXC-only circuit must still show EXC
-        # as warm, not at index 0.
-        canonical_index = {
-            CANONICAL_INH: 0,
-            CANONICAL_NA: cmap.N // 2,
-            CANONICAL_EXC: cmap.N,
-        }
-        return {val: cmap(canonical_index[value_to_canonical[val]]) for val in color_values}
+        # Anchor each canonical class to a fixed colour so a class looks the same
+        # regardless of how many classes the circuit contains (INH at the cool end,
+        # EXC at the warm end). An EXC-only circuit must still show EXC as warm, not at
+        # index 0. N/A is always grey, never a colormap colour, so unknown classes do
+        # not read as real E/I.
+        canonical_index = {CANONICAL_INH: 0, CANONICAL_EXC: cmap.N}
+
+        def canonical_color(canonical: str) -> Color:
+            if canonical == CANONICAL_NA:
+                return CANONICAL_NA_COLOR
+            return cmap(canonical_index[canonical])
+
+        return {val: canonical_color(value_to_canonical[val]) for val in color_values}
     # Fallback: at least one non-canonical value; spread what is available evenly.
     col_idx_ = np.linspace(0, cmap.N, len(color_values)).astype(int)
     return {val_: cmap(idx_) for val_, idx_ in zip(color_values, col_idx_, strict=True)}
