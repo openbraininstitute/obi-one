@@ -397,12 +397,17 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
         color_map = assemble_property_colormapping(conn, cmap, color_property=grouping_prop)
         colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
-        # Spread the colormap over the real categories, but always draw N/A grey so
-        # unknown groups (e.g. layer "N/A") do not read as a real value.
-        reversed_indices = range(len(category_counts))[::-1]
+        # Draw N/A grey, and spread the colormap only over the real categories so N/A
+        # does not consume a colour slot. Indexing just the real groups keeps the used
+        # indices in 0..n_real-1, avoiding trailing colours (e.g. Dark2's grey entry).
+        real_keys = [key for key in category_counts.index if not is_na_value(str(key))]
+        real_color = {
+            key: cmap(idx)
+            for key, idx in zip(real_keys, reversed(range(len(real_keys))), strict=True)
+        }
         colors = [
-            CANONICAL_NA_COLOR if is_na_value(str(key)) else cmap(idx)
-            for key, idx in zip(category_counts.index, reversed_indices, strict=True)
+            CANONICAL_NA_COLOR if is_na_value(str(key)) else real_color[key]
+            for key in category_counts.index
         ]
 
     # Create the pie chart without percentages inside

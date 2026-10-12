@@ -335,3 +335,32 @@ class TestMakePiePlotNaColour:
             assert any(c != grey for c in colours)
         finally:
             plt.close(fig)
+
+    def test_na_does_not_consume_a_colormap_index(self):
+        # The N/A group must not take a colour slot: with n_real real groups, only
+        # colormap indices 0..n_real-1 may be used. Dark2's trailing index (7) is a
+        # dark grey, so if N/A consumed a slot a real group would wrongly get it.
+        n_real = 7  # 7 real layers + N/A exercises Dark2's grey index 7
+        conn = _load_conn("N_10__top_nodes_dim6")
+        vertices = conn.vertices.copy()
+        labels = [str(i) for i in range(n_real)] + ["N/A"]
+        node_count = len(vertices)
+        vertices["layer"] = [labels[i % len(labels)] for i in range(node_count)]
+        conn = ConnectivityMatrix(
+            conn.matrix,
+            vertex_properties=vertices,
+            edge_properties=conn.edges,
+            default_edge_property="data",
+        )
+
+        cmap = plt.get_cmap("Dark2")
+        fig, ax = plt.subplots()
+        try:
+            make_pie_plot(ax, conn, "layer", {"layer": cmap})
+            colours = self._wedge_colours(ax)
+            real_colours = [c for c in colours if c != tuple(CANONICAL_NA_COLOR)]
+            allowed = {tuple(cmap(i)) for i in range(n_real)}
+            assert set(real_colours) == allowed
+            assert tuple(cmap(n_real)) not in set(real_colours)
+        finally:
+            plt.close(fig)
