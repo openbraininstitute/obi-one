@@ -86,7 +86,7 @@ class EMSynapseMappingTask(Task):
         # Resolve all neurons: morphology, provenance, ME model and place locally
         L.info("Resolving input data...")
         resolved_neurons, resolved_em_dataset, coll_bio, mechanisms_placed = resolve_list_neurons(
-            init_neurons=list(init.neurons.elements),
+            init_neurons=list(init.neurons.elements),  # ty:ignore[unresolved-attribute]
             db_client=db_client,
             out_root=out_root,
             spiny_dir=spiny_dir,
@@ -141,7 +141,7 @@ class EMSynapseMappingTask(Task):
             stats_name = (
                 f"mapping_stats_neuron_{bio_node_id}.png" if is_multi else "mapping_stats.png"
             )
-            plot_mapping_stats(mapped_synapses_df, mesh_res).savefig(out_root / stats_name)
+            plot_mapping_stats(mapped_synapses_df, mesh_res).savefig(out_root / stats_name)  # ty:ignore[invalid-argument-type]
             plt.close("all")
 
             # Split synapses: internal (pre is in the set) vs external
@@ -300,7 +300,7 @@ class EMSynapseMappingTask(Task):
             db_client=db_client,
             circuit_path=circuit_config_path,
             resolved_neurons=resolved_neurons,
-            source_dataset=source_dataset,
+            source_dataset=source_dataset,  # ty:ignore[invalid-argument-type]
             em_dataset=em_dataset,
             all_notices=all_notices,
             total_internal=total_internal,

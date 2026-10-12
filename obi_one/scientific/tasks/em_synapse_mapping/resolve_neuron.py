@@ -188,7 +188,7 @@ def resolve_list_neurons(  # ruff: ignore[too-many-locals]
         L.info(f"...for neuron id: {pt_root_id}")
         resolved_neuron, mechanisms_placed_ = place_morphologies_and_mechanisms(
             morph_from_id=morph_from_id,
-            me_model_entity=me_model_entity,
+            me_model_entity=me_model_entity,  # ty:ignore[invalid-argument-type]
             source_mesh_entity=source_mesh_entity,
             source_dataset=source_dataset,
             pt_root_id=pt_root_id,
