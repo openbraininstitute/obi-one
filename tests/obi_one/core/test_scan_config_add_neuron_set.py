@@ -9,6 +9,7 @@ import pytest
 import obi_one as obi
 from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import _reference_type_name_for_block
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
 )
@@ -30,7 +31,7 @@ def sim_conf():
 def test_add_biophysical_neuron_set(sim_conf):
     """Adding a biophysical neuron set resolves to BiophysicalNeuronSetReference."""
     nset = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="ids", elements=(0, 1, 2)),
+        neuron_ids=NamedTuple(name="ids", elements=(0, 1, 2)),
         population="pop_A",
     )
     sim_conf.add(nset, name="bio_nset")

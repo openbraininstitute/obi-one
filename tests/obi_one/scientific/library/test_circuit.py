@@ -6,6 +6,8 @@ import morphio
 import pytest
 
 import obi_one as obi
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific import library
 from obi_one.scientific.library import circuit as test_module
 
@@ -398,13 +400,13 @@ def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
             hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
         )
     )
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     containerized = obi.Circuit(
         name=source.name,

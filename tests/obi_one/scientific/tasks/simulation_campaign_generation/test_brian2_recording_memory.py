@@ -12,6 +12,7 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.tasks.generate_simulations.config.brian2 import brian2_base
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
@@ -35,7 +36,7 @@ def limit_of_one_neuron(monkeypatch):
 def _neuron(node_id: int, name: str) -> obi.PointPopulationIDNeuronSet:
     return obi.PointPopulationIDNeuronSet(
         population=POINT_POPULATION,
-        neuron_ids=obi.NamedTuple(name=name, elements=[node_id]),
+        neuron_ids=NamedTuple(name=name, elements=[node_id]),
     )
 
 
@@ -99,7 +100,7 @@ class TestBrian2RecordingMemory:
         """A 10 ms window on two neurons is held for all 4,000 timesteps, not its own 400."""
         pair = obi.PointPopulationIDNeuronSet(
             population=POINT_POPULATION,
-            neuron_ids=obi.NamedTuple(name="pair", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="pair", elements=[0, 1]),
         )
         config = build_config(
             Brian2CircuitSimulationSingleConfig,

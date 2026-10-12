@@ -9,6 +9,7 @@ responsibility rather than the blocks'.
 import pytest
 
 import obi_one as obi
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
     ByNeuronMechanismVariableNeuronalManipulation,
@@ -133,11 +134,11 @@ class TestSynapticManipulations:
     def test_pre_and_post_synaptic_targets_are_honoured(self, circuit, tmp_path):
         presynaptic = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="pre", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="pre", elements=[0, 1]),
         )
         postsynaptic = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="post", elements=[2, 3]),
+            neuron_ids=NamedTuple(name="post", elements=[2, 3]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,

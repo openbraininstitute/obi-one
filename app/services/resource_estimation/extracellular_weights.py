@@ -13,7 +13,7 @@ from app.services.resource_estimation.circuit_extraction import (
     MAX_MEMORY_GB,
     get_required_cpu_memory_combo,
 )
-from obi_one import deserialize_obi_object_from_json_data
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_task_type,

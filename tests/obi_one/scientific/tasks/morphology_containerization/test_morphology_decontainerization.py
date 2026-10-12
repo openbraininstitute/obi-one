@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import obi_one as obi
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
 
 from tests.utils import CIRCUIT_DIR
 
@@ -26,13 +28,13 @@ def test_morphology_decontainerization(tmp_path):
     )
 
     # Run decontainerization
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=morphology_decontainerization_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     # Check that output circuits with individual morphologies have been created and are accessible
     instances = grid_scan.single_configs

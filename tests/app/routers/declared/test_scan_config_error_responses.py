@@ -9,6 +9,7 @@ import obi_one as obi
 from app.dependencies.entitysdk import get_client
 from app.endpoints import scan_config
 from obi_one.core.exception import ConfigValidationError
+from obi_one.core.info import Info
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
@@ -43,7 +44,7 @@ OVERSIZED_SWEEP = [float(i) for i in range(200)]
 def _payload(amplitude):
     config = CircuitSimulationScanConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test campaign", campaign_description="Test description"),
+        Info(campaign_name="Test campaign", campaign_description="Test description"),
         name="info",
     )
     neuron_set = BiophysicalPopulationPredefinedNeuronSet(

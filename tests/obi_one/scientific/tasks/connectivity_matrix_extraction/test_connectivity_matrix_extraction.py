@@ -3,6 +3,8 @@ import pytest
 from conntility import ConnectivityMatrix
 
 import obi_one as obi
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks import connectivity_matrix_extraction
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
@@ -28,7 +30,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan_a",
         coordinate_directory_option="VALUE",
@@ -39,7 +41,7 @@ def test_connectivity_matrix_extraction(tmp_path):
         ValueError,
         match=f"Edge population '{extraction_init.edge_population}' not found in circuit!",
     ):
-        obi.run_tasks_for_generated_scan(grid_scan)
+        run_tasks_for_generated_scan(grid_scan)
 
     # (b) Matrix extraction with invalid node attribute --> Error
     circuit_list = [
@@ -60,7 +62,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan_b",
         coordinate_directory_option="VALUE",
@@ -68,7 +70,7 @@ def test_connectivity_matrix_extraction(tmp_path):
     grid_scan.execute()
 
     with pytest.raises(ValueError, match=r"Unknown properties:.*INVALID"):
-        obi.run_tasks_for_generated_scan(grid_scan)
+        run_tasks_for_generated_scan(grid_scan)
 
     # (c) Matrix extraction from two circuits through grid scan
     circuit_list = [
@@ -92,13 +94,13 @@ def test_connectivity_matrix_extraction(tmp_path):
         initialize=extraction_init
     )
 
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan_c",
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     # Rerun --> Error since output file already exists
     with pytest.raises(
@@ -109,7 +111,7 @@ def test_connectivity_matrix_extraction(tmp_path):
             }' already exists!"
         ),
     ):
-        obi.run_tasks_for_generated_scan(grid_scan)
+        run_tasks_for_generated_scan(grid_scan)
 
     # Check extracted matrices
     for circuit in circuit_list:
@@ -144,7 +146,7 @@ def test_connectivity_matrix_extraction_suppresses_tqdm(tmp_path, monkeypatch):
     connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=connectivity_matrix_extractions_form,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
@@ -164,6 +166,6 @@ def test_connectivity_matrix_extraction_suppresses_tqdm(tmp_path, monkeypatch):
         spy_from_bluepy,
     )
 
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     assert captured_kwargs.get("show_progress") is False
