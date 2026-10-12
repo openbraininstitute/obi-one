@@ -1,15 +1,20 @@
 """Tests for basic_connectivity_plots_helpers connectivity computations."""
 
+import matplotlib as mpl
 import numpy as np
 import pytest
 from connalysis.network.classic import connection_probability_within
 from connalysis.network.topology import node_degree, rc_submatrix
 from conntility import ConnectivityMatrix
 
+mpl.use("Agg")
+import matplotlib.pyplot as plt
+
 from obi_one.scientific.library.basic_connectivity_plots_helpers import (
     connection_probability_within_pathway,
     directed_connection_probability_within,
     in_out_degree,
+    plot_smallMC,
 )
 
 from tests.utils import MATRIX_DIR
@@ -131,3 +136,49 @@ class TestConnectionProbabilityWithinPathway:
         assert list(actual.columns) == list(expected.columns)
         both_nan = expected.isna() & actual.isna()
         assert ((expected == actual) | both_nan).to_numpy().all()
+
+
+def _synapse_class_legend_labels(fig):
+    """Collect the synapse-class marker labels drawn across a figure's axes."""
+    return [
+        txt.get_text() for ax in fig.axes for txt in ax.texts if txt.get_text() in {"EXC", "INH"}
+    ]
+
+
+def _visible_empty_axes(fig):
+    """Axes left framed/visible but carrying no drawn content."""
+    return [
+        i
+        for i, ax in enumerate(fig.axes)
+        if ax.axison and not (ax.texts or ax.images or ax.patches or ax.lines or ax.collections)
+    ]
+
+
+class TestPlotSmallMCLegend:
+    """plot_smallMC must draw one node legend per present synapse class.
+
+    Regression guard: with a single synapse class the function used to leave an
+    empty, still-visible legend axis where the second class marker would normally
+    go. The node legend must show exactly the classes present, and no legend axis
+    may be left framed with nothing drawn in it.
+    """
+
+    @pytest.mark.parametrize(
+        ("matrix_name", "expected_labels"),
+        [
+            ("N_10__top_rc_nodes_dim2_rc", ["EXC"]),
+            ("N_10__top_nodes_dim6", ["EXC", "INH"]),
+        ],
+    )
+    def test_node_legend_matches_synapse_classes(self, matrix_name, expected_labels):
+        conn = _load_conn(matrix_name)
+        present = sorted(conn.vertices["synapse_class"].unique())
+        assert present == expected_labels, "matrix fixture no longer has expected classes"
+
+        fig = plot_smallMC(conn, plt.get_cmap("viridis"), full_width=10)
+        try:
+            assert sorted(_synapse_class_legend_labels(fig)) == expected_labels
+            # The single-class bug surfaced as a framed-but-empty legend axis.
+            assert _visible_empty_axes(fig) == []
+        finally:
+            plt.close(fig)

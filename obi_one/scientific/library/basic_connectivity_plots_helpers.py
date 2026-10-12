@@ -1300,6 +1300,7 @@ def plot_smallMC(  # ruff: ignore[too-many-locals]
         title=title,
         title_fontsize=textsize,
     )
+    node_legend_axes = [ax7, ax8]
     try:
         canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
         axes_specs = [
@@ -1309,8 +1310,15 @@ def plot_smallMC(  # ruff: ignore[too-many-locals]
     except ValueError:
         axes_specs = [
             (ax_, label, color_map_nodes[label])
-            for ax_, label in zip([ax7, ax8], color_map_nodes.keys(), strict=False)
+            for ax_, label in zip(node_legend_axes, color_map_nodes.keys(), strict=False)
         ]
+
+    # Hide any node-legend axis without a spec (e.g. a single-class circuit leaves one unused),
+    # otherwise its empty frame renders where the second legend would be.
+    used_axes = {spec[0] for spec in axes_specs}
+    for ax_ in node_legend_axes:
+        if ax_ not in used_axes:
+            ax_.set_axis_off()
 
     # Add network legends
     plot_network_legends(
