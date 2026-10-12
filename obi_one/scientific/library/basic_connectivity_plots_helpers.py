@@ -51,6 +51,9 @@ CANONICAL_EXC = "exc"
 CANONICAL_INH = "inh"
 CANONICAL_NA = "na"
 
+# A matplotlib colour, either a named/hex string or an RGBA tuple (as returned by a Colormap).
+Color = str | tuple[float, float, float, float]
+
 # Stats functions
 
 
@@ -71,25 +74,55 @@ def find_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
     return canon_mapping
 
 
+def map_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
+    """Map each node property value to its canonical synapse class where possible.
+
+    Unlike find_canonical_synapse_classes, this does not require both EXC and INH to
+    be present, so single-class circuits can still be coloured consistently.
+
+    Args:
+        prop_values: The distinct node property values to classify.
+
+    Returns:
+        A mapping from each recognised property value to its canonical class
+        (CANONICAL_EXC, CANONICAL_INH, or CANONICAL_NA). Values that match no
+        canonical class beyond a single N/A are omitted.
+    """
+    value_to_canonical = {}
+    na_assigned = False
+    for val in prop_values:
+        lowered = val.lower()
+        if CANONICAL_EXC in lowered:
+            value_to_canonical[val] = CANONICAL_EXC
+        elif CANONICAL_INH in lowered:
+            value_to_canonical[val] = CANONICAL_INH
+        elif not na_assigned:
+            value_to_canonical[val] = CANONICAL_NA
+            na_assigned = True
+        else:
+            L.warning("More than one string could be mapped to N/A.")
+    return value_to_canonical
+
+
 def assemble_property_colormapping(
     conn: ConnectivityMatrix, cmap: Colormap, color_property: str = "synapse_class"
-) -> dict[str, str]:
+) -> dict[str, Color]:
     color_values = list(conn.vertices[color_property].drop_duplicates())
-    try:  # We attempt to display EXC / INH
-        canon_map = find_canonical_synapse_classes(color_values)
-        if CANONICAL_NA in canon_map:
-            color_values = [
-                canon_map[CANONICAL_INH],
-                canon_map[CANONICAL_NA],
-                canon_map[CANONICAL_EXC],
-            ]
-        else:
-            color_values = [canon_map[CANONICAL_INH], canon_map[CANONICAL_EXC]]
-    except ValueError:  # Fallback: Whatever is available
-        pass
+    value_to_canonical = map_canonical_synapse_classes(color_values)
+    if len(value_to_canonical) == len(color_values):
+        # Anchor each canonical class to a fixed colormap position so a class keeps
+        # the same colour regardless of how many classes the circuit contains (INH at
+        # the cool end, EXC at the warm end). An EXC-only circuit must still show EXC
+        # as warm, not at index 0.
+        canonical_index = {
+            CANONICAL_INH: 0,
+            CANONICAL_NA: cmap.N // 2,
+            CANONICAL_EXC: cmap.N,
+        }
+        return {val: cmap(canonical_index[value_to_canonical[val]]) for val in color_values}
+    # Fallback: at least one non-canonical value; spread what is available evenly.
     col_idx_ = np.linspace(0, cmap.N, len(color_values)).astype(int)
-    color_map = {val_: cmap(idx_) for val_, idx_ in zip(color_values, col_idx_, strict=True)}
-    return color_map
+    return {val_: cmap(idx_) for val_, idx_ in zip(color_values, col_idx_, strict=True)}
 
 
 def connection_probability_pathway(
@@ -790,7 +823,7 @@ def plot_smallMC_network_stats(  # ruff: ignore[too-many-locals, too-many-statem
 
 
 def plot_growing_circles(
-    fig: plt.Figure, ax: plt.Axes, radii: list[float], y1: float = 0.5, color: str = "black"
+    fig: plt.Figure, ax: plt.Axes, radii: list[float], y1: float = 0.5, color: Color = "black"
 ) -> plt.Axes:
     # Get axis aspect ratio to make circles instead of ellipses
     bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
@@ -1125,7 +1158,7 @@ def plot_network_legends(
     fig: plt.Figure,
     ax_edge: plt.Axes,
     ax_node_size: plt.Axes,
-    axes_tuples: list[tuple[plt.Axes, str, str]],
+    axes_tuples: list[tuple[plt.Axes, str, Color]],
     *,
     largest_radius: float = 0.1,
     y_position: float = 0.75,

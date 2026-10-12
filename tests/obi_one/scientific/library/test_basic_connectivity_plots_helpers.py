@@ -9,8 +9,10 @@ from conntility import ConnectivityMatrix
 
 mpl.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+    assemble_property_colormapping,
     connection_probability_within_pathway,
     directed_connection_probability_within,
     in_out_degree,
@@ -182,3 +184,45 @@ class TestPlotSmallMCLegend:
             assert _visible_empty_axes(fig) == []
         finally:
             plt.close(fig)
+
+
+class TestAssemblePropertyColormapping:
+    """Synapse-class colours must be anchored to canonical ends of the colormap.
+
+    Regression guard: a single-class (e.g. EXC-only) circuit used to colour its one
+    class from index 0 of the colormap (the INH/cool end), so EXC rendered blue
+    instead of red. EXC must always take the warm end and INH the cool end,
+    independent of how many classes are present.
+    """
+
+    # The real plots build colours from this blue (INH) -> red (EXC) colormap.
+    CMAP = LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"])
+
+    def _cool_warm(self):
+        return self.CMAP(0), self.CMAP(self.CMAP.N)
+
+    def test_single_exc_class_uses_warm_end(self):
+        cool, warm = self._cool_warm()
+        conn = _load_conn("N_10__top_rc_nodes_dim2_rc")
+        assert sorted(conn.vertices["synapse_class"].unique()) == ["EXC"]
+
+        color_map = assemble_property_colormapping(conn, self.CMAP)
+
+        assert color_map["EXC"] == warm
+        assert color_map["EXC"] != cool
+
+    def test_two_classes_anchor_exc_warm_inh_cool(self):
+        cool, warm = self._cool_warm()
+        conn = _load_conn("N_10__top_nodes_dim6")
+        assert sorted(conn.vertices["synapse_class"].unique()) == ["EXC", "INH"]
+
+        color_map = assemble_property_colormapping(conn, self.CMAP)
+
+        assert color_map["EXC"] == warm
+        assert color_map["INH"] == cool
+
+    def test_exc_colour_consistent_across_circuits(self):
+        single = assemble_property_colormapping(_load_conn("N_10__top_rc_nodes_dim2_rc"), self.CMAP)
+        dual = assemble_property_colormapping(_load_conn("N_10__top_nodes_dim6"), self.CMAP)
+        # EXC must look identical whether or not INH is also present.
+        assert single["EXC"] == dual["EXC"]
