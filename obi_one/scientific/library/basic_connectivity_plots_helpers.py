@@ -49,7 +49,7 @@ except ImportError as e:  # pragma: no cover
 L = logging.getLogger(__name__)
 CANONICAL_EXC = "exc"
 CANONICAL_INH = "inh"
-CANONICAL_NA = "na"
+CANONICAL_NA = "n/a"
 
 # A matplotlib colour, either a named/hex string or an RGBA tuple (as returned by a Colormap).
 Color = str | tuple[float, float, float, float]

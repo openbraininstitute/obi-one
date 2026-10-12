@@ -12,10 +12,14 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 from obi_one.scientific.library.basic_connectivity_plots_helpers import (
+    CANONICAL_EXC,
+    CANONICAL_INH,
+    CANONICAL_NA,
     assemble_property_colormapping,
     connection_probability_within_pathway,
     directed_connection_probability_within,
     in_out_degree,
+    map_canonical_synapse_classes,
     plot_smallMC,
 )
 
@@ -226,3 +230,24 @@ class TestAssemblePropertyColormapping:
         dual = assemble_property_colormapping(_load_conn("N_10__top_nodes_dim6"), self.CMAP)
         # EXC must look identical whether or not INH is also present.
         assert single["EXC"] == dual["EXC"]
+
+
+class TestMapCanonicalSynapseClasses:
+    """Canonical classification must recognise EXC/INH and treat the rest as N/A.
+
+    Real circuits carry literal "N/A" values for synapse_class or layer, so these
+    must map to the canonical N/A slot rather than being dropped or mislabelled.
+    """
+
+    def test_na_literal_maps_to_canonical_na(self):
+        mapping = map_canonical_synapse_classes(["EXC", "INH", "N/A"])
+        assert mapping == {"EXC": CANONICAL_EXC, "INH": CANONICAL_INH, "N/A": CANONICAL_NA}
+
+    def test_single_na_slot_only(self):
+        # Only the first non-E/I value takes the N/A slot; extras are not mapped.
+        mapping = map_canonical_synapse_classes(["N/A", "other"])
+        assert mapping == {"N/A": CANONICAL_NA}
+
+    def test_substring_matches_are_case_insensitive(self):
+        mapping = map_canonical_synapse_classes(["excitatory", "Inhibitory"])
+        assert mapping == {"excitatory": CANONICAL_EXC, "Inhibitory": CANONICAL_INH}
