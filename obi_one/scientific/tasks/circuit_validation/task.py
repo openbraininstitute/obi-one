@@ -21,6 +21,8 @@ from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
 from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
+from obi_one.types import SimulationBackend
 from obi_one.utils.circuit import run_validation
 
 if TYPE_CHECKING:
@@ -616,17 +618,24 @@ def _find_mod_dir(circuit: SnapCircuitType) -> Path | None:
 
 
 def _compile_mechanisms(mod_dir: Path, working_dir: Path) -> None:
-    """Compile MOD files with nrnivmodl. Raises on failure."""
+    """Compile MOD files with nrnivmodl. Raises RuntimeError on failure.
+
+    Delegates to the shared ``compile_mechanisms`` NEURON toolchain path. The
+    ``bluecellulab`` backend selects plain ``nrnivmodl`` compilation, which is what
+    validation needs to load mechanisms and instantiate HOC templates. This does not
+    exercise the Neurodamus/CoreNEURON compile path, so a MOD that builds here could
+    still fail under CoreNEURON for a Neurodamus-targeted circuit; that stronger check
+    would require compiling with the circuit's intended backend.
+    """
     L.info("Compiling MOD files from %s", mod_dir)
     try:
-        subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-            ["nrnivmodl", "-incflags", "-DDISABLE_REPORTINGLIB", str(mod_dir)],  # ruff: ignore[start-process-with-partial-path]
-            check=True,
-            capture_output=True,
-            cwd=str(working_dir),
+        compile_mechanisms(
+            output_dir=working_dir,
+            mechanisms_dirs=[mod_dir],
+            simulation_backend=SimulationBackend.bluecellulab,
         )
     except subprocess.CalledProcessError as e:
-        stderr = e.stderr.decode(errors="replace") if e.stderr else ""
+        stderr = e.stderr or ""
         msg = f"MOD compilation failed: {stderr[:500]}"
         raise RuntimeError(msg) from e
     L.info("MOD compilation successful")

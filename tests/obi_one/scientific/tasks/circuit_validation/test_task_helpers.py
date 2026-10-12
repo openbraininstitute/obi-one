@@ -30,6 +30,7 @@ from obi_one.scientific.tasks.circuit_validation.task import (
     _validate_hoc_loading,
     _validate_morphology_paths,
 )
+from obi_one.types import SimulationBackend
 
 from tests.utils import CIRCUIT_DIR
 
@@ -82,27 +83,32 @@ class TestFindModDir:
 
 
 class TestCompileMechanisms:
-    def test_success(self, tmp_path):
+    def test_success_delegates_to_shared_compiler(self, tmp_path):
         mod_dir = tmp_path / "mods"
         mod_dir.mkdir()
         (mod_dir / "NaTg.mod").write_text("NEURON { SUFFIX NaTg }\n")
 
-        with patch("obi_one.scientific.tasks.circuit_validation.task.subprocess.run") as mock_run:
-            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0)
+        with patch(
+            "obi_one.scientific.tasks.circuit_validation.task.compile_mechanisms"
+        ) as mock_compile:
             _compile_mechanisms(mod_dir, tmp_path)
 
-        mock_run.assert_called_once()
-        args = mock_run.call_args
-        assert "nrnivmodl" in args[0][0][0]
-        assert str(mod_dir) in args[0][0]
+        mock_compile.assert_called_once()
+        kwargs = mock_compile.call_args.kwargs
+        assert kwargs["mechanisms_dirs"] == [mod_dir]
+        assert kwargs["output_dir"] == tmp_path
+        assert kwargs["simulation_backend"] == SimulationBackend.bluecellulab
 
     def test_failure_raises(self, tmp_path):
         mod_dir = tmp_path / "mods"
         mod_dir.mkdir()
 
-        with patch("obi_one.scientific.tasks.circuit_validation.task.subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(
-                1, "nrnivmodl", stderr=b"syntax error in PROCEDURE"
+        with patch(
+            "obi_one.scientific.tasks.circuit_validation.task.compile_mechanisms"
+        ) as mock_compile:
+            # run_and_log uses text=True, so stderr surfaces as a str.
+            mock_compile.side_effect = subprocess.CalledProcessError(
+                1, "nrnivmodl", stderr="syntax error in PROCEDURE"
             )
             with pytest.raises(RuntimeError, match="MOD compilation failed"):
                 _compile_mechanisms(mod_dir, tmp_path)
