@@ -21,7 +21,7 @@ from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
 from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
-from obi_one.utils.circuit import run_validation
+from obi_one.utils.circuit_validation import run_validation
 
 if TYPE_CHECKING:
     from uuid import UUID
