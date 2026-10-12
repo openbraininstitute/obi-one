@@ -161,6 +161,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 count=1,
                 service_subtype=ServiceSubtype.EMODEL_OPTIMISATION,
             )
+        case TaskType.emodel_validation:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_VALIDATION,
+            )
         case TaskType.circuit_synaptic_physiology_assignment:
             return AccountingParameters(
                 count=1,

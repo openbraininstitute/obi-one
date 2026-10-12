@@ -25,6 +25,9 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     EModelOptimizationScanConfig,
 )
+from obi_one.scientific.tasks.emodel_building.task3_emodel_validation import (
+    EModelValidationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
@@ -170,6 +173,8 @@ def activate_scan_config_endpoints() -> None:
     # corresponding guard in obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.
     if EModelOptimizationScanConfig is not None:
         scan_configs.append((EModelOptimizationScanConfig, "generate", "", False))
+    if EModelValidationScanConfig is not None:
+        scan_configs.append((EModelValidationScanConfig, "generate", "", False))
 
     for (
         form,

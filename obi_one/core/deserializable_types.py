@@ -69,6 +69,8 @@ TYPE_MAP: dict[str, str] = {
     "EModelEFeatureExtractionSingleConfig": "obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config",
     "EModelOptimizationScanConfig": "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config",
     "EModelOptimizationSingleConfig": "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config",
+    "EModelValidationScanConfig": "obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config",
+    "EModelValidationSingleConfig": "obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config",
     # __init__.py aliases (class is re-exported under this name)
     "CoupledScan": "obi_one",
     "GridScan": "obi_one",

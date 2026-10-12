@@ -49,6 +49,9 @@ from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
+from obi_one.scientific.tasks.emodel_building.validation_scoring import (
+    register_validation_results,
+)
 
 L = logging.getLogger(__name__)
 
@@ -65,6 +68,9 @@ class OptimizationPipelineResults:
     calibration: dict | None
     validation: dict | None
     validation_status: ValidationStatus
+    # BluePyEModel e-feature score validation of the held-out protocols (see
+    # ``validation_scoring.summarise_model``); ``None`` if none were held out or it failed.
+    emodel_validation: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -423,6 +429,17 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
 
     memodel_id = str(memodel_entity.id)
     generated_ids = [str(task_result.id), str(emodel_entity.id), memodel_id]
+
+    # --- EModel e-feature score validation (held-out protocols) ---
+    if pipeline_results.emodel_validation is not None:
+        generated_ids.extend(
+            register_validation_results(
+                client=db_client,
+                summary=pipeline_results.emodel_validation,
+                validated_entity_id=emodel_entity.id,
+                authorized_public=authorized_public,
+            )
+        )
 
     # --- MEModel calibration/validation results (computed pre-registration) ---
     if calibration is not None:

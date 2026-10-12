@@ -44,6 +44,12 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     EModelOptimizationSingleConfig,
     EModelOptimizationTask,
 )
+from obi_one.scientific.tasks.emodel_building.task3_emodel_validation import (
+    HAS_EMODEL_VALIDATION,
+    EModelValidationScanConfig,
+    EModelValidationSingleConfig,
+    EModelValidationTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
     ElectrophysiologyMetricsSingleConfig,
@@ -370,6 +376,27 @@ if (
         ),
         single_task_config_type=TaskConfigType.emodel_optimization__config,
         single_task_activity_type=TaskActivityType.emodel_optimization__execution,
+    )
+
+if (
+    HAS_EMODEL_VALIDATION
+    and EModelValidationTask is not None
+    and EModelValidationSingleConfig is not None
+    and EModelValidationScanConfig is not None
+):
+    TASK_MAP[TaskType.emodel_validation] = TaskRegistration(
+        task_cls=EModelValidationTask,
+        single_config_cls=EModelValidationSingleConfig,
+        scan_config_cls=EModelValidationScanConfig,
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.optimized_emodel_analysis_validation__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.optimized_emodel_analysis_validation__config_generation
+        ),
+        single_task_config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        single_task_activity_type=(
+            TaskActivityType.optimized_emodel_analysis_validation__execution
+        ),
     )
 
 # Populate the registry from the static map

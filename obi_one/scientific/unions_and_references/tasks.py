@@ -16,6 +16,9 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task imp
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     EModelOptimizationTask,
 )
+from obi_one.scientific.tasks.emodel_building.task3_emodel_validation import (
+    EModelValidationTask,
+)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTask
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
@@ -44,6 +47,8 @@ _TASK_MEMBERS: tuple[type, ...] = (
 )
 if EModelOptimizationTask is not None:
     _TASK_MEMBERS = (*_TASK_MEMBERS, EModelOptimizationTask)
+if EModelValidationTask is not None:
+    _TASK_MEMBERS = (*_TASK_MEMBERS, EModelValidationTask)
 
 TasksUnion = Annotated[
     reduce(or_, _TASK_MEMBERS),  # ty: ignore[invalid-type-form]
