@@ -59,6 +59,15 @@ class TestRunValidation:
         assert mock_validate.call_args.kwargs["only_errors"] is False
         assert mock_validate.call_args.kwargs["ignore_edge_properties"]
 
+    @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
+    def test_clean_validation_logs_no_errors(self, mock_validate):
+        """A clean SNAP result returns empty fatal and warning lists."""
+        fatals, warnings = run_validation("circuit_config.json")
+
+        assert fatals == []
+        assert warnings == []
+        mock_validate.assert_called_once()
+
 
 def test_simulation_execution_does_not_import_circuit_validation():
     """Normal simulation imports must not load the validation dependency."""
