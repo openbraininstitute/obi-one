@@ -45,7 +45,7 @@ def assemble_collection_from_specs(
     cave_version: int,
     specs: dict,
     pt_root_mapping: pandas.DataFrame,
-) -> voxcell.CellCollection:
+) -> tuple[voxcell.CellCollection, list]:
     tables, lst_notices = get_specified_tables(em_dataset, db_client, cave_version, specs)
 
     out_cols = []
@@ -70,7 +70,7 @@ def assemble_collection_from_specs(
         if out_df[col].dtype.name in {"bool", "boolean"}:
             out_df[col] = out_df[col].astype(str)
 
-    return voxcell.CellCollection.from_dataframe(out_df), lst_notices  # ty:ignore[invalid-return-type]
+    return voxcell.CellCollection.from_dataframe(out_df), lst_notices
 
 
 def write_nodes(
