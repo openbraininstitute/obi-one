@@ -9,6 +9,7 @@ from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 from obi_one.scientific.unions_and_references.neuron_sets import VirtualNeuronSetReference
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
@@ -24,7 +25,7 @@ def _make_time_distribution_stimulus(
     resample_each_repetition: bool = False,
 ) -> obi.SpikeTimeDistributionSpikeStimulus:
     stimulus = obi.SpikeTimeDistributionSpikeStimulus(
-        distribution=obi.AllDistributionsReference(
+        distribution=AllDistributionsReference(
             block_dict_name="distributions",
             block_name="time_dist",
         ),

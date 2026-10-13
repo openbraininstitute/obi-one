@@ -23,6 +23,7 @@ from obi_one.scientific.blocks.neuron_sets.id import (
 from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
     materialize_locations_to_compartment_sets,
 )
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
 )
@@ -632,7 +633,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
 
     # Add distribution-based stimulus that references the distribution
     dist_stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
-        distribution=obi.AllDistributionsReference(
+        distribution=AllDistributionsReference(
             block_dict_name="distributions", block_name="constant_dist"
         ),
         source_neuron_set=sim_neuron_set.ref,

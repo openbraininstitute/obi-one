@@ -3,6 +3,9 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 import obi_one as obi
+from obi_one.scientific.unions_and_references.extracellular_locations import (
+    ExtracellularLocationsUnion,
+)
 
 
 def _as_array(locations):
@@ -377,7 +380,7 @@ class TestParameterSweepConstraints:
 
 class TestExtracellularLocationsUnion:
     def test_discriminated_parse_neuropixels(self):
-        adapter = TypeAdapter(obi.ExtracellularLocationsUnion)
+        adapter = TypeAdapter(ExtracellularLocationsUnion)
         block = adapter.validate_python(
             {"type": "Neuropixels1ExtracellularLocations", "n_electrodes": 96}
         )
@@ -385,13 +388,13 @@ class TestExtracellularLocationsUnion:
         assert block.n_electrodes == 96
 
     def test_discriminated_parse_linear(self):
-        adapter = TypeAdapter(obi.ExtracellularLocationsUnion)
+        adapter = TypeAdapter(ExtracellularLocationsUnion)
         block = adapter.validate_python({"type": "LinearExtracellularLocations", "spacing": 15.0})
         assert isinstance(block, obi.LinearExtracellularLocations)
         assert block.spacing == pytest.approx(15.0)
 
     def test_discriminated_parse_grid(self):
-        adapter = TypeAdapter(obi.ExtracellularLocationsUnion)
+        adapter = TypeAdapter(ExtracellularLocationsUnion)
         block = adapter.validate_python(
             {"type": "GridExtracellularLocations", "grid_rows": 8, "grid_columns": 8}
         )
@@ -399,7 +402,7 @@ class TestExtracellularLocationsUnion:
         assert block.grid_rows == 8
 
     def test_discriminated_parse_utah(self):
-        adapter = TypeAdapter(obi.ExtracellularLocationsUnion)
+        adapter = TypeAdapter(ExtracellularLocationsUnion)
         block = adapter.validate_python({"type": "UTAHArrayExtracellularLocations"})
         assert isinstance(block, obi.UTAHArrayExtracellularLocations)
         assert len(block.get_local_electrode_xyz_locations()) == 100
