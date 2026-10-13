@@ -24,9 +24,6 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     write_nodes,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
-from obi_one.scientific.tasks.em_synapse_mapping.dataframes_from_em import (
-    synapses_and_nodes_dataframes_from_EM,
-)
 from obi_one.scientific.tasks.em_synapse_mapping.plot import (
     plot_mapping_stats,
 )
@@ -128,11 +125,13 @@ class EMSynapseMappingTask(Task):
             pt_root_id = rn.pt_root_id
             L.info(f"Mapping synapses onto morphology {bio_node_id}...")
 
-            syns, _coll_pre, _coll_post, notices = synapses_and_nodes_dataframes_from_EM(
-                em_dataset, pt_root_id, db_client, cave_version
+            syns, syns_notice = em_dataset.synapse_info_df(
+                pt_root_id, cave_version, col_location="post_pt_position", db_client=db_client
             )
 
-            all_notices.extend(notices)
+            # Notices will be identical between neurons. Only add the first time.
+            if bio_node_id == 0:
+                all_notices.append(syns_notice)
 
             mapped_synapses_df, mesh_res = map_afferents_to_spiny_morphology(
                 rn.spiny_morph, syns, add_quality_info=True
@@ -203,9 +202,10 @@ class EMSynapseMappingTask(Task):
                 index=pandas.Index(external_pt_roots_sorted, name="pre_pt_root_id"),
             )
             node_spec = default_node_spec_for(em_dataset, db_client)
-            coll_virtual, _ = assemble_collection_from_specs(
+            coll_virtual, node_notices = assemble_collection_from_specs(
                 em_dataset, db_client, cave_version, node_spec, virt_pt_root_mapping
             )
+            all_notices.extend(node_notices)
         else:
             coll_virtual = None
 
