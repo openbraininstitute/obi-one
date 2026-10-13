@@ -23,7 +23,7 @@ from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_fi
 from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.types import SimulationBackend
-from obi_one.utils.circuit import run_validation
+from obi_one.utils.circuit_validation import run_validation
 
 if TYPE_CHECKING:
     from uuid import UUID

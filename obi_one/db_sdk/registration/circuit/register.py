@@ -34,8 +34,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
 )
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
 from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
-from obi_one.scientific.tasks.circuit_validation.task import run_circuit_validation
-from obi_one.utils.circuit import get_circuit_properties, get_circuit_size, run_validation
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
 from obi_one.utils.io import extract_tar_gz
 
 L = logging.getLogger(__name__)
@@ -299,6 +298,10 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
 
     # Validate SONATA circuit
     if not skip_validation:
+        from obi_one.utils.circuit_validation import (  # ruff: ignore[import-outside-top-level]
+            run_validation,
+        )
+
         run_validation(circuit_path)
 
     # Assure target simulator consistency
@@ -479,6 +482,10 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             )
 
     if neurodamus_validation and not dry_run and registered_circuit is not None:
+        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
+            run_circuit_validation,
+        )
+
         result = run_circuit_validation(
             db_client=client,
             circuit_id=registered_circuit.id,

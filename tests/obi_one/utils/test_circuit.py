@@ -23,7 +23,6 @@ from obi_one.utils.circuit import (
     run_basic_connectivity_plots,
     run_circuit_folder_compression,
     run_connectivity_matrix_extraction,
-    run_validation,
 )
 
 from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
@@ -216,54 +215,6 @@ def test_get_circuit_size_scale_override_applied_for_microcircuit():
 
     assert scale == types.CircuitScale.region
     assert num_nrn == 10
-
-
-def test_run_validation_valid_circuit():
-    """Test that validation passes for a valid circuit."""
-    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
-    fatals, warnings = run_validation(circuit_path)
-    assert fatals == []
-    assert isinstance(warnings, list)
-
-
-def test_run_validation_invalid_path(tmp_path):
-    """Test that validation raises for a non-existent circuit."""
-    with pytest.raises((FileNotFoundError, ValueError)):
-        run_validation(str(tmp_path / "nonexistent" / "circuit_config.json"))
-
-
-def test_run_validation_invalid_circuit():
-    """Test that validation raises for a circuit with missing data files."""
-    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6__config_only" / "circuit_config.json")
-    with pytest.raises(ValueError, match="Circuit validation error"):
-        run_validation(circuit_path)
-
-
-def test_run_validation_returns_errors_without_raising():
-    """Test raise_on_error=False returns fatals instead of raising."""
-    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6__config_only" / "circuit_config.json")
-    fatals, warnings = run_validation(circuit_path, raise_on_error=False)
-    assert fatals
-    assert isinstance(warnings, list)
-
-
-@patch("obi_one.utils.circuit.snap.circuit_validation.validate")
-def test_run_validation_returns_warnings_without_fatals(mock_validate, tmp_path):
-    """Warnings-only SNAP result should not raise and should be returned."""
-    from bluepysnap.circuit_validation import (  # ruff: ignore[import-outside-top-level]
-        BluepySnapValidationError,
-    )
-
-    mock_validate.return_value = {BluepySnapValidationError.warning("partial circuit warning")}
-    circuit_path = tmp_path / "circuit_config.json"
-
-    fatals, warnings = run_validation(circuit_path, raise_on_error=True)
-
-    assert fatals == []
-    assert any("partial circuit warning" in w for w in warnings)
-    mock_validate.assert_called_once()
-    assert mock_validate.call_args.kwargs["only_errors"] is False
-    assert mock_validate.call_args.kwargs["ignore_edge_properties"]
 
 
 def test_generate_overview_figure_skipped_when_no_plots_dir(tmp_path):

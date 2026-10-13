@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from unittest.mock import Mock
 
 import numpy as np
 import pydantic
@@ -8,6 +9,7 @@ import pytest
 from bluepysnap import Circuit
 
 import obi_one as obi
+from obi_one.config import settings
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
@@ -243,8 +245,12 @@ def test_circuit_extraction_rejects_virtual_neuron_set():
         config.validated_config()
 
 
-def test_circuit_extraction_with_default_neuron_set(tmp_path):
-    """Test that extraction works when neuron_set is None (default AllBiophysicalNeurons)."""
+def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
+    """Test that extraction uses the default neuron set and optional validation."""
+    monkeypatch.setattr(settings.circuit_extraction, "run_validation", True)
+    mock_validate = Mock()
+    monkeypatch.setattr("obi_one.utils.circuit_validation.run_validation", mock_validate)
+
     config = obi.CircuitExtractionScanConfig.empty_config()
     config.set(
         obi.Info(campaign_name="DefaultTest", campaign_description="Test default neuron set"),
@@ -269,6 +275,7 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path):
     )
     grid_scan.execute()
     obi.run_tasks_for_generated_scan(grid_scan)
+    mock_validate.assert_called_once()
 
     # Verify the default neuron set was used (AllBiophysicalNeurons = all biophysical neurons)
     instance = grid_scan.single_configs[0]
