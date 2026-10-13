@@ -277,8 +277,8 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
         coordinate_directory_option="ZERO_INDEX",
     )
     grid_scan.execute()
-    mock_validate.assert_called_once()
     run_tasks_for_generated_scan(grid_scan)
+    mock_validate.assert_called_once()
 
     # Verify the default neuron set was used (AllBiophysicalNeurons = all biophysical neurons)
     instance = grid_scan.single_configs[0]
