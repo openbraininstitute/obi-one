@@ -98,6 +98,7 @@ def run_circuit_validation(
                     "errors": [f"MOD compilation failed: {stderr[:500]}"],
                     "warnings": [],
                 }
+            L.info("MOD compilation successful")
 
         fatal_errors: list[str] = []
         warning_messages: list[str] = []
