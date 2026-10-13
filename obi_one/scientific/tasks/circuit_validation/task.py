@@ -20,7 +20,7 @@ from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
-from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
+from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.types import SimulationBackend
 from obi_one.utils.circuit_validation import run_validation
