@@ -9,6 +9,7 @@ import numpy as np
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, Circuit, MEModel
+from entitysdk.models.asset import Asset
 from entitysdk.types import AssetLabel, CircuitScale, ContentType
 from fastapi import HTTPException
 
@@ -25,9 +26,9 @@ from app.schemas.circuit_visualization import (
 from obi_one.scientific.library.circuit import ALTERNATE_MORPHOLOGY_FORMATS
 
 
-def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
+def get_circuit(client: Client, circuit_id: UUID) -> Circuit:
     try:
-        circuit = client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+        return client.get_entity(entity_id=circuit_id, entity_type=Circuit)
     except EntitySDKError as e:
         L.exception(e)
         raise HTTPException(
@@ -38,6 +39,10 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         ) from e
 
+
+def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
+    circuit = get_circuit(client, circuit_id)
+
     if circuit.scale not in {CircuitScale.single, CircuitScale.pair, CircuitScale.small}:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
@@ -47,11 +52,15 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         )
 
+    return sonata_circuit_asset(client, circuit).id
+
+
+def sonata_circuit_asset(client: Client, circuit: Circuit) -> Asset:
     try:
-        asset = client.select_assets(
+        return client.select_assets(
             circuit,
             selection={
-                "label": "sonata_circuit",
+                "label": AssetLabel.sonata_circuit,
             },
         ).one()
 
@@ -63,8 +72,6 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
                 "detail": "Circuit is missing a sonata_circuit asset",
             },
         ) from e
-
-    return asset.id
 
 
 def get_population_nodes(  # ruff: ignore[too-many-locals]
