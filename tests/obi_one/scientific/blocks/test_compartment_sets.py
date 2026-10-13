@@ -506,7 +506,7 @@ def test_task_assigns_implicit_default_to_morphology_locations():
 def test_task_requires_circuit_before_materialization():
     task = GenerateSimulationTask.model_construct(config=MagicMock())
 
-    with pytest.raises(obi.OBIONEError, match="Circuit must be resolved"):
+    with pytest.raises(OBIONEError, match="Circuit must be resolved"):
         task._materialize_location_targets()
 
 

@@ -8,7 +8,14 @@ import pytest
 from bluepysnap import Simulation
 
 import obi_one as obi
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import (
+    CoupledScanGenerationTask,
+    GridScanGenerationTask,
+)
 from obi_one.core.schema import SchemaKey
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
@@ -37,23 +44,23 @@ def _setup_sim():
 
     sim_duration = 3000.0
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="Test", campaign_description="Test description")
+    info = Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
     sim_neuron_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10)),
+        neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(10)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="ID10")
 
     sync_neuron_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet2", elements=range(3)),
+        neuron_ids=NamedTuple(name="IDNeuronSet2", elements=range(3)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(sync_neuron_set, name="ID3")
 
     replay_neuron_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="VPMInputs", elements=range(50)),
+        neuron_ids=NamedTuple(name="VPMInputs", elements=range(50)),
         population="VPM",
     )
     sim_conf.add(replay_neuron_set, name="VPM_input")
@@ -528,7 +535,7 @@ def test_simulation_campaign_generation(tmp_path):
     validated_sim_conf = sim_conf.validated_config()
 
     # Generate a grid scan
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="ZERO_INDEX",
@@ -536,7 +543,7 @@ def test_simulation_campaign_generation(tmp_path):
     assert len(grid_scan.multiple_value_parameters()) == 2
     assert len(grid_scan.coordinate_parameters()) == 4
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     _check_generated_sims(tmp_path, grid_scan)
     _check_generated_sonata_configs(tmp_path, grid_scan)
@@ -547,10 +554,10 @@ def test_simulation_campaign_generation(tmp_path):
     with pytest.raises(
         ValueError, match=r"Output file '.*' already exists! Delete or choose to overwrite."
     ):
-        obi.run_tasks_for_generated_scan(grid_scan)
+        run_tasks_for_generated_scan(grid_scan)
 
     # Generate a coupled coordinate scan
-    coupled_scan = obi.CoupledScanGenerationTask(
+    coupled_scan = CoupledScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "coupled_scan",
         coordinate_directory_option="ZERO_INDEX",
@@ -558,7 +565,7 @@ def test_simulation_campaign_generation(tmp_path):
     assert len(coupled_scan.multiple_value_parameters()) == 2
     assert len(coupled_scan.coordinate_parameters()) == 2
     coupled_scan.execute()
-    obi.run_tasks_for_generated_scan(coupled_scan)
+    run_tasks_for_generated_scan(coupled_scan)
 
     _check_generated_sims(tmp_path, coupled_scan)
     _check_generated_sonata_configs(tmp_path, coupled_scan)
@@ -569,12 +576,10 @@ def test_simulation_campaign_generation(tmp_path):
     with pytest.raises(
         ValueError, match=r"Output file '.*' already exists! Delete or choose to overwrite."
     ):
-        obi.run_tasks_for_generated_scan(coupled_scan)
+        run_tasks_for_generated_scan(coupled_scan)
 
     # Use a neuron set reference without adding it to the simulation config --> Error
-    sim_neuron_set2 = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet3", elements=range(5))
-    )
+    sim_neuron_set2 = obi.IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet3", elements=range(5)))
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
         _ = obi.TimeWindowSomaVoltageRecording(
             neuron_set=sim_neuron_set2.ref,
@@ -596,7 +601,7 @@ def test_simulation_campaign_generation(tmp_path):
     # Use different numbers of coordinates in coupled scan --> Error
     sim_conf.synaptic_manipulations["SynapticMgManipulation"].magnesium_value = [2.0, 2.4, 2.8]
     validated_sim_conf = sim_conf.validated_config()
-    coupled_scan2 = obi.CoupledScanGenerationTask(
+    coupled_scan2 = CoupledScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "coupled_scan_err",
         coordinate_directory_option="ZERO_INDEX",
@@ -610,13 +615,11 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     and InterSpikeIntervalDistributionSpikeStimulus."""
     # Create config
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="Test", campaign_description="Test description")
+    info = Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
     # Add neuron sets
-    sim_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
-    )
+    sim_neuron_set = obi.IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(10)))
     sim_conf.add(sim_neuron_set, name="ID10")
 
     # Add distribution blocks via sim_conf.add
@@ -673,14 +676,14 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     sim_duration = 3000.0
 
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(
+    info = Info(
         campaign_name="Test morphology locations",
         campaign_description="Test morphology location materialization",
     )
     sim_conf.set(info, name="info")
 
     sim_neuron_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(1)),
+        neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(1)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="ID1")
@@ -722,14 +725,14 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
 
     validated_sim_conf = sim_conf.validated_config()
 
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "morphology_locations_grid_scan",
         coordinate_directory_option="ZERO_INDEX",
     )
 
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     coordinate_root = tmp_path / grid_scan.output_root / "0"
 
@@ -767,7 +770,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     form = obi.CircuitSimulationScanConfig.empty_config()
 
     neuron_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=[0]),
+        neuron_ids=NamedTuple(name="IDNeuronSet1", elements=[0]),
         population="S1nonbarrel_neurons",
     )
     form.add(neuron_set, name="ID1")
@@ -796,7 +799,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     )
 
     form.set(
-        obi.Info(
+        Info(
             campaign_name="Test morphology locations",
             campaign_description="Test morphology location materialization",
         ),

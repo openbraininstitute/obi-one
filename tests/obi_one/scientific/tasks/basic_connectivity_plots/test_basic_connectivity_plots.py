@@ -1,4 +1,7 @@
 import obi_one as obi
+from obi_one.core.path import NamedPath
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
 
 from tests.utils import DATA_DIR, MATRIX_DIR
 
@@ -6,11 +9,11 @@ from tests.utils import DATA_DIR, MATRIX_DIR
 def test_basic_connectivity_plots(tmp_path):
     # Set up connectivity plotting
     matrix_list = [
-        obi.NamedPath(
+        NamedPath(
             name="N_10__top_nodes_dim6",
             path=str(MATRIX_DIR / "N_10__top_nodes_dim6" / "connectivity_matrix.h5"),
         ),
-        obi.NamedPath(
+        NamedPath(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(MATRIX_DIR / "N_10__top_rc_nodes_dim2_rc" / "connectivity_matrix.h5"),
         ),
@@ -25,13 +28,13 @@ def test_basic_connectivity_plots(tmp_path):
     basic_connectivity_plots_form = obi.BasicConnectivityPlotsScanConfig(initialize=plot_init)
 
     # Run plot generation
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=basic_connectivity_plots_form,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     # Check that expected files have been created
     instances = grid_scan.single_configs

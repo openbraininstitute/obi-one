@@ -6,6 +6,7 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import OBIONEError
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
@@ -138,7 +139,7 @@ class TestSomaVoltageRecording:
     def test_explicit_neuron_set_is_recorded_from(self, circuit, tmp_path):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="target", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -215,7 +216,7 @@ class TestReportsSection:
         """There is nothing to record on a virtual population."""
         virtual = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="virtual", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="virtual", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,

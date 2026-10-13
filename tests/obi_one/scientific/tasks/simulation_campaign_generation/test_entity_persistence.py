@@ -10,6 +10,7 @@ import entitysdk
 import pytest
 
 import obi_one as obi
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
@@ -110,7 +111,7 @@ class TestAssetUploads:
     def test_spike_replay_files_are_uploaded(self, circuit, tmp_path, db_client):
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -135,7 +136,7 @@ class TestAssetUploads:
     def test_one_replay_upload_per_spike_stimulus(self, circuit, tmp_path, db_client):
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -165,7 +166,7 @@ class TestNeuronCount:
     def test_the_simulation_target_size_is_recorded(self, circuit, tmp_path, db_client):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[0, 1, 2, 3]),
+            neuron_ids=NamedTuple(name="target", elements=[0, 1, 2, 3]),
         )
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Target": target}

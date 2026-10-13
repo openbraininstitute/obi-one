@@ -10,6 +10,9 @@ from bluepysnap import Circuit
 
 import obi_one as obi
 from obi_one.config import settings
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
@@ -168,7 +171,7 @@ def test_circuit_extraction(tmp_path):
             neuron_set = obi.BiophysicalPopulationPredefinedNeuronSet(
                 node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
             )
-            info = obi.Info(campaign_name="Test", campaign_description="Test campaign")
+            info = Info(campaign_name="Test", campaign_description="Test campaign")
 
             circuit_extractions_scan_config = obi.CircuitExtractionScanConfig.empty_config()
             circuit_extractions_scan_config.set(info, name="info")
@@ -183,20 +186,20 @@ def test_circuit_extraction(tmp_path):
             circuit_extractions_scan_config.set(extraction_init, name="initialize")
             circuit_extractions_scan_config = circuit_extractions_scan_config.validated_config()
 
-            grid_scan = obi.GridScanGenerationTask(
+            grid_scan = GridScanGenerationTask(
                 form=circuit_extractions_scan_config,
                 output_root=scan_path,
                 coordinate_directory_option="ZERO_INDEX",
             )
             grid_scan.execute()
-            obi.run_tasks_for_generated_scan(grid_scan)
+            run_tasks_for_generated_scan(grid_scan)
 
             # Rerun --> Error since output file already exists
             with pytest.raises(
                 ValueError,
                 match=re.escape("Unable to synchronously create group (name already exists)"),
             ):
-                obi.run_tasks_for_generated_scan(grid_scan)
+                run_tasks_for_generated_scan(grid_scan)
 
             # Check extracted circuits
             for instance in grid_scan.single_configs:
@@ -253,7 +256,7 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
 
     config = obi.CircuitExtractionScanConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="DefaultTest", campaign_description="Test default neuron set"),
+        Info(campaign_name="DefaultTest", campaign_description="Test default neuron set"),
         name="info",
     )
     init = obi.CircuitExtractionScanConfig.Initialize(
@@ -268,13 +271,13 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
     config.set(init, name="initialize")
 
     validated = config.validated_config()
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=validated,
         output_root=tmp_path,
         coordinate_directory_option="ZERO_INDEX",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
     mock_validate.assert_called_once()
 
     # Verify the default neuron set was used (AllBiophysicalNeurons = all biophysical neurons)
@@ -296,7 +299,7 @@ def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     """Test that combined neuron sets with None references get defaults filled in."""
     config = obi.CircuitExtractionScanConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="CombinedTest", campaign_description="Test combined neuron set"),
+        Info(campaign_name="CombinedTest", campaign_description="Test combined neuron set"),
         name="info",
     )
 
@@ -325,13 +328,13 @@ def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     config.set(init, name="initialize")
 
     validated = config.validated_config()
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=validated,
         output_root=tmp_path,
         coordinate_directory_option="ZERO_INDEX",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     # Verify the combined neuron set's base_neuron_set and combined_with were filled with defaults
     instance = grid_scan.single_configs[0]

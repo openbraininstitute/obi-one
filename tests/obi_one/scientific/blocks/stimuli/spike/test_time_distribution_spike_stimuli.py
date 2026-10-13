@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
 )
@@ -161,7 +162,7 @@ class TestSampleSpikeTimesFromDistribution:
 
 class TestSpikeTimeDistributionSpikeStimulus:
     def test_generated_spike_file_has_correct_structure(self, tmp_path, monkeypatch):
-        neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0, 1, 2]))
+        neuron_set = obi.IDNeuronSet(neuron_ids=NamedTuple(name="test", elements=[0, 1, 2]))
         distribution = obi.FloatConstantDistribution(value=10.0)
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(
@@ -200,7 +201,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         tmp_path,
         monkeypatch,
     ):
-        neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0, 1, 2]))
+        neuron_set = obi.IDNeuronSet(neuron_ids=NamedTuple(name="test", elements=[0, 1, 2]))
         distribution = obi.FloatUniformDistribution(low=0.0, high=25.0, random_seed=42)
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(
@@ -235,7 +236,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
         tmp_path,
         monkeypatch,
     ):
-        neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[0, 1, 2]))
+        neuron_set = obi.IDNeuronSet(neuron_ids=NamedTuple(name="test", elements=[0, 1, 2]))
         distribution = obi.FloatUniformDistribution(low=0.0, high=25.0, random_seed=42)
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(
@@ -290,7 +291,7 @@ class TestSpikeTimeDistributionSpikeStimulus:
 
 class TestSpikeTimeStimulusIndexingConvention:
     def test_node_ids_follow_current_indexing_convention(self, tmp_path, monkeypatch):
-        neuron_set = obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="test", elements=[5, 10, 15]))
+        neuron_set = obi.IDNeuronSet(neuron_ids=NamedTuple(name="test", elements=[5, 10, 15]))
         distribution = obi.FloatConstantDistribution(value=10.0)
         timestamps = obi.SingleTimestamp(start_time=0.0)
         stimulus = _make_time_distribution_stimulus(duration=25.0, mean_firing_rate=2.0)

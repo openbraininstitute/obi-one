@@ -20,6 +20,7 @@ from bluepysnap import Circuit as SnapCircuit
 
 import obi_one as obi
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.info import Info
 from obi_one.scientific.library.memodel_circuit import (
     MEModelCircuit,
     MEModelWithSynapsesCircuit,
@@ -219,7 +220,7 @@ def build_config(
     """
     config = config_class.empty_config()
     config.set(
-        obi.Info(campaign_name="Test campaign", campaign_description="Test description"),
+        Info(campaign_name="Test campaign", campaign_description="Test description"),
         name="info",
     )
 

@@ -12,6 +12,7 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     PointPopulationIDNeuronSet,
@@ -271,7 +272,7 @@ class TestSpikeStimuli:
     def _spike_config(circuit, name, *, source=None, target=None):
         source_set = source or VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=list(range(20))),
+            neuron_ids=NamedTuple(name="source", elements=list(range(20))),
         )
         blocks: dict = {"Source": source_set}
         if target is not None:
@@ -327,7 +328,7 @@ class TestSpikeStimuli:
         timestamps = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=20.0)
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -356,7 +357,7 @@ class TestSpikeStimuli:
     def test_explicit_target_is_used_as_the_node_set(self, circuit, tmp_path):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="target", elements=[0, 1]),
         )
         config = self._spike_config(circuit, "PoissonSpikeStimulus", target=target)
 
@@ -395,7 +396,7 @@ class TestBrian2DirectPoissonStimulus:
     def test_targeted_stimulus_uses_its_own_neuron_set(self, point_circuit, tmp_path):
         target = PointPopulationIDNeuronSet(
             population=POINT_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[2]),
+            neuron_ids=NamedTuple(name="target", elements=[2]),
         )
         config = build_config(
             Brian2CircuitSimulationSingleConfig,
