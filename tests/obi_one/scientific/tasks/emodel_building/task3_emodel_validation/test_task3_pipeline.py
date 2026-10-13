@@ -1,5 +1,6 @@
 import json
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -244,8 +245,10 @@ def test_score_model_builds_evaluator_when_not_given(monkeypatch):
 
 
 class InlineExecutor:
+    last_kwargs: ClassVar[dict] = {}
+
     def __init__(self, **kwargs):
-        self.kwargs = kwargs
+        InlineExecutor.last_kwargs = kwargs
 
     def __enter__(self):
         return self
@@ -271,6 +274,7 @@ def test_score_model_isolated_runs_worker(monkeypatch, tmp_path):
     )
     assert summary == {"passed": True}
     assert worker.call_args.args[2] == tmp_path
+    assert InlineExecutor.last_kwargs["initargs"] == (str(tmp_path),)
 
 
 def test_register_validation_results_when_overall_exists(monkeypatch):

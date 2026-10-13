@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -150,13 +151,9 @@ def score_model_worker(
     settings: ResolvedValidationSettings,
 ) -> dict:
     """Build the access point in ``working_dir`` and score the model; return the summary."""
-    import neuron  # ruff: ignore[import-outside-top-level]
-
     from obi_one.utils.filesystem import chdir  # ruff: ignore[import-outside-top-level]
 
     with chdir(working_dir):
-        # NEURON only auto-loads compiled mechanisms from the cwd at import time.
-        neuron.load_mechanisms(str(working_dir))
         access_point = access_point_factory(**access_point_kwargs)
         summary, _ = score_model(access_point, seed=seed, settings=settings)
     return summary
@@ -177,7 +174,16 @@ def score_model_isolated(
     depend on what ran before in the process. A spawned process starts from a clean
     NEURON state. ``access_point_factory`` must be a picklable top-level function.
     """
-    with ProcessPoolExecutor(max_workers=1, mp_context=get_context("spawn")) as pool:
+    # NEURON loads the compiled mechanisms from the cwd once, when it is first imported.
+    # Changing into the working directory before anything imports NEURON makes that
+    # automatic load pick up this model's mechanisms; loading them again explicitly
+    # fails with "The user defined name already exists".
+    with ProcessPoolExecutor(
+        max_workers=1,
+        mp_context=get_context("spawn"),
+        initializer=os.chdir,
+        initargs=(str(working_dir),),
+    ) as pool:
         return pool.submit(
             score_model_worker,
             access_point_factory,

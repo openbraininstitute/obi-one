@@ -110,7 +110,6 @@ def test_score_model_worker_builds_access_point_in_working_dir(tmp_path, monkeyp
         return "access-point"
 
     monkeypatch.setattr(validation_scoring, "score_model", lambda ap, **_: ({"ap": ap}, None))
-    monkeypatch.setattr("neuron.load_mechanisms", lambda path: seen.setdefault("mech", path))
     settings = validation_scoring.ResolvedValidationSettings(
         validation_protocols=["p"],
         validation_protocols_only=False,
@@ -121,7 +120,7 @@ def test_score_model_worker_builds_access_point_in_working_dir(tmp_path, monkeyp
         factory, {"emodel": "L5PC"}, tmp_path, 1, settings
     )
     assert summary == {"ap": "access-point"}
-    assert seen == {"mech": str(tmp_path), "cwd": tmp_path.resolve(), "kwargs": {"emodel": "L5PC"}}
+    assert seen == {"cwd": tmp_path.resolve(), "kwargs": {"emodel": "L5PC"}}
 
 
 def test_score_model_stores_verdict(monkeypatch):
