@@ -17,6 +17,10 @@ from obi_one.scientific.tasks.morphology_containerization import (
 from tests.utils import CIRCUIT_DIR
 
 
+def _patch_connectivity_matrix(monkeypatch, fake_type: type) -> None:
+    monkeypatch.setattr("conntility.ConnectivityMatrix", fake_type, raising=False)
+
+
 class _FakePopulation:
     def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None):
         self.type = pop_type
@@ -113,9 +117,7 @@ def fake_snap_circuit(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
     return test_module
 
@@ -298,9 +300,7 @@ def test_connectivity_matrix_compresses_multigraph(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
 
     c = test_module.Circuit(name="c1", path="x", matrix_path="m.h5")
@@ -330,9 +330,7 @@ def test_init_validates_connectivity_matrix_node_ids(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
 
     with pytest.raises(AssertionError):

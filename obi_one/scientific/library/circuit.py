@@ -1,12 +1,11 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import bluepysnap as snap
 import libsonata
 import numpy as np
-from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.scientific.library.circuit_constants import (
@@ -14,6 +13,10 @@ from obi_one.scientific.library.circuit_constants import (
     TYPES_OF_POINT_NODES,
     TYPES_OF_VIRTUAL_NODES,
 )
+
+if TYPE_CHECKING:
+    from conntility import ConnectivityMatrix
+    from morphio import Morphology
 
 L = logging.getLogger(__name__)
 
@@ -43,6 +46,8 @@ class Circuit(OBIBaseModel):
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
+            from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+
             cmat = ConnectivityMatrix.from_h5(
                 self.matrix_path
             )  # Basic check: Try to load the connectivity matrix w/o error
@@ -65,7 +70,7 @@ class Circuit(OBIBaseModel):
         return snap.Circuit(self.path)
 
     @property
-    def connectivity_matrix(self) -> ConnectivityMatrix:
+    def connectivity_matrix(self) -> "ConnectivityMatrix":
         """Provide access to corresponding ConnectivityMatrix object.
 
         Note: In case of a multi-graph, returns the compressed version.
@@ -73,6 +78,8 @@ class Circuit(OBIBaseModel):
         if self.matrix_path is None:
             msg = "Connectivity matrix has not been found"
             raise FileNotFoundError(msg)
+        from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+
         cmat = ConnectivityMatrix.from_h5(self.matrix_path)
         if cmat.is_multigraph:
             cmat = cmat.compress()
@@ -288,7 +295,7 @@ class Circuit(OBIBaseModel):
 
     def load_morphology(
         self, node_id: int, population: str | None = None
-    ) -> Any:  # morphio.Morphology
+    ) -> "Morphology":
         """Load a node's morphology, preferring h5, then swc, then asc.
 
         A simulation reads the h5 morphology when the circuit carries one - it is the format the
