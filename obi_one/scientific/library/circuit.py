@@ -293,9 +293,7 @@ class Circuit(OBIBaseModel):
         raw_path = alternates.get(key)
         return self._resolve_circuit_path(raw_path) if raw_path else None
 
-    def load_morphology(
-        self, node_id: int, population: str | None = None
-    ) -> "Morphology":
+    def load_morphology(self, node_id: int, population: str | None = None) -> "Morphology":
         """Load a node's morphology, preferring h5, then swc, then asc.
 
         A simulation reads the h5 morphology when the circuit carries one - it is the format the
