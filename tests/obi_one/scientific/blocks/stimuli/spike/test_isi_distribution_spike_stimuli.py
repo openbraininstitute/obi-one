@@ -8,6 +8,7 @@ from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
 )
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 from obi_one.scientific.unions_and_references.neuron_sets import VirtualNeuronSetReference
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
@@ -22,7 +23,7 @@ def _make_isi_distribution_stimulus(
     resample_each_repetition: bool = False,
 ) -> obi.InterSpikeIntervalDistributionSpikeStimulus:
     stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
-        distribution=obi.AllDistributionsReference(
+        distribution=AllDistributionsReference(
             block_dict_name="distributions",
             block_name="constant_dist",
         ),

@@ -6,6 +6,7 @@ from entitysdk import models
 import obi_one as obi
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 # Key mapping in initialize section
 _INIT_KEY_MAPPING = {
@@ -178,10 +179,10 @@ def get_soma_recordings(sim_config_dicts: list) -> (dict, dict):
 
 def get_single_timestamp_ref(
     t: float, ref_name: str
-) -> (obi.SingleTimestamp, obi.TimestampsReference):
+) -> (obi.SingleTimestamp, TimestampsReference):
     """Returns a reference to a single timestamp."""
     ts = obi.SingleTimestamp(start_time=t)
-    ref = obi.TimestampsReference(
+    ref = TimestampsReference(
         type="TimestampsReference", block_dict_name="timestamps", block_name=ref_name
     )
     return ts, ref

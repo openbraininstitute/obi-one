@@ -1,8 +1,6 @@
 __all__ = [
     "AfferentSynapsesBlock",
     "AllBiophysicalNeurons",
-    "AllDistributionsReference",
-    "AllDistributionsUnion",
     "AllNonVirtualNeurons",
     "AllPairsSynapticModelAssigner",
     "AllPointNeurons",
@@ -12,7 +10,6 @@ __all__ = [
     "BasicConnectivityPlotsSingleConfig",
     "BasicConnectivityPlotsTask",
     "BiophysicalCombinedNeuronSet",
-    "BiophysicalNeuronSetReference",
     "BiophysicalPopulationIDNeuronSet",
     "BiophysicalPopulationNeuronSet",
     "BiophysicalPopulationPredefinedNeuronSet",
@@ -20,7 +17,6 @@ __all__ = [
     "Brian2CircuitSimulationScanConfig",
     "Brian2CircuitSimulationSingleConfig",
     "Brian2DirectPoissonStimulus",
-    "Brian2RecordingUnion",
     "BuildSynaptomeResult",
     "CellMorphologyFromID",
     "Circuit",
@@ -28,10 +24,8 @@ __all__ = [
     "CircuitExtractionSingleConfig",
     "CircuitExtractionTask",
     "CircuitFromID",
-    "CircuitRecordingUnion",
     "CircuitSimulationScanConfig",
     "CircuitSimulationSingleConfig",
-    "CircuitStimulusUnion",
     "ClusteredGroupedMorphologyLocations",
     "ClusteredMorphologyLocations",
     "ClusteredPDSynapsesByCount",
@@ -76,8 +70,6 @@ __all__ = [
     "ExponentialNaDendDistanceDependentDistribution",
     "ExtracellularElectrodeArrayRecordingBlock",
     "ExtracellularLocations",
-    "ExtracellularLocationsReference",
-    "ExtracellularLocationsUnion",
     "FloatConstantDistribution",
     "FloatUniformDistribution",
     "FolderCompressionScanConfig",
@@ -115,7 +107,6 @@ __all__ = [
     "MEModelFromID",
     "MEModelSimulationScanConfig",
     "MEModelSimulationSingleConfig",
-    "MEModelStimulusUnion",
     "MEModelSynapticModelPlacementScanConfig",
     "MEModelSynapticModelPlacementSingleConfig",
     "MEModelSynapticModelPlacementTask",
@@ -131,7 +122,6 @@ __all__ = [
     "MorphologyDecontainerizationTask",
     "MorphologyLocationPoint",
     "MorphologyLocationVoltageRecording",
-    "MorphologyLocationsReference",
     "MorphologyLocationsScanConfig",
     "MorphologyLocationsSingleConfig",
     "MorphologyLocationsTask",
@@ -155,7 +145,6 @@ __all__ = [
     "PathDistanceWeightedFractionOfSynapses",
     "PathDistanceWeightedNumberOfSynapses",
     "PointCombinedNeuronSet",
-    "PointNeuronSetReference",
     "PointPopulationIDNeuronSet",
     "PointPopulationNeuronSet",
     "PointPopulationPredefinedNeuronSet",
@@ -169,8 +158,6 @@ __all__ = [
     "RandomlySelectedFractionOfSynapses",
     "RandomlySelectedNumberOfSynapses",
     "Recording",
-    "RecordingReference",
-    "RecordingUnion",
     "RegularTimestamps",
     "RelativeConstantCurrentClampSomaticStimulus",
     "RelativeLinearCurrentClampSomaticStimulus",
@@ -178,7 +165,6 @@ __all__ = [
     "RelativeOrnsteinUhlenbeckConductanceSomaticStimulus",
     "RelativeOrnsteinUhlenbeckCurrentSomaticStimulus",
     "ScaleAcetylcholineUSESynapticManipulation",
-    "ScanConfigsUnion",
     "SigmoidKADApicDistanceDependentDistribution",
     "SigmoidKADDistanceDependentDistribution",
     "SigmoidKDBMApicDistanceDependentDistribution",
@@ -197,28 +183,17 @@ __all__ = [
     "SpatiallyUniformElectricFieldStimulus",
     "SpikeTimeDistributionSpikeStimulus",
     "StepDistanceDependentDistribution",
-    "StimulusReference",
-    "StimulusUnion",
     "SubthresholdCurrentClampSomaticStimulus",
     "SynapseParameterizationScanConfig",
     "SynapseParameterizationSingleConfig",
     "SynapseParameterizationTask",
-    "SynapseSetUnion",
     "SynapticMgManipulation",
-    "SynapticModelAssignerReference",
-    "SynapticModelAssignerUnion",
-    "SynapticModelReference",
-    "SynapticModelUnion",
-    "TasksUnion",
     "TemporallyCosineSpatiallyUniformElectricFieldStimulus",
     "TimeWindowMorphologyLocationVoltageRecording",
     "TimeWindowSomaVoltageRecording",
-    "TimestampsReference",
-    "TimestampsUnion",
     "UTAHArrayExtracellularLocations",
     "UniformDistanceDependentDistribution",
     "VirtualCombinedNeuronSet",
-    "VirtualNeuronSetReference",
     "VirtualPopulationIDNeuronSet",
     "VirtualPopulationNeuronSet",
     "VirtualPopulationPredefinedNeuronSet",
@@ -575,46 +550,6 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
-from obi_one.scientific.unions_and_references.distributions import (
-    AllDistributionsReference,
-    AllDistributionsUnion,
-)
-from obi_one.scientific.unions_and_references.extracellular_locations import (
-    ExtracellularLocationsReference,
-    ExtracellularLocationsUnion,
-)
-from obi_one.scientific.unions_and_references.morphology_locations import (
-    MorphologyLocationsReference,
-)
-from obi_one.scientific.unions_and_references.neuron_sets import (
-    BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
-    VirtualNeuronSetReference,
-)
-from obi_one.scientific.unions_and_references.recordings import (
-    Brian2RecordingUnion,
-    CircuitRecordingUnion,
-    RecordingReference,
-    RecordingUnion,
-)
-from obi_one.scientific.unions_and_references.scan_configs import ScanConfigsUnion
-from obi_one.scientific.unions_and_references.stimuli import (
-    CircuitStimulusUnion,
-    MEModelStimulusUnion,
-    StimulusReference,
-    StimulusUnion,
-)
-from obi_one.scientific.unions_and_references.synapse_set import SynapseSetUnion
-from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
-    SynapticModelAssignerReference,
-    SynapticModelAssignerUnion,
-)
-from obi_one.scientific.unions_and_references.synaptic_models import (
-    SynapticModelReference,
-    SynapticModelUnion,
-)
-from obi_one.scientific.unions_and_references.tasks import TasksUnion
-from obi_one.scientific.unions_and_references.timestamps import TimestampsReference, TimestampsUnion
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # ruff: ignore[non-empty-init-module]
 PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # ruff: ignore[non-empty-init-module]

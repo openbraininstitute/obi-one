@@ -15,7 +15,10 @@ from obi_one.scientific.blocks.neuron_sets.id import VirtualPopulationIDNeuronSe
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions_and_references.distributions import AllDistributionsUnion
+from obi_one.scientific.unions_and_references.distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions_and_references.timestamps import TimestampsUnion
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
@@ -63,7 +66,7 @@ def _distribution_driven_config(circuit, distribution):
             "Distribution": distribution,
             "Spikes": lambda: obi.InterSpikeIntervalDistributionSpikeStimulus(
                 source_neuron_set=source.ref,
-                distribution=obi.AllDistributionsReference(
+                distribution=AllDistributionsReference(
                     block_dict_name="distributions", block_name="Distribution"
                 ),
                 duration=100.0,
