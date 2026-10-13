@@ -108,9 +108,7 @@ def _block_class(name: str) -> type:
 
 
 BLOCK_CLASSES = {
-    name: _block_class(name)
-    for union in ALL_BLOCK_UNIONS
-    for name in union_member_names(union)
+    name: _block_class(name) for union in ALL_BLOCK_UNIONS for name in union_member_names(union)
 }
 
 # A recording whose reference field has no default cannot be constructed untargeted, so it is
