@@ -12,6 +12,7 @@ from obi_one.core.run_tasks import (
     run_task_for_single_config,
     run_tasks_for_generated_scan,
 )
+from obi_one.core.scan import GridScan
 from obi_one.core.scan_generation import GridScanGenerationTask
 
 from tests.utils import CIRCUIT_DIR, DATA_DIR
@@ -68,13 +69,13 @@ def test_deserialization(tmp_path):
 
     data = json.loads(grid_scan_json_path.read_bytes())
     grid_scan = deserialize_obi_object_from_json_data(data)
-    assert isinstance(grid_scan, obi.GridScan)
+    assert isinstance(grid_scan, GridScan)
     grid_scan.output_root = tmp_path / "simulation_output_7"
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
     grid_scan = deserialize_obi_object_from_json_file(grid_scan_json_path)
-    assert isinstance(grid_scan, obi.GridScan)
+    assert isinstance(grid_scan, GridScan)
     grid_scan.output_root = tmp_path / "simulation_output_8"
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
