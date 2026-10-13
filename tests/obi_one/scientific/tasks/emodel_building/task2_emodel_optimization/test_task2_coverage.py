@@ -1018,3 +1018,23 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     assert mechanism.id == "icm-1"
     configuration = access_points[0].get_model_configuration()
     assert configuration.morph_modifiers == ["none"]
+
+
+def test_register_output_entities_registers_inline_emodel_validation(tmp_path, monkeypatch):
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, *_ = _registration_fixture(tmp_path)
+    register = Mock(return_value=["vr-1", "vr-2"])
+    monkeypatch.setattr(registration, "register_validation_results", register)
+    summary = {"passed": False, "settings": {}, "protocols": {}}
+
+    outputs = registration.register_output_entities(
+        config,
+        tmp_path,
+        db_client,
+        pipeline_results=_pipeline_results(emodel_validation=summary),
+    )
+
+    assert register.call_args.kwargs["summary"] is summary
+    assert register.call_args.kwargs["validated_entity_id"] == "emodel-id"
+    assert outputs.generated_ids[-2:] == ["vr-1", "vr-2"]
