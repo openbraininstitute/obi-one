@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import ClassVar
 
 import bluepysnap as snap
-import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
 from pydantic import Field, PrivateAttr
@@ -444,8 +443,12 @@ class CircuitExtractionTask(Task):
 
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
+            from obi_one.utils.circuit_validation import (  # ruff: ignore[import-outside-top-level]
+                run_validation,
+            )
+
             with BenchmarkTracker.section("run_validation"):
-                circuit_utils.run_validation(new_circuit_path)
+                run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 
