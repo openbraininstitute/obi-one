@@ -218,7 +218,7 @@ def test_uses_optimisation_targets():
 
 def test_result_name_suffix():
     suffix = registration.result_name_suffix(make_config(), uses_optimisation_targets=True)
-    assert suffix == " [re-validation]"
+    assert suffix == " [validation]"
     config = make_config(
         targets="1234567890",
         settings={
@@ -229,7 +229,7 @@ def test_result_name_suffix():
         },
     )
     assert registration.result_name_suffix(config, uses_optimisation_targets=False) == (
-        " [re-validation, extraction 12345678, "
+        " [validation, extraction 12345678, "
         "protocols IDrest_250,IV_-40, validation protocols only, mean_score, threshold 3]"
     )
 
@@ -272,8 +272,8 @@ def test_register_output_entities(tmp_path, monkeypatch):
     )
     assert outputs.generated_ids == ["tr-id", "vr-1", "vr-2"]
     assert [r["name"] for r in registered] == [
-        "E-feature score validation [re-validation]",
-        "E-feature validation: IDrest_250 [re-validation]",
+        "E-feature score validation [validation]",
+        "E-feature validation: IDrest_250 [validation]",
     ]
     assert registered[0]["figure_files"] == [figures / "traces.pdf"]
     assert client.upload_file.call_count == 2

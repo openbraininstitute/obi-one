@@ -1,8 +1,8 @@
-"""Task wrapper for the BluePyEModel e-model re-validation step (Task 3).
+"""Task wrapper for the BluePyEModel e-model validation step (Task 3).
 
 Task 2 already validates the optimised model against its held-out protocols. Task 3
-re-validates a registered EModel against other targets (e.g. a fresh extraction),
-another morphology or other settings: it rebuilds the working directory of the
+validates a registered EModel on its exemplar morphology against other targets (e.g. a
+fresh extraction) or other settings: it rebuilds the working directory of the
 optimisation that produced the EModel (see :mod:`.staging`), scores the optimised model
 with :mod:`..validation_scoring` and registers the results (see :mod:`.registration`).
 """
@@ -85,12 +85,12 @@ def run_validation_pipeline(
 
 
 class EModelValidationTask(Task):
-    """Re-validate an optimised EModel with BluePyEModel in a fresh working directory.
+    """Validate an optimised EModel with BluePyEModel in a fresh working directory.
 
     Steps performed in ``coordinate_output_root``:
 
     1. Resolve the optimisation activity, TaskConfig and TaskResult of the EModel.
-    2. Stage targets (optimisation or other extraction), morphology (exemplar or other),
+    2. Stage targets (optimisation or other extraction), the exemplar morphology,
        mechanisms, the params/recipe bundle and the optimised ``final.json`` entry.
     3. Compile mechanisms via ``nrnivmodl``.
     4. Score the model and plot scores/traces via :func:`run_validation_pipeline`.

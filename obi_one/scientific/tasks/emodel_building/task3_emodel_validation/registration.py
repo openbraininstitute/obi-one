@@ -47,14 +47,14 @@ class RegisteredValidationOutputs:
 def result_name_suffix(
     config: EModelValidationSingleConfig, *, uses_optimisation_targets: bool
 ) -> str:
-    """Suffix distinguishing re-validation results from Task 2's and from each other.
+    """Suffix distinguishing Task 3 validation results from Task 2's and from each other.
 
     ``register_validation_result`` skips results whose name already exists on the
     EModel. Task 2 registers the un-suffixed names, so every Task 3 run is marked
-    ``re-validation`` plus each target or setting that differs from the defaults.
+    ``validation`` plus each target or setting that differs from the defaults.
     """
     settings = config.settings
-    parts = ["re-validation"]
+    parts = ["validation"]
     if not uses_optimisation_targets:
         parts.append(f"extraction {config.target_efeatures.task_result.id_str[:8]}")
     if settings.validation_protocols:
