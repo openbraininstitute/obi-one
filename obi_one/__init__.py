@@ -39,7 +39,6 @@ __all__ = [
     "ConnectivityMatrixExtractionSingleConfig",
     "ConnectivityMatrixExtractionTask",
     "ConstantCurrentClampSomaticStimulus",
-    "CoupledScan",
     "CreateExtracellularRecordingArrayScanConfig",
     "CreateExtracellularRecordingArraySingleConfig",
     "CreateExtracellularRecordingArrayTask",
@@ -80,7 +79,6 @@ __all__ = [
     "GenerateSimulationTask",
     "GlobalVariableInterNeuronSetSynapticManipulation",
     "GridExtracellularLocations",
-    "GridScan",
     "HyperpolarizingCurrentClampSomaticStimulus",
     "IDNeuronSet",
     "InhibitoryNeurons",
@@ -209,7 +207,6 @@ __all__ = [
     "write_circuit_node_set_file",
 ]
 
-from obi_one.core.scan_generation import CoupledScanGenerationTask, GridScanGenerationTask
 from obi_one.scientific.blocks.afferent_synapses.afferent_synapses import (
     AfferentSynapsesBlock,
     ClusteredPDSynapsesByCount,
@@ -553,11 +550,3 @@ from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParame
 
 LAB_ID_STAGING_TEST = "e6030ed8-a589-4be2-80a6-f975406eb1f6"  # ruff: ignore[non-empty-init-module]
 PROJECT_ID_STAGING_TEST = "2720f785-a3a2-4472-969d-19a53891c817"  # ruff: ignore[non-empty-init-module]
-
-
-class GridScan(GridScanGenerationTask):  # ruff: ignore[non-empty-init-module]
-    pass
-
-
-class CoupledScan(CoupledScanGenerationTask):  # ruff: ignore[non-empty-init-module]
-    pass
