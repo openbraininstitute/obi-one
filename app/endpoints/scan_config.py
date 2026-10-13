@@ -9,8 +9,8 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import internal_error, invalid_config_error
 from app.logger import L
-from obi_one import run_tasks_for_generated_scan
 from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig

@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import VirtualPopulationIDNeuronSet
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -52,7 +53,7 @@ DISTRIBUTIONS = {
 def _distribution_driven_config(circuit, distribution):
     source = VirtualPopulationIDNeuronSet(
         population=VIRTUAL_POPULATION,
-        neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+        neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
     )
     return build_config(
         CircuitSimulationSingleConfig,

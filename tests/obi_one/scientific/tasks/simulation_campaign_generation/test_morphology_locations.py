@@ -10,6 +10,7 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -386,7 +387,7 @@ class TestLocationTargeting:
     ):
         cell = BiophysicalPopulationIDNeuronSet(
             population=MORPHOLOGY_POPULATION,
-            neuron_ids=obi.NamedTuple(name="one_cell", elements=[0]),
+            neuron_ids=NamedTuple(name="one_cell", elements=[0]),
         )
         built: dict = {}
 

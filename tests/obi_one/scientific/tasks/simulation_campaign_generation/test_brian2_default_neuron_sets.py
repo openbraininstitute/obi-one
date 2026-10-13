@@ -13,6 +13,9 @@ import libsonata
 from bluepysnap import Circuit as SnapCircuit
 
 import obi_one as obi
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 
 # The synthetic FlyWire-style point circuit: one `brian2_point` population `drosophila` (3
@@ -28,7 +31,7 @@ DEFAULT = "Default: All Point Neurons"
 def _generate(tmp_path: Path) -> tuple[dict, dict]:
     """Generate a Brian2 campaign of untargeted blocks; return (sim config, node sets)."""
     sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
-    sim_conf.set(obi.Info(campaign_name="T", campaign_description="T"), name="info")
+    sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
     # Nothing names a neuron set, and neither does initialize.node_set: all fall back.
     sim_conf.add(Brian2DirectPoissonStimulus(), name="DirectPoisson")
@@ -43,13 +46,13 @@ def _generate(tmp_path: Path) -> tuple[dict, dict]:
         name="initialize",
     )
 
-    scan = obi.GridScanGenerationTask(
+    scan = GridScanGenerationTask(
         form=sim_conf.validated_config(),
         output_root=tmp_path / "scan",
         coordinate_directory_option="ZERO_INDEX",
     )
     scan.execute()
-    obi.run_tasks_for_generated_scan(scan)
+    run_tasks_for_generated_scan(scan)
 
     out = tmp_path / "scan" / "0"
     sim_config = json.loads((out / "simulation_config.json").read_text())

@@ -8,7 +8,7 @@ from entitysdk import models
 from app.errors import ApiError, ApiErrorCode
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
-from obi_one import deserialize_obi_object_from_json_data
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,

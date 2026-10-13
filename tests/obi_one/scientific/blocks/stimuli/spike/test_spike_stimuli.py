@@ -5,6 +5,11 @@ import numpy as np
 import pytest
 
 import obi_one as obi
+from obi_one.core.exception import OBIONEError
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
@@ -148,7 +153,7 @@ class TestPoissonSpikeStimulus:
         stim = obi.PoissonSpikeStimulus(
             duration=5000.0, frequency=50000.0, random_seed=0, timestamps=ts_ref
         )
-        with pytest.raises(obi.OBIONEError, match="maximum allowed"):
+        with pytest.raises(OBIONEError, match="maximum allowed"):
             stim.generate_spikes_by_gid(list(range(100)))
 
     def test_multiple_timestamps_produce_spikes_in_each_window(self):
@@ -333,20 +338,20 @@ class TestWriteSpikeFile:
 def _build_sim_config_with_all_neuron_sets():
     """Build config with all neuron sets explicitly specified."""
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="SpikeTest", campaign_description="Spike stimuli test")
+    info = Info(campaign_name="SpikeTest", campaign_description="Spike stimuli test")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 3000.0
 
     sim_neuron_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="AllIDs", elements=range(10)),
+        neuron_ids=NamedTuple(name="AllIDs", elements=range(10)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="SimNeurons")
 
     source_neuron_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)),
+        neuron_ids=NamedTuple(name="SourceIDs", elements=range(5)),
         population="VPM",
     )
     sim_conf.add(source_neuron_set, name="SourceNeurons")
@@ -407,13 +412,13 @@ class TestSimulationCampaignWithAllSpikeTypes:
         sim_conf = _build_sim_config_with_all_neuron_sets()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "all_types_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         source_ids = set(range(5))
         for instance in scan.single_configs:
@@ -454,14 +459,14 @@ class TestSimulationCampaignWithAllSpikeTypes:
 def _build_config_no_source_neuron_set():
     """Config where spike stimuli have no source_neuron_set (should default to AllNeurons)."""
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoSource", campaign_description="Test missing source")
+    info = Info(campaign_name="NoSource", campaign_description="Test missing source")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
     target_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="TargetIDs", elements=range(10)),
+        neuron_ids=NamedTuple(name="TargetIDs", elements=range(10)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(target_set, name="TargetNeurons")
@@ -499,14 +504,14 @@ def _build_config_no_source_neuron_set():
 def _build_config_no_target_neuron_set():
     """Config where spike stimuli have no targeted_neuron_set (should default to AllNeurons)."""
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoTarget", campaign_description="Test missing target")
+    info = Info(campaign_name="NoTarget", campaign_description="Test missing target")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
     source_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)),
+        neuron_ids=NamedTuple(name="SourceIDs", elements=range(5)),
         population="VPM",
     )
     sim_conf.add(source_set, name="SourceNeurons")
@@ -537,7 +542,7 @@ def _build_config_no_target_neuron_set():
 def _build_config_no_neuron_sets_at_all():
     """Config where spike stimuli have neither source nor target neuron sets."""
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoNeuronSets", campaign_description="Test no neuron sets")
+    info = Info(campaign_name="NoNeuronSets", campaign_description="Test no neuron sets")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
@@ -582,14 +587,14 @@ def _build_config_no_neuron_sets_at_all():
 def _build_config_no_node_set_on_initialize():
     """Config where initialize.node_set is None (should use default AllNeurons)."""
     sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoNodeSet", campaign_description="Test missing node_set")
+    info = Info(campaign_name="NoNodeSet", campaign_description="Test missing node_set")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
     source_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(3)),
+        neuron_ids=NamedTuple(name="SourceIDs", elements=range(3)),
         population="VPM",
     )
     sim_conf.add(source_set, name="SourceNeurons")
@@ -619,13 +624,13 @@ class TestSimCampaignMissingSourceNeuronSet:
         sim_conf = _build_config_no_source_neuron_set()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_source_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         for instance in scan.single_configs:
             sim_dir = tmp_path / scan.output_root / str(instance.idx)
@@ -653,13 +658,13 @@ class TestSimCampaignMissingTargetNeuronSet:
         sim_conf = _build_config_no_target_neuron_set()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_target_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         for instance in scan.single_configs:
             sim_dir = tmp_path / scan.output_root / str(instance.idx)
@@ -683,13 +688,13 @@ class TestSimCampaignNoNeuronSetsAtAll:
         sim_conf = _build_config_no_neuron_sets_at_all()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_nsets_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         default_nset = "Default: All Biophysical Neurons"
 
@@ -728,13 +733,13 @@ class TestSimCampaignMissingInitializeNodeSet:
         sim_conf = _build_config_no_node_set_on_initialize()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_init_nset",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         default_nset = "Default: All Biophysical Neurons"
 
@@ -759,13 +764,13 @@ class TestSimCampaignMissingInitializeNodeSet:
 class TestSpikeStimParameterSweep:
     def test_poisson_frequency_sweep(self, tmp_path):
         sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-        info = obi.Info(campaign_name="Sweep", campaign_description="Frequency sweep")
+        info = Info(campaign_name="Sweep", campaign_description="Frequency sweep")
         sim_conf.set(info, name="info")
 
         circuit = _make_circuit()
 
         neuron_set = BiophysicalPopulationIDNeuronSet(
-            neuron_ids=obi.NamedTuple(name="IDs", elements=range(10)),
+            neuron_ids=NamedTuple(name="IDs", elements=range(10)),
             population="S1nonbarrel_neurons",
         )
         sim_conf.add(neuron_set, name="Neurons")
@@ -791,7 +796,7 @@ class TestSpikeStimParameterSweep:
 
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "freq_sweep",
             coordinate_directory_option="ZERO_INDEX",
@@ -799,7 +804,7 @@ class TestSpikeStimParameterSweep:
         assert len(scan.multiple_value_parameters()) == 1
         assert len(scan.coordinate_parameters()) == 2
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         # Compare spike counts between low and high frequency
         pop = circuit.default_population_name

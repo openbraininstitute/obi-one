@@ -12,7 +12,9 @@ import bluepysnap as snap
 import pytest
 
 import obi_one as obi
+from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
@@ -36,7 +38,7 @@ def _build_config(tmp_path, circuit=None):
     """A minimal single-config: one excitatory model applied to every synapse."""
     config = obi.SynapseParameterizationSingleConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test", campaign_description="Test parameterization"),
+        Info(campaign_name="Test", campaign_description="Test parameterization"),
         name="info",
     )
     config.set(config.Initialize(circuit=circuit or _local_circuit()), name="initialize")
@@ -135,7 +137,7 @@ def test_execute_declares_and_creates_mechanisms_dir_when_the_circuit_has_none(t
     config_path.write_text(json.dumps(cfg))
 
     config = obi.SynapseParameterizationSingleConfig.empty_config()
-    config.set(obi.Info(campaign_name="Test", campaign_description="Test defaults"), name="info")
+    config.set(Info(campaign_name="Test", campaign_description="Test defaults"), name="info")
     config.set(
         config.Initialize(circuit=obi.Circuit(name="stripped", path=str(config_path))),
         name="initialize",
@@ -179,7 +181,7 @@ def _unset_config(tmp_path):
     """
     config = obi.SynapseParameterizationSingleConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test", campaign_description="Test defaults"),
+        Info(campaign_name="Test", campaign_description="Test defaults"),
         name="info",
     )
     config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
@@ -203,7 +205,7 @@ def test_fill_materializes_defaults_under_resolved_names():
     """
     config = obi.SynapseParameterizationScanConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test", campaign_description="Test defaults"),
+        Info(campaign_name="Test", campaign_description="Test defaults"),
         name="info",
     )
     config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
@@ -238,7 +240,7 @@ def test_execute_rejects_a_config_with_no_assigners(tmp_path):
     """A config with no assigners parameterizes nothing and must be rejected, not run silently."""
     config = obi.SynapseParameterizationSingleConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test", campaign_description="Test empty"),
+        Info(campaign_name="Test", campaign_description="Test empty"),
         name="info",
     )
     config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
@@ -279,7 +281,7 @@ def _defaults_only_scan_config(*assigner_names):
     """A scan config whose assigners all rely on the default synaptic model."""
     config = obi.SynapseParameterizationScanConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test", campaign_description="Test reload"),
+        Info(campaign_name="Test", campaign_description="Test reload"),
         name="info",
     )
     config.set(config.Initialize(circuit=_local_circuit()), name="initialize")
@@ -432,7 +434,7 @@ def _inter_set_config_with_source(circuit, source_set, source_ref_dict):
     a stored config), so the reference ``type`` carried on reload can be asserted.
     """
     config = obi.SynapseParameterizationScanConfig.empty_config()
-    config.set(obi.Info(campaign_name="T", campaign_description="d"), name="info")
+    config.set(Info(campaign_name="T", campaign_description="d"), name="info")
     config.set(config.Initialize(circuit=circuit), name="initialize")
     config.add(source_set, "Ext20-50")
 
@@ -456,7 +458,7 @@ def test_reference_type_healed_for_virtual_source_neuron_set():
     """
     circuit = _local_circuit()
     virtual = obi.VirtualPopulationIDNeuronSet(
-        population="VPM", neuron_ids=obi.NamedTuple(name="s", elements=[0, 1, 2])
+        population="VPM", neuron_ids=NamedTuple(name="s", elements=[0, 1, 2])
     )
     # Stored config carries the WRONG type - it must be healed on load.
     wrong_ref = {
@@ -479,7 +481,7 @@ def test_reference_type_preserved_for_biophysical_source_neuron_set():
     """A source_neuron_set pointing at a biophysical set stays BiophysicalNeuronSetReference."""
     circuit = _local_circuit()
     biophysical = obi.BiophysicalPopulationIDNeuronSet(
-        population="S1nonbarrel_neurons", neuron_ids=obi.NamedTuple(name="s", elements=[0, 1])
+        population="S1nonbarrel_neurons", neuron_ids=NamedTuple(name="s", elements=[0, 1])
     )
     # Type-less reference, as the frontend sends it.
     ref_dict = {"block_dict_name": "neuron_sets", "block_name": "Ext20-50"}
