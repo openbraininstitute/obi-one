@@ -7,7 +7,6 @@ applied through, so each refuses the other's block.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
@@ -16,6 +15,9 @@ from obi_one.scientific.blocks.recordings.soma import SomaVoltageRecording
 from obi_one.scientific.blocks.stimuli.electric_field import (
     SpatiallyUniformElectricFieldStimulus,
     TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+)
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -37,7 +39,7 @@ ELECTRIC_FIELDS = [
 
 def _lfp():
     return ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
     )
 
 
