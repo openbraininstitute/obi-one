@@ -10,7 +10,6 @@ import h5py
 import numpy as np
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
@@ -53,6 +52,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     VIRTUAL_POPULATION,
     build_config,
     generate,
+    union_block_class,
     union_member_names,
 )
 
@@ -147,7 +147,7 @@ class TestContinuousStimuli:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Stim": getattr(obi, name)()},
+            blocks={"Stim": union_block_class(name, CircuitStimulusUnion)()},
         )
 
         result = generate(config, tmp_path)
@@ -160,7 +160,7 @@ class TestContinuousStimuli:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Stim": getattr(obi, name)()},
+            blocks={"Stim": union_block_class(name, CircuitStimulusUnion)()},
         )
 
         result = generate(config, tmp_path)
@@ -287,7 +287,7 @@ class TestSpikeStimuli:
         if target is not None:
             blocks["Target"] = target
 
-        stimulus_class = getattr(obi, name)
+        stimulus_class = union_block_class(name, CircuitStimulusUnion)
         distribution = ExponentialDistribution(scale=50.0)
         if name in NEEDS_DISTRIBUTION:
             blocks["Distribution"] = distribution

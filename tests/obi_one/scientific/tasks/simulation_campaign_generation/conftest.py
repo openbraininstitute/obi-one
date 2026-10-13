@@ -80,6 +80,18 @@ def union_member_names(union: Any) -> set[str]:
     return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
 
 
+def union_block_class(name: str, *unions: Any) -> type:
+    """Return the block class registered under ``name`` in one of ``unions``."""
+    for union in unions:
+        inner = typing.get_args(union)[0]
+        candidates = [inner] if inspect.isclass(inner) else typing.get_args(inner)
+        for cls in candidates:
+            if inspect.isclass(cls) and cls.__name__ == name:
+                return cls
+    msg = f"No block class {name!r} in the given unions"
+    raise LookupError(msg)
+
+
 def reference_types_in(annotation: Any) -> set[type]:
     """Every ``BlockReference`` subclass reachable inside a field annotation.
 

@@ -14,7 +14,6 @@ block type is covered here without anyone editing this file.
 
 import pytest
 
-import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import BiophysicalCombinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
 from obi_one.scientific.blocks.neuron_sets.population import PointPopulationNeuronSet
@@ -65,6 +64,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     generate,
     reference_field_names,
     reference_types_in,
+    union_block_class,
     union_member_names,
 )
 
@@ -72,19 +72,6 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 # the default construction. Required-target blocks are kept out of the untargeted sweeps below.
 CIRCUIT_STIMULI = sorted(union_member_names(CircuitStimulusUnion))
 RECORDINGS = sorted(union_member_names(RecordingUnion))
-# A recording whose reference field has no default cannot be constructed untargeted, so it is
-# derived rather than listed: a new such block excludes itself from the sweeps below.
-REQUIRED_TARGET_RECORDINGS = {
-    name
-    for name in RECORDINGS
-    if any(
-        getattr(obi, name).model_fields[field_name].is_required()
-        for field_name in reference_field_names(getattr(obi, name))
-    )
-}
-UNTARGETED_RECORDINGS = sorted(
-    name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
-)
 SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
 # Explicit locations are excluded: they name points on a single neuron, so they carry no
 # neuron-set reference and are not offered for circuit configurations.
@@ -102,23 +89,43 @@ ALL_BLOCK_UNIONS = (
     NEURONSimulationNeuronSetUnion,
 )
 
+_BLOCK_CLASS_OVERRIDES = {
+    "ByNeuronMechanismVariableNeuronalManipulation": (
+        ByNeuronMechanismVariableNeuronalManipulation
+    ),
+    "BySectionListMechanismVariableNeuronalManipulation": (
+        BySectionListMechanismVariableNeuronalManipulation
+    ),
+    "AllNeurons": AllNeurons,
+}
+
+
+def _block_class(name: str) -> type:
+    try:
+        return union_block_class(name, *ALL_BLOCK_UNIONS)
+    except LookupError:
+        return _BLOCK_CLASS_OVERRIDES[name]
+
+
 BLOCK_CLASSES = {
-    name: cls
+    name: _block_class(name)
     for union in ALL_BLOCK_UNIONS
     for name in union_member_names(union)
-    for cls in [
-        getattr(obi, name, None)
-        or {
-            "ByNeuronMechanismVariableNeuronalManipulation": (
-                ByNeuronMechanismVariableNeuronalManipulation
-            ),
-            "BySectionListMechanismVariableNeuronalManipulation": (
-                BySectionListMechanismVariableNeuronalManipulation
-            ),
-            "AllNeurons": AllNeurons,
-        }[name]
-    ]
 }
+
+# A recording whose reference field has no default cannot be constructed untargeted, so it is
+# derived rather than listed: a new such block excludes itself from the sweeps below.
+REQUIRED_TARGET_RECORDINGS = {
+    name
+    for name in RECORDINGS
+    if any(
+        BLOCK_CLASSES[name].model_fields[field_name].is_required()
+        for field_name in reference_field_names(BLOCK_CLASSES[name])
+    )
+}
+UNTARGETED_RECORDINGS = sorted(
+    name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
+)
 
 # Seven named neuron sets, one names timestamps, one names a distribution, and one names
 # morphology locations (the latter is required by its specialized recording block).
@@ -166,7 +173,7 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    return getattr(obi, name)()
+    return BLOCK_CLASSES[name]()
 
 
 def _input_entry(result, name: str) -> dict:
@@ -223,7 +230,7 @@ class TestEveryReferenceFieldIsExercised:
         CIRCUIT_STIMULI + UNTARGETED_RECORDINGS + SYNAPTIC_MANIPULATIONS + MORPHOLOGY_LOCATIONS,
     )
     def test_every_reference_field_defaults_to_none(self, name):
-        block_class = getattr(obi, name)
+        block_class = BLOCK_CLASSES[name]
         fields = reference_field_names(block_class)
 
         assert fields, f"{name} was expected to have at least one reference field"
@@ -233,7 +240,7 @@ class TestEveryReferenceFieldIsExercised:
     @pytest.mark.parametrize("name", COMBINED_NEURON_SETS)
     def test_a_combined_neuron_set_starts_with_no_operands(self, name):
         """``combined_with`` is the one reference field that defaults to empty rather than None."""
-        block_class = getattr(obi, name)
+        block_class = BLOCK_CLASSES[name]
 
         assert block_class.model_fields["base_neuron_set"].default is None
         assert block_class.model_fields["combined_with"].default == ()
@@ -319,7 +326,7 @@ class TestUnsetReferencesResolveToTheDefault:
         """``combined_with`` entries are ``(reference, operation)`` pairs whose reference can
         also be unset, and each one is filled with the same population default as the base."""
         is_point = name == "PointCombinedNeuronSet"
-        combined = getattr(obi, name)(
+        combined = BLOCK_CLASSES[name](
             base_neuron_set=None, combined_with=((None, "union"), (None, "union"))
         )
         blocks: dict = {"Combined": combined}
