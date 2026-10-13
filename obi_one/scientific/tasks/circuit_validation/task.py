@@ -75,15 +75,29 @@ def run_circuit_validation(
             _update_lifecycle_status(db_client, circuit_id, "disqualified")
             return {"valid": False, "errors": [msg], "warnings": []}
 
-        # Compile MOD files if present
+        # Compile MOD files if present. The bluecellulab backend selects plain
+        # nrnivmodl compilation, which is what validation needs to load mechanisms and
+        # instantiate HOC templates. It does not exercise the Neurodamus/CoreNEURON
+        # compile path, so a MOD that builds here could still fail under CoreNEURON for
+        # a Neurodamus-targeted circuit.
         mod_dir = _find_mod_dir(snap_circuit)
         has_mods = bool(mod_dir and mod_dir.exists() and any(mod_dir.glob("*.mod")))
         if has_mods:
+            L.info("Compiling MOD files from %s", mod_dir)
             try:
-                _compile_mechanisms(mod_dir, staged_dir)
-            except RuntimeError as e:
+                compile_mechanisms(
+                    output_dir=staged_dir,
+                    mechanisms_dirs=[mod_dir],
+                    simulation_backend=SimulationBackend.bluecellulab,
+                )
+            except (RuntimeError, subprocess.CalledProcessError) as e:
+                stderr = getattr(e, "stderr", None) or str(e)
                 _update_lifecycle_status(db_client, circuit_id, "disqualified")
-                return {"valid": False, "errors": [str(e)], "warnings": []}
+                return {
+                    "valid": False,
+                    "errors": [f"MOD compilation failed: {stderr[:500]}"],
+                    "warnings": [],
+                }
 
         fatal_errors: list[str] = []
         warning_messages: list[str] = []
@@ -615,27 +629,3 @@ def _find_mod_dir(circuit: SnapCircuitType) -> Path | None:
         if nested.exists() and any(nested.glob("*.mod")):
             return nested
     return None
-
-
-def _compile_mechanisms(mod_dir: Path, working_dir: Path) -> None:
-    """Compile MOD files with nrnivmodl. Raises RuntimeError on failure.
-
-    Delegates to the shared ``compile_mechanisms`` NEURON toolchain path. The
-    ``bluecellulab`` backend selects plain ``nrnivmodl`` compilation, which is what
-    validation needs to load mechanisms and instantiate HOC templates. This does not
-    exercise the Neurodamus/CoreNEURON compile path, so a MOD that builds here could
-    still fail under CoreNEURON for a Neurodamus-targeted circuit; that stronger check
-    would require compiling with the circuit's intended backend.
-    """
-    L.info("Compiling MOD files from %s", mod_dir)
-    try:
-        compile_mechanisms(
-            output_dir=working_dir,
-            mechanisms_dirs=[mod_dir],
-            simulation_backend=SimulationBackend.bluecellulab,
-        )
-    except subprocess.CalledProcessError as e:
-        stderr = e.stderr or ""
-        msg = f"MOD compilation failed: {stderr[:500]}"
-        raise RuntimeError(msg) from e
-    L.info("MOD compilation successful")
