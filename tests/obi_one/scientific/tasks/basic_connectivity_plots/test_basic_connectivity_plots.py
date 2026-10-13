@@ -1,7 +1,7 @@
-import obi_one as obi
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
 
 from tests.utils import DATA_DIR, MATRIX_DIR
 
@@ -19,13 +19,13 @@ def test_basic_connectivity_plots(tmp_path):
         ),
     ]
 
-    plot_init = obi.BasicConnectivityPlotsScanConfig.Initialize(
+    plot_init = BasicConnectivityPlotsScanConfig.Initialize(
         matrix_path=matrix_list,
         plot_formats=("png", "pdf", "svg"),
         rendering_cmap="custom",
         rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
     )
-    basic_connectivity_plots_form = obi.BasicConnectivityPlotsScanConfig(initialize=plot_init)
+    basic_connectivity_plots_form = BasicConnectivityPlotsScanConfig(initialize=plot_init)
 
     # Run plot generation
     grid_scan = GridScanGenerationTask(

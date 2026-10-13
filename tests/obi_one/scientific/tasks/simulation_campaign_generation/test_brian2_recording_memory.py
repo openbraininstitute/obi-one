@@ -10,9 +10,13 @@ is lowered to a size those numbers can cross.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.id import PointPopulationIDNeuronSet
+from obi_one.scientific.blocks.recordings.soma import (
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
+)
 from obi_one.scientific.tasks.generate_simulations.config.brian2 import brian2_base
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
@@ -33,8 +37,8 @@ def limit_of_one_neuron(monkeypatch):
     monkeypatch.setattr(brian2_base, "MAX_BRIAN2_RECORDED_SAMPLES", TIMESTEPS)
 
 
-def _neuron(node_id: int, name: str) -> obi.PointPopulationIDNeuronSet:
-    return obi.PointPopulationIDNeuronSet(
+def _neuron(node_id: int, name: str) -> PointPopulationIDNeuronSet:
+    return PointPopulationIDNeuronSet(
         population=POINT_POPULATION,
         neuron_ids=NamedTuple(name=name, elements=[node_id]),
     )
@@ -47,7 +51,7 @@ class TestBrian2RecordingMemory:
         config = build_config(
             Brian2CircuitSimulationSingleConfig,
             circuit=point_circuit,
-            blocks={"Voltage": obi.SimulationDtSomaVoltageRecording()},
+            blocks={"Voltage": SimulationDtSomaVoltageRecording()},
         )
 
         with pytest.raises(ConfigValidationError) as error:
@@ -67,7 +71,7 @@ class TestBrian2RecordingMemory:
             circuit=point_circuit,
             blocks={
                 "Neuron": neuron,
-                "Voltage": lambda: obi.SimulationDtSomaVoltageRecording(neuron_set=neuron.ref),
+                "Voltage": lambda: SimulationDtSomaVoltageRecording(neuron_set=neuron.ref),
             },
         )
 
@@ -84,8 +88,8 @@ class TestBrian2RecordingMemory:
             circuit=point_circuit,
             blocks={
                 "Neuron": neuron,
-                "Whole": lambda: obi.SimulationDtSomaVoltageRecording(neuron_set=neuron.ref),
-                "Window": lambda: obi.SimulationDtTimeWindowSomaVoltageRecording(
+                "Whole": lambda: SimulationDtSomaVoltageRecording(neuron_set=neuron.ref),
+                "Window": lambda: SimulationDtTimeWindowSomaVoltageRecording(
                     neuron_set=neuron.ref, start_time=0.0, end_time=10.0
                 ),
             },
@@ -98,7 +102,7 @@ class TestBrian2RecordingMemory:
     @pytest.mark.usefixtures("limit_of_one_neuron")
     def test_a_time_window_still_counts_the_whole_run(self, point_circuit, tmp_path):
         """A 10 ms window on two neurons is held for all 4,000 timesteps, not its own 400."""
-        pair = obi.PointPopulationIDNeuronSet(
+        pair = PointPopulationIDNeuronSet(
             population=POINT_POPULATION,
             neuron_ids=NamedTuple(name="pair", elements=[0, 1]),
         )
@@ -107,7 +111,7 @@ class TestBrian2RecordingMemory:
             circuit=point_circuit,
             blocks={
                 "Pair": pair,
-                "Window": lambda: obi.SimulationDtTimeWindowSomaVoltageRecording(
+                "Window": lambda: SimulationDtTimeWindowSomaVoltageRecording(
                     neuron_set=pair.ref, start_time=0.0, end_time=10.0
                 ),
             },
@@ -125,7 +129,7 @@ class TestBrian2RecordingMemory:
             circuit=point_circuit,
             blocks={
                 "Neuron": neuron,
-                "Voltage": lambda: obi.SimulationDtSomaVoltageRecording(neuron_set=neuron.ref),
+                "Voltage": lambda: SimulationDtSomaVoltageRecording(neuron_set=neuron.ref),
             },
             initialize={"simulation_length": 200.0},
         )

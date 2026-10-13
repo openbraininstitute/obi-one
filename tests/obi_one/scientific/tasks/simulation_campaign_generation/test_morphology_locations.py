@@ -8,10 +8,30 @@ name instead of carrying a node set.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.morphology_locations.clustered import (
+    ClusteredGroupedMorphologyLocations,
+    ClusteredMorphologyLocations,
+    ClusteredPathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.explicit import (
+    ExplicitMorphologyLocations,
+    MorphologyLocationPoint,
+)
+from obi_one.scientific.blocks.morphology_locations.path_distance import (
+    PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.random import (
+    RandomGroupedMorphologyLocations,
+    RandomMorphologyLocations,
+)
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
+from obi_one.scientific.blocks.recordings.morphology_location import (
+    MorphologyLocationVoltageRecording,
+    TimeWindowMorphologyLocationVoltageRecording,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -32,30 +52,28 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 MORPHOLOGY_POPULATION = "S1nonbarrel_neurons"
 
 MORPHOLOGY_LOCATIONS = {
-    "RandomMorphologyLocations": obi.RandomMorphologyLocations(
-        random_seed=0, number_of_locations=3
-    ),
-    "RandomGroupedMorphologyLocations": obi.RandomGroupedMorphologyLocations(
+    "RandomMorphologyLocations": RandomMorphologyLocations(random_seed=0, number_of_locations=3),
+    "RandomGroupedMorphologyLocations": RandomGroupedMorphologyLocations(
         random_seed=0, number_of_locations=4, n_groups=2
     ),
-    "ClusteredMorphologyLocations": obi.ClusteredMorphologyLocations(
+    "ClusteredMorphologyLocations": ClusteredMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2
     ),
-    "ClusteredGroupedMorphologyLocations": obi.ClusteredGroupedMorphologyLocations(
+    "ClusteredGroupedMorphologyLocations": ClusteredGroupedMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2, n_groups=2
     ),
-    "PathDistanceMorphologyLocations": obi.PathDistanceMorphologyLocations(
+    "PathDistanceMorphologyLocations": PathDistanceMorphologyLocations(
         random_seed=0, number_of_locations=3
     ),
-    "ClusteredPathDistanceMorphologyLocations": obi.ClusteredPathDistanceMorphologyLocations(
+    "ClusteredPathDistanceMorphologyLocations": ClusteredPathDistanceMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2
     ),
 }
 
-EXPLICIT_LOCATIONS = obi.ExplicitMorphologyLocations(
+EXPLICIT_LOCATIONS = ExplicitMorphologyLocations(
     locations=(
-        obi.MorphologyLocationPoint(section_id=0, offset=0.0),
-        obi.MorphologyLocationPoint(section_id=1, offset=0.5),
+        MorphologyLocationPoint(section_id=0, offset=0.0),
+        MorphologyLocationPoint(section_id=1, offset=0.5),
     )
 )
 
@@ -65,7 +83,7 @@ def _me_model_locations_config(me_model_config, locations, *, name="Locations"):
     return me_model_config(
         blocks={
             name: locations,
-            "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+            "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                 neuron_set=locations.ref, amplitude=0.2, duration=50.0
             ),
         }
@@ -77,7 +95,7 @@ def _locations_config(circuit, locations, *, neuron_set=None, name="Locations"):
     if neuron_set is not None:
         blocks["Cell"] = neuron_set
     blocks[name] = locations
-    blocks["Clamp"] = lambda: obi.ConstantCurrentClampSomaticStimulus(
+    blocks["Clamp"] = lambda: ConstantCurrentClampSomaticStimulus(
         neuron_set=locations.ref, amplitude=0.2, duration=50.0
     )
     return build_config(CircuitSimulationSingleConfig, circuit=circuit, blocks=blocks)
@@ -110,7 +128,7 @@ class TestCompartmentSetGeneration:
     def test_compartment_set_file_is_written_and_referenced(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2),
+            RandomMorphologyLocations(random_seed=0, number_of_locations=2),
         )
 
         result = generate(config, tmp_path)
@@ -121,7 +139,7 @@ class TestCompartmentSetGeneration:
     def test_rows_are_node_id_section_id_offset_triples(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=5),
+            RandomMorphologyLocations(random_seed=0, number_of_locations=5),
         )
 
         result = generate(config, tmp_path)
@@ -135,7 +153,7 @@ class TestCompartmentSetGeneration:
         """``to_sonata_dict`` emits canonical SONATA order, not generation order."""
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=8),
+            RandomMorphologyLocations(random_seed=0, number_of_locations=8),
         )
 
         result = generate(config, tmp_path)
@@ -153,7 +171,7 @@ class TestCompartmentSetGeneration:
     def test_empty_explicit_location_block_referenced_by_stimulus_is_rejected(
         self, me_model_config, tmp_path
     ):
-        config = _me_model_locations_config(me_model_config, obi.ExplicitMorphologyLocations())
+        config = _me_model_locations_config(me_model_config, ExplicitMorphologyLocations())
 
         with pytest.raises(
             ConfigValidationError,
@@ -177,7 +195,7 @@ class TestCompartmentSetGeneration:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
-            blocks={"Unused": obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)},
+            blocks={"Unused": RandomMorphologyLocations(random_seed=0, number_of_locations=2)},
         )
 
         result = generate(config, tmp_path)
@@ -189,7 +207,7 @@ class TestStimulusRewriting:
     def test_the_stimulus_targets_the_compartment_set(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2),
+            RandomMorphologyLocations(random_seed=0, number_of_locations=2),
         )
 
         result = generate(config, tmp_path)
@@ -202,16 +220,16 @@ class TestStimulusRewriting:
     def test_two_stimuli_sharing_a_location_block_share_one_compartment_set(
         self, morphology_circuit, tmp_path
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "First": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "First": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=locations.ref, amplitude=0.1
                 ),
-                "Second": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Second": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=locations.ref, amplitude=0.2
                 ),
             },
@@ -226,16 +244,16 @@ class TestStimulusRewriting:
     def test_a_location_targeting_stimulus_coexists_with_a_neuron_set_one(
         self, morphology_circuit, tmp_path
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "OnLocations": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "OnLocations": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=locations.ref
                 ),
-                "OnSoma": obi.ConstantCurrentClampSomaticStimulus(),
+                "OnSoma": ConstantCurrentClampSomaticStimulus(),
             },
         )
 
@@ -247,13 +265,13 @@ class TestStimulusRewriting:
 
 class TestRecordingRewriting:
     def test_the_recording_targets_the_compartment_set(self, morphology_circuit, tmp_path):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "Voltage": lambda: obi.MorphologyLocationVoltageRecording(
+                "Voltage": lambda: MorphologyLocationVoltageRecording(
                     morphology_locations=locations.ref
                 ),
             },
@@ -269,13 +287,13 @@ class TestRecordingRewriting:
         assert "compartments" not in entry
 
     def test_the_recording_spans_the_whole_simulation(self, morphology_circuit, tmp_path):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "Voltage": lambda: obi.MorphologyLocationVoltageRecording(
+                "Voltage": lambda: MorphologyLocationVoltageRecording(
                     morphology_locations=locations.ref
                 ),
             },
@@ -293,13 +311,13 @@ class TestTimeWindowRecording:
 
     @staticmethod
     def _config(morphology_circuit, *, window, simulation_length=500.0):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         return build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "Window": lambda: obi.TimeWindowMorphologyLocationVoltageRecording(
+                "Window": lambda: TimeWindowMorphologyLocationVoltageRecording(
                     morphology_locations=locations.ref, **window
                 ),
             },
@@ -337,7 +355,7 @@ class TestTimeWindowRecording:
         )
 
         with pytest.raises(OBIONEError, match="End time must be later"):
-            obi.TimeWindowMorphologyLocationVoltageRecording(
+            TimeWindowMorphologyLocationVoltageRecording(
                 morphology_locations=locations_ref,
                 start_time=60.0,
                 end_time=20.0,
@@ -356,7 +374,7 @@ class TestTimeWindowRecording:
             block_dict_name="morphology_locations", block_name="Locations"
         )
 
-        recording = obi.TimeWindowMorphologyLocationVoltageRecording(
+        recording = TimeWindowMorphologyLocationVoltageRecording(
             morphology_locations=locations_ref,
             start_time=start_time,
             end_time=end_time,
@@ -367,12 +385,12 @@ class TestTimeWindowRecording:
 
     def test_locations_are_still_required(self):
         with pytest.raises(ValueError, match="require morphology locations"):
-            obi.TimeWindowMorphologyLocationVoltageRecording(morphology_locations=None)
+            TimeWindowMorphologyLocationVoltageRecording(morphology_locations=None)
 
 
 class TestLocationTargeting:
     def test_locations_without_a_neuron_set_use_the_default(self, morphology_circuit, tmp_path):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         assert locations.neuron_set is None
         config = _locations_config(morphology_circuit, locations)
 
@@ -392,7 +410,7 @@ class TestLocationTargeting:
         built: dict = {}
 
         def _locations():
-            built["locations"] = obi.RandomMorphologyLocations(
+            built["locations"] = RandomMorphologyLocations(
                 random_seed=0, number_of_locations=3, neuron_set=cell.ref
             )
             return built["locations"]
@@ -403,7 +421,7 @@ class TestLocationTargeting:
             blocks={
                 "Cell": cell,
                 "Locations": _locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=built["locations"].ref
                 ),
             },
@@ -418,7 +436,7 @@ class TestLocationTargeting:
         """Section types 3 and 4 are basal and apical dendrite; the soma (1) is excluded."""
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=4, section_types=(3,)),
+            RandomMorphologyLocations(random_seed=0, number_of_locations=4, section_types=(3,)),
         )
 
         result = generate(config, tmp_path)
@@ -436,7 +454,7 @@ class TestCompartmentSetErrors:
     def test_a_renamed_compartment_set_is_refused(self, morphology_circuit, tmp_path):
         config = _locations_config(
             morphology_circuit,
-            obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2),
+            RandomMorphologyLocations(random_seed=0, number_of_locations=2),
         )
         coordinate_root = tmp_path / "0"
         coordinate_root.mkdir(parents=True)

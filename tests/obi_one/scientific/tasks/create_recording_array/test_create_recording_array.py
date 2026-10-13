@@ -9,8 +9,10 @@ from uuid import uuid4
 import matplotlib.pyplot as plt
 import pytest
 
-import obi_one as obi
 import obi_one.scientific.tasks.create_recording_array.create_recording_array as test_module
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
+    LinearExtracellularLocations,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron.schemas import NeurodamusMechanismBuild
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
@@ -68,7 +70,7 @@ def _make_task(tmp_path, *, circuit_path=_CIRCUIT_PATH):
     config.initialize.circuit = Mock()
     config.initialize.calculation_method = "PointSource"
     config.electrode_locations = {
-        "probe": obi.LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
+        "probe": LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
     }
     return CreateExtracellularRecordingArrayTask.model_construct(config=config), circuit_path
 
@@ -118,7 +120,7 @@ def test_write_electrode_json_multiple_blocks(tmp_path):
 def test_plot_electrode_array_saves_plot(tmp_path):
     sonata_circuit = Circuit(name="tiny", path=str(_CIRCUIT_PATH)).sonata_circuit
     electrode_locations = {
-        "Lin": obi.LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
+        "Lin": LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
     }
     image_path = tmp_path / "plots" / "electrode_array.png"
     mock_figure = MagicMock()

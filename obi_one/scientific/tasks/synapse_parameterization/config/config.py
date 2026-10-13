@@ -16,7 +16,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPointNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )

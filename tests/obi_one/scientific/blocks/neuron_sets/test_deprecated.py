@@ -10,9 +10,12 @@ import operator
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.deprecated import PredefinedNeuronSet
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
     AtomicBiophysicalNeuronSetUnion,
     AtomicPointNeuronSetUnion,
@@ -36,7 +39,7 @@ LEGACY_PREDEFINED_NEURON_SET = {
 
 @pytest.fixture
 def circuit():
-    return obi.Circuit(
+    return Circuit(
         name=CIRCUIT_NAME,
         path=str(CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"),
         matrix_path=str(MATRIX_DIR / CIRCUIT_NAME / "connectivity_matrix.h5"),
@@ -100,7 +103,7 @@ def test_deprecated_neuron_sets_are_not_offered_for_point_populations(block):
 
 def test_legacy_predefined_neuron_set_is_in_the_schema():
     """The block has a definition in the schema the frontend binds stored configs against."""
-    schema = obi.CircuitSimulationScanConfig.model_json_schema()
+    schema = CircuitSimulationScanConfig.model_json_schema()
 
     assert "PredefinedNeuronSet" in schema["$defs"]
 

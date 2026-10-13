@@ -5,6 +5,7 @@ Author: Daniela Egas Santander"""
 
 import numpy as np
 
+from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
 import obi_one as obi
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_generation import GridScanGenerationTask
@@ -45,7 +46,7 @@ matrix_path = [NamedPath(name=circ_name, path=f"{root}ConnectivityMatrices/{circ
 print(f"Generating figures for {len(matrix_path)} connectomes")
 
 
-basic_connectivity_plots_scan_config = obi.BasicConnectivityPlotsScanConfig(initialize=obi.BasicConnectivityPlotsScanConfig.Initialize(
+basic_connectivity_plots_scan_config = BasicConnectivityPlotsScanConfig(initialize=BasicConnectivityPlotsScanConfig.Initialize(
     matrix_path= matrix_path,
                  plot_formats=("png",),  # sub-tuple of ('png', 'pdf', a'svg'), if not specified all are plotted
                  plot_types=("nodes", "small_adj_and_stats","network_in_2D", "property_table",), 

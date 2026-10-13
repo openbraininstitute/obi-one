@@ -14,13 +14,15 @@ from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
     RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
 )
-from obi_one.scientific.blocks.stimuli.spike import (
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import (
     FullySynchronousSpikeStimulus,
-    PoissonSpikeStimulus,
-    SinusoidalPoissonSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.sinusoidal_poisson import (
+    SinusoidalPoissonSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,

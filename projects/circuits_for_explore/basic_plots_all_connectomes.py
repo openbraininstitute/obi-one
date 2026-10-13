@@ -5,6 +5,7 @@ Author: Daniela Egas Santander"""
 
 import os
 
+from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
 import obi_one as obi
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_generation import GridScanGenerationTask
@@ -17,8 +18,8 @@ input_root="/Users/danielaegas/OneDrive - Open Brain Institute/Shared Documents 
 ConnectivityMatrices = [f for f in os.listdir(input_root) if os.path.isdir(os.path.join(input_root, f))]
 print(f"There are {len(ConnectivityMatrices)} connectivity matrices to be analyazed")
 
-basic_connectivity_plots_scan_config = obi.BasicConnectivityPlotsScanConfig(
-                    initialize=obi.BasicConnectivityPlotsScanConfig.Initialize(
+basic_connectivity_plots_scan_config = BasicConnectivityPlotsScanConfig(
+                    initialize=BasicConnectivityPlotsScanConfig.Initialize(
                         matrix_path=[NamedPath(name=f"{circ_name}", path=f"{input_root}/{circ_name}/connectivity_matrix.h5") for circ_name in ConnectivityMatrices],
                         plot_formats=("png",), # sub-tuple of ('png', 'pdf', 'svg'), if not specified all are plotted
                         #plot_types=("nodes",) # sub-tuple of ('nodes', 'connectivity_global', 'connectivity_pathway'), if not specified all are plotted
