@@ -53,9 +53,10 @@ class ValidationSettings(Block):
         default=None,
         title="Validation protocols",
         description=(
-            "Protocol names (e.g. ``IDrest_250``) scored as validation protocols. Empty uses "
-            "the optimisation's validation protocols for optimisation targets, and every "
-            "protocol of the extraction for e-feature extraction targets."
+            "Protocol names (e.g. ``IDrest_250``) of the target e-features scored as "
+            "validation protocols; names not in the target e-features are rejected. Empty "
+            "uses the optimisation's validation protocols for optimisation targets, and every "
+            "protocol of the extraction for other targets."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_OPTIONAL},
     )

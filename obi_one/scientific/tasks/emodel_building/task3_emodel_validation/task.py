@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import entitysdk
-from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
@@ -106,8 +105,6 @@ class EModelValidationTask(Task):
 
     config: EModelValidationSingleConfig
 
-    _summary: dict | None = PrivateAttr(default=None)
-
     def execute(
         self,
         *,
@@ -118,13 +115,13 @@ class EModelValidationTask(Task):
         coord_root = Path(self.config.coordinate_output_root).resolve()
         staged = staging.stage_working_directory(self.config, coord_root, db_client)
         emodel_building_utils.compile_mechanisms(coord_root / "mechanisms")
-        self._summary = run_validation_pipeline(coord_root=coord_root, staged=staged)
+        summary = run_validation_pipeline(coord_root=coord_root, staged=staged)
         registration.register_output_entities(
             self.config,
             coord_root,
             db_client,
             staged=staged,
-            summary=self._summary,
+            summary=summary,
             figures_dir=coord_root / FIGURES_DIRNAME,
             execution_activity_id=execution_activity_id,
         )

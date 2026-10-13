@@ -312,3 +312,11 @@ class TestCheckThresholdSearchTargets:
             features, "ThresholdBasedNoHoldingProtocol", ("RMPProtocol", "RinProtocol")
         )
         staging.check_threshold_search_targets(features)
+
+
+def test_unknown_validation_protocols_are_rejected(tmp_path):
+    features = tmp_path / "f.json"
+    write_features(features, ["IDrest_150", "IDrest_250"])
+    config = make_config(settings={"validation_protocols": ["IDrest_250.0", "IV_-40"]})
+    with pytest.raises(ValueError, match=r"\['IV_-40'\] are not in the target e-features"):
+        staging.resolve_settings(config, optimisation_config(), features)

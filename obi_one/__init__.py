@@ -85,13 +85,9 @@ __all__ = [
     "EModelEFeatureExtractionScanConfig",
     "EModelEFeatureExtractionSingleConfig",
     "EModelEFeatureExtractionTask",
-    "EModelFromID",
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
-    "EModelValidationScanConfig",
-    "EModelValidationSingleConfig",
-    "EModelValidationTask",
     "ElectricalCellRecordingFromID",
     "ElectrophysiologyMetricsScanConfig",
     "ElectrophysiologyMetricsSingleConfig",
@@ -488,7 +484,6 @@ from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
-from obi_one.scientific.from_id.emodel_from_id import EModelFromID
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
@@ -565,11 +560,6 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     SigmoidKDBMApicDistanceDependentDistribution,
     StepDistanceDependentDistribution,
     UniformDistanceDependentDistribution,
-)
-from obi_one.scientific.tasks.emodel_building.task3_emodel_validation import (
-    EModelValidationScanConfig,
-    EModelValidationSingleConfig,
-    EModelValidationTask,
 )
 from obi_one.scientific.tasks.ephys_extraction import (
     ElectrophysiologyMetricsScanConfig,
