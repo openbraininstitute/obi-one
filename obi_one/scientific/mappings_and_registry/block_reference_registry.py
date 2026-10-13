@@ -1,65 +1,72 @@
-from obi_one.core.registry import block_ref_registry
-from obi_one.scientific.unions_and_references.combined_neuron_sets import (
-    CombinedBiophysicalNeuronSetReference,
-    CombinedNonVirtualNeuronSetReference,
-    CombinedPointNeuronSetReference,
-    CombinedVirtualNeuronSetReference,
-)
-from obi_one.scientific.unions_and_references.distributions import (
-    AllDistributionsReference,
-)
-from obi_one.scientific.unions_and_references.extracellular_locations import (
-    ExtracellularLocationsReference,
-)
-from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsReference
-from obi_one.scientific.unions_and_references.morphology_locations import (
-    MorphologyLocationsReference,
-)
-from obi_one.scientific.unions_and_references.neuron_sets import (
-    BiophysicalNeuronSetReference,
-    PointNeuronSetReference,
-    VirtualNeuronSetReference,
-)
-from obi_one.scientific.unions_and_references.neuronal_manipulations import (
-    NeuronalManipulationReference,
-)
-from obi_one.scientific.unions_and_references.recordings import RecordingReference
-from obi_one.scientific.unions_and_references.stimuli import StimulusReference
-from obi_one.scientific.unions_and_references.synaptic_model_assigner import (
-    SynapticModelAssignerReference,
-)
-from obi_one.scientific.unions_and_references.synaptic_models import SynapticModelReference
-from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
+"""Declarative block reference types for ScanConfig.add() lookup.
 
-AllBlockReferenceTypes = [
-    CombinedBiophysicalNeuronSetReference,
-    CombinedNonVirtualNeuronSetReference,
-    CombinedPointNeuronSetReference,
-    CombinedVirtualNeuronSetReference,
-    BiophysicalNeuronSetReference,
-    VirtualNeuronSetReference,
-    PointNeuronSetReference,
-    StimulusReference,
-    SynapticManipulationsReference,
-    NeuronalManipulationReference,
-    RecordingReference,
-    TimestampsReference,
-    MorphologyLocationsReference,
-    AllDistributionsReference,
-    SynapticModelReference,
-    SynapticModelAssignerReference,
-    ExtracellularLocationsReference,
-]
+Each reference class is declared as a ``(module path, class name)`` reference, so importing
+this module imports no union or block implementation. Classes are imported on first
+``block_ref_registry.get_by_name`` lookup.
+"""
 
+from obi_one.utils.lazy_import import ClassRef
 
-def _populate_block_ref_registry() -> None:
-    """Populate the core BlockReferenceRegistry with all block reference types.
+_BLOCK_REFERENCES = "obi_one.scientific.unions_and_references"
 
-    Called once at module load time.
-    """
-    for cls in AllBlockReferenceTypes:
-        block_ref_registry.register(cls)
-
-
-# Runs exactly once at module load (Python caches modules in sys.modules).
-_populate_block_ref_registry()
+BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
+    "CombinedBiophysicalNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.combined_neuron_sets",
+        "CombinedBiophysicalNeuronSetReference",
+    ),
+    "CombinedNonVirtualNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.combined_neuron_sets",
+        "CombinedNonVirtualNeuronSetReference",
+    ),
+    "CombinedPointNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.combined_neuron_sets",
+        "CombinedPointNeuronSetReference",
+    ),
+    "CombinedVirtualNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.combined_neuron_sets",
+        "CombinedVirtualNeuronSetReference",
+    ),
+    "BiophysicalNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.neuron_sets",
+        "BiophysicalNeuronSetReference",
+    ),
+    "VirtualNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.neuron_sets",
+        "VirtualNeuronSetReference",
+    ),
+    "PointNeuronSetReference": (
+        f"{_BLOCK_REFERENCES}.neuron_sets",
+        "PointNeuronSetReference",
+    ),
+    "StimulusReference": (f"{_BLOCK_REFERENCES}.stimuli", "StimulusReference"),
+    "SynapticManipulationsReference": (
+        f"{_BLOCK_REFERENCES}.manipulations",
+        "SynapticManipulationsReference",
+    ),
+    "NeuronalManipulationReference": (
+        f"{_BLOCK_REFERENCES}.neuronal_manipulations",
+        "NeuronalManipulationReference",
+    ),
+    "RecordingReference": (f"{_BLOCK_REFERENCES}.recordings", "RecordingReference"),
+    "TimestampsReference": (f"{_BLOCK_REFERENCES}.timestamps", "TimestampsReference"),
+    "MorphologyLocationsReference": (
+        f"{_BLOCK_REFERENCES}.morphology_locations",
+        "MorphologyLocationsReference",
+    ),
+    "AllDistributionsReference": (
+        f"{_BLOCK_REFERENCES}.distributions",
+        "AllDistributionsReference",
+    ),
+    "SynapticModelReference": (
+        f"{_BLOCK_REFERENCES}.synaptic_models",
+        "SynapticModelReference",
+    ),
+    "SynapticModelAssignerReference": (
+        f"{_BLOCK_REFERENCES}.synaptic_model_assigner",
+        "SynapticModelAssignerReference",
+    ),
+    "ExtracellularLocationsReference": (
+        f"{_BLOCK_REFERENCES}.extracellular_locations",
+        "ExtracellularLocationsReference",
+    ),
+}
