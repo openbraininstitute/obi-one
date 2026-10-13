@@ -18,9 +18,9 @@ import libsonata
 import pytest
 from bluepysnap import Circuit as SnapCircuit
 
-import obi_one as obi
 from obi_one.core.block_reference import BlockReference
 from obi_one.core.info import Info
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import (
     MEModelCircuit,
     MEModelWithSynapsesCircuit,
@@ -285,13 +285,13 @@ def read_generated(coordinate_root: Path) -> GeneratedSimulation:
 @pytest.fixture
 def circuit():
     """A 10-neuron biophysical circuit with virtual VPM/POm populations."""
-    return obi.Circuit(name="N_10__top_nodes_dim6", path=str(MULTI_POPULATION_CIRCUIT_PATH))
+    return Circuit(name="N_10__top_nodes_dim6", path=str(MULTI_POPULATION_CIRCUIT_PATH))
 
 
 @pytest.fixture
 def morphology_circuit():
     """A circuit with detailed morphologies, for morphology-location targeting."""
-    return obi.Circuit(name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5", path=str(MORPHOLOGY_CIRCUIT_PATH))
+    return Circuit(name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5", path=str(MORPHOLOGY_CIRCUIT_PATH))
 
 
 @pytest.fixture
@@ -311,7 +311,7 @@ def me_model_with_synapses_circuit():
 @pytest.fixture
 def point_circuit():
     """The synthetic drosophila point-neuron circuit used by Brian2 and LearningEngine."""
-    return obi.Circuit(name="drosophila", path=str(POINT_CIRCUIT_PATH))
+    return Circuit(name="drosophila", path=str(POINT_CIRCUIT_PATH))
 
 
 @pytest.fixture

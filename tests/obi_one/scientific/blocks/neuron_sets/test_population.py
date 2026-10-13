@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.population import (
     BiophysicalPopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
+from obi_one.scientific.library.circuit import Circuit
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
@@ -17,7 +17,7 @@ CIRCUIT_NAME = "N_10__top_nodes_dim6"
 
 @pytest.fixture
 def circuit():
-    return obi.Circuit(
+    return Circuit(
         name=CIRCUIT_NAME,
         path=str(CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"),
         matrix_path=str(MATRIX_DIR / CIRCUIT_NAME / "connectivity_matrix.h5"),

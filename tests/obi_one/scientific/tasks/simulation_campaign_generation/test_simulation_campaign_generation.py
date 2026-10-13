@@ -7,7 +7,6 @@ import pandas as pd
 import pytest
 from bluepysnap import Simulation
 
-import obi_one as obi
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import (
@@ -16,9 +15,32 @@ from obi_one.core.scan_generation import (
 )
 from obi_one.core.schema import SchemaKey
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.neuron_sets.deprecated import IDNeuronSet
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.recordings.soma import (
+    SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
+)
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
     materialize_locations_to_compartment_sets,
@@ -33,18 +55,18 @@ from tests.utils import CIRCUIT_DIR
 
 def _setup_sim():
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        Circuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
 
     sim_duration = 3000.0
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
+    sim_conf = CircuitSimulationScanConfig.empty_config()
     info = Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
@@ -66,12 +88,10 @@ def _setup_sim():
     )
     sim_conf.add(replay_neuron_set, name="VPM_input")
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=3, interval=1000.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=1000.0)
     sim_conf.add(regular_timestamps, name="RegularTimestamps")
 
-    poisson_input = obi.PoissonSpikeStimulus(
+    poisson_input = PoissonSpikeStimulus(
         duration=800.0,
         timestamps=regular_timestamps.ref,
         frequency=20,
@@ -80,24 +100,24 @@ def _setup_sim():
     )
     sim_conf.add(poisson_input, name="PoissonInputStimulus")
 
-    sync_input = obi.FullySynchronousSpikeStimulus(
+    sync_input = FullySynchronousSpikeStimulus(
         timestamps=regular_timestamps.ref,
         source_neuron_set=sync_neuron_set.ref,
         targeted_neuron_set=sim_neuron_set.ref,
     )
     sim_conf.add(sync_input, name="SynchronousInputStimulus")
 
-    voltage_recording = obi.TimeWindowSomaVoltageRecording(
+    voltage_recording = TimeWindowSomaVoltageRecording(
         neuron_set=sim_neuron_set.ref, start_time=0.0, end_time=sim_duration
     )
     sim_conf.add(voltage_recording, name="VoltageRecording")
 
-    syn_manip_mg = obi.SynapticMgManipulation(magnesium_value=[2.0, 2.4])
-    syn_manip_use = obi.ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.7050728631217412)
+    syn_manip_mg = SynapticMgManipulation(magnesium_value=[2.0, 2.4])
+    syn_manip_use = ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.7050728631217412)
     sim_conf.add(syn_manip_mg, name="SynapticMgManipulation")
     sim_conf.add(syn_manip_use, name="ScaleAcetylcholineUSESynapticManipulation")
 
-    simulations_initialize = obi.CircuitSimulationScanConfig.Initialize(
+    simulations_initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=sim_duration
     )
 
@@ -580,20 +600,20 @@ def test_simulation_campaign_generation(tmp_path):
         run_tasks_for_generated_scan(coupled_scan)
 
     # Use a neuron set reference without adding it to the simulation config --> Error
-    sim_neuron_set2 = obi.IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet3", elements=range(5)))
+    sim_neuron_set2 = IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet3", elements=range(5)))
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
-        _ = obi.TimeWindowSomaVoltageRecording(
+        _ = TimeWindowSomaVoltageRecording(
             neuron_set=sim_neuron_set2.ref,
             start_time=0.0,
             end_time=sim_conf.initialize.simulation_length,
         )
 
     # Use a time stamp reference without adding it to the simulation config --> Error
-    regular_timestamps2 = obi.RegularTimestamps(
+    regular_timestamps2 = RegularTimestamps(
         start_time=0.0, number_of_repetitions=5, interval=1000.0
     )
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
-        _ = obi.FullySynchronousSpikeStimulus(
+        _ = FullySynchronousSpikeStimulus(
             timestamps=regular_timestamps2.ref,
             source_neuron_set=sync_neuron_set.ref,
             targeted_neuron_set=sim_neuron_set.ref,
@@ -615,24 +635,24 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     """Test that CircuitSimulationScanConfig can include distribution blocks
     and InterSpikeIntervalDistributionSpikeStimulus."""
     # Create config
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
+    sim_conf = CircuitSimulationScanConfig.empty_config()
     info = Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
     # Add neuron sets
-    sim_neuron_set = obi.IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(10)))
+    sim_neuron_set = IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(10)))
     sim_conf.add(sim_neuron_set, name="ID10")
 
     # Add distribution blocks via sim_conf.add
-    constant_dist = obi.FloatConstantDistribution(value=10.0)
+    constant_dist = FloatConstantDistribution(value=10.0)
     sim_conf.add(constant_dist, name="constant_dist")
 
     # Add timestamps
-    timestamps = obi.SingleTimestamp(start_time=0.0)
+    timestamps = SingleTimestamp(start_time=0.0)
     sim_conf.add(timestamps, name="timestamps")
 
     # Add distribution-based stimulus that references the distribution
-    dist_stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
+    dist_stimulus = InterSpikeIntervalDistributionSpikeStimulus(
         distribution=AllDistributionsReference(
             block_dict_name="distributions", block_name="constant_dist"
         ),
@@ -645,13 +665,13 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
 
     # Set up simulation initialize with a real circuit
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         )
     ]
     sim_conf.set(
-        obi.CircuitSimulationScanConfig.Initialize(
+        CircuitSimulationScanConfig.Initialize(
             circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=100.0
         ),
         name="initialize",
@@ -676,7 +696,7 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
 def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # ruff: ignore[too-many-locals]
     sim_duration = 3000.0
 
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
+    sim_conf = CircuitSimulationScanConfig.empty_config()
     info = Info(
         campaign_name="Test morphology locations",
         campaign_description="Test morphology location materialization",
@@ -689,10 +709,10 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     )
     sim_conf.add(sim_neuron_set, name="ID1")
 
-    timestamps = obi.SingleTimestamp(start_time=0.0)
+    timestamps = SingleTimestamp(start_time=0.0)
     sim_conf.add(timestamps, name="Start")
 
-    locations = obi.RandomMorphologyLocations(
+    locations = RandomMorphologyLocations(
         random_seed=0,
         number_of_locations=2,
         section_types=(3, 4),
@@ -700,7 +720,7 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     )
     sim_conf.add(locations, name="ClampLocations")
 
-    clamp = obi.ConstantCurrentClampSomaticStimulus(
+    clamp = ConstantCurrentClampSomaticStimulus(
         timestamps=timestamps.ref,
         duration=500.0,
         amplitude=0.5,
@@ -708,15 +728,15 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
     )
     sim_conf.add(clamp, name="LocationCurrentClamp")
 
-    recording = obi.SomaVoltageRecording(neuron_set=sim_neuron_set.ref)
+    recording = SomaVoltageRecording(neuron_set=sim_neuron_set.ref)
     sim_conf.add(recording, name="SomaVoltage")
 
-    circuit = obi.Circuit(
+    circuit = Circuit(
         name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
         path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
     )
     sim_conf.set(
-        obi.CircuitSimulationScanConfig.Initialize(
+        CircuitSimulationScanConfig.Initialize(
             circuit=circuit,
             node_set=sim_neuron_set.ref,
             simulation_length=sim_duration,
@@ -768,7 +788,7 @@ def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # 
 
 
 def test_morphology_locations_materialize_to_matching_compartment_set():
-    form = obi.CircuitSimulationScanConfig.empty_config()
+    form = CircuitSimulationScanConfig.empty_config()
 
     neuron_set = BiophysicalPopulationIDNeuronSet(
         neuron_ids=NamedTuple(name="IDNeuronSet1", elements=[0]),
@@ -776,7 +796,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     )
     form.add(neuron_set, name="ID1")
 
-    locations = obi.RandomMorphologyLocations(
+    locations = RandomMorphologyLocations(
         random_seed=0,
         number_of_locations=5,
         section_types=(3, 4),
@@ -784,12 +804,12 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     )
     form.add(locations, name="ClampLocations")
 
-    stimulus = obi.ConstantCurrentClampSomaticStimulus(
+    stimulus = ConstantCurrentClampSomaticStimulus(
         neuron_set=locations.ref,
     )
     form.add(stimulus, name="LocationCurrentClamp")
 
-    circuit = obi.Circuit(
+    circuit = Circuit(
         name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
         path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
     )
@@ -808,7 +828,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
     )
 
     form.set(
-        obi.CircuitSimulationScanConfig.Initialize(
+        CircuitSimulationScanConfig.Initialize(
             circuit=circuit,
             node_set=neuron_set.ref,
             simulation_length=100.0,
@@ -867,7 +887,7 @@ def test_morphology_locations_materialize_to_matching_compartment_set():
 
 
 def test_continuous_stimulus_exposes_single_target_field():
-    fields = obi.ConstantCurrentClampSomaticStimulus.model_fields
+    fields = ConstantCurrentClampSomaticStimulus.model_fields
     reference_types = fields["neuron_set"].json_schema_extra[SchemaKey.REFERENCE_TYPES]
     morphology_locations_ref_schema = MorphologyLocationsReference.model_json_schema()
 
@@ -879,7 +899,7 @@ def test_continuous_stimulus_exposes_single_target_field():
 
 
 def test_continuous_stimulus_infers_morphology_locations_target_reference_type():
-    stimulus = obi.ConstantCurrentClampSomaticStimulus.model_validate(
+    stimulus = ConstantCurrentClampSomaticStimulus.model_validate(
         {
             "neuron_set": {
                 "block_dict_name": "morphology_locations",

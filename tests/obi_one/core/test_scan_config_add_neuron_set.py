@@ -6,7 +6,6 @@ BlockReference type from the registry based on the block's class.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import _reference_type_name_for_block
 from obi_one.core.tuple import NamedTuple
@@ -17,6 +16,9 @@ from obi_one.scientific.blocks.neuron_sets.population import (
     BiophysicalPopulationNeuronSet,
     VirtualPopulationNeuronSet,
 )
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     VirtualNeuronSetReference,
@@ -25,7 +27,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
 
 @pytest.fixture
 def sim_conf():
-    return obi.CircuitSimulationScanConfig.empty_config()
+    return CircuitSimulationScanConfig.empty_config()
 
 
 def test_add_biophysical_neuron_set(sim_conf):

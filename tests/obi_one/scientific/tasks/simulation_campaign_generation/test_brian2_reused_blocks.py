@@ -13,13 +13,37 @@ from typing import get_args
 
 import pytest
 
-import obi_one as obi
 import obi_one.scientific.library.simulation.brian2.simulate_brian2 as brian2_runner
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.id import PointPopulationIDNeuronSet
+from obi_one.scientific.blocks.neuron_sets.predefined import PointPopulationPredefinedNeuronSet
+from obi_one.scientific.blocks.recordings.soma import (
+    SimulationDtSomaVoltageRecording,
+    SimulationDtTimeWindowSomaVoltageRecording,
+    SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
+)
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import (
+    ConstantCurrentClampSomaticStimulus,
+    LinearCurrentClampSomaticStimulus,
+    MultiPulseCurrentClampSomaticStimulus,
+    SimulationDtSinusoidalCurrentClampSomaticStimulus,
+    SinusoidalCurrentClampSomaticStimulus,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    DisconnectSynapticManipulation,
+)
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
 from obi_one.scientific.unions_and_references.recordings import Brian2RecordingUnion
 
 # The synthetic FlyWire-style point circuit: one `brian2_point` population `drosophila` (3
@@ -33,18 +57,18 @@ SIMULATION_LENGTH = 5.0
 
 def _generate(tmp_path: Path) -> dict:
     """Generate a Brian2 campaign using one of every reusable block; return the SONATA config."""
-    sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
+    sim_conf = Brian2CircuitSimulationScanConfig.empty_config()
     sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
-    neuron_set = obi.PointPopulationPredefinedNeuronSet(node_set="sugar", population="drosophila")
+    neuron_set = PointPopulationPredefinedNeuronSet(node_set="sugar", population="drosophila")
     sim_conf.add(neuron_set, name="Sugar")
 
-    timestamps = obi.SingleTimestamp(start_time=0.0)
+    timestamps = SingleTimestamp(start_time=0.0)
     sim_conf.add(timestamps, name="Start")
 
     sim_conf.add(Brian2DirectPoissonStimulus(neuron_set=neuron_set.ref), name="Poisson")
     sim_conf.add(
-        obi.ConstantCurrentClampSomaticStimulus(
+        ConstantCurrentClampSomaticStimulus(
             neuron_set=neuron_set.ref,
             timestamps=timestamps.ref,
             # Amplitudes are nanoamps. This synthetic circuit has a 1 ohm membrane
@@ -55,34 +79,34 @@ def _generate(tmp_path: Path) -> dict:
         name="Constant",
     )
     sim_conf.add(
-        obi.LinearCurrentClampSomaticStimulus(
+        LinearCurrentClampSomaticStimulus(
             neuron_set=neuron_set.ref, timestamps=timestamps.ref, duration=4.0
         ),
         name="Ramp",
     )
     sim_conf.add(
-        obi.MultiPulseCurrentClampSomaticStimulus(
+        MultiPulseCurrentClampSomaticStimulus(
             neuron_set=neuron_set.ref, timestamps=timestamps.ref, duration=4.0
         ),
         name="Pulse",
     )
     sim_conf.add(
-        obi.SimulationDtSinusoidalCurrentClampSomaticStimulus(
+        SimulationDtSinusoidalCurrentClampSomaticStimulus(
             neuron_set=neuron_set.ref, timestamps=timestamps.ref, duration=4.0
         ),
         name="Sine",
     )
 
-    sim_conf.add(obi.SimulationDtSomaVoltageRecording(neuron_set=neuron_set.ref), name="Voltage")
+    sim_conf.add(SimulationDtSomaVoltageRecording(neuron_set=neuron_set.ref), name="Voltage")
     sim_conf.add(
-        obi.SimulationDtTimeWindowSomaVoltageRecording(
+        SimulationDtTimeWindowSomaVoltageRecording(
             neuron_set=neuron_set.ref, start_time=0.0, end_time=SIMULATION_LENGTH
         ),
         name="VoltageWindow",
     )
 
     sim_conf.add(
-        obi.DisconnectSynapticManipulation(
+        DisconnectSynapticManipulation(
             presynaptic_neuron_set=neuron_set.ref,
             postsynaptic_neuron_set=neuron_set.ref,
             timestamps=timestamps.ref,
@@ -91,8 +115,8 @@ def _generate(tmp_path: Path) -> dict:
     )
 
     sim_conf.set(
-        obi.Brian2CircuitSimulationScanConfig.Initialize(
-            circuit=obi.Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
+        Brian2CircuitSimulationScanConfig.Initialize(
+            circuit=Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
             simulation_length=SIMULATION_LENGTH,
         ),
         name="initialize",
@@ -126,14 +150,14 @@ class TestOfferedBlocks:
             assert "dt" not in recording.model_fields, recording.__name__
 
     def test_the_sinusoidal_stimulus_has_no_timestep_of_its_own(self):
-        assert "dt" not in obi.SimulationDtSinusoidalCurrentClampSomaticStimulus.model_fields
+        assert "dt" not in SimulationDtSinusoidalCurrentClampSomaticStimulus.model_fields
 
     def test_the_shared_blocks_keep_their_timestep(self):
         # The split that gave Brian2 its dt-less variants must not have taken `dt` away from the
         # blocks every other simulator uses.
-        assert "dt" in obi.SomaVoltageRecording.model_fields
-        assert "dt" in obi.TimeWindowSomaVoltageRecording.model_fields
-        assert "dt" in obi.SinusoidalCurrentClampSomaticStimulus.model_fields
+        assert "dt" in SomaVoltageRecording.model_fields
+        assert "dt" in TimeWindowSomaVoltageRecording.model_fields
+        assert "dt" in SinusoidalCurrentClampSomaticStimulus.model_fields
 
 
 class TestGeneratedConfig:
@@ -187,17 +211,17 @@ class TestSpikeReplay:
 
     @staticmethod
     def _run_replay(tmp_path: Path, *, target: list[int] | None) -> dict[int, int]:
-        sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
+        sim_conf = Brian2CircuitSimulationScanConfig.empty_config()
         sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
-        source = obi.PointPopulationIDNeuronSet(
+        source = PointPopulationIDNeuronSet(
             population="drosophila", neuron_ids=NamedTuple(name="source", elements=[0])
         )
         sim_conf.add(source, name="Neuron0")
 
         target_ref = None
         if target is not None:
-            targeted = obi.PointPopulationIDNeuronSet(
+            targeted = PointPopulationIDNeuronSet(
                 population="drosophila", neuron_ids=NamedTuple(name="target", elements=target)
             )
             sim_conf.add(targeted, name="Targeted")
@@ -205,10 +229,10 @@ class TestSpikeReplay:
 
         # Twelve spikes a tenth of a millisecond apart: enough to push the postsynaptic
         # neurons over threshold before the membrane potential decays back.
-        ticks = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=12, interval=0.1)
+        ticks = RegularTimestamps(start_time=0.0, number_of_repetitions=12, interval=0.1)
         sim_conf.add(ticks, name="Ticks")
         sim_conf.add(
-            obi.FullySynchronousSpikeStimulus(
+            FullySynchronousSpikeStimulus(
                 source_neuron_set=source.ref,
                 targeted_neuron_set=target_ref,
                 timestamps=ticks.ref,
@@ -216,8 +240,8 @@ class TestSpikeReplay:
             name="Replay",
         )
         sim_conf.set(
-            obi.Brian2CircuitSimulationScanConfig.Initialize(
-                circuit=obi.Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
+            Brian2CircuitSimulationScanConfig.Initialize(
+                circuit=Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
                 simulation_length=SIMULATION_LENGTH,
             ),
             name="initialize",
@@ -256,20 +280,20 @@ class TestUntargetedBlocks:
 
     @staticmethod
     def _generate_untargeted(tmp_path: Path) -> dict:
-        sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
+        sim_conf = Brian2CircuitSimulationScanConfig.empty_config()
         sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
         sim_conf.add(Brian2DirectPoissonStimulus(), name="Poisson")
         sim_conf.add(
-            obi.ConstantCurrentClampSomaticStimulus(amplitude=1.2e10, duration=4.0),
+            ConstantCurrentClampSomaticStimulus(amplitude=1.2e10, duration=4.0),
             name="Constant",
         )
-        sim_conf.add(obi.SimulationDtSomaVoltageRecording(), name="Voltage")
-        sim_conf.add(obi.DisconnectSynapticManipulation(), name="Disconnect")
+        sim_conf.add(SimulationDtSomaVoltageRecording(), name="Voltage")
+        sim_conf.add(DisconnectSynapticManipulation(), name="Disconnect")
 
         sim_conf.set(
-            obi.Brian2CircuitSimulationScanConfig.Initialize(
-                circuit=obi.Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
+            Brian2CircuitSimulationScanConfig.Initialize(
+                circuit=Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
                 simulation_length=SIMULATION_LENGTH,
             ),
             name="initialize",

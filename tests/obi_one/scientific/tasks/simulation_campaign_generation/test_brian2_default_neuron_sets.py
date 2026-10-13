@@ -12,11 +12,19 @@ from pathlib import Path
 import libsonata
 from bluepysnap import Circuit as SnapCircuit
 
-import obi_one as obi
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.blocks.recordings.soma import SimulationDtSomaVoltageRecording
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    DisconnectSynapticManipulation,
+)
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
+    Brian2CircuitSimulationScanConfig,
+)
 
 # The synthetic FlyWire-style point circuit: one `brian2_point` population `drosophila` (3
 # neurons), with a `sugar` node set covering neurons 0 and 1.
@@ -30,17 +38,17 @@ DEFAULT = "Default: All Point Neurons"
 
 def _generate(tmp_path: Path) -> tuple[dict, dict]:
     """Generate a Brian2 campaign of untargeted blocks; return (sim config, node sets)."""
-    sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
+    sim_conf = Brian2CircuitSimulationScanConfig.empty_config()
     sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
     # Nothing names a neuron set, and neither does initialize.node_set: all fall back.
     sim_conf.add(Brian2DirectPoissonStimulus(), name="DirectPoisson")
-    sim_conf.add(obi.ConstantCurrentClampSomaticStimulus(), name="Clamp")
-    sim_conf.add(obi.SimulationDtSomaVoltageRecording(), name="Voltage")
-    sim_conf.add(obi.DisconnectSynapticManipulation(), name="Disconnect")
+    sim_conf.add(ConstantCurrentClampSomaticStimulus(), name="Clamp")
+    sim_conf.add(SimulationDtSomaVoltageRecording(), name="Voltage")
+    sim_conf.add(DisconnectSynapticManipulation(), name="Disconnect")
     sim_conf.set(
-        obi.Brian2CircuitSimulationScanConfig.Initialize(
-            circuit=obi.Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
+        Brian2CircuitSimulationScanConfig.Initialize(
+            circuit=Circuit(name="drosophila", path=str(CIRCUIT_CONFIG)),
             simulation_length=100.0,
         ),
         name="initialize",

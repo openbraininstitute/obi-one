@@ -1,6 +1,6 @@
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID

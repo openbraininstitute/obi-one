@@ -8,7 +8,6 @@ responsibility rather than the blocks'.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
@@ -16,6 +15,14 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
     ByNeuronModification,
     BySectionListMechanismVariableNeuronalManipulation,
     BySectionListModification,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -38,12 +45,12 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 )
 
 SYNAPTIC_MANIPULATIONS = {
-    "SynapticMgManipulation": obi.SynapticMgManipulation(magnesium_value=2.4),
-    "ScaleAcetylcholineUSESynapticManipulation": obi.ScaleAcetylcholineUSESynapticManipulation(
+    "SynapticMgManipulation": SynapticMgManipulation(magnesium_value=2.4),
+    "ScaleAcetylcholineUSESynapticManipulation": ScaleAcetylcholineUSESynapticManipulation(
         use_scaling=0.7
     ),
-    "ConnectSynapticManipulation": obi.ConnectSynapticManipulation(),
-    "DisconnectSynapticManipulation": obi.DisconnectSynapticManipulation(),
+    "ConnectSynapticManipulation": ConnectSynapticManipulation(),
+    "DisconnectSynapticManipulation": DisconnectSynapticManipulation(),
 }
 
 
@@ -79,7 +86,7 @@ class TestSynapticManipulations:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Magnesium": obi.SynapticMgManipulation(magnesium_value=2.4)},
+            blocks={"Magnesium": SynapticMgManipulation(magnesium_value=2.4)},
         )
 
         result = generate(config, tmp_path)
@@ -98,9 +105,7 @@ class TestSynapticManipulations:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={
-                "Acetylcholine": obi.ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5)
-            },
+            blocks={"Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5)},
         )
 
         result = generate(config, tmp_path)
@@ -119,8 +124,8 @@ class TestSynapticManipulations:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Disconnect": obi.DisconnectSynapticManipulation(),
-                "Connect": obi.ConnectSynapticManipulation(),
+                "Disconnect": DisconnectSynapticManipulation(),
+                "Connect": ConnectSynapticManipulation(),
             },
         )
 
@@ -146,7 +151,7 @@ class TestSynapticManipulations:
             blocks={
                 "Pre": presynaptic,
                 "Post": postsynaptic,
-                "Magnesium": lambda: obi.SynapticMgManipulation(
+                "Magnesium": lambda: SynapticMgManipulation(
                     magnesium_value=2.0,
                     presynaptic_neuron_set=presynaptic.ref,
                     postsynaptic_neuron_set=postsynaptic.ref,
@@ -166,9 +171,9 @@ class TestSynapticManipulations:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Acetylcholine": obi.ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5),
-                "Magnesium": obi.SynapticMgManipulation(magnesium_value=2.0),
-                "Disconnect": obi.DisconnectSynapticManipulation(),
+                "Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5),
+                "Magnesium": SynapticMgManipulation(magnesium_value=2.0),
+                "Disconnect": DisconnectSynapticManipulation(),
             },
         )
 
