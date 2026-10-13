@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import morphio
+import neurom
 import numpy as np
 import pytest
 
@@ -14,9 +16,20 @@ from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
     ResolvedNeuron,
     place_morphologies_and_mechanisms,
     resolve_list_neurons,
+    write_morphology_with_offset,
 )
 
 _MODULE = "obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron"
+
+# Example morphology shipped with the repo, used for the round-trip offset test.
+_EXAMPLE_MORPHOLOGY = (
+    Path(__file__).parents[5]
+    / "examples"
+    / "data"
+    / "morphologies"
+    / "L5_TPC:A_MusMusculus_PrimarySomatosensory_C060114A5"
+    / "C060114A5.swc"
+)
 
 
 def _mock_morphio_chain():
@@ -317,4 +330,43 @@ class TestResolveListNeurons:
                 db_client=mock_db_client,
                 out_root=tmp_path,
                 spiny_dir=tmp_path,
+            )
+
+
+class TestWriteMorphologyWithOffset:
+    def test_offset_applied_to_all_points(self, tmp_path):
+        """Round-trip: load a real morphology, write it with an offset, read it back.
+
+        Every soma and section point in the written file must equal the original
+        coordinate plus the applied offset.
+        """
+        assert _EXAMPLE_MORPHOLOGY.exists(), f"Missing test morphology: {_EXAMPLE_MORPHOLOGY}"
+
+        # Reference copy to compare against (independent of the object passed in).
+        original = morphio.Morphology(_EXAMPLE_MORPHOLOGY)
+
+        # The function expects a neurom.Morphology.
+        morph = neurom.load_morphology(_EXAMPLE_MORPHOLOGY)
+
+        offset = np.array([100.0, 100.0, 100.0], dtype=np.float32)
+        out_path = tmp_path / "offset.swc"
+        write_morphology_with_offset(morph, offset, out_path)
+
+        assert out_path.exists()
+        result = morphio.Morphology(out_path)
+
+        # Soma points are offset.
+        np.testing.assert_allclose(
+            result.soma.points, original.soma.points + offset, rtol=1e-4, atol=1e-3
+        )
+
+        # Same number of sections, each with points offset by the same amount.
+        original_sections = list(original.iter())
+        result_sections = list(result.iter())
+        assert len(result_sections) == len(original_sections)
+        assert len(result_sections) > 0
+
+        for orig_sec, res_sec in zip(original_sections, result_sections, strict=True):
+            np.testing.assert_allclose(
+                res_sec.points, orig_sec.points + offset, rtol=1e-4, atol=1e-3
             )
