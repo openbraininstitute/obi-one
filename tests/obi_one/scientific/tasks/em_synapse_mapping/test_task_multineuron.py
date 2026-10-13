@@ -144,14 +144,13 @@ class TestEMSynapseMappingTask:
         syns_1 = _synapses_df([111, 888], 222)
         mapped_1 = _mapped_df(2)
 
-        call_count = {"n": 0}
-
-        def fake_synapses_and_nodes(*_args, **_kwargs):
-            idx = call_count["n"]
-            call_count["n"] += 1
-            if idx == 0:
-                return syns_0, Mock(), Mock(), ["notice-0"]
-            return syns_1, Mock(), Mock(), ["notice-1"]
+        # Synapses are now read directly via the EM dataset's synapse_info_df,
+        # once per neuron, each returning (synapses_df, notice).
+        em_ds = _resolved_em_dataset()
+        em_ds.dataset_from_id.synapse_info_df.side_effect = [
+            (syns_0, "notice-0"),
+            (syns_1, "notice-1"),
+        ]
 
         def fake_assemble(*_args, **_kwargs):
             mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
@@ -162,13 +161,9 @@ class TestEMSynapseMappingTask:
             patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
             patch(
                 f"{_TASK_MODULE}.resolve_list_neurons",
-                return_value=(resolved, _resolved_em_dataset(), coll_bio, None),
+                return_value=(resolved, em_ds, coll_bio, None),
             ),
             patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
-            patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                side_effect=fake_synapses_and_nodes,
-            ),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 side_effect=[(mapped_0, 0.5), (mapped_1, 0.5)],
@@ -212,8 +207,8 @@ class TestEMSynapseMappingTask:
         syns = _synapses_df([999], 111)
         mapped = _mapped_df(1)
 
-        def fake_synapses(*_a, **_k):
-            return syns, Mock(), Mock(), []
+        em_ds = _resolved_em_dataset()
+        em_ds.dataset_from_id.synapse_info_df.return_value = (syns, "notice")
 
         def fake_assemble(*_a, **_k):
             mapping = _a[4] if len(_a) > 4 else _k.get("mapping", [])
@@ -224,13 +219,9 @@ class TestEMSynapseMappingTask:
             patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
             patch(
                 f"{_TASK_MODULE}.resolve_list_neurons",
-                return_value=(resolved, _resolved_em_dataset(), coll_bio, "mod"),
+                return_value=(resolved, em_ds, coll_bio, "mod"),
             ),
             patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
-            patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                side_effect=fake_synapses,
-            ),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 return_value=(mapped, 0.5),
@@ -276,14 +267,11 @@ class TestEMSynapseMappingTask:
         syns_1 = _synapses_df([111, 888], 222)
         mapped_1 = _mapped_df(2)
 
-        call_count = {"n": 0}
-
-        def fake_synapses_and_nodes(*_args, **_kwargs):
-            idx = call_count["n"]
-            call_count["n"] += 1
-            if idx == 0:
-                return syns_0, Mock(), Mock(), ["notice-0"]
-            return syns_1, Mock(), Mock(), ["notice-1"]
+        em_ds = _resolved_em_dataset()
+        em_ds.dataset_from_id.synapse_info_df.side_effect = [
+            (syns_0, "notice-0"),
+            (syns_1, "notice-1"),
+        ]
 
         def fake_assemble(*_args, **_kwargs):
             mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
@@ -294,13 +282,9 @@ class TestEMSynapseMappingTask:
             patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
             patch(
                 f"{_TASK_MODULE}.resolve_list_neurons",
-                return_value=(resolved, _resolved_em_dataset(), coll_bio, None),
+                return_value=(resolved, em_ds, coll_bio, None),
             ),
             patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
-            patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                side_effect=fake_synapses_and_nodes,
-            ),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 side_effect=[(mapped_0, 0.5), (mapped_1, 0.5)],

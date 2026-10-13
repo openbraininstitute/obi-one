@@ -117,6 +117,8 @@ class TestEMSynapseMappingTask:
     ):
         task = _make_task(tmp_path)
         coll_bio = _FakeCollection(1)
+        # Synapse data is now read directly from the EM dataset's synapse_info_df.
+        resolved_em_dataset.dataset_from_id.synapse_info_df.return_value = (synapses_df, "notice")
 
         def fake_assemble(*_args, **_kwargs):
             mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
@@ -133,10 +135,6 @@ class TestEMSynapseMappingTask:
                 f"{_TASK_MODULE}.resolve_list_neurons",
                 return_value=([resolved_neuron], resolved_em_dataset, coll_bio, None),
             ) as mock_resolve,
-            patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                return_value=(synapses_df, Mock(), Mock(), ["notice"]),
-            ),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 return_value=(mapped_synapses_df, 0.5),
@@ -186,6 +184,8 @@ class TestEMSynapseMappingTask:
             custom_virtual_node_population="my_virt_nodes",
         )
         coll_bio = _FakeCollection(1)
+        # Synapse data is now read directly from the EM dataset's synapse_info_df.
+        resolved_em_dataset.dataset_from_id.synapse_info_df.return_value = (synapses_df, "notice")
 
         def fake_assemble(*_args, **_kwargs):
             mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
@@ -201,10 +201,6 @@ class TestEMSynapseMappingTask:
             patch(
                 f"{_TASK_MODULE}.resolve_list_neurons",
                 return_value=([resolved_neuron], resolved_em_dataset, coll_bio, None),
-            ),
-            patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                return_value=(synapses_df, Mock(), Mock(), ["notice"]),
             ),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
