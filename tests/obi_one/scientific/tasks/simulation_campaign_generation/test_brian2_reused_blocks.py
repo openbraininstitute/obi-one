@@ -15,6 +15,10 @@ import pytest
 
 import obi_one as obi
 import obi_one.scientific.library.simulation.brian2.simulate_brian2 as brian2_runner
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.unions_and_references.recordings import Brian2RecordingUnion
 
@@ -30,7 +34,7 @@ SIMULATION_LENGTH = 5.0
 def _generate(tmp_path: Path) -> dict:
     """Generate a Brian2 campaign using one of every reusable block; return the SONATA config."""
     sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
-    sim_conf.set(obi.Info(campaign_name="T", campaign_description="T"), name="info")
+    sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
     neuron_set = obi.PointPopulationPredefinedNeuronSet(node_set="sugar", population="drosophila")
     sim_conf.add(neuron_set, name="Sugar")
@@ -94,13 +98,13 @@ def _generate(tmp_path: Path) -> dict:
         name="initialize",
     )
 
-    scan = obi.GridScanGenerationTask(
+    scan = GridScanGenerationTask(
         form=sim_conf.validated_config(),
         output_root=tmp_path / "scan",
         coordinate_directory_option="ZERO_INDEX",
     )
     scan.execute()
-    obi.run_tasks_for_generated_scan(scan)
+    run_tasks_for_generated_scan(scan)
 
     return json.loads((tmp_path / "scan" / "0" / "simulation_config.json").read_text())
 
@@ -184,17 +188,17 @@ class TestSpikeReplay:
     @staticmethod
     def _run_replay(tmp_path: Path, *, target: list[int] | None) -> dict[int, int]:
         sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
-        sim_conf.set(obi.Info(campaign_name="T", campaign_description="T"), name="info")
+        sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
         source = obi.PointPopulationIDNeuronSet(
-            population="drosophila", neuron_ids=obi.NamedTuple(name="source", elements=[0])
+            population="drosophila", neuron_ids=NamedTuple(name="source", elements=[0])
         )
         sim_conf.add(source, name="Neuron0")
 
         target_ref = None
         if target is not None:
             targeted = obi.PointPopulationIDNeuronSet(
-                population="drosophila", neuron_ids=obi.NamedTuple(name="target", elements=target)
+                population="drosophila", neuron_ids=NamedTuple(name="target", elements=target)
             )
             sim_conf.add(targeted, name="Targeted")
             target_ref = targeted.ref
@@ -219,13 +223,13 @@ class TestSpikeReplay:
             name="initialize",
         )
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=sim_conf.validated_config(),
             output_root=tmp_path / "scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         net = brian2_runner.run_sonata_brian2_trial(
             tmp_path / "scan" / "0" / "simulation_config.json"
@@ -253,7 +257,7 @@ class TestUntargetedBlocks:
     @staticmethod
     def _generate_untargeted(tmp_path: Path) -> dict:
         sim_conf = obi.Brian2CircuitSimulationScanConfig.empty_config()
-        sim_conf.set(obi.Info(campaign_name="T", campaign_description="T"), name="info")
+        sim_conf.set(Info(campaign_name="T", campaign_description="T"), name="info")
 
         sim_conf.add(Brian2DirectPoissonStimulus(), name="Poisson")
         sim_conf.add(
@@ -271,13 +275,13 @@ class TestUntargetedBlocks:
             name="initialize",
         )
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=sim_conf.validated_config(),
             output_root=tmp_path / "scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         return json.loads((tmp_path / "scan" / "0" / "simulation_config.json").read_text())
 

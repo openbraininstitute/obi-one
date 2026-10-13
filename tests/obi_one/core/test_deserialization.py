@@ -4,6 +4,15 @@ import pytest
 from pydantic import ValidationError
 
 import obi_one as obi
+from obi_one.core.deserialize import (
+    deserialize_obi_object_from_json_data,
+    deserialize_obi_object_from_json_file,
+)
+from obi_one.core.run_tasks import (
+    run_task_for_single_config,
+    run_tasks_for_generated_scan,
+)
+from obi_one.core.scan_generation import GridScanGenerationTask
 
 from tests.utils import CIRCUIT_DIR, DATA_DIR
 
@@ -26,31 +35,31 @@ def test_deserialization(tmp_path):
     simulation_json_path = model_dumps_dir / "circuit_simulation_single_config_serialization.json"
 
     data = json.loads(simulation_json_path.read_bytes())
-    simulation = obi.deserialize_obi_object_from_json_data(data)
+    simulation = deserialize_obi_object_from_json_data(data)
     assert isinstance(simulation, obi.CircuitSimulationSingleConfig)
     simulation.coordinate_output_root = tmp_path / "simulation_output"
-    obi.run_task_for_single_config(single_config=simulation)
+    run_task_for_single_config(single_config=simulation)
 
-    simulation = obi.deserialize_obi_object_from_json_file(simulation_json_path)
+    simulation = deserialize_obi_object_from_json_file(simulation_json_path)
     assert isinstance(simulation, obi.CircuitSimulationSingleConfig)
     simulation.coordinate_output_root = tmp_path / "simulation_output_2"
-    obi.run_task_for_single_config(single_config=simulation)
+    run_task_for_single_config(single_config=simulation)
 
     # Test deserialization of grid_scan_task
     grid_scan_task_json_path = model_dumps_dir / "grid_scan_task_serialization.json"
 
     data = json.loads(grid_scan_task_json_path.read_bytes())
-    grid_scan_task = obi.deserialize_obi_object_from_json_data(data)
-    assert isinstance(grid_scan_task, obi.GridScanGenerationTask)
+    grid_scan_task = deserialize_obi_object_from_json_data(data)
+    assert isinstance(grid_scan_task, GridScanGenerationTask)
     grid_scan_task.output_root = tmp_path / "simulation_output_3"
     grid_scan_task.execute()
-    obi.run_tasks_for_generated_scan(grid_scan_task)
+    run_tasks_for_generated_scan(grid_scan_task)
 
-    grid_scan_task = obi.deserialize_obi_object_from_json_file(grid_scan_task_json_path)
-    assert isinstance(grid_scan_task, obi.GridScanGenerationTask)
+    grid_scan_task = deserialize_obi_object_from_json_file(grid_scan_task_json_path)
+    assert isinstance(grid_scan_task, GridScanGenerationTask)
     grid_scan_task.output_root = tmp_path / "simulation_output_4"
     grid_scan_task.execute()
-    obi.run_tasks_for_generated_scan(grid_scan_task)
+    run_tasks_for_generated_scan(grid_scan_task)
 
     # Test deserialization of deprecated grid_scan_simulations_form (GridScan, SimulationsForm).
     # The deprecated top-level GridScan/SimulationsForm aliases must still deserialize and run; the
@@ -58,17 +67,17 @@ def test_deserialization(tmp_path):
     grid_scan_json_path = model_dumps_dir / "grid_scan_simulations_form.json"
 
     data = json.loads(grid_scan_json_path.read_bytes())
-    grid_scan = obi.deserialize_obi_object_from_json_data(data)
+    grid_scan = deserialize_obi_object_from_json_data(data)
     assert isinstance(grid_scan, obi.GridScan)
     grid_scan.output_root = tmp_path / "simulation_output_7"
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
-    grid_scan = obi.deserialize_obi_object_from_json_file(grid_scan_json_path)
+    grid_scan = deserialize_obi_object_from_json_file(grid_scan_json_path)
     assert isinstance(grid_scan, obi.GridScan)
     grid_scan.output_root = tmp_path / "simulation_output_8"
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
 
 def test_deserialization_somatic_stimulus_type():
@@ -111,7 +120,7 @@ def test_deserialization_somatic_stimulus_type():
         "distributions": {},
     }
 
-    config = obi.deserialize_obi_object_from_json_data(data)
+    config = deserialize_obi_object_from_json_data(data)
 
     stimulus = config.stimuli["LegacyStimulus"]
 
@@ -130,10 +139,10 @@ def test_deserialization_of_deprecated_neuron_set_reference_raises(filename):
 
     data = json.loads(deprecated_json_path.read_bytes())
     with pytest.raises(ValueError, match="NeuronSetReference is deprecated"):
-        obi.deserialize_obi_object_from_json_data(data)
+        deserialize_obi_object_from_json_data(data)
 
     with pytest.raises(ValueError, match="NeuronSetReference is deprecated"):
-        obi.deserialize_obi_object_from_json_file(deprecated_json_path)
+        deserialize_obi_object_from_json_file(deprecated_json_path)
 
 
 @pytest.mark.parametrize("filename", DEPRECATED_SERIALIZATION_FILES)
@@ -142,4 +151,4 @@ def test_deprecated_neuron_set_reference_is_wrapped_by_pydantic(filename):
     data = json.loads((MODEL_DUMPS_DIR / filename).read_bytes())
 
     with pytest.raises(ValidationError, match="NeuronSetReference is deprecated"):
-        obi.deserialize_obi_object_from_json_data(data)
+        deserialize_obi_object_from_json_data(data)

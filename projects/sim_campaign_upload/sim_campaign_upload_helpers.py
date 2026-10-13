@@ -4,6 +4,7 @@ from pathlib import Path
 from entitysdk import models
 
 import obi_one as obi
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
 
 # Key mapping in initialize section
@@ -334,7 +335,7 @@ def generate_scan_config(
         "coordinate_directory_option": "ZERO_INDEX",
     }
     if validate_config:
-        obi.deserialize_obi_object_from_json_data(obi_one_scan)
+        deserialize_obi_object_from_json_data(obi_one_scan)
     if save_path:
         obi_one_scan_file = save_path / "obi_one_scan.json"
         with obi_one_scan_file.open("w") as f:
@@ -367,7 +368,7 @@ def generate_coordinate_configs(
             coordinate_idx=idx,
         )
         if validate_config:
-            obi.deserialize_obi_object_from_json_data(coord_cfg)
+            deserialize_obi_object_from_json_data(coord_cfg)
         if save_path:
             coords_path = save_path / str(idx)
             coords_path.mkdir(parents=True)

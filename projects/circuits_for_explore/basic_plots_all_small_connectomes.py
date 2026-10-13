@@ -4,7 +4,10 @@ Last updated 06.2025
 Author: Daniela Egas Santander"""
 
 import numpy as np
+
 import obi_one as obi
+from obi_one.core.path import NamedPath
+from obi_one.core.scan_generation import GridScanGenerationTask
 
 # List of all small circuits 
 h = 0
@@ -38,7 +41,7 @@ print(f"Generating figures for {len(small_MCs)} connectomes")
 
 # Set up gridscan
 root = "/Users/danielaegas/OneDrive - Open Brain Institute/Shared Documents - OBI - Scientific staff/Data/Circuits hardcoded/" 
-matrix_path = [obi.NamedPath(name=circ_name, path=f"{root}ConnectivityMatrices/{circ_name}/connectivity_matrix.h5") for circ_name in small_MCs]
+matrix_path = [NamedPath(name=circ_name, path=f"{root}ConnectivityMatrices/{circ_name}/connectivity_matrix.h5") for circ_name in small_MCs]
 print(f"Generating figures for {len(matrix_path)} connectomes")
 
 
@@ -52,7 +55,7 @@ basic_connectivity_plots_scan_config = obi.BasicConnectivityPlotsScanConfig(init
                 # rendering_color_file = 'colors_tab10.csv' # path to colors with node identifiers for each node
                  )
                  )
-grid_scan = obi.GridScanGenerationTask(form=basic_connectivity_plots_scan_config, output_root=f"{root}Figures", coordinate_directory_option="VALUE")
+grid_scan = GridScanGenerationTask(form=basic_connectivity_plots_scan_config, output_root=f"{root}Figures", coordinate_directory_option="VALUE")
 
 # Run
 grid_scan.execute(processing_method='run')
