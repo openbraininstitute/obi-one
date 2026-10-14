@@ -64,10 +64,15 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
 from obi_one.utils.filesystem import create_dir
 from obi_one.utils.io import write_json
 
+ETYPE_ID_STR = "00000000-0000-0000-0000-000000000001"
+TARGET_ID_STR = "00000000-0000-0000-0000-000000000002"
+MORPHOLOGY_ID_STR = "00000000-0000-0000-0000-000000000003"
+ICM_ID_STR = "00000000-0000-0000-0000-000000000004"
+
 
 def _somatic_assignment():
     """A region assignment for icm-1: mechanisms need at least one."""
-    return {"somatic": [{"ion_channel_model": {"id_str": "icm-1"}}]}
+    return {"somatic": [{"ion_channel_model": {"id_str": ICM_ID_STR}}]}
 
 
 def _scan_config_data(**overrides):
@@ -75,13 +80,13 @@ def _scan_config_data(**overrides):
         "info": {"campaign_name": "test", "campaign_description": "test"},
         "initialize": {
             "emodel": "test",
-            "etype": {"id_str": "etype"},
+            "etype": {"id_str": ETYPE_ID_STR},
         },
-        "target_efeatures": {"task_result": {"id_str": "target"}},
-        "morphology": {"cell_morphology": {"id_str": "morphology"}},
+        "target_efeatures": {"task_result": {"id_str": TARGET_ID_STR}},
+        "morphology": {"cell_morphology": {"id_str": MORPHOLOGY_ID_STR}},
         "emodel_optimisation_parameters": {
             "mechanisms": {
-                "ion_channel_models": [{"id_str": "icm-1"}],
+                "ion_channel_models": [{"id_str": ICM_ID_STR}],
                 "mechanism_regions": _somatic_assignment(),
             }
         },
@@ -92,7 +97,7 @@ def _scan_config_data(**overrides):
 
 def _model_entity(ion_names=("na",)):
     return SimpleNamespace(
-        id="icm-1",
+        id=ICM_ID_STR,
         name="Sodium channel",
         nmodl_suffix="NaTg",
         is_stochastic=False,
@@ -107,7 +112,7 @@ def _model_entity(ion_names=("na",)):
 
 
 def _compiler_fixture():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     selection = ParametersSelection(
         ion_channel_models=(reference,),
         mechanism_regions={
@@ -172,7 +177,7 @@ def _compiler_fixture():
             ),
         },
     )
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     return config, reference, normalized
 
 
@@ -190,7 +195,7 @@ def test_parameter_selection_round_trips_and_serializes_axon_settings():
             morphology_settings={"axon_modifier": "none"},
             emodel_optimisation_parameters=EModelOptimisationParameters.from_parameters_selection(
                 ParametersSelection(
-                    ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                    ion_channel_models=(IonChannelModelFromID(id_str=ICM_ID_STR),),
                     mechanism_regions=_somatic_assignment(),
                     base_parameters={},
                 )
@@ -350,7 +355,7 @@ def test_section_list_schema_exposes_typed_choices_and_aliases():
 
 
 def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     stale_selection = ParametersSelection(
         ion_channel_models=(reference,),
         mechanism_regions=_somatic_assignment(),
@@ -649,7 +654,7 @@ def test_optimization_value_json_schema_mirrors_mode_rules():
 def test_global_parameters_default_is_validated_into_blocks():
     parameters = EModelOptimisationParameters(
         mechanisms=MechanismsBySectionList(
-            ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+            ion_channel_models=(IonChannelModelFromID(id_str=ICM_ID_STR),),
             mechanism_regions=_somatic_assignment(),
         )
     )
@@ -745,7 +750,7 @@ def test_params_builder_emits_complete_deterministic_definition():
 
 
 def test_params_builder_omits_reversal_potential_without_assigned_ion():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     selection = ParametersSelection(
         ion_channel_models=(reference,),
         mechanism_regions={
@@ -765,7 +770,7 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
         parameters_selection=selection,
         distance_dependent_distributions={"uniform": UniformDistanceDependentDistribution()},
     )
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
 
     params = build_params_definition(params_definition_input_from_config(config), normalized)
 
@@ -863,7 +868,7 @@ def test_fresh_morph_modifiers_preserves_empty_and_default_selections():
 
 
 def test_local_mechanism_metadata_is_tagged_from_entitycore():
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     mechanism = MechanismConfiguration(name="NaTg", location=None)
 
     tagged = tag_local_mechanisms([mechanism], normalized)
@@ -879,7 +884,7 @@ def test_local_mechanism_metadata_is_tagged_from_entitycore():
     assert tagged is not None
     assert tagged[0].temperature == 34
     assert tagged[0].ljp_corrected is False
-    assert tagged[0].id == "icm-1"
+    assert tagged[0].id == ICM_ID_STR
     assert configuration.mechanism_names == {"NaTg"}
 
 
@@ -895,17 +900,17 @@ def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
 
     staging.stage_mechanisms(config, tmp_path, object())
 
-    assert downloaded == ["icm-1"]
+    assert downloaded == [ICM_ID_STR]
 
 
 def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(tmp_path):
     root_payload = {
         "mechanisms": {
-            "ion_channel_models": [{"id_str": "icm-1"}],
+            "ion_channel_models": [{"id_str": ICM_ID_STR}],
             "mechanism_regions": {
                 "apical": [
                     {
-                        "ion_channel_model": {"id_str": "icm-1"},
+                        "ion_channel_model": {"id_str": ICM_ID_STR},
                         "parameters": {
                             "gNa": {
                                 "type": "ParameterSelection",
@@ -925,7 +930,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
             "ena": {
                 "type": "GlobalParameterSelection",
                 "value": {"mode": "fixed", "value": 50.0},
-                "ion_channel_model": {"id_str": "icm-1"},
+                "ion_channel_model": {"id_str": ICM_ID_STR},
             },
         },
         "base_parameters": {
@@ -962,7 +967,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
         }
     }
     config = EModelOptimizationScanConfig.model_validate(data)
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     capabilities = MorphologyCapabilities(
         has_myelinated=True,
         available_physical_sections=("somatic", "basal", "apical", "axonal"),
@@ -1044,7 +1049,7 @@ def test_region_group_rows_include_base_and_mechanism_parameters():
 
     assert {row.name for row in apical_rows} == {"gNa", "vshift"}
     assert all(row.kind == "region" for row in apical_rows)
-    assert all(row.mechanism == "icm-1" for row in apical_rows)
+    assert all(row.mechanism == ICM_ID_STR for row in apical_rows)
 
 
 def test_parameter_group_view_omits_unconfigured_regions():
@@ -1273,7 +1278,7 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
 
 
 def test_root_emodel_optimisation_parameters_normalizes_to_canonical_selection():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     root = EModelOptimisationParameters(
         mechanisms=MechanismsBySectionList(
             ion_channel_models=(reference,),
@@ -1320,19 +1325,19 @@ def test_single_config_asset_round_trips_plural_parameters_field(tmp_path):
     restored = deserialize_obi_object_from_json_data(payload)
 
     assert payload["emodel_optimisation_parameters"]["mechanisms"]["ion_channel_models"] == [
-        {"id_str": "icm-1", "type": "IonChannelModelFromID"}
+        {"id_str": ICM_ID_STR, "type": "IonChannelModelFromID"}
     ]
     assert "parameters_selection" not in payload
     assert isinstance(restored, EModelOptimizationSingleConfig)
     assert restored.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
-        IonChannelModelFromID(id_str="icm-1"),
+        IonChannelModelFromID(id_str=ICM_ID_STR),
     )
 
 
 def test_root_parameters_selection_payload_is_rejected():
     data = _scan_config_data()
     data["parameters_selection"] = ParametersSelection(
-        ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        ion_channel_models=(IonChannelModelFromID(id_str=ICM_ID_STR),),
         mechanism_regions=_somatic_assignment(),
         base_parameters={},
     ).model_dump(mode="json")
@@ -1365,7 +1370,7 @@ def test_root_parameter_configuration_preserves_compiler_output():
 
 
 def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
-    selected = IonChannelModelFromID(id_str="icm-1")
+    selected = IonChannelModelFromID(id_str=ICM_ID_STR)
 
     with pytest.raises(ValueError, match="must not contain duplicate entity IDs"):
         MechanismsBySectionList(
@@ -1386,7 +1391,7 @@ def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
 
 
 def test_root_parameter_block_validates_global_model_reference_directly():
-    selected = IonChannelModelFromID(id_str="icm-1")
+    selected = IonChannelModelFromID(id_str=ICM_ID_STR)
 
     with pytest.raises(ValueError, match="Global parameter 'ena' source must also be listed"):
         EModelOptimisationParameters(
@@ -1417,7 +1422,7 @@ def test_no_replacement_keeps_myelinated_choice_unavailable():
 
 @pytest.mark.parametrize("field_name", ["base_parameters", "mechanism_regions"])
 def test_no_replacement_rejects_myelinated_configuration_rows(field_name):
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     if field_name == "base_parameters":
         selection = ParametersSelection(
             ion_channel_models=(reference,),
@@ -1570,7 +1575,7 @@ def test_input_entities_resolves_nested_root_mechanism_references(monkeypatch):
 
     monkeypatch.setattr("obi_one.core.entity_from_id.EntityFromID.entity", fake_entity)
 
-    assert config.input_entities(object()) == ["target", "morphology", "icm-1"]
+    assert config.input_entities(object()) == [TARGET_ID_STR, MORPHOLOGY_ID_STR, ICM_ID_STR]
 
 
 def test_section_list_choice_exposes_enabled_alias():
@@ -1752,7 +1757,7 @@ def test_upload_optimization_assets_is_a_no_op_regardless_of_present_files(tmp_p
 
 
 def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     unknown = MechanismConfiguration(name="Unknown", location=None)
 
     assert tag_local_mechanisms(None, normalized) is None
