@@ -16,6 +16,10 @@ L = logging.getLogger(__name__)
 # the CPU counts a launch-system job can have.
 MPI_PROCESS_COUNTS = (1, 2, 4, 8, 16)
 CELLS_PER_MPI_PROCESS = 100
+# Each process builds this many cells at a time, and computes and writes the weights of this
+# many segments at a time, so write_weights' memory does not grow with the circuit's cells.
+CELLS_PER_BATCH_PER_PROCESS = 50
+SEGMENTS_PER_WEIGHTS_BLOCK = 2_000
 
 
 def get_number_of_mpi_processes(n_cells: int) -> int:
@@ -57,6 +61,10 @@ def run_bluerecording_write_weights(
         str(circuit_config),
         str(electrode_json),
         str(output_path),
+        "--cells-per-batch",
+        str(CELLS_PER_BATCH_PER_PROCESS * number_of_mpi_processes),
+        "--segment-chunk-size",
+        str(SEGMENTS_PER_WEIGHTS_BLOCK),
     ]
 
     L.info("Running bluerecording: %s", " ".join(cmd))

@@ -50,6 +50,8 @@ def test_run_bluerecording_write_weights_calls_subprocess_with_correct_args(tmp_
     assert str(circuit_config) in call_args
     assert str(electrode_json) in call_args
     assert str(output_path) in call_args
+    # 50 cells per process at a time, and weights 2000 segments at a time
+    assert call_args[-4:] == ["--cells-per-batch", "200", "--segment-chunk-size", "2000"]
     assert "NRNMECH_LIB_PATH" in mock_run.call_args[1]["env"]
 
 
