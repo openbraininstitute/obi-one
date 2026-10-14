@@ -147,6 +147,8 @@ PLACEHOLDER_DEFINITIONS = (
 # Placeholders BluePyEModel fills at runtime from the morphology (not user-declared parameters).
 # Only the ``step`` distribution uses them; they are always allowed in placeholder validation.
 RUNTIME_PLACEHOLDERS = frozenset({"step_begin", "step_end"})
+RESERVED_DISTRIBUTION_PLACEHOLDERS = frozenset({"value", "distance", *RUNTIME_PLACEHOLDERS})
+DISTRIBUTION_PARAMETER_NAME_PATTERN = r"^[A-Za-z_]\w*$"
 # Every identifier that may appear as a bare ``Name``. Placeholders are substituted with a
 # numeric literal before parsing, so only these module/builtin names should remain.
 _ALLOWED_NAMES = _ALLOWED_CALL_NAMES | _ALLOWED_MODULES
@@ -431,10 +433,77 @@ def _distance_placeholder_error(
     return None
 
 
+class DistributionParameterPrompt(BaseModel):
+    """A request for the user to supply a value for one distribution placeholder."""
+
+    name: str
+    message: str
+
+
+class DistributionParametersCheck(BaseModel):
+    """How a custom function's placeholders line up with its declared parameters."""
+
+    required_parameters: tuple[str, ...] = ()
+    missing_parameters: tuple[str, ...] = ()
+    unknown_parameters: tuple[str, ...] = ()
+    duplicate_parameters: tuple[str, ...] = ()
+    reserved_parameters: tuple[str, ...] = ()
+    prompts: tuple[DistributionParameterPrompt, ...] = ()
+
+    @property
+    def valid(self) -> bool:
+        """Whether the declared parameters exactly cover the function's extra placeholders."""
+        return not (
+            self.missing_parameters
+            or self.unknown_parameters
+            or self.duplicate_parameters
+            or self.reserved_parameters
+        )
+
+
+def check_distribution_parameters(
+    function: str, parameters: tuple[str, ...] = ()
+) -> DistributionParametersCheck:
+    """Compare a function's extra placeholders with the declared parameter names (never raises).
+
+    ``required_parameters`` lists, in order of first appearance, every placeholder the user must
+    give a value for. ``prompts`` holds one fill-in request per missing name, ready to show in a
+    form or to ask in a chat.
+    """
+    required = tuple(
+        dict.fromkeys(
+            name
+            for name in _PLACEHOLDER_PATTERN.findall(function)
+            if name not in RESERVED_DISTRIBUTION_PLACEHOLDERS
+        )
+    )
+    declared = set(parameters)
+    missing = tuple(name for name in required if name not in declared)
+    return DistributionParametersCheck(
+        required_parameters=required,
+        missing_parameters=missing,
+        unknown_parameters=tuple(
+            sorted(declared - set(required) - RESERVED_DISTRIBUTION_PLACEHOLDERS)
+        ),
+        duplicate_parameters=tuple(sorted({n for n in parameters if parameters.count(n) > 1})),
+        reserved_parameters=tuple(sorted(declared & RESERVED_DISTRIBUTION_PLACEHOLDERS)),
+        prompts=tuple(
+            DistributionParameterPrompt(
+                name=name,
+                message=(
+                    f"The function uses {{{name}}}. Enter a fixed value for '{name}', or "
+                    "lower and upper bounds to optimise it."
+                ),
+            )
+            for name in missing
+        ),
+    )
+
+
 class DistanceDependentDistribution(Block):
     """Scales a parameter along the dendrites as a function of distance from the soma.
 
-    Subclass docstrings show each ``function`` string as stored in the EMC/hoc files:
+    Each subclass docstring shows its formula:
     ``{value}`` is the parameter value found by the optimisation, which the formula scales, and
     ``{distance}`` is the path distance (um) from the soma reference point.
     """
@@ -458,22 +527,21 @@ class DistanceDependentDistribution(Block):
         le=1.0,
         title="Soma reference location",
         description=(
-            "Point on the soma that distances are measured from, as a fraction along the "
-            "soma: 0 = one end, 0.5 = middle (default), 1 = other end. Leave at 0.5 unless "
-            "you need a different origin."
+            "Where on the soma {distance} is measured from, as a fraction of the soma's "
+            "length: 0 = one end, 0.5 = middle (default), 1 = other end. The formula itself "
+            "is not changed by this setting: it only moves the origin, so every section's "
+            "{distance} shifts by the same offset and the profile slides along the dendrites. "
+            "Every standard distribution assumes 0.5. Change it only to "
+            "reproduce a published model that measured from a different point; the effect "
+            "is small (at most half the soma length) for most morphologies."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
     )
-    parameters: tuple[str, ...] | None = Field(
-        default=None,
-        title="Distribution parameters",
-        description=(
-            "Names of additional parameters that parametrize the function "
-            "(excluding {value} and {distance}). Used by BluePyEModel's "
-            "ParameterScaler."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_OPTIONAL},
-    )
+
+    @property
+    def declared_parameter_names(self) -> tuple[str, ...]:
+        """Names of user-declared placeholders; fixed-formula distributions declare none."""
+        return ()
 
     @model_validator(mode="after")
     def validate_function(self) -> "DistanceDependentDistribution":
@@ -484,7 +552,8 @@ class DistanceDependentDistribution(Block):
         user-controlled, this validator restricts it to a safe arithmetic AST via
         ``validate_safe_distance_function`` before any placeholder/declaration checks.
         """
-        if self.parameters and self.function is None:
+        parameter_names = self.declared_parameter_names
+        if parameter_names and self.function is None:
             msg = "Distance-dependent distributions with parameters must define a function."
             raise ValueError(msg)
         if self.function is not None:
@@ -496,14 +565,14 @@ class DistanceDependentDistribution(Block):
             msg = "Distance-dependent functions must contain the {distance} placeholder."
             raise ValueError(msg)
         if self.function is not None:
-            for parameter in self.parameters or []:
+            for parameter in parameter_names:
                 placeholder = f"{{{parameter}}}"
                 if placeholder not in self.function:
                     msg = (
                         f"Distance-dependent functions must contain the {placeholder} placeholder."
                     )
                     raise ValueError(msg)
-            declared = {"value", "distance", *(self.parameters or []), *self._runtime_placeholders}
+            declared = {"value", "distance", *parameter_names, *self._runtime_placeholders}
             undeclared = set(_PLACEHOLDER_PATTERN.findall(self.function)) - declared
             if undeclared:
                 msg = (
@@ -512,6 +581,16 @@ class DistanceDependentDistribution(Block):
                 )
                 raise ValueError(msg)
         return self
+
+    def to_bpem_payload(self) -> dict[str, Any]:
+        """Return the fields consumed by BluePyEModel's distribution schemas."""
+        payload: dict[str, Any] = {
+            "function": self.function,
+            "soma_ref_location": self.soma_ref_location,
+        }
+        if self.declared_parameter_names:
+            payload["parameters"] = list(self.declared_parameter_names)
+        return payload
 
     def to_emc_dict(self, name: str | None = None) -> dict[str, Any]:
         """Convert the block to the legacy EMC distribution representation.
@@ -526,18 +605,11 @@ class DistanceDependentDistribution(Block):
         if resolved_name is None:
             msg = "Distance-dependent distribution has no name: pass one or set default_name."
             raise ValueError(msg)
-        emc_dict: dict[str, Any] = {
-            "name": resolved_name,
-            "function": self.function,
-            "soma_ref_location": self.soma_ref_location,
-        }
-        if self.parameters:
-            emc_dict["parameters"] = list(self.parameters)
-        return emc_dict
+        return {"name": resolved_name, **self.to_bpem_payload()}
 
 
 class UniformDistanceDependentDistribution(DistanceDependentDistribution):
-    """Constant value on all sections; the default for EMC parameters.
+    """Same value on every section; the default when no distribution is chosen.
 
     Formula: no function; every section gets ``{value}``.
     """
@@ -584,11 +656,9 @@ class StepDistanceDependentDistribution(DistanceDependentDistribution):
     Formula:
     ``{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & ({distance} < {step_end})))``.
 
-    ``{step_begin}`` and ``{step_end}`` are not user-declared placeholders.
-    BluePyEModel's ``define_distributions()`` special-cases the name ``step`` and
-    computes both values from the imported morphology's calcium hot-spot via
-    ``get_hotspot_location()`` (Larkum & Zhu, 2002). Do not add them to
-    ``parameters``; they must remain in the function string verbatim.
+    ``{step_begin}`` and ``{step_end}`` are filled in automatically: they are the start
+    and end of the calcium hot-spot on the apical dendrite, found from the morphology
+    (Larkum & Zhu, 2002). You do not set them.
     """
 
     title: ClassVar[str] = "Step: Ca hot-spot"
@@ -638,7 +708,7 @@ class ExponentialNaDendDistanceDependentDistribution(DistanceDependentDistributi
 class LinearHDApicDistanceDependentDistribution(DistanceDependentDistribution):
     """Linear rise of Ih (hd) with distance; used by hippocampus (rat and mouse) models.
 
-    Replaces BluePyEModel ``linear_hd_apic`` and ``linear_hdpas`` (same formula).
+    Also covers the older ``linear_hdpas`` name, which uses the same formula.
     Formula: ``(1. + 3./100. * {distance})*{value}``.
     """
 
@@ -753,7 +823,9 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
     """User-defined distribution for any parameter.
 
     Formula: a user expression in ``{value}``, ``{distance}`` and the declared parameters,
-    e.g. ``math.exp({distance}*{constant})*{value}`` with ``parameters=("constant",)``.
+    e.g. ``math.exp({distance}*{constant})*{value}`` with one ``parameters`` entry named
+    ``constant``. Each declared parameter carries its own fixed value or optimization bounds,
+    so names and values cannot drift apart.
     """
 
     title: ClassVar[str] = "Custom formula"
@@ -773,6 +845,51 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTANCE_FUNCTION_INPUT},
     )
+    # A tuple, not a list: Block treats list-valued fields as parameter-scan dimensions.
+    parameters: tuple["DistributionParameter", ...] = Field(
+        default=(),
+        title="Distribution parameters",
+        description=(
+            "One entry per extra {placeholder} used in the function (anything other than "
+            "{value} and {distance}). For each, give a fixed value or optimization bounds. "
+            "The editor lists the placeholders found in the function and prompts for the "
+            "missing ones."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.DISTRIBUTION_PARAMETER_LIST,
+            SchemaKey.PARAMETERS_FROM: "function",
+        },
+    )
+
+    @property
+    def declared_parameter_names(self) -> tuple[str, ...]:
+        """Names of the declared parameters, in declaration order."""
+        return tuple(parameter.name for parameter in self.parameters)
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_parameter_names(cls, data: Any) -> Any:
+        """Reject duplicate or reserved parameter names before placeholder checks run."""
+        if not isinstance(data, Mapping):
+            return data
+        raw_names = (
+            item.get("name") if isinstance(item, Mapping) else getattr(item, "name", None)
+            for item in data.get("parameters") or ()
+        )
+        names = [name for name in raw_names if isinstance(name, str)]
+        duplicates = sorted({name for name in names if names.count(name) > 1})
+        if duplicates:
+            msg = f"Distribution parameters declared more than once: {duplicates}."
+            raise ValueError(msg)
+        reserved = sorted(set(names) & RESERVED_DISTRIBUTION_PLACEHOLDERS)
+        if reserved:
+            msg = (
+                f"Distribution parameter names {reserved} are reserved: {{value}} and "
+                "{distance} are always provided, and {step_begin}/{step_end} are computed "
+                "at runtime."
+            )
+            raise ValueError(msg)
+        return data
 
 
 DistanceDependentDistributionUnion = Annotated[
@@ -795,7 +912,7 @@ class OptimizationInitialize(Block):
 
     emodel: str = Field(
         title="E-Model name",
-        description="Top-level key in ``recipes.json`` to operate on (e.g. ``L5PC``).",
+        description="Name for the e-model being built (e.g. ``L5PC``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     etype: ETypeClassFromID = Field(
@@ -974,6 +1091,40 @@ GlobalParameterSelectionUnion = Annotated[GlobalParameterSelection, Discriminato
 OptimizationValueUnion = Annotated[OptimizationValue, Discriminator("type")]
 
 
+class DistributionParameter(Block):
+    """One extra placeholder of a custom distribution formula, with its value or bounds."""
+
+    name: str = Field(
+        min_length=1,
+        pattern=DISTRIBUTION_PARAMETER_NAME_PATTERN,
+        title="Parameter name",
+        description=(
+            "Placeholder name as written in the function, without braces (e.g. ``constant`` "
+            "for ``{constant}``). Letters, digits and underscores; must not start with a digit."
+        ),
+    )
+    value: OptimizationValue = Field(
+        title="Value",
+        description=(
+            "Fill in a fixed value, or lower/upper bounds to let the optimisation find it."
+        ),
+    )
+
+
+CustomDistanceDependentDistribution.model_rebuild()
+
+
+def distribution_parameter_values(
+    distributions: Mapping[str, DistanceDependentDistribution],
+) -> dict[str, dict[str, OptimizationValue]]:
+    """Collect declared parameter values keyed by distribution key, then parameter name."""
+    return {
+        key: {parameter.name: parameter.value for parameter in distribution.parameters}
+        for key, distribution in distributions.items()
+        if isinstance(distribution, CustomDistanceDependentDistribution) and distribution.parameters
+    }
+
+
 ParameterGroupKind = Literal["global", "distribution", "region"]
 
 
@@ -1082,13 +1233,13 @@ AXON_MODIFIER_OPTION_DESCRIPTIONS: dict[str, str] = {
 
 
 class MorphologySettings(Block):
-    """Morphology transformation settings used by BluePyEModel."""
+    """How the morphology is adapted before simulation, e.g. how the axon is replaced."""
 
     axon_modifier: AxonModifier = Field(  # ty:ignore[no-matching-overload]
         default=AxonModifier.replace_axon_with_taper,
         title="Axon replacement",
         description=(
-            "BluePyEModel morphology modifier (``morph_modifiers``) applied to the axon. "
+            "How the reconstructed axon is replaced by a simplified one for simulation. "
             "Replace axon with taper is the BBP/OBI default. Only the default and olfactory "
             "bulb options create a myelinated section list. See "
             f"[BBP/OBI default replace_axon hoc procedure]({AXON_REPLACEMENT_DOC_URL})."
@@ -1231,7 +1382,8 @@ class MechanismsBySectionList(Block):
         min_length=1,
         title="Mechanisms by section list",
         description=(
-            "Assign selected ion channel models to BluePyEModel section lists. The same model "
+            "Assign the selected ion channel models to parts of the neuron (section lists). "
+            "The same model "
             "may be assigned to multiple section lists."
         ),
         json_schema_extra={  # ty:ignore[invalid-argument-type]
@@ -1279,27 +1431,40 @@ class EModelOptimisationParameters(Block):
             "alias_expansions": DEFAULT_SECTION_LIST_CATALOG.to_alias_expansions(),
         },
     )
-    distribution_parameters: dict[str, dict[str, OptimizationValueUnion]] = Field(
-        default_factory=dict,
-        title="Distribution parameters",
-        description="Values for placeholders declared by sibling distance-dependent distributions.",
-    )
 
-    def to_parameters_selection(self) -> "ParametersSelection":
-        """Return the canonical selection consumed by validation and compilation."""
+    def to_parameters_selection(
+        self,
+        distributions: Mapping[str, "DistanceDependentDistribution"] | None = None,
+    ) -> "ParametersSelection":
+        """Return the canonical selection consumed by validation and compilation.
+
+        Distribution parameter values live on the custom distributions themselves; they are
+        collected here into the ``distribution_parameters`` mapping the compiler expects.
+        """
         return ParametersSelection(
             ion_channel_models=self.mechanisms.ion_channel_models,
             mechanism_regions=self.mechanisms.mechanism_regions,
             global_parameters=self.global_parameters,
             base_parameters=self.base_parameters,
-            distribution_parameters=self.distribution_parameters,
+            distribution_parameters=distribution_parameter_values(distributions or {}),
         )
 
     @classmethod
     def from_parameters_selection(
         cls, selection: "ParametersSelection"
     ) -> "EModelOptimisationParameters":
-        """Convert the legacy selection block to the root-level representation."""
+        """Convert the legacy selection block to the root-level representation.
+
+        Raises:
+            ValueError: If ``selection`` carries distribution parameter values; those now live
+                on each ``CustomDistanceDependentDistribution.parameters`` entry.
+        """
+        if selection.distribution_parameters:
+            msg = (
+                "distribution_parameters is no longer part of the parameter selection: set "
+                "each value on its CustomDistanceDependentDistribution.parameters entry."
+            )
+            raise ValueError(msg)
         return cls(
             mechanisms=MechanismsBySectionList(
                 ion_channel_models=selection.ion_channel_models,
@@ -1307,7 +1472,6 @@ class EModelOptimisationParameters(Block):
             ),
             global_parameters=selection.global_parameters,
             base_parameters=selection.base_parameters,
-            distribution_parameters=selection.distribution_parameters,
         )
 
     @model_validator(mode="after")
@@ -1343,9 +1507,9 @@ class ParametersSelection(Block):
         default_factory=dict,
         title="Mechanisms by region",
         description=(
-            "Assign selected IonChannelModel entities and parameters to a canonical "
-            "BluePyEModel section list. Composite choices expand through the recipe map. "
-            "Overlapping rows are preserved and compiled from broad to narrow locations."
+            "Assign the selected ion channel models and their parameters to a part of the "
+            "neuron (section list). Combined choices such as all dendrites cover each "
+            "part they include. Overlapping rows are applied from broad to narrow."
         ),
         json_schema_extra={
             SchemaKey.SINGULAR_NAME: "Mechanism Region",
@@ -1587,7 +1751,7 @@ class EfelSettings(Block):
 
 
 class PhasePlotSettings(Block):
-    """Settings for BluePyEModel phase-plot analysis."""
+    """Settings for the phase-plot analysis (voltage against its rate of change)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -1627,7 +1791,7 @@ class PhasePlotSettings(Block):
 
 
 class SineSpecSettings(Block):
-    """Settings for optional BluePyEModel SineSpec analysis."""
+    """Settings for the optional SineSpec analysis (response to a sine-wave input)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -1650,7 +1814,7 @@ class SineSpecSettings(Block):
 
 
 class OptimizationParams(Block):
-    """Algorithm-specific ``optimisation_params`` passed to BluePyEModel.
+    """Settings specific to the chosen optimisation algorithm.
 
     ``offspring_size`` lives in :class:`OptimizationSettings`; every field here is optional
     and only serialized for the optimiser that consumes it, so the block may be empty.
@@ -1661,7 +1825,7 @@ class OptimizationParams(Block):
         title="CMA initial sigma",
         description=(
             "SO-CMA and MO-CMA only: initial standard deviation of the CMA-ES Gaussian search "
-            "distribution. Empty uses the BluePyOpt default of 0.4."
+            "distribution. Empty uses the default of 0.4."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -1671,7 +1835,7 @@ class OptimizationParams(Block):
         description=(
             "MO-CMA only: weight (0-1) of the hypervolume contribution when scoring "
             "individuals; the fitness contribution gets 1 - weight_hv. Empty uses the "
-            "BluePyOpt default of 0.5."
+            "default of 0.5."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -1680,7 +1844,7 @@ class OptimizationParams(Block):
         title="IBEA distribution index",
         description=(
             "IBEA only: distribution index controlling how far crossover and mutation move "
-            "offspring from their parents. Empty uses the BluePyOpt default of 10."
+            "offspring from their parents. Empty uses the default of 10."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -1689,7 +1853,7 @@ class OptimizationParams(Block):
         title="IBEA mutation probability",
         description=(
             "IBEA only: probability (0-1) that an offspring is mutated. Empty uses the "
-            "BluePyOpt default of 1.0."
+            "default of 1.0."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -1698,7 +1862,7 @@ class OptimizationParams(Block):
         title="IBEA crossover probability",
         description=(
             "IBEA only: probability (0-1) that a pair of offspring is crossed over. Empty "
-            "uses the BluePyOpt default of 1.0."
+            "uses the default of 1.0."
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
@@ -1707,7 +1871,7 @@ class OptimizationParams(Block):
         title="CMA centroids",
         description=(
             "SO-CMA and MO-CMA only: initial guess (one value per optimized parameter) used "
-            "as the CMA-ES starting point. Empty lets BluePyOpt choose the start."
+            "as the CMA-ES starting point. Empty picks a start automatically."
         ),
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
@@ -1789,7 +1953,7 @@ class OptimizationSettings(Block):
         default=5,
         title="Offspring size",
         description=(
-            "Individuals per generation (all optimisers). BluePyEModel suggests 20 for CMA, "
+            "Candidate models tested per generation (all optimisers). 20 is typical for CMA, "
             "100 for IBEA; the small default keeps the example fast. Capped at "
             f"{MAX_OFFSPRING_SIZE}; CMA optimisers need at least 2."
         ),

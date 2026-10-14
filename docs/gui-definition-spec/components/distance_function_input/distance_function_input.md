@@ -37,12 +37,31 @@ Request:
 Response:
 
 ```json
-{ "valid": false, "error": "Distance function contains ...", "from": 4, "to": 17 }
+{
+  "valid": false,
+  "error": "Distance function contains ...",
+  "from": 4,
+  "to": 17,
+  "required_parameters": ["constant"],
+  "missing_parameters": [],
+  "unknown_parameters": [],
+  "duplicate_parameters": [],
+  "reserved_parameters": [],
+  "prompts": []
+}
 ```
 
 `from`/`to` are character offsets into the original `function` string delimiting the offending
 span (the whole string when a position cannot be localized). Both are `0` when valid. On error the
 editor outlines the field in red, shows `error` below it, and marks the `from`..`to` span inline.
+
+The parameter lists are always filled, even while the expression is invalid, so the frontend and the AI chat can drive the sibling [distribution_parameter_list](../distribution_parameter_list/distribution_parameter_list.md) from the same call:
+
+- `required_parameters`: extra placeholders in order of first appearance (excluding `{value}`, `{distance}`, `{step_begin}`, `{step_end}`).
+- `missing_parameters`: required names not in `parameters`. `prompts` holds one `{name, message}` fill-in request per missing name, ready to show in the form or to ask in chat.
+- `unknown_parameters`, `duplicate_parameters`, `reserved_parameters`: declared names that are unused, repeated, or reserved.
+
+`valid` is `true` only when the expression is safe and the declared names exactly match `required_parameters`.
 
 ### Rules enforced (mirrored client-side for feedback)
 
@@ -67,8 +86,9 @@ The checks run in this order, and all mirror the backend exactly:
      (blocks introspection escapes like `math.__loader__`).
 6. Placeholders:
    - `{value}` and `{distance}` are always required.
-   - Any name listed in the sibling `parameters` field is allowed (e.g. `parameters=["constant"]`
-     permits `{constant}`), and declared parameters must appear in the function.
+   - Any name declared in the sibling `parameters` list is allowed (a `{"name": "constant", ...}`
+     entry permits `{constant}`), and declared parameters must appear in the function. Only the
+     custom distribution has `parameters`; fixed-formula distributions declare none.
    - `{step_begin}` and `{step_end}` are runtime placeholders filled by BluePyEModel for the
      `step` distribution. They are always allowed but must not be added to `parameters`.
    - Any other placeholder (e.g. `{hello}`) is rejected as undeclared.

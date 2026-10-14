@@ -168,7 +168,9 @@ def _compiler_fixture():
             "uniform": UniformDistanceDependentDistribution(),
             "decay": CustomDistanceDependentDistribution(
                 function="math.exp({distance}*{constant})*{value}",
-                parameters=["constant"],
+                parameters=[
+                    {"name": "constant", "value": {"mode": "bounds", "bounds": (-0.1, 0.0)}}
+                ],
             ),
         },
     )
@@ -941,15 +943,6 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
                 },
             }
         },
-        "distribution_parameters": {
-            "decay": {
-                "constant": {
-                    "type": "OptimizationValue",
-                    "mode": "bounds",
-                    "bounds": [-0.1, 0.0],
-                },
-            }
-        },
     }
     data = _scan_config_data()
     data.pop("emodel_optimisation_parameters")
@@ -958,7 +951,13 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
         "decay": {
             "type": "CustomDistanceDependentDistribution",
             "function": "math.exp({distance}*{constant})*{value}",
-            "parameters": ["constant"],
+            "parameters": [
+                {
+                    "type": "DistributionParameter",
+                    "name": "constant",
+                    "value": {"type": "OptimizationValue", "mode": "bounds", "bounds": [-0.1, 0.0]},
+                }
+            ],
         }
     }
     config = EModelOptimizationScanConfig.model_validate(data)
@@ -1344,8 +1343,10 @@ def test_root_parameters_selection_payload_is_rejected():
 
 def test_root_parameter_configuration_preserves_compiler_output():
     legacy_config, _, normalized = _compiler_fixture()
+    # Values now live on the custom distribution, so they are dropped from the selection here
+    # and must be re-collected from distance_dependent_distributions to match the legacy output.
     root = EModelOptimisationParameters.from_parameters_selection(
-        legacy_config.parameters_selection
+        legacy_config.parameters_selection.model_copy(update={"distribution_parameters": {}})
     )
     data = _scan_config_data()
     data.pop("emodel_optimisation_parameters")
