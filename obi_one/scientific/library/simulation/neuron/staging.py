@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
 import libsonata
 from entitysdk import Client, models
@@ -8,6 +8,7 @@ from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 from entitysdk.staging.memodel import stage_sonata_from_memodel
 
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -23,9 +24,6 @@ from obi_one.types import SimulationBackend
 from obi_one.utils.circuit import count_cells_in_simulation_node_set
 from obi_one.utils.io import load_json
 
-if TYPE_CHECKING:
-    from entitysdk.models import MEModel
-
 L = logging.getLogger(__name__)
 
 
@@ -39,7 +37,10 @@ def stage_circuit(
         output_dir=output_dir,
         max_concurrent=max_concurrent,
     )
-    return Circuit(name=cast("str", model.name), path=str(circuit_config_path))
+    if model.name is None:
+        msg = f"Circuit {model.id!s} has no name"
+        raise OBIONEError(msg)
+    return Circuit(name=model.name, path=str(circuit_config_path))
 
 
 def stage_ion_channel_models_as_circuit(
@@ -98,7 +99,7 @@ def stage_memodel_as_circuit(
 
     circuit_config_path = stage_sonata_from_memodel(
         client=client,
-        memodel=cast("MEModel", circuit.entity(db_client=client)),
+        memodel=circuit.entity(db_client=client),
         output_dir=output_dir,
         max_concurrent=max_concurrent,
     )

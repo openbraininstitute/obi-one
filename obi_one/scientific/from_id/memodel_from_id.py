@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import ClassVar
 
 import morphio
 from entitysdk.client import Client
@@ -17,12 +17,19 @@ class MEModelFromID(EntityFromID):
     entitysdk_class: ClassVar[type[Entity]] = MEModel
     _entity: MEModel | None = PrivateAttr(default=None)
 
+    def entity(self, db_client: Client) -> MEModel:
+        super().entity(db_client=db_client)
+        if self._entity is None:
+            msg = f"{self.__class__.__name__} failed to resolve entity {self.id_str!r}"
+            raise RuntimeError(msg)
+        return self._entity
+
     def morphio_morphology(
         self,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> morphio.Morphology:
         """Load this ME-model's morphology through its CellMorphology entity."""
-        memodel = cast("MEModel", self.entity(db_client))
+        memodel = self.entity(db_client)
         morphology = CellMorphologyFromID(id_str=str(memodel.morphology.id))
         return morphology.morphio_morphology(db_client)
 
@@ -40,7 +47,7 @@ class MEModelFromID(EntityFromID):
         if (not entity_cache) | (entity_cache and not dest_dir.exists()):  # ty:ignore[unresolved-attribute]
             circuit_config_path = stage_sonata_from_memodel(
                 client=db_client,
-                memodel=self.entity(db_client),  # ty:ignore[invalid-argument-type]
+                memodel=self.entity(db_client),
                 output_dir=dest_dir,  # ty:ignore[invalid-argument-type]
             )
         else:

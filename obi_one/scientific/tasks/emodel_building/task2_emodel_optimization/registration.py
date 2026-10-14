@@ -8,7 +8,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -18,14 +18,7 @@ import entitysdk
 from bluepyemodel.emodel_pipeline.emodel import EModel as BPEMEModel, format_dict_for_resource
 from bluepyemodel.emodel_pipeline.emodel_metadata import EModelMetadata
 from entitysdk import MultipartDirectoryUploadTransferConfig
-from entitysdk.models import (
-    CellMorphology,
-    ETypeClass,
-    IonChannelModel,
-    License,
-    TaskActivity,
-    TaskResult,
-)
+from entitysdk.models import License, TaskActivity, TaskResult
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import (
     register_memodel,
@@ -247,9 +240,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     # --- Gather metadata ---
     # Species and brain region come from the morphology entity, so the
     # registered emodel/me-model inherit the morphology's provenance.
-    morph_entity = cast(
-        "CellMorphology", config.morphology.cell_morphology.entity(db_client=db_client)
-    )
+    morph_entity = config.morphology.cell_morphology.entity(db_client=db_client)
     species_entity, brain_region_entity = config.morphology.cell_morphology.metadata_entities(
         db_client=db_client
     )
@@ -261,7 +252,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     ).one()
 
     # ETypeClass entity from user selection
-    etype_class = cast("ETypeClass", init.etype.entity(db_client=db_client))
+    etype_class = init.etype.entity(db_client=db_client)
 
     # Determine authorized_public from execution activity if available
     authorized_public = False
@@ -370,9 +361,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
 
     # --- Collect ion channel model entities ---
     references = config.parameters_selection.ion_channel_model_references
-    ion_channel_models = [
-        cast("IonChannelModel", reference.entity(db_client=db_client)) for reference in references
-    ]
+    ion_channel_models = [reference.entity(db_client=db_client) for reference in references]
 
     # --- Register EModel via helper ---
     # Standalone HOC export is not produced; SONATA may still contain a HOC asset.
