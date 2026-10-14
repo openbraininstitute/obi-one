@@ -12,12 +12,11 @@ from app.mappings import TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import TaskLaunchSubmit, TaskType
 from app.services.resource_estimation import circuit_extraction as test_module
+from obi_one.scientific.library.circuit_constants import EdgePopulationType, NodePopulationType
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsEdgePopulation,
     CircuitMetricsNodePopulation,
     CircuitMetricsOutput,
-    EdgePopulationType,
-    NodePopulationType,
 )
 
 

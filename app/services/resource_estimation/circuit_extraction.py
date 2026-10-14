@@ -10,10 +10,8 @@ from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.library.circuit_metrics import (
-    CircuitStatsLevelOfDetail,
-    get_circuit_metrics,
-)
+from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
+from obi_one.scientific.library.circuit_metrics import get_circuit_metrics
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_task_type,
 )

@@ -10,4 +10,9 @@ def test_import_config_class_resolves_an_obibasemodel():
 
 def test_import_config_class_rejects_a_non_config_class():
     with pytest.raises(TypeError, match="does not name an OBIBaseModel subclass"):
-        _import_config_class(("obi_one.core.registry", "BlockReferenceRegistry"))
+        _import_config_class(
+            (
+                "obi_one.scientific.mappings_and_registry.block_reference_registry",
+                "BlockReferenceRegistry",
+            )
+        )

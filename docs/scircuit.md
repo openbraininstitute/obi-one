@@ -79,7 +79,7 @@ Small circuits (≤20 neurons) are optimized for rapid testing and development, 
 A typical circuit simulation configuration includes:
 
 ```python
-from obi_one import CircuitFromID
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
