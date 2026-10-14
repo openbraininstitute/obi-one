@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from entitysdk import models
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -15,6 +16,49 @@ def _sonata_asset():
     asset = MagicMock()
     asset.label = "sonata_circuit"
     return asset
+
+
+def test_circuit_from_id_entitysdk_class():
+    assert CircuitFromID.entitysdk_class() is models.Circuit
+
+
+def test_memodel_with_synapses_entitysdk_class():
+    assert MEModelWithSynapsesCircuitFromID.entitysdk_class() is models.Circuit
+
+
+def test_memodel_with_synapses_entity_accepts_single_scale():
+    circuit_from_id = MEModelWithSynapsesCircuitFromID(id_str="circuit-1")
+    entity = MagicMock()
+    entity.scale = "single"
+    with patch.object(MEModelWithSynapsesCircuitFromID, "fetch", return_value=entity):
+        assert circuit_from_id.entity(MagicMock()) is entity
+
+
+def test_circuit_from_id_stage_circuit_nodes_only(tmp_path):
+    dest_dir = tmp_path / "circuit_staging"
+    circuit_from_id = CircuitFromID(id_str="circuit-1")
+    entity = MagicMock()
+    entity.id = "circuit-uuid"
+    entity.assets = [_sonata_asset()]
+    db_client = MagicMock()
+    selected_asset = MagicMock()
+    db_client.select_assets.return_value.one.return_value = selected_asset
+    expected_circuit = MagicMock()
+
+    with (
+        patch.object(CircuitFromID, "entity", return_value=entity),
+        patch(f"{_MODULE}.stage_circuit_nodes") as mock_stage_nodes,
+        patch(f"{_MODULE}.Circuit", return_value=expected_circuit),
+    ):
+        result = circuit_from_id.stage_circuit(
+            dest_dir=dest_dir,
+            db_client=db_client,
+            entity_cache=False,
+            nodes_only=True,
+        )
+
+    assert result is expected_circuit
+    mock_stage_nodes.assert_called_once()
 
 
 def test_circuit_from_id_stage_circuit(tmp_path):

@@ -2,9 +2,10 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
-from entitysdk.models import TaskConfig
+from entitysdk.models import Species, TaskConfig
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.scientific.from_id.species_from_id import SpeciesFromID
 
 _TEST_ENTITY_ID = "00000000-0000-0000-0000-000000000001"
 _TEST_ENTITY_UUID = UUID(_TEST_ENTITY_ID)
@@ -46,6 +47,34 @@ class TestEntityFromIDFetch:
             entity_id=_TEST_ENTITY_UUID, entity_type=TaskConfig
         )
         assert result == "fetched_entity"
+
+
+class TestIdentifiableFromIDFetch:
+    def test_fetch_calls_db_client(self):
+        mock_client = MagicMock()
+        mock_client.get_entity.return_value = "species_entity"
+
+        result = SpeciesFromID.fetch(_TEST_ENTITY_ID, mock_client)
+        mock_client.get_entity.assert_called_once_with(
+            entity_id=_TEST_ENTITY_UUID, entity_type=Species
+        )
+        assert result == "species_entity"
+
+
+class TestIdentifiableFromIDStr:
+    def test_str_representation(self):
+        obj = SpeciesFromID(id_str="species-1")
+        assert str(obj) == "SpeciesFromID_species-1"
+
+
+class TestIdentifiableFromIDEntity:
+    def test_entity_raises_when_fetch_returns_none(self):
+        obj = SpeciesFromID(id_str=_TEST_ENTITY_ID)
+        with (
+            patch.object(SpeciesFromID, "fetch", return_value=None),
+            pytest.raises(RuntimeError, match=f"failed to resolve entity {_TEST_ENTITY_ID!r}"),
+        ):
+            obj.entity(MagicMock())
 
 
 class TestEntityFromIDEntity:

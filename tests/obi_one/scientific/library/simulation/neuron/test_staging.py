@@ -149,10 +149,11 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
     expected = MagicMock()
     mock_build_circuit.return_value = expected
 
-    with patch.object(MEModelFromID, "fetch", return_value=mock_memodel_entity):
+    memodel_from_id = MEModelFromID(id_str="00000000-0000-0000-0000-000000000012")
+    with patch.object(MEModelFromID, "entity", return_value=mock_memodel_entity):
         circuit = test_module.stage_memodel_as_circuit(
             client=mock_client,
-            circuit=MEModelFromID(id_str="memodel-id"),
+            circuit=memodel_from_id,
             output_dir=mock_output_dir,
         )
 

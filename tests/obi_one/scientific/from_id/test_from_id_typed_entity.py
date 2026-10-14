@@ -76,6 +76,19 @@ class TestIonChannelModelFromIDTypedEntity:
         with patch.object(IonChannelModelFromID, "fetch", return_value=entity):
             assert obj.get_other_parameter_names(MagicMock()) == ["custom"]
 
+    def test_get_other_parameter_names_flattens_mapping_entries(self):
+        obj = IonChannelModelFromID(id_str="ic-id")
+        entity = MagicMock()
+        entity.neuron_block.range = [["param_a", "g_na"]]
+        entity.conductance_name = "g_na"
+        entity.max_permeability_name = None
+        with (
+            patch.object(IonChannelModelFromID, "fetch", return_value=entity),
+            patch.object(IonChannelModelFromID, "get_conductance_name", return_value="g_na"),
+            patch.object(IonChannelModelFromID, "get_max_permeability_name", return_value=None),
+        ):
+            assert obj.get_other_parameter_names(MagicMock()) == ["param_a"]
+
     def test_has_conductance_reflects_conductance_name(self):
         with patch.object(
             IonChannelModelFromID,

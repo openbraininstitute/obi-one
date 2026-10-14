@@ -15,6 +15,9 @@ import httpx
 import numpy as np
 import pytest
 
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.task import (
     EModelEFeatureExtractionTask,
     _build_files_metadata,
@@ -59,6 +62,28 @@ def _noop_chdir(_path):
 
 
 class TestEModelEFeatureExtractionTask:
+    def test_download_recordings_resolves_ljp_from_entity(self, tmp_path, mock_db_client):
+        task = _make_task(tmp_path)
+        recording_id = "00000000-0000-0000-0000-000000000013"
+        recording = ElectricalCellRecordingFromID(id_str=recording_id)
+        task.config.initialize.electrical_cell_recording = (recording,)
+        entity = Mock(ljp=0.05)
+        dest = tmp_path / recording_id / "recording.nwb"
+        dest.parent.mkdir(parents=True)
+        dest.touch()
+
+        with (
+            patch.object(
+                ElectricalCellRecordingFromID,
+                "download_nwb_asset",
+                return_value=dest,
+            ),
+            patch.object(ElectricalCellRecordingFromID, "fetch", return_value=entity),
+        ):
+            downloaded = task._download_recordings(tmp_path / "ephys", mock_db_client)
+
+        assert downloaded == [(dest, 0.05)]
+
     def test_execute_updates_activity_with_generated_entity(self, tmp_path, mock_db_client):
         """execute() must call _update_execution_activity with the TaskResult ID."""
         task = _make_task(tmp_path)
