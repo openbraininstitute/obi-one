@@ -13,9 +13,11 @@ from app.services.resource_estimation.circuit_extraction import (
     MAX_MEMORY_GB,
     get_required_cpu_memory_combo,
 )
-from obi_one import deserialize_obi_object_from_json_data
-from obi_one.core.registry import task_registry
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_task_type,
+)
 from obi_one.scientific.tasks.create_recording_array.process import get_number_of_mpi_processes
 
 SUPPORTED_CIRCUIT_SCALES = frozenset(
@@ -23,10 +25,11 @@ SUPPORTED_CIRCUIT_SCALES = frozenset(
 )
 
 # write_weights splits the cells between its MPI processes, each of which also loads NEURON and
-# neurodamus. Fitted to runs measured in #1062, budgeting every cell like an L5 pyramidal cell.
+# neurodamus. Measured on staging with #1084: up to 7.1 MB per cell (an rCA1 slice), and about
+# 18 bytes per segment for each electrode, up to 12 KB per cell for the largest cells.
 MEMORY_GB_PER_PROCESS = 0.5  # measured 0.35 GB in the launch image
 MEMORY_GB_PER_CELL = 0.01
-MEMORY_GB_PER_CELL_AND_ELECTRODE = 3e-5
+MEMORY_GB_PER_CELL_AND_ELECTRODE = 1.5e-5
 SECONDS_PER_CELL = 2.0  # in one process; nbS1-HEX0-L23 took over 0.8 s per cell
 OVERHEAD_SECONDS = 900  # staging the circuit and compiling its mechanisms
 
@@ -40,7 +43,7 @@ def _count_electrodes(
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
+        asset_label=get_task_spec_for_task_type(task_definition.task_type).asset_label,  # ty:ignore[invalid-argument-type]
     ).id
     json_str = db_client.download_content(
         entity_id=json_model.config_id,

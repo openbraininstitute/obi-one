@@ -1,7 +1,7 @@
 import json
 
 from obi_one.core.schema import SchemaKey
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,

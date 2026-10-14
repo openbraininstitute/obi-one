@@ -8,10 +8,24 @@ that is an error.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
-from obi_one.scientific.blocks.neuron_sets.combined import SetOperation
-from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    PointCombinedNeuronSet,
+    SetOperation,
+    VirtualCombinedNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.deprecated import (
+    AllNeurons,
+    ExcitatoryNeurons,
+    IDNeuronSet,
+    InhibitoryNeurons,
+    PredefinedNeuronSet,
+    nbS1POmInputs,
+    nbS1VPMInputs,
+    rCA1CA3Inputs,
+)
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     PointPopulationIDNeuronSet,
@@ -38,6 +52,8 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPointNeurons,
     AllVirtualNeurons,
 )
+from obi_one.scientific.blocks.recordings.soma import SomaVoltageRecording
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
@@ -80,7 +96,7 @@ BIOPHYSICAL_NEURON_SETS = {
     ),
     "BiophysicalPopulationIDNeuronSet": BiophysicalPopulationIDNeuronSet(
         population=BIOPHYSICAL_POPULATION,
-        neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1]),
+        neuron_ids=NamedTuple(name="ids", elements=[0, 1]),
     ),
     "BiophysicalPopulationPredefinedNeuronSet": BiophysicalPopulationPredefinedNeuronSet(
         population=BIOPHYSICAL_POPULATION,
@@ -97,7 +113,7 @@ VIRTUAL_NEURON_SETS = {
     "VirtualPopulationNeuronSet": VirtualPopulationNeuronSet(population=VIRTUAL_POPULATION),
     "VirtualPopulationIDNeuronSet": VirtualPopulationIDNeuronSet(
         population=VIRTUAL_POPULATION,
-        neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1, 2]),
+        neuron_ids=NamedTuple(name="ids", elements=[0, 1, 2]),
     ),
     "VirtualPopulationPredefinedNeuronSet": VirtualPopulationPredefinedNeuronSet(
         population=VIRTUAL_POPULATION,
@@ -114,7 +130,7 @@ POINT_NEURON_SETS = {
     "PointPopulationNeuronSet": PointPopulationNeuronSet(population=POINT_POPULATION),
     "PointPopulationIDNeuronSet": PointPopulationIDNeuronSet(
         population=POINT_POPULATION,
-        neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1]),
+        neuron_ids=NamedTuple(name="ids", elements=[0, 1]),
     ),
     "PointPopulationPredefinedNeuronSet": PointPopulationPredefinedNeuronSet(
         population=POINT_POPULATION,
@@ -129,13 +145,13 @@ POINT_NEURON_SETS = {
 # Kept for backwards compatibility with stored configs; every resolution method raises.
 DEPRECATED_NEURON_SETS = {
     "AllNeurons": AllNeurons(),
-    "ExcitatoryNeurons": obi.ExcitatoryNeurons(),
-    "InhibitoryNeurons": obi.InhibitoryNeurons(),
-    "IDNeuronSet": obi.IDNeuronSet(neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1, 2])),
-    "PredefinedNeuronSet": obi.PredefinedNeuronSet(node_set="Excitatory"),
-    "nbS1VPMInputs": obi.nbS1VPMInputs(),
-    "nbS1POmInputs": obi.nbS1POmInputs(),
-    "rCA1CA3Inputs": obi.rCA1CA3Inputs(),
+    "ExcitatoryNeurons": ExcitatoryNeurons(),
+    "InhibitoryNeurons": InhibitoryNeurons(),
+    "IDNeuronSet": IDNeuronSet(neuron_ids=NamedTuple(name="ids", elements=[0, 1, 2])),
+    "PredefinedNeuronSet": PredefinedNeuronSet(node_set="Excitatory"),
+    "nbS1VPMInputs": nbS1VPMInputs(),
+    "nbS1POmInputs": nbS1POmInputs(),
+    "rCA1CA3Inputs": rCA1CA3Inputs(),
 }
 
 COMBINED_NEURON_SETS = {
@@ -246,7 +262,7 @@ class TestNeuronSetsReachNodeSetsFile:
             blocks={
                 "Three": BiophysicalPopulationIDNeuronSet(
                     population=BIOPHYSICAL_POPULATION,
-                    neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1, 2]),
+                    neuron_ids=NamedTuple(name="ids", elements=[0, 1, 2]),
                 )
             },
         )
@@ -265,7 +281,7 @@ class TestNeuronSetsReachNodeSetsFile:
             blocks={
                 "Half": BiophysicalPopulationIDNeuronSet(
                     population=BIOPHYSICAL_POPULATION,
-                    neuron_ids=obi.NamedTuple(name="ids", elements=list(range(10))),
+                    neuron_ids=NamedTuple(name="ids", elements=list(range(10))),
                     sample_percentage=50.0,
                     sample_seed=1,
                 )
@@ -322,11 +338,11 @@ class TestCombinedNeuronSets:
     def test_union_of_two_id_sets(self, circuit, tmp_path):
         first = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="first", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="first", elements=[0, 1]),
         )
         second = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="second", elements=[2, 3]),
+            neuron_ids=NamedTuple(name="second", elements=[2, 3]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -334,7 +350,7 @@ class TestCombinedNeuronSets:
             blocks={
                 "First": first,
                 "Second": second,
-                "Combined": lambda: obi.BiophysicalCombinedNeuronSet(
+                "Combined": lambda: BiophysicalCombinedNeuronSet(
                     base_neuron_set=first.ref,
                     combined_with=((second.ref, SetOperation.UNION),),
                 ),
@@ -353,11 +369,11 @@ class TestCombinedNeuronSets:
     def test_intersection_and_difference(self, circuit, tmp_path):
         first = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="first", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="first", elements=[0, 1, 2]),
         )
         second = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="second", elements=[1, 2, 3]),
+            neuron_ids=NamedTuple(name="second", elements=[1, 2, 3]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -365,11 +381,11 @@ class TestCombinedNeuronSets:
             blocks={
                 "First": first,
                 "Second": second,
-                "Intersection": lambda: obi.BiophysicalCombinedNeuronSet(
+                "Intersection": lambda: BiophysicalCombinedNeuronSet(
                     base_neuron_set=first.ref,
                     combined_with=((second.ref, SetOperation.INTERSECT),),
                 ),
-                "Difference": lambda: obi.BiophysicalCombinedNeuronSet(
+                "Difference": lambda: BiophysicalCombinedNeuronSet(
                     base_neuron_set=first.ref,
                     combined_with=((second.ref, SetOperation.DIFF),),
                 ),
@@ -387,7 +403,7 @@ class TestCombinedNeuronSets:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Combined": obi.BiophysicalCombinedNeuronSet(
+                "Combined": BiophysicalCombinedNeuronSet(
                     base_neuron_set=None,
                     combined_with=((None, SetOperation.UNION),),
                 )
@@ -405,7 +421,7 @@ class TestCombinedNeuronSets:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Combined": obi.VirtualCombinedNeuronSet(
+                "Combined": VirtualCombinedNeuronSet(
                     base_neuron_set=None,
                     combined_with=(),
                 )
@@ -428,7 +444,7 @@ class TestCombinedNeuronSets:
             circuit=point_circuit,
             blocks={
                 "Target": target,
-                "Combined": obi.PointCombinedNeuronSet(base_neuron_set=None, combined_with=()),
+                "Combined": PointCombinedNeuronSet(base_neuron_set=None, combined_with=()),
             },
         )
         config.initialize.node_set = config.neuron_sets["Target"].ref
@@ -445,7 +461,7 @@ class TestCombinedNeuronSets:
         config = build_config(
             Brian2CircuitSimulationSingleConfig,
             circuit=point_circuit,
-            blocks={"Combined": obi.PointCombinedNeuronSet(base_neuron_set=None, combined_with=())},
+            blocks={"Combined": PointCombinedNeuronSet(base_neuron_set=None, combined_with=())},
         )
 
         result = generate(config, tmp_path)
@@ -459,7 +475,7 @@ class TestCombinedNeuronSets:
         config = build_config(
             LearningEngineCircuitSimulationSingleConfig,
             circuit=point_circuit,
-            blocks={"Combined": obi.PointCombinedNeuronSet(base_neuron_set=None, combined_with=())},
+            blocks={"Combined": PointCombinedNeuronSet(base_neuron_set=None, combined_with=())},
         )
 
         result = generate(config, tmp_path)
@@ -470,14 +486,14 @@ class TestCombinedNeuronSets:
     def test_explicit_references_are_left_alone(self, circuit, tmp_path):
         explicit = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="ids", elements=[4]),
+            neuron_ids=NamedTuple(name="ids", elements=[4]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Explicit": explicit,
-                "Combined": lambda: obi.BiophysicalCombinedNeuronSet(
+                "Combined": lambda: BiophysicalCombinedNeuronSet(
                     base_neuron_set=explicit.ref, combined_with=()
                 ),
             },
@@ -506,8 +522,8 @@ class TestDefaultNeuronSetInjection:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
+                "Voltage": SomaVoltageRecording(),
             },
         )
 
@@ -521,15 +537,15 @@ class TestDefaultNeuronSetInjection:
     def test_explicit_targets_are_preserved(self, circuit, tmp_path):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="ids", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Target": target,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(neuron_set=target.ref),
-                "Voltage": lambda: obi.SomaVoltageRecording(neuron_set=target.ref),
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(neuron_set=target.ref),
+                "Voltage": lambda: SomaVoltageRecording(neuron_set=target.ref),
             },
         )
 
@@ -550,7 +566,7 @@ class TestDefaultNeuronSetInjection:
     def test_explicit_simulation_target_is_used(self, circuit, tmp_path):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="ids", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -581,7 +597,7 @@ class TestDefaultNeuronSetErrors:
         """The simulation itself cannot run a virtual population."""
         virtual = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="ids", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="ids", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -596,7 +612,7 @@ class TestDefaultNeuronSetErrors:
     def test_virtual_target_error_lists_the_usable_populations(self, circuit, tmp_path):
         virtual = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="ids", elements=[0]),
+            neuron_ids=NamedTuple(name="ids", elements=[0]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
@@ -614,8 +630,8 @@ class TestDefaultNeuronSetErrors:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                DEFAULT_BIOPHYSICAL_NODE_SET: obi.PredefinedNeuronSet(node_set="Excitatory"),
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
+                DEFAULT_BIOPHYSICAL_NODE_SET: PredefinedNeuronSet(node_set="Excitatory"),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
             },
         )
 
@@ -629,9 +645,9 @@ class TestDefaultNeuronSetErrors:
             blocks={
                 DEFAULT_VIRTUAL_NODE_SET: VirtualPopulationIDNeuronSet(
                     population=VIRTUAL_POPULATION,
-                    neuron_ids=obi.NamedTuple(name="ids", elements=[0]),
+                    neuron_ids=NamedTuple(name="ids", elements=[0]),
                 ),
-                "Combined": obi.VirtualCombinedNeuronSet(base_neuron_set=None, combined_with=()),
+                "Combined": VirtualCombinedNeuronSet(base_neuron_set=None, combined_with=()),
             },
         )
 
@@ -645,9 +661,9 @@ class TestDefaultNeuronSetErrors:
             blocks={
                 DEFAULT_POINT_NODE_SET: PointPopulationIDNeuronSet(
                     population=POINT_POPULATION,
-                    neuron_ids=obi.NamedTuple(name="ids", elements=[0]),
+                    neuron_ids=NamedTuple(name="ids", elements=[0]),
                 ),
-                "Combined": obi.PointCombinedNeuronSet(base_neuron_set=None, combined_with=()),
+                "Combined": PointCombinedNeuronSet(base_neuron_set=None, combined_with=()),
             },
         )
 

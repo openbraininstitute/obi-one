@@ -2,30 +2,31 @@
 
 import json
 import logging
+import pickle  # ruff: ignore[suspicious-pickle-import]
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import sys
 import uuid
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType
-from pydantic import Field, StringConstraints
+from pydantic import Discriminator, Field, StringConstraints
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
-from obi_one.core.info import Info
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.schema import SchemaKey
-from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME, SCAN_CONFIG_FILENAME
+from obi_one.core.exception import ConfigValidationError
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.blocks.ion_channel_equations import (
-    ion_channel_equations as equations_module,
+from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations import (
+    EquationKey,
+    equation_schema_extra,
 )
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
+from obi_one.utils.process import run_and_log
 
 L = logging.getLogger(__name__)
 
@@ -81,31 +82,168 @@ except ImportError:
         pass
 
 
+VOLTAGE_EXCLUSION = {
+    "activation": {"above": None, "below": None},
+    "inactivation": {"above": None, "below": None},
+}
+
+# None means "read the timing from the trace"; the corrections shift those read timings, in ms.
+STIM_TIMINGS = {
+    "activation": {"start": None, "end": None},
+    "inactivation_iv": {"start": None, "end": None},
+    "inactivation_tc": {"start": None, "end": None},
+}
+
+STIM_TIMINGS_CORRECTIONS = {
+    "activation": {"start": 0.0, "end": -1.0},
+    "inactivation_iv": {"start": 5.0, "end": -1.0},
+    "inactivation_tc": {"start": 0.0, "end": -1.0},
+}
+
+
+PLOT_FITTED_MODEL_COMMAND = (
+    "import sys\n"
+    "from obi_one.scientific.tasks.ion_channel_modeling import plot_fitted_model\n"
+    "plot_fitted_model(sys.argv[1])"
+)
+
+
+def plot_fitted_model(io_path: str) -> None:
+    """Child side of plot_in_fresh_process: reads its arguments from io_path, writes the result."""
+    import neuron  # ruff: ignore[import-outside-top-level]
+
+    mechanisms_root, kwargs = pickle.loads(Path(io_path).read_bytes())  # ruff: ignore[suspicious-pickle-usage]
+    if not neuron.load_mechanisms(str(mechanisms_root)):
+        msg = f"No compiled mechanisms found in {mechanisms_root}"
+        raise RuntimeError(msg)
+    Path(io_path).write_bytes(pickle.dumps(run_ion_channel_model(**kwargs)))
+
+
+def plot_in_fresh_process(mechanisms_root: Path, **kwargs: Any) -> Any:
+    """NEURON loads a mechanism name only once per process, and every fit of a sweep compiles its
+    own mechanism under the same name.
+
+    A new interpreter rather than multiprocessing's spawn, which re-runs the caller's script.
+    """
+    io_path = mechanisms_root / "plot_fitted_model.pkl"
+    io_path.write_bytes(pickle.dumps((mechanisms_root, kwargs)))
+    try:
+        run_and_log([sys.executable, "-c", PLOT_FITTED_MODEL_COMMAND, str(io_path)])
+    except subprocess.CalledProcessError as e:
+        # The child's exception, rather than its exit status.
+        raise RuntimeError(e.stderr.strip().rpartition("\n")[2] or str(e)) from e
+    return pickle.loads(io_path.read_bytes())  # ruff: ignore[suspicious-pickle-usage]
+
+
 class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    EQUATIONS = "Equations"
-    GATEEXPONENTS = "Gates Exponents"
+    MODEL = "Model"
 
 
-class IonChannelFittingScanConfig(ScanConfig):
+class HodgkinHuxleyIonChannelModel(Block):
+    """The channel model to fit: one equation per gating variable, plus their exponents."""
+
+    title: ClassVar[str] = "Hodgkin-Huxley ion channel model"
+
+    m_power: Annotated[int, Field(ge=1, le=4)] | list[Annotated[int, Field(ge=1, le=4)]] = Field(
+        title="m exponent in channel equation",
+        default=1,
+        description=(
+            r"Exponent \(p\) of \(m\) in the channel equation: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    h_power: Annotated[int, Field(ge=0, le=4)] | list[Annotated[int, Field(ge=0, le=4)]] = Field(
+        title="h exponent in channel equation",
+        default=1,
+        description=(
+            r"Exponent \(q\) of \(h\) in the channel equation: "
+            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+
+    minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
+        title="m∞ equation",
+        description=(
+            r"Steady state activation parameter \( m_{\infty} \) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+        ),
+        default=EquationKey.SIG_FIT_MINF,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    mtau_eq: Literal[
+        EquationKey.SIG_FIT_MTAU,
+        EquationKey.THERMO_FIT_MTAU,
+        EquationKey.THERMO_FIT_MTAU_V2,
+        EquationKey.BELL_FIT_MTAU,
+    ] = Field(
+        title="m time constant equation",
+        description=(
+            r"Activation time constant \(\tau_m\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+        ),
+        default=EquationKey.SIG_FIT_MTAU,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    hinf_eq: Literal[EquationKey.SIG_FIT_HINF] = Field(
+        title="h∞ equation",
+        description=(
+            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+        ),
+        default=EquationKey.SIG_FIT_HINF,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    htau_eq: Literal[EquationKey.SIG_FIT_HTAU] = Field(
+        title="h time constant equation",
+        description=(
+            r"Inactivation time constant \(\tau_h\) equation. "
+            r"This equation will be used for solving the differential equation: "
+            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+        ),
+        default=EquationKey.SIG_FIT_HTAU,
+        json_schema_extra=equation_schema_extra,
+    )
+
+
+# One member, but a discriminated union rather than a bare block: the editor draws it as a
+# block_union, so a second channel formalism becomes another member and nothing else changes.
+IonChannelModelUnion = Annotated[HodgkinHuxleyIonChannelModel, Discriminator("type")]
+
+
+class IonChannelFittingScanConfig(InfoScanConfig):
     """Form for modeling an ion channel model from a set of ion channel traces."""
 
-    name: ClassVar[str] = "IonChannelFittingScanConfig"
+    name: ClassVar[str] = "Ion channel"
     description: ClassVar[str] = "Models ion channel model from a set of ion channel traces."
 
     json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP,
-            BlockGroup.EQUATIONS,
-            BlockGroup.GATEEXPONENTS,
-        ]
+            BlockGroup.MODEL,
+        ],
     }
 
     class Initialize(Block):
-        recordings: IonChannelRecordingFromID = Field(
-            title="Ion channel recording", description="IDs of the traces of interest."
+        recordings: tuple[IonChannelRecordingFromID, ...] = Field(
+            title="Ion channel recordings",
+            description=(
+                "The recordings to fit the channel model to. Several are fitted jointly into "
+                "one model, not one model each."
+            ),
+            min_length=1,
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
         )
 
         ion_channel_name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")] = (
@@ -119,208 +257,57 @@ class IonChannelFittingScanConfig(ScanConfig):
                 ),
                 min_length=1,
                 default="DefaultIonChannelName",
+                json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
             )
-        )
-
-    class GateExponents(Block):
-        m_power: int = Field(
-            title="m exponent in channel equation",
-            default=1,
-            ge=1,
-            le=4,
-            description=(
-                r"Exponent \(p\) of \(m\) in the channel equation: "
-                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-            ),
-        )
-        h_power: int = Field(
-            title="h exponent in channel equation",
-            default=1,
-            ge=0,
-            le=4,
-            description=(
-                r"Exponent \(q\) of \(h\) in the channel equation: "
-                r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-            ),
         )
 
     initialize: Initialize = Field(
         title="Initialization",
-        description="Parameters for initializing the simulation.",
-        json_schema_extra={SchemaKey.GROUP: BlockGroup.SETUP, SchemaKey.GROUP_ORDER: 1},
-    )
-
-    info: Info = Field(
-        title="Info",
-        description="Information about the ion channel modeling campaign.",
-        json_schema_extra={SchemaKey.GROUP: BlockGroup.SETUP, SchemaKey.GROUP_ORDER: 0},
-    )
-
-    minf_eq: equations_module.MInfUnion = Field(
-        title=r"m_{\infty} equation",
-        description=(
-            r"Steady state activation parameter \( m_{\infty} \) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
-        ),
+        description="Parameters for initializing the fitting.",
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPES: [equations_module.MInfReference.__name__],
-            SchemaKey.GROUP: BlockGroup.EQUATIONS,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-    mtau_eq: equations_module.MTauUnion = Field(
-        title=r"\tau_m equation",
-        description=(
-            r"Activation time constant \(\tau_m\) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
-        ),
-        json_schema_extra={
-            SchemaKey.REFERENCE_TYPES: [equations_module.MTauReference.__name__],
-            SchemaKey.GROUP: BlockGroup.EQUATIONS,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    hinf_eq: equations_module.HInfUnion = Field(
-        title=r"h_{\infty} equation",
+
+    model_type: IonChannelModelUnion = Field(
+        title="Ion Channel Model",
         description=(
-            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+            "The Hodgkin-Huxley channel model to fit: an equation per gating variable, and "
+            "the exponents p and q of m and h in the channel equation g = gbar * m^p * h^q."
         ),
         json_schema_extra={
-            SchemaKey.REFERENCE_TYPES: [equations_module.HInfReference.__name__],
-            SchemaKey.GROUP: BlockGroup.EQUATIONS,
-            SchemaKey.GROUP_ORDER: 2,
-        },
-    )
-    htau_eq: equations_module.HTauUnion = Field(
-        title=r"\tau_h equation",
-        description=(
-            r"Inactivation time constant \(\tau_h\) equation. "
-            r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
-        ),
-        json_schema_extra={
-            SchemaKey.REFERENCE_TYPES: [equations_module.HTauReference.__name__],
-            SchemaKey.GROUP: BlockGroup.EQUATIONS,
-            SchemaKey.GROUP_ORDER: 3,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
+            SchemaKey.GROUP: BlockGroup.MODEL,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
-    gate_exponents: GateExponents = Field(
-        title="m & h gate exponents",
-        description=(
-            "Set the power of m and h gates used in Hodgkin-Huxley formalism: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
-        ),
-        json_schema_extra={SchemaKey.GROUP: BlockGroup.GATEEXPONENTS, SchemaKey.GROUP_ORDER: 0},
-    )
-
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,
-        multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-    ) -> entitysdk.models.IonChannelModelingCampaign:  # ty:ignore[possibly-missing-submodule]
-        """Initializes the ion channel modeling campaign in the database."""
-        L.info("1. Initializing ion channel modeling campaign in the database...")
-        if multiple_value_parameters_dictionary is None:
-            multiple_value_parameters_dictionary = {}
-
-        L.info("-- Register IonChannelModelingCampaign Entity")
-        self._campaign = db_client.register_entity(
-            entitysdk.models.IonChannelModelingCampaign(  # ty:ignore[possibly-missing-submodule]
-                name=self.info.campaign_name,
-                description=self.info.campaign_description,
-                input_recordings=[self.initialize.recordings.entity(db_client=db_client)],
-                scan_parameters=multiple_value_parameters_dictionary,
+    def input_entities(self, db_client: entitysdk.client.Client) -> list:
+        entities = [
+            recording.entity(db_client=db_client) for recording in self.initialize.recordings
+        ]
+        temperatures = {entity.temperature for entity in entities}  # ty:ignore[unresolved-attribute]
+        if len(temperatures) > 1:
+            msg = (
+                "Ion channel recordings fitted together must share a temperature, because the "
+                f"fitted model records a single one. Got {sorted(temperatures, key=str)}."
             )
-        )
-
-        L.info("-- Upload campaign_generation_config")
-        _ = db_client.upload_file(
-            entity_id=self._campaign.id,
-            entity_type=entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
-            file_path=output_root / SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-            asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
-        )
-
-        return self._campaign
-
-    def create_campaign_generation_entity(
-        self,
-        ion_channel_modelings: list[entitysdk.models.IonChannelModelingConfig],  # ty:ignore[possibly-missing-submodule]
-        db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.IonChannelModelingConfigGeneration:  # ty:ignore[invalid-method-override, possibly-missing-submodule]
-        """Register the activity generating the ion channel modeling tasks in the database."""
-        L.info("3. Saving completed ion channel modeling campaign generation")
-
-        L.info("-- Register IonChannelModelingGeneration Entity")
-        return db_client.register_entity(
-            entitysdk.models.IonChannelModelingConfigGeneration(  # ty:ignore[possibly-missing-submodule]
-                start_time=datetime.now(UTC),
-                used=[self._campaign],
-                generated=ion_channel_modelings,
-            )
-        )
+            raise ConfigValidationError(msg)
+        return entities
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
     """Only allows single values and ensures nested attributes follow the same rule."""
 
-    def create_single_entity_with_config(
-        self,
-        campaign: entitysdk.models.IonChannelModelingCampaign,  # ty:ignore[possibly-missing-submodule]
-        db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.IonChannelModelingConfig:  # ty:ignore[possibly-missing-submodule]
-        """Saves the simulation to the database."""
-        L.info(f"2.{self.idx} Saving ion channel modeling config {self.idx} to database...")
-
-        # For now, we only support a single recording
-        if not isinstance(self.initialize.recordings, IonChannelRecordingFromID):
-            msg = (
-                "IonChannelModeling currently only supports a single IonChannelRecordingFromID. "
-                f"Got {type(self.initialize.recordings).__name__}"
-            )
-            raise OBIONEError(msg)
-
-        # Convert single recording to a list for future compatibility
-        recordings = [self.initialize.recordings]
-
-        # This loop will be useful when we support multiple recordings
-        for recording in recordings:
-            if not isinstance(recording, IonChannelRecordingFromID):
-                msg = (
-                    "IonChannelModeling can only be saved to entitycore if all input recordings "
-                    "are IonChannelRecordingFromID"
-                )
-                raise OBIONEError(msg)
-
-        L.info("-- Register IonChannelModeling Entity")
-        self._single_entity = db_client.register_entity(
-            entitysdk.models.IonChannelModelingConfig(  # ty:ignore[possibly-missing-submodule]
-                name=f"IonChannelModelingConfig {self.idx}",
-                description=f"IonChannelModelingConfig {self.idx}",
-                scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
-                ion_channel_modeling_campaign_id=campaign.id,
-            )
-        )
-
-        L.info("-- Upload ion_channel_modeling_generation_config")
-        _ = db_client.upload_file(
-            entity_id=self.single_entity.id,
-            entity_type=entitysdk.models.IonChannelModelingConfig,  # ty:ignore[possibly-missing-submodule]
-            file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-            asset_label="ion_channel_modeling_generation_config",  # ty:ignore[invalid-argument-type]
-        )
-
 
 class IonChannelFittingTask(Task):
     config: IonChannelFittingSingleConfig
+
+    @property
+    def recordings(self) -> tuple[IonChannelRecordingFromID, ...]:
+        return self.config.initialize.recordings
 
     @property
     def conductance_name(self) -> str:
@@ -331,21 +318,18 @@ class IonChannelFittingTask(Task):
         self,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> tuple[list[Path], list[float]]:
-        """Download all the recordings, and return their traces and ljp values."""
+        """Download every recording, and return their traces and ljp values."""
         trace_paths = []
         trace_ljps = []
-
-        # Convert single recording to a list for future compatibility
-        recordings = [self.config.initialize.recordings]
-
-        for recording in recordings:
+        for recording in self.recordings:
             trace_paths.append(
+                # One folder per recording: NWB files of different recordings can share a name.
                 recording.download_asset(
-                    dest_dir=self.config.coordinate_output_root, db_client=db_client
+                    dest_dir=self.config.coordinate_output_root / "recordings" / recording.id_str,
+                    db_client=db_client,
                 )
             )
             trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
-
         return trace_paths, trace_ljps
 
     @staticmethod
@@ -422,6 +406,7 @@ class IonChannelFittingTask(Task):
         figure_filepaths: dict[Path],  # ty:ignore[invalid-type-arguments]
         db_client: entitysdk.client.Client,
         range_vars: list[dict[str, str | None]],
+        recording_entity: Any,
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
@@ -438,12 +423,13 @@ class IonChannelFittingTask(Task):
             nonspecific=[],
         )
 
-        # Get recording entity to access metadata
-        recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
+        recording_names = ", ".join(
+            str(recording.entity(db_client=db_client).name) for recording in self.recordings
+        )
 
         # Extract subject and brain_region from recording metadata
-        subject = recording_entity.subject  # ty:ignore[unresolved-attribute]
-        brain_region = recording_entity.brain_region  # ty:ignore[unresolved-attribute]
+        subject = recording_entity.subject
+        brain_region = recording_entity.brain_region
 
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(  # ty:ignore[possibly-missing-submodule]
@@ -451,15 +437,15 @@ class IonChannelFittingTask(Task):
                 nmodl_suffix=self.config.initialize.ion_channel_name,
                 description=(
                     f"Ion channel model: {self.config.initialize.ion_channel_name}.mod "
-                    f"made using recording: {recording_entity.name} "
-                    f"for (temperature: {recording_entity.temperature}), "  # ty:ignore[unresolved-attribute]
+                    f"made using recordings: {recording_names} "
+                    f"for (temperature: {recording_entity.temperature}), "
                     f"brain region: {brain_region.name}, "
                     f"and subject: {subject.name}."
                 ),
                 contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=recording_entity.temperature,  # ty:ignore[unresolved-attribute]
+                temperature_celsius=recording_entity.temperature,
                 is_stochastic=False,
                 neuron_block=neuron_block,
                 brain_region=brain_region,
@@ -486,72 +472,41 @@ class IonChannelFittingTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
+        execution_activity = self._get_execution_activity(
+            db_client=db_client, execution_activity_id=execution_activity_id
+        )
+
         try:  # ruff: ignore[too-many-statements-in-try-clause]
+            recording_entity = self.config.input_entities(db_client=db_client)[0]
+
             # download traces asset and metadata given id.
             # Get ljp (liquid junction potential) voltage corection from metadata
             trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
-            # prepare data to feed
-            eq_names = {
-                "minf": self.config.minf_eq.__class__.equation_key,  # ty:ignore[unresolved-attribute]
-                "mtau": self.config.mtau_eq.__class__.equation_key,
-                "hinf": self.config.hinf_eq.__class__.equation_key,  # ty:ignore[unresolved-attribute]
-                "htau": self.config.htau_eq.__class__.equation_key,  # ty:ignore[unresolved-attribute]
-            }
-            voltage_exclusion = {
-                "activation": {
-                    "above": None,
-                    "below": None,
-                },
-                "inactivation": {
-                    "above": None,
-                    "below": None,
-                },
-            }
-            stim_timings = {
-                "activation": {
-                    "start": None,
-                    "end": None,
-                },
-                "inactivation_iv": {
-                    "start": None,
-                    "end": None,
-                },
-                "inactivation_tc": {
-                    "start": None,
-                    "end": None,
-                },
-            }
-            stim_timings_corrections = {
-                "activation": {
-                    "start": 0.0,
-                    "end": -1.0,
-                },
-                "inactivation_iv": {
-                    "start": 5.0,
-                    "end": -1.0,
-                },
-                "inactivation_tc": {
-                    "start": 0.0,
-                    "end": -1.0,
-                },
+            model = self.config.model_type
+            eq_names: dict[str, str] = {
+                "minf": model.minf_eq,
+                "mtau": model.mtau_eq,
+                "hinf": model.hinf_eq,
+                "htau": model.htau_eq,
             }
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
                 ljps=trace_ljps,
                 eq_names=eq_names,  # ty:ignore[invalid-argument-type]
-                voltage_exclusion=voltage_exclusion,
-                stim_timings=stim_timings,
-                stim_timings_corrections=stim_timings_corrections,
+                voltage_exclusion=VOLTAGE_EXCLUSION,
+                stim_timings=STIM_TIMINGS,
+                stim_timings_corrections=STIM_TIMINGS_CORRECTIONS,
                 output_folder=self.config.coordinate_output_root,
             )
 
             # create new mod file
-            mechanisms_dir = self.config.coordinate_output_root / "mechanisms"
+            coordinate_root = Path(self.config.coordinate_output_root).resolve()
+            mechanisms_dir = coordinate_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
             output_name = mechanisms_dir / f"{self.config.initialize.ion_channel_name}.mod"
 
@@ -560,32 +515,27 @@ class IonChannelFittingTask(Task):
                 eq_popt=eq_popt,  # ty:ignore[invalid-argument-type]
                 suffix=self.config.initialize.ion_channel_name,
                 ion="k",
-                m_power=self.config.gate_exponents.m_power,
-                h_power=self.config.gate_exponents.h_power,
+                m_power=model.m_power,  # ty:ignore[invalid-argument-type]
+                h_power=model.h_power,  # ty:ignore[invalid-argument-type]
                 output_name=output_name,  # ty:ignore[invalid-argument-type]
             )
 
-            # compile output mod file
-            subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-                [  # ruff: ignore[start-process-with-partial-path]
-                    "nrnivmodl",
-                    "-incflags",
-                    "-DDISABLE_REPORTINGLIB",
-                    str(mechanisms_dir),
-                ],
-                check=True,
+            # Compile into the coordinate folder rather than the process cwd, which concurrent
+            # fits in one worker share. The path is relative because make stops on the "=" of
+            # NAME_EQUALS_VALUE coordinate folders.
+            run_and_log(
+                ["nrnivmodl", "-incflags", "-DDISABLE_REPORTINGLIB", mechanisms_dir.name],
+                cwd=coordinate_root,
             )
 
-            # Get recording entity to access temperature
-            recording_entity = self.config.initialize.recordings.entity(db_client=db_client)
-
             mech_suffix = self.config.initialize.ion_channel_name
-            # run ion_channel_builder mod file runner to produce plots
-            figure_paths_dict = run_ion_channel_model(
+            figure_paths_dict = plot_in_fresh_process(
+                coordinate_root,
                 mech_suffix=mech_suffix,
-                # current is defined like this in mod file, see ion_channel_builder.io.write_output
-                mech_current="ik",  # ty:ignore[invalid-argument-type]
-                temperature=recording_entity.temperature,  # ty:ignore[unresolved-attribute]
+                # current is defined like this in mod file, see
+                # ion_channel_builder.io.write_output
+                mech_current="ik",
+                temperature=recording_entity.temperature,
                 mech_conductance_name=self.conductance_name,
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
@@ -607,9 +557,16 @@ class IonChannelFittingTask(Task):
             # register the mod file and figures to the platform
             model_id = self.save(
                 mod_filepath=output_name,
-                figure_filepaths=figure_paths_dict,  # ty:ignore[invalid-argument-type]
+                figure_filepaths=figure_paths_dict,
                 db_client=db_client,
                 range_vars=range_vars,  # ty:ignore[invalid-argument-type]
+                recording_entity=recording_entity,
+            )
+
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=execution_activity,
+                generated=[str(model_id)],
             )
 
         except Exception as e:

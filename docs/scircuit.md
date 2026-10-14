@@ -79,7 +79,11 @@ Small circuits (≤20 neurons) are optimized for rapid testing and development, 
 A typical circuit simulation configuration includes:
 
 ```python
-from obi_one import CircuitSimulationSingleConfig, CircuitFromID, AllNeurons
+from obi_one import CircuitFromID
+from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationSingleConfig,
+)
 
 config = CircuitSimulationSingleConfig(
     initialize=CircuitSimulationSingleConfig.Initialize(
@@ -229,7 +233,7 @@ The weight matrix's scaling factors are in V/nA, as the SONATA spec defines them
 ### Using GenerateSimulationTask
 
 ```python
-from obi_one import GenerateSimulationTask
+from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 
 task = GenerateSimulationTask(config=config)
 task.execute(db_client=db_client, entity_cache=False)

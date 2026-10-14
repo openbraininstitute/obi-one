@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
+    EModelOptimisationParameters,
     GlobalParameterSelection,
     MechanismRegionSelection,
     OptimizationParams,
@@ -296,13 +297,12 @@ def test_distance_distribution_validates_function_placeholders(payload, message)
 
 def test_distance_distribution_serializes_legacy_fields():
     distribution = DistanceDependentDistribution(
-        name="custom",
         function="{value} * {distance} * {constant}",
         soma_ref_location=0.75,
         parameters=("constant",),
     )
 
-    assert distribution.to_emc_dict() == {
+    assert distribution.to_emc_dict(name="custom") == {
         "name": "custom",
         "function": "{value} * {distance} * {constant}",
         "soma_ref_location": 0.75,
@@ -327,22 +327,23 @@ def test_optimization_params_validates_limits_and_serializes_all_algorithms():
     with pytest.raises(ValueError, match="centroids"):
         OptimizationParams(centroids=(float("nan"),))
     with pytest.raises(ValueError, match="less than or equal to 20"):
-        OptimizationParams(offspring_size=21)
+        OptimizationSettings(offspring_size=21)
     with pytest.raises(ValueError, match="less than or equal to 20"):
-        OptimizationParams(offspring_size=[10, 21])
+        OptimizationSettings(offspring_size=[10, 21])
     with pytest.raises(ValueError, match="less than or equal to 50"):
         OptimizationSettings(max_ngen=51)
     with pytest.raises(ValueError, match="less than or equal to 50"):
         OptimizationSettings(max_ngen=[20, 51])
 
-    cma = OptimizationParams(offspring_size=[2, 4], sigma=[0.1, 0.2], centroids=(1.0, 2.0))
-    assert cma.to_dict("SO-CMA") == {
+    cma = OptimizationParams(sigma=[0.1, 0.2], centroids=(1.0, 2.0))
+    assert OptimizationSettings(offspring_size=[2, 4]).to_dict(cma)["optimisation_params"] == {
         "offspring_size": [2, 4],
         "sigma": [0.1, 0.2],
         "centroids": [1.0, 2.0],
     }
-    ibea = OptimizationParams(offspring_size=10, eta=2.0, mutpb=0.2, cxpb=[0.3, 0.4])
-    assert ibea.to_dict("IBEA") == {
+    ibea = OptimizationParams(eta=2.0, mutpb=0.2, cxpb=[0.3, 0.4])
+    ibea_settings = OptimizationSettings(optimiser="IBEA", offspring_size=10)
+    assert ibea_settings.to_dict(ibea)["optimisation_params"] == {
         "offspring_size": 10,
         "eta": 2.0,
         "mutpb": 0.2,
@@ -359,7 +360,7 @@ def test_optimization_settings_serializes_optional_recipe_paths():
         stochasticity=True,
     )
 
-    recipe = settings.to_dict(OptimizationParams(offspring_size=2))
+    recipe = settings.to_dict(OptimizationParams())
 
     assert recipe["name_Rin_protocol"] == "rin"
     assert recipe["name_rmp_protocol"] == "rmp"
@@ -477,7 +478,8 @@ def _registration_fixture(tmp_path, *, complete=True):
     )
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(id="etype-id")))
     config = SimpleNamespace(
-        initialize=SimpleNamespace(emodel="test", etype=etype, morphology=morphology),
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        morphology=SimpleNamespace(cell_morphology=morphology),
         optimization_settings=SimpleNamespace(seed=7),
         parameters_selection=SimpleNamespace(ion_channel_model_references=(reference,)),
     )
@@ -703,7 +705,11 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
 
 
 def _config_data_for_selection(selection, distributions=None, **overrides):
-    data = _scan_config_data(parameters_selection=selection.model_dump(mode="json"))
+    data = _scan_config_data(
+        emodel_optimisation_parameters=EModelOptimisationParameters.from_parameters_selection(
+            selection
+        ).model_dump(mode="json")
+    )
     data["distance_dependent_distributions"] = distributions or {}
     data.update(overrides)
     return data
@@ -711,7 +717,6 @@ def _config_data_for_selection(selection, distributions=None, **overrides):
 
 def _decay_distribution():
     return CustomDistanceDependentDistribution(
-        name="decay",
         function="math.exp({distance}*{constant})*{value}",
         parameters=("constant",),
     )
@@ -774,11 +779,13 @@ def test_scan_config_rejects_empty_ion_channel_model_selection():
 
 def test_remaining_block_validation_and_serialization_paths():
     distribution = DistanceDependentDistribution(function="{value} * {distance}")
-    assert distribution.to_emc_dict() == {
-        "name": None,
+    assert distribution.to_emc_dict(name="base") == {
+        "name": "base",
         "function": "{value} * {distance}",
         "soma_ref_location": 0.5,
     }
+    with pytest.raises(ValueError, match="has no name"):
+        distribution.to_emc_dict()
 
     with pytest.raises(ValueError, match="Bounds cannot be provided"):
         OptimizationValue(mode="fixed", value=1.0, bounds=(0.0, 2.0))
@@ -806,7 +813,7 @@ def test_remaining_block_validation_and_serialization_paths():
         )
         assert config.morphology_settings.expected_myelinated is expected
 
-    assert OptimizationParams(offspring_size=2).to_dict("IBEA") == {"offspring_size": 2}
+    assert OptimizationParams().to_dict("IBEA") == {}
 
 
 def test_remaining_parameter_builder_paths():
@@ -970,9 +977,9 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(pref_label="cADpyr")))
     config = SimpleNamespace(
         coordinate_output_root=tmp_path,
-        initialize=SimpleNamespace(
-            emodel="test", etype=etype, target_efeatures=object(), morphology=morphology
-        ),
+        initialize=SimpleNamespace(emodel="test", etype=etype),
+        target_efeatures=SimpleNamespace(task_result=object()),
+        morphology=SimpleNamespace(cell_morphology=morphology),
         morphology_settings=SimpleNamespace(axon_modifier="none"),
         parameters_selection=SimpleNamespace(ion_channel_model_references=()),
         optimization_settings=SimpleNamespace(seed=7),

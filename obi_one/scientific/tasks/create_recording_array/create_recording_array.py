@@ -22,7 +22,7 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.extracellular_locations import (
     extracellular_locations_block_dictionary_summary,
@@ -236,7 +236,7 @@ class CreateExtracellularRecordingArrayTask(Task):
         BenchmarkTracker.start_tracking()
 
         with BenchmarkTracker.section("resolve_circuit"):
-            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+            self._circuit, self._circuit_entity = circuit_db_sdk.resolve_circuit(
                 self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
                 db_client=db_client,
                 entity_cache=entity_cache,

@@ -190,6 +190,25 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             compute_cell="local",
         ),
     ),
+    TaskDefinition(
+        task_type=TaskType.ion_channel_fitting,
+        config_type=TaskConfigType.ion_channel_modeling__config,
+        activity_type=TaskActivityType.ion_channel_modeling__execution,
+        code=_obi_one_code(
+            "ion_channel_fitting.txt", capabilities=Capabilities(private_packages=True)
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
     TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
