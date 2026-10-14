@@ -9,7 +9,6 @@ neuron count and the links are all part of the contract.
 import entitysdk
 import pytest
 
-import obi_one as obi
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.blocks.neuron_sets.id import (
@@ -22,6 +21,9 @@ from obi_one.scientific.blocks.recordings.extracellular import (
 from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
 from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
 from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -43,7 +45,7 @@ CORENEURON = {"simulator": "CORENEURON"}
 
 def _lfp_recording(array_id):
     return ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
     )
 
 
