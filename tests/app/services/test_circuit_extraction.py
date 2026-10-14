@@ -80,18 +80,18 @@ def test_get_required_cpu_memory_combo_too_large():
 
 def test_get_required_extra_storage_space_default():
     # Under 20 GB -> no extra storage needed
-    assert test_module._get_required_extra_storage_space(10.0) is None
+    assert test_module.get_required_extra_storage_space(10.0) is None
 
 
 def test_get_required_extra_storage_space_extra():
     # Between 20 and 200 GB -> allocate extra storage (ceiling)
-    assert test_module._get_required_extra_storage_space(25.0) == 25
-    assert test_module._get_required_extra_storage_space(25.3) == 26
+    assert test_module.get_required_extra_storage_space(25.0) == 25
+    assert test_module.get_required_extra_storage_space(25.3) == 26
 
 
 def test_get_required_extra_storage_space_too_large():
     with pytest.raises(ValueError, match="Not enough disk space"):
-        test_module._get_required_extra_storage_space(250.0)
+        test_module.get_required_extra_storage_space(250.0)
 
 
 def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
