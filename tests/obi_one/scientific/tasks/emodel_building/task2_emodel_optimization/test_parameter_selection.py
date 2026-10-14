@@ -68,6 +68,7 @@ ETYPE_ID_STR = "00000000-0000-0000-0000-000000000001"
 TARGET_ID_STR = "00000000-0000-0000-0000-000000000002"
 MORPHOLOGY_ID_STR = "00000000-0000-0000-0000-000000000003"
 ICM_ID_STR = "00000000-0000-0000-0000-000000000004"
+ICM2_ID_STR = "00000000-0000-0000-0000-000000000005"
 
 
 def _somatic_assignment():
@@ -1383,7 +1384,7 @@ def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
             mechanism_regions={
                 "somatic": (
                     MechanismRegionSelection(
-                        ion_channel_model=IonChannelModelFromID(id_str="icm-2"),
+                        ion_channel_model=IonChannelModelFromID(id_str=ICM2_ID_STR),
                     ),
                 )
             },
@@ -1401,7 +1402,7 @@ def test_root_parameter_block_validates_global_model_reference_directly():
             global_parameters={
                 "ena": GlobalParameterSelection(
                     value=OptimizationValue(value=50.0),
-                    ion_channel_model=IonChannelModelFromID(id_str="icm-2"),
+                    ion_channel_model=IonChannelModelFromID(id_str=ICM2_ID_STR),
                 )
             },
             base_parameters={},
