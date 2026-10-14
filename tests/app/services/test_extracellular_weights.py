@@ -141,7 +141,8 @@ def test_resources_scale_with_cells_and_electrodes(
     )
 
     assert (result.cores, result.memory, result.timelimit) == (exp_cores, exp_memory, exp_timelimit)
-    assert result.ephemeral_storage == exp_storage
+    # Serialized as the launch sends it
+    assert result.model_dump(mode="json")["ephemeral_storage"] == exp_storage
     assert result.compute_cell == "cell_b"
 
 

@@ -1,4 +1,5 @@
 import json
+import math
 from http import HTTPStatus
 
 import entitysdk
@@ -59,7 +60,7 @@ def get_required_extra_storage_space(disk_space_gb_required: float) -> int | Non
         return None
     if disk_space_gb_required <= EXTRA_DISK_SPACE_LIMIT_GB:
         # Allocate extra space
-        return np.ceil(disk_space_gb_required).astype(int)
+        return math.ceil(disk_space_gb_required)
 
     msg = (
         f"Not enough disk space"
