@@ -12,11 +12,11 @@ from pydantic import BaseModel
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
+from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
     CircuitPopulationsResponse,
-    CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
 from obi_one.scientific.library.entity_property_types import (

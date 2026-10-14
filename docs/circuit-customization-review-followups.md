@@ -30,7 +30,7 @@ Use this to walk the 11 addressed items one by one.
 
 ## 2. Use `TYPES_OF_VIRTUAL_NODES` / `TYPES_OF_POINT_NODES`
 
-**Review ask:** Don’t hard-code `{"virtual", "point_neuron"}`; reuse constants from `circuit_metrics.py`.
+**Review ask:** Don’t hard-code `{"virtual", "point_neuron"}`; reuse constants from `circuit_constants.py`.
 
 **What changed:**
 
