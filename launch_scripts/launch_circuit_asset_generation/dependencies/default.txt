@@ -93,7 +93,7 @@ neuron==9.0.2
 numexpr==2.14.2
 numpy==2.4.6
 obi-auth==1.2.1
-obp-accounting-sdk==0.6.6
+obp-accounting-sdk==0.6.8
 packaging==26.3
 pandas==2.3.3
 parso==0.8.7
