@@ -71,22 +71,6 @@ class TestResolveSettings:
         settings = staging.resolve_settings(config, optimisation_config(), features)
         assert settings.validation_protocols == ["IDrest_150", "IV_-40"]
 
-    def test_overrides(self, tmp_path):
-        features = tmp_path / "f.json"
-        write_features(features, ["IDrest_150"])
-        config = make_config(
-            settings={
-                "validation_protocols": ["IDrest_150"],
-                "validation_function": "mean_score",
-                "validation_threshold": 3.0,
-                "validation_protocols_only": True,
-            }
-        )
-        settings = staging.resolve_settings(config, optimisation_config(), features)
-        assert settings.validation_protocols == ["IDrest_150"]
-        assert settings.validation_function == "mean_score"
-        assert settings.validation_threshold == pytest.approx(3.0)
-
     def test_validation_only_without_protocols_raises(self, tmp_path):
         features = tmp_path / "f.json"
         write_features(features, ["IDrest_150"])
@@ -222,15 +206,13 @@ def test_result_name_suffix():
     config = make_config(
         targets="1234567890",
         settings={
-            "validation_protocols": ["IV_-40", "IDrest_250"],
             "validation_protocols_only": True,
             "validation_function": "mean_score",
             "validation_threshold": 3.0,
         },
     )
     assert registration.result_name_suffix(config, uses_optimisation_targets=False) == (
-        " [validation, extraction 12345678, "
-        "protocols IDrest_250,IV_-40, validation protocols only, mean_score, threshold 3]"
+        " [validation, extraction 12345678, validation protocols only, mean_score, threshold 3]"
     )
 
 
@@ -314,9 +296,6 @@ class TestCheckThresholdSearchTargets:
         staging.check_threshold_search_targets(features)
 
 
-def test_unknown_validation_protocols_are_rejected(tmp_path):
-    features = tmp_path / "f.json"
-    write_features(features, ["IDrest_150", "IDrest_250"])
-    config = make_config(settings={"validation_protocols": ["IDrest_250.0", "IV_-40"]})
-    with pytest.raises(ValueError, match=r"\['IV_-40'\] are not in the target e-features"):
-        staging.resolve_settings(config, optimisation_config(), features)
+def test_validation_protocols_cannot_be_set():
+    with pytest.raises(ValidationError, match="validation_protocols"):
+        make_config(settings={"validation_protocols": ["IDrest_250"]})

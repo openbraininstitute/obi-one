@@ -57,8 +57,6 @@ def result_name_suffix(
     parts = ["validation"]
     if not uses_optimisation_targets:
         parts.append(f"extraction {config.target_efeatures.task_result.id_str[:8]}")
-    if settings.validation_protocols:
-        parts.append(f"protocols {','.join(sorted(settings.validation_protocols))}")
     if settings.validation_protocols_only:
         parts.append("validation protocols only")
     if settings.validation_function != FROM_OPTIMISATION:

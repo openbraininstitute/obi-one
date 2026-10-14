@@ -194,22 +194,6 @@ def protocol_names(features_path: Path) -> list[str]:
     return [p["name"] for p in data.get("protocols", []) if "name" in p]
 
 
-def check_protocols_exist(validation_protocols: list[str], features_path: Path) -> None:
-    """Reject validation protocols that are not in the target e-features."""
-    available = protocol_names(features_path)
-    unknown = [
-        name
-        for name in validation_protocols
-        if not any(are_same_protocol(name, protocol) for protocol in available)
-    ]
-    if unknown:
-        msg = (
-            f"Validation protocols {unknown} are not in the target e-features. "
-            f"Available protocols: {sorted(available)}."
-        )
-        raise ValueError(msg)
-
-
 def mark_validation_protocols(features_path: Path, validation_protocols: list[str]) -> None:
     """Align each protocol's ``validation`` flag with the chosen validation protocols."""
     data = json.loads(features_path.read_text(encoding="utf-8"))
@@ -240,10 +224,7 @@ def resolve_settings(
     settings = config.settings
     optimisation_settings = optimisation_config.optimization_settings
 
-    validation_protocols = settings.validation_protocols
-    if validation_protocols:
-        check_protocols_exist(validation_protocols, features_path)
-    elif not uses_optimisation_targets(config, optimisation_config):
+    if not uses_optimisation_targets(config, optimisation_config):
         validation_protocols = protocol_names(features_path)
     else:
         validation_protocols = list(

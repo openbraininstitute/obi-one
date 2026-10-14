@@ -49,17 +49,6 @@ class ValidationTargetEFeaturesInput(Block):
 class ValidationSettings(Block):
     """Protocols and scoring used to decide whether the e-model passes validation."""
 
-    validation_protocols: list[str] | None = Field(
-        default=None,
-        title="Validation protocols",
-        description=(
-            "Protocol names (e.g. ``IDrest_250``) of the target e-features scored as "
-            "validation protocols; names not in the target e-features are rejected. Empty "
-            "uses the optimisation's validation protocols for optimisation targets, and every "
-            "protocol of the extraction for other targets."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_LIST_OPTIONAL},
-    )
     validation_protocols_only: bool = Field(
         default=False,
         title="Validation protocols only",
