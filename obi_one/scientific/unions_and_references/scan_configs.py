@@ -20,9 +20,6 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config i
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     EModelOptimizationScanConfig,
 )
-from obi_one.scientific.tasks.emodel_building.task3_emodel_validation import (
-    EModelValidationScanConfig,
-)
 from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
 from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
@@ -85,7 +82,11 @@ _SCAN_CONFIG_MEMBERS: tuple[type, ...] = (
 )
 if EModelOptimizationScanConfig is not None:
     _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelOptimizationScanConfig)
-if EModelValidationScanConfig is not None:
+if EModelOptimizationScanConfig is not None:
+    from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config import (
+        EModelValidationScanConfig,
+    )
+
     _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelValidationScanConfig)
 
 ScanConfigsUnion = Annotated[

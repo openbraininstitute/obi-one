@@ -193,9 +193,10 @@ def test_config_validation_omits_emodel_optimization_without_bluepyemodel():
 
 
 @pytest.mark.usefixtures("bluepyemodel_blocked")
-def test_task3_package_omits_emodel_validation_without_bluepyemodel():
-    module = _exec_fresh("obi_one.scientific.tasks.emodel_building.task3_emodel_validation")
-    assert module.HAS_EMODEL_VALIDATION is False
-    assert module.EModelValidationScanConfig is None
-    assert module.EModelValidationSingleConfig is None
-    assert module.EModelValidationTask is None
+def test_unions_omit_emodel_validation_without_bluepyemodel():
+    scan_configs = _exec_fresh("obi_one.scientific.unions_and_references.scan_configs")
+    tasks = _exec_fresh("obi_one.scientific.unions_and_references.tasks")
+    assert "EModelValidationScanConfig" not in {
+        m.__name__ for m in scan_configs._SCAN_CONFIG_MEMBERS
+    }
+    assert "EModelValidationTask" not in {m.__name__ for m in tasks._TASK_MEMBERS}
