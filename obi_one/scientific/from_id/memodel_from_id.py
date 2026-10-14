@@ -4,22 +4,15 @@ from typing import ClassVar
 import morphio
 from entitysdk.client import Client
 from entitysdk.models import MEModel
-from entitysdk.models.entity import Entity
 from entitysdk.staging.memodel import stage_sonata_from_memodel
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
-class MEModelFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = MEModel
-    _entity: MEModel | None = PrivateAttr(default=None)
-
-    def entity(self, db_client: Client) -> MEModel:
-        super().entity(db_client=db_client)
-        return self._entity
+class MEModelFromID(EntityFromID[MEModel]):
+    entitysdk_class: ClassVar[type[MEModel]] = MEModel
 
     def morphio_morphology(
         self,

@@ -3,21 +3,14 @@ from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import IonChannelModel
-from entitysdk.models.entity import Entity
 from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 
 
-class IonChannelModelFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = IonChannelModel
-    _entity: IonChannelModel | None = PrivateAttr(default=None)
-
-    def entity(self, db_client: entitysdk.client.Client) -> IonChannelModel:
-        super().entity(db_client=db_client)
-        return self._entity
+class IonChannelModelFromID(EntityFromID[IonChannelModel]):
+    entitysdk_class: ClassVar[type[IonChannelModel]] = IonChannelModel
 
     def download_asset(
         self,

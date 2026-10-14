@@ -19,7 +19,6 @@ from entitysdk.models import (
     TaskConfig,
 )
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
-from entitysdk.models.entity import Entity
 from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
@@ -35,13 +34,8 @@ _MORPHOLOGY_ASSET_FORMATS = (
 )
 
 
-class CellMorphologyFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = CellMorphology
-    _entity: CellMorphology | None = PrivateAttr(default=None)
-
-    def entity(self, db_client: entitysdk.client.Client) -> CellMorphology:
-        super().entity(db_client=db_client)
-        return self._entity
+class CellMorphologyFromID(EntityFromID[CellMorphology]):
+    entitysdk_class: ClassVar[type[CellMorphology]] = CellMorphology
 
     _swc_file_path: Path | None = PrivateAttr(default=None)
     _neurom_morphology: neurom.core.Morphology | None = PrivateAttr(default=None)
