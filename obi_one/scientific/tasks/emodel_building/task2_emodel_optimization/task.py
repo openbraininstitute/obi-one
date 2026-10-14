@@ -339,7 +339,7 @@ def run_optimization_pipeline(
     return registration.OptimizationPipelineResults(
         em_metrics=em_metrics,
         calibration=calibration_dict,
-        validation=validation_dict,
+        memodel_validation=validation_dict,
         validation_status=validation_status,
         emodel_validation=emodel_validation,
     )

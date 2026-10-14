@@ -60,16 +60,16 @@ L = logging.getLogger(__name__)
 class OptimizationPipelineResults:
     """Outputs of ``run_optimization_pipeline`` consumed by registration.
 
-    ``calibration``/``validation`` are ``None`` when the calibration/validation
-    compute failed; ``validation_status`` then reports ``error``.
+    ``calibration``/``memodel_validation`` are the ME-model (BlueCelluLab) calibration and
+    validation results; they are ``None`` when that compute failed, and
+    ``validation_status`` (the MEModel status derived from ``memodel_validation``) then reports
+    ``error``. ``emodel_validation`` is separate: the e-model e-feature score validation.
     """
 
     em_metrics: dict
     calibration: dict | None
-    validation: dict | None
+    memodel_validation: dict | None
     validation_status: ValidationStatus
-    # BluePyEModel e-feature score validation of the held-out protocols (see
-    # ``validation_scoring.summarise_model``); ``None`` if none were held out or it failed.
     emodel_validation: dict | None = None
 
 
@@ -282,7 +282,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     final_path = coord_root / "final.json"
     em_metrics = pipeline_results.em_metrics
     calibration = pipeline_results.calibration
-    validation = pipeline_results.validation
+    validation = pipeline_results.memodel_validation
     validation_status = pipeline_results.validation_status
 
     # --- Collect file paths for helpers ---

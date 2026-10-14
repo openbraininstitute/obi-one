@@ -441,7 +441,7 @@ def _pipeline_results(**overrides):
             "iteration": "4",
         },
         "calibration": None,
-        "validation": None,
+        "memodel_validation": None,
         "validation_status": ValidationStatus.created,
     }
     defaults.update(overrides)
@@ -602,7 +602,7 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
         db_client,
         pipeline_results=_pipeline_results(
             calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
-            validation={
+            memodel_validation={
                 "spike_test": {"name": "SpikeTest", "passed": True},
                 "thumbnail_test": {
                     "name": "thumbnail",
@@ -1007,7 +1007,7 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
         "iteration": "2",
     }
     assert results.calibration == {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0}
-    assert results.validation == {"spike_test": {"name": "SpikeTest", "passed": True}}
+    assert results.memodel_validation == {"spike_test": {"name": "SpikeTest", "passed": True}}
     assert results.validation_status == ValidationStatus.done
     # the pipeline hands the staged SWC straight to the compute step — no re-location
     assert compute_cv.call_args.args[2] == tmp_path.resolve() / "morphologies" / "morphology.swc"
