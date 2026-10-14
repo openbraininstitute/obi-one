@@ -1,16 +1,16 @@
-"""Tests that ``BLOCK_REFERENCE_SPECS`` declares valid, importable block reference classes."""
+"""Tests that block reference specs declare valid, importable block reference classes."""
 
 import pytest
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.mappings_and_registry.block_reference_registry import (
-    BLOCK_REFERENCE_SPECS,
+    _BLOCK_REFERENCE_SPECS,
     BlockReferenceRegistry,
     block_ref_registry,
 )
 from obi_one.utils.lazy_import import class_name, import_class
 
-DECLARED_BLOCK_REFERENCE_REFS = tuple(BLOCK_REFERENCE_SPECS.items())
+DECLARED_BLOCK_REFERENCE_REFS = tuple(_BLOCK_REFERENCE_SPECS.items())
 
 
 @pytest.mark.parametrize(
@@ -19,7 +19,7 @@ DECLARED_BLOCK_REFERENCE_REFS = tuple(BLOCK_REFERENCE_SPECS.items())
     ids=[name for name, _ in DECLARED_BLOCK_REFERENCE_REFS],
 )
 def test_declared_block_reference_class_ref_is_importable(ref_name, class_ref):
-    """Every entry in ``BLOCK_REFERENCE_SPECS`` must import a ``BlockReference`` subclass."""
+    """Every declared block reference spec must import a ``BlockReference`` subclass."""
     assert ref_name == class_name(class_ref), (
         f"Spec key {ref_name!r} must match class name {class_name(class_ref)!r}"
     )
@@ -33,7 +33,7 @@ def test_declared_block_reference_class_ref_is_importable(ref_name, class_ref):
     assert issubclass(cls, BlockReference), f"{cls.__qualname__} is not a BlockReference"
 
 
-_BLOCK_REFERENCE_NAMES = list(BLOCK_REFERENCE_SPECS)
+_BLOCK_REFERENCE_NAMES = list(_BLOCK_REFERENCE_SPECS)
 
 
 @pytest.mark.parametrize(

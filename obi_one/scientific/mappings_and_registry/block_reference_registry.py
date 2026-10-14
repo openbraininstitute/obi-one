@@ -9,7 +9,7 @@ from obi_one.utils.lazy_import import ClassRef, import_class
 
 _BLOCK_REFERENCES = "obi_one.scientific.unions_and_references"
 
-BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
+_BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
     "CombinedBiophysicalNeuronSetReference": (
         f"{_BLOCK_REFERENCES}.combined_neuron_sets",
         "CombinedBiophysicalNeuronSetReference",
@@ -86,7 +86,7 @@ class BlockReferenceRegistry:
         """Return the BlockReference subclass with the given name, or None."""
         if name in self._by_name:
             return self._by_name[name]
-        class_ref = BLOCK_REFERENCE_SPECS.get(name)
+        class_ref = _BLOCK_REFERENCE_SPECS.get(name)
         if class_ref is None:
             return None
         cls = import_class(class_ref)
