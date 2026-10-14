@@ -370,7 +370,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/26/b1/58fefcd7212c9792e
 
 [[package]]
 name = "bluerecording"
-version = "0.6.2"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -382,9 +382,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/1c/744739d3498bd21155d48c87be9029641363ac3d5700b846fbcf6ab3bd2e/bluerecording-0.6.2.tar.gz", hash = "sha256:1d817363abe2788840d4a9a9eef14cb3f82936daa4d142edefa135ad6a4142bd", size = 25602, upload-time = "2026-08-31T11:30:08.851Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/b9/5a5156cc181f82659c6f1ecbe5f35d750f64264afe2b3a5468585c9f9d1b/bluerecording-0.7.0.tar.gz", hash = "sha256:97799b5c51cf5842756191418588ae7a66c193c982f6451a9dc394268752dbbf", size = 28306, upload-time = "2026-10-14T14:40:24.891Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/73/e8b912d9bc8c0e9e5aaaf467a821d214a09c25af1bc2667e7c873603cda3/bluerecording-0.6.2-py3-none-any.whl", hash = "sha256:8b5fb34a6293e7d4327998f3dfa2804326e0b58a2a98ffa84c054a4b54d34287", size = 29138, upload-time = "2026-08-31T11:30:07.62Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/93/abc9a25015bb73f9ad113c86bacada04a77d68b414862005fdbebbfd9464/bluerecording-0.7.0-py3-none-any.whl", hash = "sha256:05ea0855a1557314926b4a5073d928e8c0185ace7c51638b8228d80fd02dcda2", size = 32002, upload-time = "2026-10-14T14:40:23.348Z" },
 ]
 
 [[package]]
@@ -2234,7 +2234,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.5"
+version = "4.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -2244,9 +2244,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/de/8ad46b453170cd1715770f99b18b517613de603717e68dc34892f6e6e34b/neurodamus-4.2.5.tar.gz", hash = "sha256:2839be9c97e19b9a129782eed37bfc28abbfdc14821ce170e46e2ed05637b23d", size = 200954, upload-time = "2026-10-02T12:09:01.603Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/e0/8a8c82c1375c3c8dd449d82d6fd9e3bc936906568d3349f2c65954cb6844/neurodamus-4.2.8.tar.gz", hash = "sha256:095a1d78e967e323b71b2d836832c20cf3b19d3afefacfb8e66d0dc27115ad2d", size = 202208, upload-time = "2026-10-14T14:40:40.516Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/4d/e651e1b6b0955293a6472c2965ac454ee52605811237410c18d0518e251b/neurodamus-4.2.5-py3-none-any.whl", hash = "sha256:a82131e7dd06b27638245333e58264b50b716c18e3b78187bb8ae9dfa868fe1c", size = 236229, upload-time = "2026-10-02T12:08:59.893Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/ac/9744a49d1c9a437a8158b3579fa746df0a3e765888c7cabb6c4c08a2a8c9/neurodamus-4.2.8-py3-none-any.whl", hash = "sha256:eb6d90a0c581cbb58d053710aecfae78b62b62b7da57d95a5a1601998d28b16b", size = 237538, upload-time = "2026-10-14T14:40:38.61Z" },
 ]
 
 [[package]]
@@ -2438,6 +2438,7 @@ all = [
 ]
 bluerecording = [
     { name = "bluerecording" },
+    { name = "neurodamus" },
 ]
 connectivity = [
     { name = "connectome-analysis" },
@@ -2495,7 +2496,7 @@ requires-dist = [
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.47" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.6.2" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
     { name = "brainbuilder", specifier = ">=0.20.6" },
     { name = "brian2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
@@ -2513,6 +2514,7 @@ requires-dist = [
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
+    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.8" },
     { name = "neurom" },
     { name = "notebook", marker = "extra == 'notebooks'" },
     { name = "numpy" },

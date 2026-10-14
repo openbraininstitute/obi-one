@@ -97,7 +97,8 @@ service = [
 all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
-bluerecording = ["bluerecording>=0.6.2"]
+# neurodamus 4.2.8 frees the memory of the cells built in each batch.
+bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.8"]
 
 [dependency-groups]
 dev = [

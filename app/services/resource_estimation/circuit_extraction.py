@@ -52,7 +52,7 @@ def get_required_cpu_memory_combo(
     raise ValueError(msg)
 
 
-def _get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
+def get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
     """Return the required extra storage space."""
     if disk_space_gb_required <= DEFAULT_DISK_SPACE_LIMIT_GB:
         # No extra space requires, use default
@@ -159,7 +159,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     output_size_synapses = input_size_synapses * output_fraction
     output_size_gb = 1 + output_size_synapses * 1.85e-7
     try:
-        storage_gb = _get_required_extra_storage_space(output_size_gb)
+        storage_gb = get_required_extra_storage_space(output_size_gb)
     except ValueError as e:
         msg = (
             f"The extracted circuit would hold about {output_size_synapses:,.0f} synapses, about"
