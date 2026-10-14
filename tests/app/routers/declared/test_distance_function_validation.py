@@ -57,38 +57,11 @@ def test_validate_rejects_function_exceeding_max_length(client):
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_validate_prompts_for_undeclared_placeholders(client):
-    fn = "{a} * math.exp({distance}*{b})*{value} + {a}"
-    response = client.post(ROUTE, json={"function": fn, "parameters": ["b"]})
-    assert response.status_code == HTTPStatus.OK
-    body = response.json()
-    assert body["valid"] is False
-    assert body["required_parameters"] == ["a", "b"]
-    assert body["missing_parameters"] == ["a"]
-    assert [prompt["name"] for prompt in body["prompts"]] == ["a"]
-    assert "{a}" in body["prompts"][0]["message"]
+def test_validate_treats_extra_placeholders_as_parameters(client):
+    body = client.post(ROUTE, json={"function": "{a} * math.exp({distance}*{b})*{value}"}).json()
+    assert body == {"valid": True, "error": None, "from": 0, "to": 0}
 
 
-def test_validate_reports_unused_duplicate_and_reserved_parameters(client):
-    response = client.post(
-        ROUTE,
-        json={
-            "function": "math.exp({distance}*{c})*{value}",
-            "parameters": ["c", "c", "unused", "distance"],
-        },
-    )
-    body = response.json()
-    assert body["valid"] is False
-    assert body["unknown_parameters"] == ["unused"]
-    assert body["duplicate_parameters"] == ["c"]
-    assert body["reserved_parameters"] == ["distance"]
-    assert body["missing_parameters"] == []
-    assert body["error"].startswith("Distribution parameters do not match the function")
-
-
-def test_validate_runtime_step_placeholders_need_no_prompt(client):
+def test_validate_runtime_step_placeholders_are_accepted(client):
     fn = "{value} * float(({distance} > {step_begin}) & ({distance} < {step_end}))"
-    body = client.post(ROUTE, json={"function": fn}).json()
-    assert body["valid"] is True
-    assert body["required_parameters"] == []
-    assert body["prompts"] == []
+    assert client.post(ROUTE, json={"function": fn}).json()["valid"] is True

@@ -433,70 +433,19 @@ def _distance_placeholder_error(
     return None
 
 
-class DistributionParameterPrompt(BaseModel):
-    """A request for the user to supply a value for one distribution placeholder."""
+def function_parameter_names(function: str) -> tuple[str, ...]:
+    """Return the parameters a function uses, in order of first appearance.
 
-    name: str
-    message: str
-
-
-class DistributionParametersCheck(BaseModel):
-    """How a custom function's placeholders line up with its declared parameters."""
-
-    required_parameters: tuple[str, ...] = ()
-    missing_parameters: tuple[str, ...] = ()
-    unknown_parameters: tuple[str, ...] = ()
-    duplicate_parameters: tuple[str, ...] = ()
-    reserved_parameters: tuple[str, ...] = ()
-    prompts: tuple[DistributionParameterPrompt, ...] = ()
-
-    @property
-    def valid(self) -> bool:
-        """Whether the declared parameters exactly cover the function's extra placeholders."""
-        return not (
-            self.missing_parameters
-            or self.unknown_parameters
-            or self.duplicate_parameters
-            or self.reserved_parameters
-        )
-
-
-def check_distribution_parameters(
-    function: str, parameters: tuple[str, ...] = ()
-) -> DistributionParametersCheck:
-    """Compare a function's extra placeholders with the declared parameter names (never raises).
-
-    ``required_parameters`` lists, in order of first appearance, every placeholder the user must
-    give a value for. ``prompts`` holds one fill-in request per missing name, ready to show in a
-    form or to ask in a chat.
+    These are its ``{placeholders}`` other than ``{value}``, ``{distance}`` and the
+    automatically filled ``{step_begin}``/``{step_end}``. The function is the source of truth:
+    each name returned needs one entry, with a value, in the distribution's ``parameters``.
     """
-    required = tuple(
+    return tuple(
         dict.fromkeys(
             name
             for name in _PLACEHOLDER_PATTERN.findall(function)
             if name not in RESERVED_DISTRIBUTION_PLACEHOLDERS
         )
-    )
-    declared = set(parameters)
-    missing = tuple(name for name in required if name not in declared)
-    return DistributionParametersCheck(
-        required_parameters=required,
-        missing_parameters=missing,
-        unknown_parameters=tuple(
-            sorted(declared - set(required) - RESERVED_DISTRIBUTION_PLACEHOLDERS)
-        ),
-        duplicate_parameters=tuple(sorted({n for n in parameters if parameters.count(n) > 1})),
-        reserved_parameters=tuple(sorted(declared & RESERVED_DISTRIBUTION_PLACEHOLDERS)),
-        prompts=tuple(
-            DistributionParameterPrompt(
-                name=name,
-                message=(
-                    f"The function uses {{{name}}}. Enter a fixed value for '{name}', or "
-                    "lower and upper bounds to optimise it."
-                ),
-            )
-            for name in missing
-        ),
     )
 
 
@@ -852,12 +801,10 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
         description=(
             "One entry per extra {placeholder} used in the function (anything other than "
             "{value} and {distance}). For each, give a fixed value or optimization bounds. "
-            "The editor lists the placeholders found in the function and prompts for the "
-            "missing ones."
+            "The rows follow the placeholders written in the function."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.DISTRIBUTION_PARAMETER_LIST,
-            SchemaKey.PARAMETERS_FROM: "function",
         },
     )
 

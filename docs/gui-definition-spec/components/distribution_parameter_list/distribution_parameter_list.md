@@ -8,9 +8,9 @@ Only `CustomDistanceDependentDistribution` has this field. Standard distribution
 
 ### Behavior
 
-- The field names its source with `parameters_from` (always `"function"`). The editor reads the placeholders from that sibling and lists one row per placeholder.
-- When a placeholder has no row, the editor prompts the user to fill it: the row is shown with the name prefilled and the value empty. The prompt text comes from `prompts` in the response of `POST /declared/distance-function/validate` (see [distance_function_input](../distance_function_input/distance_function_input.md#validating-from-the-editor)), so the frontend and the AI chat ask for the same thing.
-- Rows whose name is no longer in the function are flagged (`unknown_parameters`) and can be removed.
+- The function is the source of truth. The editor reads the `{placeholders}` of the sibling `function` field and shows one row per parameter, with the name filled in from the function.
+- The user only enters each row's value. The frontend (or AI chat) asks for a value for every row whose value is still empty; the backend does not send prompts.
+- When a placeholder is removed from the function, its row goes away; when one is added, a new row appears.
 - `value` uses the same fixed/bounds editor as other optimisation values (`mode` is `fixed` or `bounds`; `bounds` must be strictly increasing).
 
 ### Schema shape
@@ -20,14 +20,13 @@ Only `CustomDistanceDependentDistribution` has this field. Standard distribution
   "type": "array",
   "items": { "$ref": "#/components/schemas/DistributionParameter" },
   "default": [],
-  "ui_element": "distribution_parameter_list",
-  "parameters_from": "function"
+  "ui_element": "distribution_parameter_list"
 }
 ```
 
 `DistributionParameter` requires `name` (string matching `^[A-Za-z_]\w*$`) and `value` (`OptimizationValue`).
 
-The schema test `validate_distribution_parameter_list` (in `tests/ui_schema/validators/distribution_parameter_list.py`) enforces this shape: an array defaulting to `[]`, a `parameters_from` naming a string sibling, items that require `name` and `value`, an identifier `pattern` on `name`, and an `OptimizationValue` with `mode` in `["fixed", "bounds"]`.
+The schema test `validate_distribution_parameter_list` (in `tests/ui_schema/validators/distribution_parameter_list.py`) enforces this shape: an array defaulting to `[]`, a sibling `function` field in the same block that uses `ui_element: distance_function_input`, items that require `name` and `value`, an identifier `pattern` on `name`, and an `OptimizationValue` with `mode` in `["fixed", "bounds"]`.
 
 ### Rules enforced by the backend
 
@@ -43,10 +42,7 @@ class CustomDistanceDependentDistribution(DistanceDependentDistribution):
         default=(),
         title="Distribution parameters",
         description="One entry per extra {placeholder} used in the function.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.DISTRIBUTION_PARAMETER_LIST,
-            SchemaKey.PARAMETERS_FROM: "function",
-        },
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.DISTRIBUTION_PARAMETER_LIST},
     )
 ```
 

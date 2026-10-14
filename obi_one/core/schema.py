@@ -27,9 +27,6 @@ class SchemaKey(StrEnum):
     # Note: PARAMETER_DOMAIN is the range a sampled value for this field is allowed to take,
     # whatever distribution is chosen for it. It is checked against the values a distribution
     # actually draws - not by pydantic, which only ever sees the reference to the distribution.
-    PARAMETERS_FROM = "parameters_from"
-    # Note: PARAMETERS_FROM names the sibling string field whose {placeholders} define which
-    # entries a distribution_parameter_list must contain, so the UI can prompt for each one.
     PARAMETER_ORDER_PRIORITY = "parameter_order_priority"
     # Note: PARAMETER_ORDER_PRIORITY is not used by the UI,
     # rather the Block class uses this to order the properties in the generated openapi.json schema,

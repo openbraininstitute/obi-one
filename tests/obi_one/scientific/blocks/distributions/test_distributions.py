@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     check_distance_function,
+    function_parameter_names,
     validate_safe_distance_function,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
@@ -788,3 +789,16 @@ class TestPoissonDistribution:
         samples2 = dist.sample(n=3, rng=rng)
 
         assert samples1 == samples2
+
+
+def test_function_parameter_names_follow_the_function():
+    function = "{b} * {value} + {a} * {distance} * {b} * {step_begin}"
+    assert function_parameter_names(function) == ("b", "a")
+
+
+def test_custom_distribution_revalidates_an_existing_instance():
+    distribution = CustomDistanceDependentDistribution(
+        function="{constant}*{value}*{distance}",
+        parameters=[{"name": "constant", "value": {"value": 1.0}}],
+    )
+    assert CustomDistanceDependentDistribution.model_validate(distribution) == distribution

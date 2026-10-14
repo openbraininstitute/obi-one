@@ -1,27 +1,28 @@
 """Validator for the `distribution_parameter_list` block UI element."""
 
-from obi_one.core.schema import SchemaKey
+from obi_one.core.schema import SchemaKey, UIElement
 
 from .shared import openapi_schema, resolve_ref
 
 
 def validate_distribution_parameter_list(schema: dict, param: str, ref: str) -> None:
-    """A list of `{name, value}` rows whose names come from a sibling function's placeholders.
+    """A list of `{name, value}` rows whose names come from the sibling `function`.
 
-    The component reads the sibling named by `parameters_from`, extracts its `{placeholders}`
-    and prompts for one row per extra placeholder. Each row edits a string `name` and an
-    `OptimizationValue` (`mode` fixed/bounds, `value`, `bounds`).
+    The function is the source of truth: the component reads the `{placeholders}` of the
+    sibling `function` field in the same block and shows one row per extra placeholder. So the
+    block must have a `function` rendered as a `distance_function_input`. Each row edits a
+    string `name` and an `OptimizationValue` (`mode` fixed/bounds, `value`, `bounds`).
     """
     where = f"Validation error at {ref}: distribution_parameter_list param {param}"
     assert schema.get("type") == "array", f"{where} should be of type 'array'"
     assert schema.get("default") == [], f"{where} should default to an empty list"
 
-    source = schema.get(SchemaKey.PARAMETERS_FROM)
-    assert isinstance(source, str), f"{where} should name its source field in 'parameters_from'"
     block = resolve_ref(openapi_schema, ref)
-    sibling = block.get("properties", {}).get(source)
-    assert sibling is not None, f"{where}: 'parameters_from' field '{source}' is not a sibling"
-    assert sibling.get("type") == "string", f"{where}: '{source}' should be a string field"
+    function = block.get("properties", {}).get("function")
+    assert function is not None, f"{where} needs a sibling 'function' field in the same block"
+    assert function.get(SchemaKey.UI_ELEMENT) == UIElement.DISTANCE_FUNCTION_INPUT, (
+        f"{where}: sibling 'function' should use ui_element '{UIElement.DISTANCE_FUNCTION_INPUT}'"
+    )
 
     item_ref = schema.get("items", {}).get("$ref")
     assert item_ref, f"{where} items should be a $ref to the row block"
