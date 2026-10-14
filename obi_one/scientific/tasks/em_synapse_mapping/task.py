@@ -228,7 +228,9 @@ class EMSynapseMappingTask(Task):
         if advanced.custom_virtual_node_population:
             pop_virt = advanced.custom_virtual_node_population
 
-        write_nodes(out_root / fn_nodes_out, pop_bio, coll_bio, write_mode="w", override_library=True)
+        write_nodes(
+            out_root / fn_nodes_out, pop_bio, coll_bio, write_mode="w", override_library=True
+        )
         if coll_virtual is not None:
             write_nodes(out_root / fn_nodes_out, pop_virt, coll_virtual, write_mode="a")
 

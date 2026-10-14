@@ -6,11 +6,10 @@ import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
 import voxcell
 from entitysdk import Client
-from voxcell import CellCollection
 from pandas.api.types import is_string_dtype
+from voxcell import CellCollection
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
-
 
 MAX_COUNT_LIBRARY = 50
 
@@ -82,12 +81,14 @@ def write_nodes(
     population_name: str,
     cell_collection: CellCollection,
     write_mode: str = "w",
-    override_library: bool = False
+    override_library: bool = False,  # ruff: ignore[boolean-default-value-positional-argument,boolean-type-hint-positional-argument]
 ) -> None:
     forced_library = None
     if override_library:
-        is_string = cell_collection.properties.apply(lambda col: is_string_dtype(col), axis=0)
-        under_thresh = cell_collection.properties.apply(lambda col: len(col.drop_duplicates()) < MAX_COUNT_LIBRARY, axis=0)
+        is_string = cell_collection.properties.apply(is_string_dtype, axis=0)
+        under_thresh = cell_collection.properties.apply(
+            lambda col: len(col.drop_duplicates()) < MAX_COUNT_LIBRARY, axis=0
+        )
         forced_library = cell_collection.properties.columns[is_string & under_thresh]
     cell_collection.population_name = population_name
     cell_collection.save_sonata(fn_out, mode=write_mode, forced_library=forced_library)
