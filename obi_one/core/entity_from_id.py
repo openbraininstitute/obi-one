@@ -34,7 +34,7 @@ class EntityFromID[TEntity: Entity](OBIBaseModel, abc.ABC):
 
     def entity(self, db_client: entitysdk.client.Client) -> TEntity:
         if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
+            self._entity = self.fetch(self.id_str, db_client=db_client)
         if self._entity is None:
             msg = f"{self.__class__.__name__} failed to resolve entity {self.id_str!r}"
             raise RuntimeError(msg)
@@ -73,7 +73,7 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel, abc.ABC):
 
     def entity(self, db_client: entitysdk.client.Client) -> TIdentifiable:
         if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
+            self._entity = self.fetch(self.id_str, db_client=db_client)
         if self._entity is None:
             msg = f"{self.__class__.__name__} failed to resolve entity {self.id_str!r}"
             raise RuntimeError(msg)
