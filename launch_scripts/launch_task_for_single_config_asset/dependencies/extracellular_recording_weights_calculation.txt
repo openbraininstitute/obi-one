@@ -19,7 +19,7 @@ blueetl==0.13.4
 blueetl-core==0.2.5
 bluepyefe==2.3.63
 bluepysnap==3.0.7
-bluerecording==0.6.2
+bluerecording==0.7.0
 brainbuilder==0.20.8
 brian2==2.10.1
 cached-property==2.0.1
@@ -84,7 +84,7 @@ narwhals==2.26.0
 ndindex==1.10.1
 neo==0.14.5
 networkx==3.7
-neurodamus==4.2.5
+neurodamus==4.2.8
 neurom==4.0.6
 numexpr==2.14.2
 numpy==2.4.6
