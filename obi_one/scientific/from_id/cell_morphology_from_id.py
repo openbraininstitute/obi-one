@@ -41,9 +41,6 @@ class CellMorphologyFromID(EntityFromID):
 
     def entity(self, db_client: entitysdk.client.Client) -> CellMorphology:
         super().entity(db_client=db_client)
-        if self._entity is None:
-            msg = f"{self.__class__.__name__} failed to resolve entity {self.id_str!r}"
-            raise RuntimeError(msg)
         return self._entity
 
     _swc_file_path: Path | None = PrivateAttr(default=None)

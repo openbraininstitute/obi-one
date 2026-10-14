@@ -1,4 +1,6 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
@@ -84,3 +86,15 @@ class TestEntityFromIDEntity:
         # Should only fetch once
         assert result1 == result2
         assert mock_client.get_entity.call_count == 1
+
+    def test_entity_raises_when_fetch_returns_none(self):
+        class ConcreteEntityFromID(EntityFromID):
+            type: str = "EntityFromID"
+            entitysdk_class = MagicMock()
+
+        obj = ConcreteEntityFromID(id_str="missing-id")
+        with (
+            patch.object(ConcreteEntityFromID, "fetch", return_value=None),
+            pytest.raises(RuntimeError, match="failed to resolve entity 'missing-id'"),
+        ):
+            obj.entity(MagicMock())
