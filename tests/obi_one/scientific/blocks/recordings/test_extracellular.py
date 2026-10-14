@@ -5,10 +5,12 @@ from uuid import UUID
 import libsonata
 import pytest
 
-import obi_one as obi
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
 )
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import (
@@ -35,7 +37,7 @@ class _ClientThatMustNotBeUsed:
 
 def _recording(name="LFPRecording", dt=0.1):
     recording = ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
         dt=dt,
     )
     recording.set_block_name(name)

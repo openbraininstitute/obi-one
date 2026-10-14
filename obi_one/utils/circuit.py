@@ -24,7 +24,7 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
+from obi_one.scientific.library.circuit_constants import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
