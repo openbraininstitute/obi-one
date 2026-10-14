@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
@@ -15,7 +14,9 @@ from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircui
 
 
 class CircuitFromID(EntityFromID[models.Circuit]):
-    entitysdk_class: ClassVar[type[models.Circuit]] = models.Circuit
+    @classmethod
+    def entitysdk_class(cls) -> type[models.Circuit]:
+        return models.Circuit
 
     def stage_circuit(
         self,
@@ -59,7 +60,7 @@ class CircuitFromID(EntityFromID[models.Circuit]):
                     else:
                         stage_circuit(
                             client=db_client,
-                            model=entity,  # ty:ignore[invalid-argument-type]
+                            model=entity,
                             output_dir=dest_dir,
                             max_concurrent=4,
                         )
@@ -75,14 +76,16 @@ class CircuitFromID(EntityFromID[models.Circuit]):
 
 
 class MEModelWithSynapsesCircuitFromID(EntityFromID[models.Circuit]):
-    entitysdk_class: ClassVar[type[models.Circuit]] = models.Circuit
+    @classmethod
+    def entitysdk_class(cls) -> type[models.Circuit]:
+        return models.Circuit
 
     def entity(self, db_client: Client) -> models.Circuit:
         entity = super().entity(db_client=db_client)
-        if entity.scale != "single":  # ty:ignore[unresolved-attribute]
+        if entity.scale != "single":
             msg = "Entity must be a circuit of scale 'single'."
             raise OBIONEError(msg)
-        return entity  # ty:ignore[invalid-return-type]
+        return entity
 
     def stage_circuit(
         self,

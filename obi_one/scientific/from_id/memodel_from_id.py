@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 import morphio
 from entitysdk.client import Client
@@ -12,7 +11,9 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class MEModelFromID(EntityFromID[MEModel]):
-    entitysdk_class: ClassVar[type[MEModel]] = MEModel
+    @classmethod
+    def entitysdk_class(cls) -> type[MEModel]:
+        return MEModel
 
     def morphio_morphology(
         self,

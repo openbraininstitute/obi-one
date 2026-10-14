@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import IonChannelModel
@@ -10,7 +9,9 @@ from obi_one.core.entity_from_id import EntityFromID
 
 
 class IonChannelModelFromID(EntityFromID[IonChannelModel]):
-    entitysdk_class: ClassVar[type[IonChannelModel]] = IonChannelModel
+    @classmethod
+    def entitysdk_class(cls) -> type[IonChannelModel]:
+        return IonChannelModel
 
     def download_asset(
         self,
@@ -47,9 +48,16 @@ class IonChannelModelFromID(EntityFromID[IonChannelModel]):
         """Returns a list of RANGE parameter names except conductance and max permeability."""
         entity = self.entity(db_client=db_client)
         range_params = entity.neuron_block.range or []
-        to_remove = [
+        to_remove = {
             self.get_conductance_name(db_client),
             self.get_max_permeability_name(db_client),
             None,
-        ]
-        return [param for param in range_params if param not in to_remove]
+        }
+        names: list[str] = []
+        for entry in range_params:
+            if isinstance(entry, str):
+                if entry not in to_remove:
+                    names.append(entry)
+                continue
+            names.extend(param for param in entry if param not in to_remove)
+        return names

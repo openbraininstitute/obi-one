@@ -1,6 +1,5 @@
 import functools
 from collections.abc import Callable
-from typing import ClassVar
 
 import numpy  # ruff: ignore[unconventional-import-alias]
 import pandas  # ruff: ignore[unconventional-import-alias]
@@ -70,7 +69,10 @@ _configure_caveclient_retries()
 
 
 class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
-    entitysdk_class: ClassVar[type[EMDenseReconstructionDataset]] = EMDenseReconstructionDataset
+    @classmethod
+    def entitysdk_class(cls) -> type[EMDenseReconstructionDataset]:
+        return EMDenseReconstructionDataset
+
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     auth_token: str | None = None
 
@@ -142,8 +144,8 @@ class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
 
     def _make_cave_client(self, db_client: Client, cave_version: int | None = None) -> CAVEclient:
         entity = self.entity(db_client=db_client)
-        datastack_name_ = entity.cave_datastack  # ty:ignore[unresolved-attribute]
-        cave_client_url_ = entity.cave_client_url  # ty:ignore[unresolved-attribute]
+        datastack_name_ = entity.cave_datastack
+        cave_client_url_ = entity.cave_client_url
 
         cave_client = CAVEclient(
             datastack_name_, server_address=cave_client_url_, auth_token=self.auth_token

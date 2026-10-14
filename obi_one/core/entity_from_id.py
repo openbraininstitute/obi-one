@@ -1,6 +1,6 @@
 import abc
 from enum import Enum
-from typing import ClassVar
+from uuid import UUID
 
 import entitysdk
 from entitysdk.models.entity import Entity, Identifiable
@@ -17,13 +17,20 @@ class LoadAssetMethod(Enum):
 class EntityFromID[TEntity: Entity](OBIBaseModel, abc.ABC):
     """Base class for entity references that resolve to full Entity objects (with assets)."""
 
-    entitysdk_class: ClassVar[type[TEntity]]
     id_str: str = Field(description="ID of the entity in string format.")
     _entity: TEntity | None = PrivateAttr(default=None)
 
     @classmethod
+    @abc.abstractmethod
+    def entitysdk_class(cls) -> type[TEntity]:
+        """Entitysdk model class fetched for this wrapper type."""
+
+    @classmethod
     def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> TEntity:
-        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)  # ty:ignore[invalid-argument-type]
+        return db_client.get_entity(
+            entity_id=UUID(entity_id),
+            entity_type=cls.entitysdk_class(),
+        )
 
     def entity(self, db_client: entitysdk.client.Client) -> TEntity:
         if self._entity is None:
@@ -35,7 +42,7 @@ class EntityFromID[TEntity: Entity](OBIBaseModel, abc.ABC):
 
     @property
     def entitysdk_type(self) -> type[TEntity]:
-        return self.__class__.entitysdk_class
+        return self.entitysdk_class()
 
     def __str__(self) -> str:
         """Returns a string representation."""
@@ -49,13 +56,20 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel, abc.ABC):
     database records that can be fetched by ID.
     """  # ruff: ignore[line-too-long]
 
-    entitysdk_class: ClassVar[type[TIdentifiable]]
     id_str: str = Field(description="ID of the identifiable in string format.")
     _entity: TIdentifiable | None = PrivateAttr(default=None)
 
     @classmethod
+    @abc.abstractmethod
+    def entitysdk_class(cls) -> type[TIdentifiable]:
+        """Entitysdk model class fetched for this wrapper type."""
+
+    @classmethod
     def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> TIdentifiable:
-        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)  # ty:ignore[invalid-argument-type]
+        return db_client.get_entity(
+            entity_id=UUID(entity_id),
+            entity_type=cls.entitysdk_class(),
+        )
 
     def entity(self, db_client: entitysdk.client.Client) -> TIdentifiable:
         if self._entity is None:

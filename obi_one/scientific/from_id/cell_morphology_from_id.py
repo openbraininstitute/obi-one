@@ -3,7 +3,6 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 import morphio
@@ -35,7 +34,9 @@ _MORPHOLOGY_ASSET_FORMATS = (
 
 
 class CellMorphologyFromID(EntityFromID[CellMorphology]):
-    entitysdk_class: ClassVar[type[CellMorphology]] = CellMorphology
+    @classmethod
+    def entitysdk_class(cls) -> type[CellMorphology]:
+        return CellMorphology
 
     _swc_file_path: Path | None = PrivateAttr(default=None)
     _neurom_morphology: neurom.core.Morphology | None = PrivateAttr(default=None)
@@ -60,7 +61,7 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
                             raise ValueError(msg)
                         content = db_client.download_content(
                             entity_id=self.entity(db_client=db_client).id,
-                            entity_type=self.entitysdk_type,
+                            entity_type=self.entitysdk_class(),
                             asset_id=asset.id,
                         ).decode(encoding="utf-8")
 
@@ -189,7 +190,7 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
                     raise ValueError(msg)
                 db_client.download_file(
                     entity_id=entity.id,
-                    entity_type=self.entitysdk_class,
+                    entity_type=self.entitysdk_class(),
                     asset_id=asset.id,
                     output_path=str(path_to),  # ty:ignore[invalid-argument-type]
                 )
@@ -241,7 +242,7 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
                     path = Path(directory) / f"morphology{suffix}"
                     db_client.download_file(
                         entity_id=entity.id,
-                        entity_type=self.entitysdk_class,
+                        entity_type=self.entitysdk_class(),
                         asset_id=asset.id,
                         output_path=path,
                     )

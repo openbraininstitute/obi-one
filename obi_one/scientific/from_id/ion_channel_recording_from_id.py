@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import IonChannelRecording
@@ -10,7 +9,9 @@ from obi_one.core.entity_from_id import EntityFromID
 
 
 class IonChannelRecordingFromID(EntityFromID[IonChannelRecording]):
-    entitysdk_class: ClassVar[type[IonChannelRecording]] = IonChannelRecording
+    @classmethod
+    def entitysdk_class(cls) -> type[IonChannelRecording]:
+        return IonChannelRecording
 
     def download_asset(
         self,

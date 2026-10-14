@@ -1,14 +1,19 @@
-from typing import ClassVar
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from entitysdk.models import TaskConfig
 
 from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
+_TEST_ENTITY_ID = "00000000-0000-0000-0000-000000000001"
+_TEST_ENTITY_UUID = UUID(_TEST_ENTITY_ID)
+
 
 class ConcreteEntityFromID(EntityFromID[TaskConfig]):
-    entitysdk_class: ClassVar[type[TaskConfig]] = TaskConfig
+    @classmethod
+    def entitysdk_class(cls) -> type[TaskConfig]:
+        return TaskConfig
 
 
 class TestLoadAssetMethod:
@@ -36,16 +41,16 @@ class TestEntityFromIDFetch:
         mock_client = MagicMock()
         mock_client.get_entity.return_value = "fetched_entity"
 
-        result = ConcreteEntityFromID.fetch("entity-id-1", mock_client)
+        result = ConcreteEntityFromID.fetch(_TEST_ENTITY_ID, mock_client)
         mock_client.get_entity.assert_called_once_with(
-            entity_id="entity-id-1", entity_type=TaskConfig
+            entity_id=_TEST_ENTITY_UUID, entity_type=TaskConfig
         )
         assert result == "fetched_entity"
 
 
 class TestEntityFromIDEntity:
     def test_entity_fetches_on_first_call(self):
-        obj = ConcreteEntityFromID(id_str="test-id")
+        obj = ConcreteEntityFromID(id_str=_TEST_ENTITY_ID)
         mock_client = MagicMock()
         mock_client.get_entity.return_value = "entity_result"
 
@@ -54,7 +59,7 @@ class TestEntityFromIDEntity:
         mock_client.get_entity.assert_called_once()
 
     def test_entity_caches_result(self):
-        obj = ConcreteEntityFromID(id_str="test-id")
+        obj = ConcreteEntityFromID(id_str=_TEST_ENTITY_ID)
         mock_client = MagicMock()
         mock_client.get_entity.return_value = "entity_result"
 
@@ -65,9 +70,9 @@ class TestEntityFromIDEntity:
         assert mock_client.get_entity.call_count == 1
 
     def test_entity_raises_when_fetch_returns_none(self):
-        obj = ConcreteEntityFromID(id_str="missing-id")
+        obj = ConcreteEntityFromID(id_str=_TEST_ENTITY_ID)
         with (
             patch.object(ConcreteEntityFromID, "fetch", return_value=None),
-            pytest.raises(RuntimeError, match="failed to resolve entity 'missing-id'"),
+            pytest.raises(RuntimeError, match=f"failed to resolve entity {_TEST_ENTITY_ID!r}"),
         ):
             obj.entity(MagicMock())

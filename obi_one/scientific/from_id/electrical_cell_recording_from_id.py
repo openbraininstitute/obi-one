@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import ElectricalCellRecording
@@ -10,7 +9,9 @@ from obi_one.core.entity_from_id import EntityFromID
 
 
 class ElectricalCellRecordingFromID(EntityFromID[ElectricalCellRecording]):
-    entitysdk_class: ClassVar[type[ElectricalCellRecording]] = ElectricalCellRecording
+    @classmethod
+    def entitysdk_class(cls) -> type[ElectricalCellRecording]:
+        return ElectricalCellRecording
 
     def download_nwb_asset(
         self,

@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import TaskConfig
@@ -12,7 +11,9 @@ from obi_one.db_sdk.db_sdk import fetch_asset_by_label
 class TaskConfigFromID(EntityFromID[TaskConfig]):
     """Wrapper for downloading assets from a TaskConfig entity."""
 
-    entitysdk_class: ClassVar[type[TaskConfig]] = TaskConfig
+    @classmethod
+    def entitysdk_class(cls) -> type[TaskConfig]:
+        return TaskConfig
 
     def download_asset_by_label(
         self,

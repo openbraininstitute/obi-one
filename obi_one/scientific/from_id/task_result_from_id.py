@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import TaskResult
@@ -12,7 +11,9 @@ from obi_one.db_sdk.db_sdk import fetch_asset_by_label, fetch_directory_asset_by
 class TaskResultFromID(EntityFromID[TaskResult]):
     """Wrapper for downloading assets from a TaskResult entity."""
 
-    entitysdk_class: ClassVar[type[TaskResult]] = TaskResult
+    @classmethod
+    def entitysdk_class(cls) -> type[TaskResult]:
+        return TaskResult
 
     def download_asset_by_label(
         self,
