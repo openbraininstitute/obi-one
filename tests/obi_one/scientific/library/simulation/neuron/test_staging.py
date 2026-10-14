@@ -46,7 +46,7 @@ def test_stage_circuit_raises_when_circuit_name_is_none(tmp_path, monkeypatch):
     config_path.write_text("{}")
     monkeypatch.setattr(
         "obi_one.scientific.library.simulation.neuron.staging.stage_circuit_entity",
-        lambda **kwargs: config_path,
+        lambda **_kwargs: config_path,
     )
     model = MagicMock()
     model.name = None
@@ -60,7 +60,7 @@ def test_stage_circuit_returns_named_circuit(tmp_path, monkeypatch):
     config_path.write_text("{}")
     monkeypatch.setattr(
         "obi_one.scientific.library.simulation.neuron.staging.stage_circuit_entity",
-        lambda **kwargs: config_path,
+        lambda **_kwargs: config_path,
     )
     built: dict[str, str] = {}
 

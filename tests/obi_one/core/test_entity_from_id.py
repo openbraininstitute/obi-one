@@ -8,7 +8,7 @@ from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
 
 class ConcreteEntityFromID(EntityFromID[TaskConfig]):
-    entitysdk_class: ClassVar[type[TaskConfig]] = TaskConfig  # noqa: A003
+    entitysdk_class: ClassVar[type[TaskConfig]] = TaskConfig
 
 
 class TestLoadAssetMethod:
