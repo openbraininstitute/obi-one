@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from entitysdk import models
-from entitysdk.types import TaskActivityType, TaskConfigType
+from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
@@ -26,10 +26,14 @@ OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
 
+TESTING_REF = "commit:e6bdb8b2733f18ca37db43ef60f3ad17fb041e67"  # TESTING
+
+
 def _obi_one_code(
     deps_name: str,
     *,
     capabilities: Capabilities | None = None,
+    ref: str | None = None,  # TESTING
 ) -> PythonRepositoryCode:
     """Standard obi-one launch code: the obi-one repo at the service's release tag, running main.py.
 
@@ -37,7 +41,7 @@ def _obi_one_code(
     """
     return PythonRepositoryCode(
         location=settings.OBI_ONE_REPO,
-        ref=release_tag_ref(settings.APP_VERSION),
+        ref=ref or release_tag_ref(settings.APP_VERSION),  # TESTING
         path=OBI_ONE_CODE_PATH,
         dependencies=str(OBI_ONE_DEPS_DIR / deps_name),
         capabilities=capabilities or Capabilities(),
@@ -65,7 +69,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
         activity_type=TaskActivityType.circuit_extraction__execution,
-        code=_obi_one_code("circuit_extraction.txt"),
+        code=_obi_one_code("circuit_extraction.txt", ref=TESTING_REF),
         resources=MachineResources(
             cores=1,
             memory=2,
@@ -76,12 +80,13 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskDefinition(
         task_type=TaskType.circuit_single_build,
         config_type=TaskConfigType.circuit_single_build__config,
         activity_type=TaskActivityType.circuit_single_build__execution,
-        code=_obi_one_code("default.txt"),
+        code=_obi_one_code("default.txt", ref=TESTING_REF),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -92,6 +97,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
@@ -264,7 +270,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.circuit_synaptic_physiology_assignment,
         config_type=TaskConfigType.circuit_synaptic_physiology_assignment__config,
         activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
-        code=_obi_one_code("synapse_parameterization.txt"),
+        code=_obi_one_code("synapse_parameterization.txt", ref=TESTING_REF),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -275,6 +281,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
@@ -285,6 +292,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),
+            ref=TESTING_REF,
         ),
         resources=MachineResources(
             cores=1,
@@ -296,6 +304,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        generated_entity_types=(EntityType.circuit,),
     ),
     TaskDefinition(
         task_type=TaskType.efeature_extraction,

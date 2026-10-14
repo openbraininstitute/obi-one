@@ -17,9 +17,9 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.neuron_sets.specific import (
@@ -33,6 +33,7 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
+from obi_one.scientific.tasks.circuit_output_task import CircuitOutputTask
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
 )
@@ -275,8 +276,9 @@ class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMix
     """
 
 
-class CircuitExtractionTask(Task):
+class CircuitExtractionTask(CircuitOutputTask):
     config: CircuitExtractionSingleConfig
+    circuit_validation_mode: CircuitValidationMode = CircuitValidationMode.sync_bluepysnap
     _circuit: Circuit | None = PrivateAttr(default=None)
     _circuit_entity: models.Circuit | None = PrivateAttr(default=None)
     _temp_dir: tempfile.TemporaryDirectory | None = PrivateAttr(default=None)
@@ -334,6 +336,8 @@ class CircuitExtractionTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=types.DerivationType.circuit_extraction,
+            validation_mode=self.circuit_validation_mode,
+            skip_additional_assets=self._defer_circuit_assets,
         )
 
     def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
@@ -350,6 +354,7 @@ class CircuitExtractionTask(Task):
         execution_activity = CircuitExtractionTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
+        self._check_circuit_validation_mode(execution_activity)
 
         # Ensure neuron set reference is set (use default if None)
         self.config.ensure_extraction_target_neuron_set()

@@ -111,7 +111,13 @@ def run_task_type(
     db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
+    task_options: dict[str, str] | None = None,
 ) -> None:
+    """Run the task of ``task_type`` on the config entity ``entity_id``.
+
+    ``task_options`` are set as fields on the task, for example how it validates the circuit
+    it registers. A task that has no such field rejects the option.
+    """
     task_spec = get_task_spec_for_task_type(task_type)
     entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
 
@@ -143,7 +149,7 @@ def run_task_type(
 
     single_config.set_single_entity(entity)  # ty:ignore[unresolved-attribute]
 
-    task = task_spec.task_cls(config=single_config)
+    task = task_spec.task_cls(config=single_config, **(task_options or {}))
     task.execute(
         db_client=db_client, entity_cache=entity_cache, execution_activity_id=execution_activity_id
     )

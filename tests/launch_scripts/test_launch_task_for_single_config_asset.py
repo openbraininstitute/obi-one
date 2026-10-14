@@ -72,6 +72,47 @@ def test_main_success_calls_run_task_type_with_task_type_enum(launch_main, argv,
     assert run_task_type.call_args.kwargs["task_type"] is TaskType.circuit_extraction
     assert run_task_type.call_args.kwargs["scan_output_root"] == "/out"
 
+    assert run_task_type.call_args.kwargs["task_options"] == {}
+
+
+def test_main_passes_task_options_to_run_task_type(launch_main, argv, monkeypatch):
+    argv = [*argv, "--task_option", "circuit_validation_mode=async_launch"]
+    monkeypatch.setattr(sys, "argv", argv)
+    with (
+        patch.object(launch_main, "Client", return_value=MagicMock()),
+        patch.object(launch_main, "update_activity_status"),
+        patch.object(launch_main, "finalize_activity"),
+        patch.object(launch_main, "run_task_type") as run_task_type,
+    ):
+        assert launch_main.main() == 0
+
+    assert run_task_type.call_args.kwargs["task_options"] == {
+        "circuit_validation_mode": "async_launch"
+    }
+
+
+@pytest.mark.parametrize("option", ["no-equals-sign", "=value"])
+def test_task_option_must_be_key_value(launch_main, option):
+    with pytest.raises(SystemExit):
+        launch_main.get_parser().parse_args(
+            [
+                "--task-type",
+                "t",
+                "--config_entity_id",
+                "c",
+                "--entity_cache",
+                "True",
+                "--scan_output_root",
+                "/out",
+                "--virtual_lab_id",
+                "v",
+                "--project_id",
+                "p",
+                "--task_option",
+                option,
+            ]
+        )
+
 
 def test_main_failure_finalizes_activity_with_error(launch_main, argv, monkeypatch):
     monkeypatch.setattr(sys, "argv", argv)

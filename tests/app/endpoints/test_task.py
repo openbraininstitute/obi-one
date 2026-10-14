@@ -840,3 +840,22 @@ def test_task_success_endpoint(client, task_type):
                 "count": 11,
             },
         ).raise_for_status()
+
+
+def test_task_generated_entities_endpoint(client, monkeypatch):
+    activity_id = uuid4()
+    monkeypatch.setitem(app.dependency_overrides, get_compute_cell, lambda: "cell_a")
+
+    with patch("app.endpoints.task.handle_generated_entities", autospec=True) as mock_trigger:
+        response = client.post(
+            url="/declared/task/callback/generated-entities",
+            params={"task_type": "circuit_extraction", "activity_id": str(activity_id)},
+        )
+
+    assert response.status_code == 204
+    assert (
+        mock_trigger.call_args.kwargs["task_definition"]
+        is TASK_DEFINITIONS[TaskType.circuit_extraction]
+    )
+    assert mock_trigger.call_args.kwargs["activity_id"] == activity_id
+    assert mock_trigger.call_args.kwargs["compute_cell"] == "cell_a"

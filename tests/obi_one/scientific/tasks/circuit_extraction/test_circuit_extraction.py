@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pydantic
@@ -12,6 +12,7 @@ from obi_one.config import settings
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
@@ -23,6 +24,7 @@ from obi_one.scientific.blocks.neuron_sets.predefined import (
 from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
+from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionTask
 
 from tests.utils import CIRCUIT_DIR
 
@@ -362,3 +364,31 @@ def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     # Combined = AllBiophysicalNeurons INTERSECT AllBiophysicalNeurons = all biophysical neurons
     c_orig = instance.initialize.circuit.sonata_circuit
     assert c_res.nodes["S1nonbarrel_neurons"].size == c_orig.nodes["S1nonbarrel_neurons"].size
+
+
+@pytest.mark.parametrize(
+    ("validation_mode", "skip_additional_assets"),
+    [
+        (CircuitValidationMode.async_launch, True),
+        (CircuitValidationMode.sync_bluepysnap, False),
+        (CircuitValidationMode.skip, False),
+    ],
+)
+def test_register_output_uses_validation_mode(tmp_path, validation_mode, skip_additional_assets):
+    """The task's validation mode and asset flag are passed to register_circuit as they are."""
+    task = Mock(
+        _circuit_entity=Mock(root_circuit_id=None),
+        circuit_validation_mode=validation_mode,
+        _defer_circuit_assets=skip_additional_assets,
+    )
+    task._circuit_entity.name = "parent"
+    task.config.info.campaign_name = "campaign"
+    task.config.info.campaign_description = "description"
+    task.config.single_coordinate_scan_params.scan_params = []
+    with patch(
+        "obi_one.scientific.tasks.circuit_extraction.task.circuit_registration.register_circuit"
+    ) as mock_register:
+        CircuitExtractionTask._register_output(task, Mock(), tmp_path / "circuit_config.json")
+
+    assert mock_register.call_args.kwargs["validation_mode"] == validation_mode
+    assert mock_register.call_args.kwargs["skip_additional_assets"] is skip_additional_assets

@@ -20,8 +20,9 @@ from app.dependencies.auth import user_verified
 from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
-from app.endpoints.circuit_helpers import trigger_asset_generation_task, trigger_validation_task
+from app.services.circuit_launch import trigger_asset_generation_task, trigger_validation_task
 from obi_one.db_sdk.registration.circuit import (
+    CircuitValidationMode,
     check_hierarchy_species,
     check_if_circuit_exists,
     get_contributions,
@@ -174,8 +175,7 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
             contributions=contribution_dict,
             publications=publication_dict,
             authorized_public=authorized_public,
-            skip_validation=True,
-            lifecycle_status="draft",
+            validation_mode=CircuitValidationMode.async_launch,
             overview_image_path=overview_image_path,
             sim_designer_image_path=sim_designer_image_path,
             dry_run=dry_run,

@@ -24,8 +24,8 @@ from app.dependencies.auth import user_verified
 from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
-from app.endpoints.circuit_helpers import trigger_validation_task
-from obi_one.db_sdk.registration.circuit import register_circuit
+from app.services.circuit_launch import trigger_validation_task
+from obi_one.db_sdk.registration.circuit import CircuitValidationMode, register_circuit
 from obi_one.scientific.validations.emodels import (
     BUILTIN_NEURON_MECHANISMS,
     check_mechanisms,
@@ -573,8 +573,7 @@ def _stage_and_register(
             license=parent.license,
             parent=parent,
             derivation_type=DerivationType.circuit_customization,
-            skip_validation=True,
-            lifecycle_status="draft",
+            validation_mode=CircuitValidationMode.async_launch,
             include_compressed=False,
         )
     except (OSError, ValueError, RuntimeError) as e:

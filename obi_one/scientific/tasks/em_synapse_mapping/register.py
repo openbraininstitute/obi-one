@@ -6,6 +6,7 @@ from entitysdk.models import EMDenseReconstructionDataset
 from entitysdk.types import CircuitBuildCategory, TargetSimulator
 
 from obi_one.db_sdk.registration import circuit as circuit_registration
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
 from obi_one.scientific.tasks.em_synapse_mapping.publication_links import assemble_publication_links
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import ResolvedNeuron
@@ -23,11 +24,15 @@ def register_output(
     total_internal: int,
     total_external: int,
     target_simulator: TargetSimulator = TargetSimulator.NEURON,
+    *,
+    validation_mode: CircuitValidationMode = CircuitValidationMode.skip,
+    skip_additional_assets: bool = False,
 ) -> str:
     """Register the EM synapse mapping output as a circuit entity.
 
-    Uses register_circuit to handle entity creation, count computation,
-    folder upload, compression, and additional asset generation.
+    Builds the name, description and publication links, then calls ``register_circuit``,
+    which creates the entity, computes the counts and uploads the circuit folder.
+    ``validation_mode`` and ``skip_additional_assets`` are passed on to it unchanged.
     """
     em_entity = em_dataset.entity(db_client)
     pt_root_ids = [rn.pt_root_id for rn in resolved_neurons]
@@ -70,8 +75,8 @@ def register_output(
         experiment_date=source_dataset.experiment_date,
         license=em_entity.license,  # ty:ignore[unresolved-attribute]
         publications=publications,
-        skip_additional_assets=False,
-        skip_validation=True,
+        validation_mode=validation_mode,
+        skip_additional_assets=skip_additional_assets,
     )
 
     L.info(f"Output registered as: {registered_circuit.id}")  # ty:ignore[unresolved-attribute]

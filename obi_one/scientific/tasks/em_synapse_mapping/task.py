@@ -6,7 +6,7 @@ import pandas  # ruff: ignore[unconventional-import-alias]
 from entitysdk import Client
 from matplotlib import pyplot as plt
 
-from obi_one.core.task import Task
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.library.map_em_synapses._defaults import (
     default_node_spec_for,
     sonata_config_for,
@@ -23,6 +23,7 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     assemble_collection_from_specs,
     write_nodes,
 )
+from obi_one.scientific.tasks.circuit_output_task import CircuitOutputTask
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
 from obi_one.scientific.tasks.em_synapse_mapping.plot import (
     plot_mapping_stats,
@@ -40,7 +41,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.util import (
 L = logging.getLogger(__name__)
 
 
-class EMSynapseMappingTask(Task):
+class EMSynapseMappingTask(CircuitOutputTask):
     """EM synapse mapping task for one or more neurons.
 
     Produces a SONATA circuit with:
@@ -51,6 +52,7 @@ class EMSynapseMappingTask(Task):
     """
 
     config: EMSynapseMappingSingleConfig
+    circuit_validation_mode: CircuitValidationMode = CircuitValidationMode.skip
 
     def execute(  # ruff: ignore[too-many-locals, too-many-statements, complex-structure, too-many-branches]
         self,
@@ -66,6 +68,7 @@ class EMSynapseMappingTask(Task):
         execution_activity = EMSynapseMappingTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )
+        self._check_circuit_validation_mode(execution_activity)
 
         cfg = self.config
         init = cfg.initialize
@@ -305,6 +308,8 @@ class EMSynapseMappingTask(Task):
             all_notices=all_notices,
             total_internal=total_internal,
             total_external=total_external,
+            validation_mode=self.circuit_validation_mode,
+            skip_additional_assets=self._defer_circuit_assets,
         )
 
         # Update execution activity (if any)

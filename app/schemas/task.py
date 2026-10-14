@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from entitysdk.models.activity import Activity, Entity
-from entitysdk.types import TaskActivityType, TaskConfigType
+from entitysdk.types import EntityType, TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
 from pydantic import Field, field_validator
 
@@ -128,6 +128,10 @@ class TaskDefinition(Schema):
     activity_type: TaskActivityType
     code: Code
     resources: Resources
+    # Entity types the task registers. If a type has a handler in
+    # app/services/generated_entities.py, that handler runs on the task's output once the job
+    # succeeds.
+    generated_entity_types: tuple[EntityType, ...] = ()
 
     @property
     def config_type_name(self) -> str:
@@ -148,6 +152,8 @@ class TaskDefinitionLegacy(Schema):
     activity_type: type[Activity]
     code: Code
     resources: Resources
+    # Same meaning as on TaskDefinition.
+    generated_entity_types: tuple[EntityType, ...] = ()
 
     @property
     def config_type_name(self) -> str:

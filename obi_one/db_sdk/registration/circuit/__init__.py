@@ -16,6 +16,7 @@ from obi_one.db_sdk.registration.circuit.launch_jobs import (
     submit_circuit_validation_job,
 )
 from obi_one.db_sdk.registration.circuit.lifecycle import (
+    CircuitValidationMode,
     is_validation_allowed,
     validation_blocked_detail,
 )
@@ -46,6 +47,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
 )
 
 __all__ = [
+    "CircuitValidationMode",
     "check_hierarchy_species",
     "check_if_circuit_exists",
     "find_agent",

@@ -25,6 +25,7 @@ from app.endpoints.circuit_customization import (
     _validate_node_sets,
     _validate_nodes_hoc_consistency,
 )
+from obi_one.db_sdk.registration.circuit import CircuitValidationMode
 
 from tests.utils import CIRCUIT_DIR
 
@@ -482,8 +483,7 @@ class TestStageAndRegister:
         assert kwargs["brain_region"] is parent.brain_region
         assert kwargs["subject"] is parent.subject
         assert kwargs["license"] is parent.license
-        assert kwargs["lifecycle_status"] == "draft"
-        assert kwargs["skip_validation"] is True
+        assert kwargs["validation_mode"] == CircuitValidationMode.async_launch
         # The staged tree is symlinks into the parent's storage: the compressed
         # archive is produced later by the post-validation asset job.
         assert kwargs["include_compressed"] is False

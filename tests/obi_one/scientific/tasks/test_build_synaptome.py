@@ -17,6 +17,7 @@ from entitysdk.types import (
 )
 
 from obi_one.core.info import Info
+from obi_one.db_sdk.registration.circuit.lifecycle import CircuitValidationMode
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.distributions.normal import NormalDistribution
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
@@ -266,7 +267,18 @@ def test_build_synaptome_config_provenance(monkeypatch):
     assert config.input_entities(db_client=Mock()) == [me_model]
 
 
-def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("validation_mode", "execution_activity_id", "execution_activity"),
+    [
+        # API launch: draft, validated later by launch-system job.
+        (CircuitValidationMode.async_launch, "activity-id", SimpleNamespace(id="activity-id")),
+        # Local run with the task default: no validation, as before.
+        (CircuitValidationMode.skip, None, None),
+    ],
+)
+def test_build_synaptome_task_registers_circuit_and_updates_activity(
+    tmp_path, monkeypatch, validation_mode, execution_activity_id, execution_activity
+):
     config = _config()
     config.coordinate_output_root = tmp_path
     subject = Mock()
@@ -293,9 +305,7 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         model_template="hoc:cADpyr_L5TPC",
     )
     build = Mock(return_value=result)
-    circuit = SimpleNamespace(id="circuit-id")
-    register = Mock(return_value=circuit)
-    execution_activity = SimpleNamespace(id="activity-id")
+    register = Mock(return_value=SimpleNamespace(id="circuit-id"))
     get_activity = Mock(return_value=execution_activity)
     update_activity = Mock()
     monkeypatch.setattr(
@@ -313,9 +323,11 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
 
     db_client = Mock()
     assert (
-        MEModelSynapticModelPlacementTask(config=config).execute(
+        MEModelSynapticModelPlacementTask(
+            config=config, circuit_validation_mode=validation_mode
+        ).execute(
             db_client=db_client,
-            execution_activity_id="activity-id",
+            execution_activity_id=execution_activity_id,
         )
         == "circuit-id"
     )
@@ -333,13 +345,26 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         license=license_entity,
         derived_from_emodel=emodel,
         derivation_label="hoc:cADpyr_L5TPC",
-        skip_validation=True,
+        validation_mode=validation_mode,
+        skip_additional_assets=validation_mode == CircuitValidationMode.async_launch,
     )
     update_activity.assert_called_once_with(
         db_client=db_client,
         execution_activity=execution_activity,
         generated=["circuit-id"],
     )
+
+
+def test_build_synaptome_task_rejects_async_validation_without_activity(tmp_path):
+    """Without an execution activity, nothing would validate the draft circuit."""
+    config = _config()
+    config.coordinate_output_root = tmp_path
+    task = MEModelSynapticModelPlacementTask(
+        config=config, circuit_validation_mode=CircuitValidationMode.async_launch
+    )
+
+    with pytest.raises(ValueError, match="requires an execution activity"):
+        task.execute(db_client=Mock(), execution_activity_id=None)
 
 
 def test_build_minimal_synaptome_loads_with_bluepysnap(tmp_path, stage_memodel):

@@ -7,11 +7,12 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 
-from app.endpoints.circuit_helpers import (
+from app.endpoints.circuit_registration import register_circuit_endpoint
+from app.services.circuit_launch import (
     trigger_asset_generation_task,
     trigger_validation_task,
 )
-from app.endpoints.circuit_registration import register_circuit_endpoint
+from obi_one.db_sdk.registration.circuit import CircuitValidationMode
 from obi_one.utils.io import extract_tar_gz
 
 
@@ -45,7 +46,7 @@ class TestExtractArchive:
 
 
 class TestTriggerValidationTask:
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_success(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
@@ -82,7 +83,7 @@ class TestTriggerValidationTask:
         assert "--force false" in job_data["inputs"]
         assert str(project_id) == job_data["project_id"]
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_forwards_force_true(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
@@ -111,7 +112,7 @@ class TestTriggerValidationTask:
         assert "--force true" in job_data["inputs"]
         assert job_data["resources"]["compute_cell"] == "cell_b"
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_failure_returns_none(self, mock_settings):
         mock_settings.API_URL = "http://localhost:8100"
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
@@ -268,7 +269,7 @@ class TestValidateCircuitEndpoint:
 
 
 class TestTriggerAssetGenerationTask:
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_success(self, mock_settings):
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
         mock_settings.APP_VERSION = "1.2.3-dev"
@@ -303,7 +304,7 @@ class TestTriggerAssetGenerationTask:
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_forwards_force_true(self, mock_settings):
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
         mock_settings.APP_VERSION = "1.2.3"
@@ -331,7 +332,7 @@ class TestTriggerAssetGenerationTask:
         assert "--force true" in job_data["inputs"]
         assert job_data["resources"]["compute_cell"] == "cell_b"
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_none_app_version(self, mock_settings):
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
         mock_settings.APP_VERSION = None
@@ -358,7 +359,7 @@ class TestTriggerAssetGenerationTask:
         job_data = call_kwargs["json"]
         assert "tag:0.0.0" in job_data["code"]["ref"]
 
-    @patch("app.endpoints.circuit_helpers.settings")
+    @patch("app.services.circuit_launch.settings")
     def test_failure_returns_none(self, mock_settings):
         mock_settings.OBI_ONE_REPO = "https://github.com/org/repo.git"
         mock_settings.APP_VERSION = "2.0.0"
@@ -552,7 +553,7 @@ class TestRegisterCircuitEndpoint:
         mock_register_circuit,
         mock_trigger_validation,
     ):
-        """Endpoint must call register_circuit with draft + skip_validation."""
+        """Endpoint must register a draft with validation left to the launch-system job."""
         mock_registered = MagicMock()
         mock_registered.id = uuid4()
         mock_registered.name = "test-circuit"
@@ -586,8 +587,7 @@ class TestRegisterCircuitEndpoint:
 
         mock_register_circuit.assert_called_once()
         call_kwargs = mock_register_circuit.call_args.kwargs
-        assert call_kwargs["lifecycle_status"] == "draft"
-        assert call_kwargs["skip_validation"] is True
+        assert call_kwargs["validation_mode"] == CircuitValidationMode.async_launch
         # Draft carries no generated assets; the post-validation job produces them.
         assert call_kwargs["skip_additional_assets"] is True
         assert call_kwargs["dry_run"] is False

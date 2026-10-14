@@ -12,6 +12,7 @@ import pytest
 from entitysdk.types import DerivationType
 
 from obi_one.db_sdk.registration.circuit import (
+    CircuitValidationMode,
     check_hierarchy_species,
     check_if_circuit_exists,
     find_agent,
@@ -939,7 +940,7 @@ def test_register_circuit_registers_entity():
 
 
 def test_register_circuit_sets_lifecycle_status_draft():
-    """Draft registration passes lifecycle_status through to the Circuit model."""
+    """async_launch registers a draft Circuit without the in-process SONATA check."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
     registered = MagicMock()
@@ -963,8 +964,7 @@ def test_register_circuit_sets_lifecycle_status_draft():
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            skip_validation=True,
-            lifecycle_status="draft",
+            validation_mode=CircuitValidationMode.async_launch,
             skip_additional_assets=True,
         )
 
@@ -1003,7 +1003,7 @@ def test_register_circuit_derives_root_from_parent():
             parent=parent,
             derivation_type="circuit_extraction",
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
     circuit_model = client.register_entity.call_args[0][0]
@@ -1038,7 +1038,7 @@ def test_register_circuit_passes_include_overview_images():
             subject=subject,
             target_simulator="NEURON",
             include_overview_images=False,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
     assert mock_gen.call_args.kwargs["include_overview_images"] is False
@@ -1090,7 +1090,7 @@ def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_a
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
             skip_additional_assets=True,
             overview_image_path=overview,
         )
@@ -1138,7 +1138,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
             skip_additional_assets=True,
             overview_image_path=overview,
             sim_designer_image_path=sim_designer,
@@ -1188,7 +1188,7 @@ def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
             skip_additional_assets=True,
             sim_designer_image_path=sim_designer,
         )
@@ -1227,7 +1227,7 @@ def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
             skip_additional_assets=True,
             overview_image_path=overview,
             dry_run=True,
@@ -1312,7 +1312,7 @@ def test_register_circuit_skip_additional_assets():
 
 
 def test_register_circuit_skip_validation():
-    """Test that skip_validation=True skips run_validation."""
+    """validation_mode=skip skips run_validation."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
     registered = MagicMock()
@@ -1336,7 +1336,7 @@ def test_register_circuit_skip_validation():
             brain_region=brain_region,
             subject=subject,
             target_simulator="NEURON",
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
             dry_run=False,
         )
 
@@ -1344,7 +1344,7 @@ def test_register_circuit_skip_validation():
 
 
 def test_register_circuit_runs_validation_by_default():
-    """Test that run_validation is called when skip_validation is not set."""
+    """run_validation is called with the default validation_mode (sync_bluepysnap)."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
     registered = MagicMock()
@@ -1783,7 +1783,7 @@ def test_register_circuit_from_metadata_forwards_include_overview_images():
 
 
 def test_register_circuit_neurodamus_validation_runs_in_process():
-    """neurodamus_validation registers as draft, skips SONATA, runs in-process checks."""
+    """sync_neurodamus registers as draft, skips SONATA, runs in-process checks."""
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     client = MagicMock()
     registered = MagicMock()
@@ -1816,7 +1816,7 @@ def test_register_circuit_neurodamus_validation_runs_in_process():
             subject=subject,
             target_simulator="NEURON",
             skip_additional_assets=True,
-            neurodamus_validation=True,
+            validation_mode=CircuitValidationMode.sync_neurodamus,
         )
 
     mock_validate.assert_not_called()
@@ -1864,12 +1864,12 @@ def test_register_circuit_neurodamus_validation_raises_on_failure():
                 subject=subject,
                 target_simulator="NEURON",
                 skip_additional_assets=True,
-                neurodamus_validation=True,
+                validation_mode=CircuitValidationMode.sync_neurodamus,
             )
 
 
-def test_register_circuit_from_metadata_forwards_neurodamus_validation():
-    """neurodamus_validation is forwarded to register_circuit."""
+def test_register_circuit_from_metadata_forwards_validation_mode():
+    """validation_mode is forwarded to register_circuit."""
     client = MagicMock()
     metadata = {
         "name": "test",
@@ -1898,10 +1898,12 @@ def test_register_circuit_from_metadata_forwards_neurodamus_validation():
             client=client,
             circuit_metadata=metadata,
             circuit_path="/some/path",
-            neurodamus_validation=True,
+            validation_mode=CircuitValidationMode.sync_neurodamus,
         )
 
-    assert mock_register.call_args.kwargs["neurodamus_validation"] is True
+    assert mock_register.call_args.kwargs["validation_mode"] == (
+        CircuitValidationMode.sync_neurodamus
+    )
 
 
 # --- generate_additional_circuit_assets: compressed skip / force ---
@@ -2682,7 +2684,7 @@ def test_register_circuit_rejects_parent_and_explicit_emodel():
             derivation_type=DerivationType.emodel_circuit,
             derivation_label="hoc:Cell",
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
 
@@ -2707,7 +2709,7 @@ def test_register_circuit_requires_label_for_explicit_emodel():
             target_simulator="NEURON",
             derived_from_emodel=_FakeEModel(id="emodel-id"),
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
 
@@ -2738,7 +2740,7 @@ def test_register_circuit_rejects_non_circuit_parent():
             target_simulator="NEURON",
             parent=MagicMock(),
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
 
@@ -2763,7 +2765,7 @@ def test_register_circuit_rejects_parent_label():
             parent=_FakeCircuit(id="parent-id", root_circuit_id="root-id"),
             derivation_label="hoc:Cell",
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
 
@@ -2788,7 +2790,7 @@ def test_register_circuit_rejects_non_emodel_source():
             derived_from_emodel=MagicMock(),
             derivation_label="hoc:Cell",
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
 
 
@@ -2834,5 +2836,5 @@ def test_register_circuit_validates_explicit_emodel_metadata(
             derivation_type=derivation_type,
             derivation_label=label,
             skip_additional_assets=True,
-            skip_validation=True,
+            validation_mode=CircuitValidationMode.skip,
         )
