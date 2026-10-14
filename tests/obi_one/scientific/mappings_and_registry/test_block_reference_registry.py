@@ -1,14 +1,12 @@
 """Tests that ``BLOCK_REFERENCE_SPECS`` declares valid, importable block reference classes."""
 
-from typing import Any, ClassVar
-
 import pytest
 
-from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
-from obi_one.core.registry import BlockReferenceRegistry, block_ref_registry
 from obi_one.scientific.mappings_and_registry.block_reference_registry import (
     BLOCK_REFERENCE_SPECS,
+    BlockReferenceRegistry,
+    block_ref_registry,
 )
 from obi_one.utils.lazy_import import class_name, import_class
 
@@ -49,17 +47,6 @@ def test_block_ref_registry_get_by_name_resolves_spec(ref_name):
     assert cls is not None, f"No registry entry for {ref_name!r}"
     assert cls.__name__ == ref_name
     assert issubclass(cls, BlockReference)
-
-
-class _RegisteredTestReference(BlockReference):
-    allowed_block_types: ClassVar[Any] = Block
-
-
-def test_block_ref_registry_register_extra_lookup():
-    """``register`` supplies test-only references without ``BLOCK_REFERENCE_SPECS`` entries."""
-    registry = BlockReferenceRegistry()
-    registry.register(_RegisteredTestReference)
-    assert registry.get_by_name("_RegisteredTestReference") is _RegisteredTestReference
 
 
 def test_block_ref_registry_get_by_name_returns_none_for_unknown():

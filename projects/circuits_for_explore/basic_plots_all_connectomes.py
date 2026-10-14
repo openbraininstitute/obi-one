@@ -1,4 +1,4 @@
-""" "
+"""
 Generate basic connectivity plots for all connectomes
 Last updated 03.2025
 Author: Daniela Egas Santander

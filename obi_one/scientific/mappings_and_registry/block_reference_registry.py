@@ -5,7 +5,7 @@ this module imports no union or block implementation. Classes are imported on fi
 ``block_ref_registry.get_by_name`` lookup.
 """
 
-from obi_one.utils.lazy_import import ClassRef
+from obi_one.utils.lazy_import import ClassRef, import_class
 
 _BLOCK_REFERENCES = "obi_one.scientific.unions_and_references"
 
@@ -70,3 +70,28 @@ BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         "ExtracellularLocationsReference",
     ),
 }
+
+
+class BlockReferenceRegistry:
+    """Maps BlockReference subclass names to their classes.
+
+    Used by ScanConfig.add() to resolve a reference type by name when adding a block.
+    """
+
+    def __init__(self) -> None:
+        """Initialize empty registry."""
+        self._by_name: dict[str, type] = {}
+
+    def get_by_name(self, name: str) -> type | None:
+        """Return the BlockReference subclass with the given name, or None."""
+        if name in self._by_name:
+            return self._by_name[name]
+        class_ref = BLOCK_REFERENCE_SPECS.get(name)
+        if class_ref is None:
+            return None
+        cls = import_class(class_ref)
+        self._by_name[name] = cls
+        return cls
+
+
+block_ref_registry = BlockReferenceRegistry()

@@ -25,10 +25,10 @@ from obi_one.core.fill_none_references import (
     fill_none_references_in_config,
     resolve_block_default,
 )
-from obi_one.core.registry import block_ref_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.block_reference_registry import block_ref_registry
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_scan_config,
 )
