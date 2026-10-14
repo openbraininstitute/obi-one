@@ -8,7 +8,7 @@ from obi_one.scientific.blocks.synaptic_models.family_defaults import (
     DEFAULT_SYNAPTIC_MODELS,
     default_synaptic_model_for,
 )
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,

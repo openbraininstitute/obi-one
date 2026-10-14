@@ -15,6 +15,11 @@ import pytest
 
 import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
@@ -70,7 +75,7 @@ class TestLocalCircuit:
         relative_path = os.path.relpath(MULTI_POPULATION_CIRCUIT_PATH, Path.cwd())
         config = build_config(
             CircuitSimulationSingleConfig,
-            circuit=obi.Circuit(name="relative", path=relative_path),
+            circuit=Circuit(name="relative", path=relative_path),
         )
 
         result = generate(config, tmp_path)
@@ -125,13 +130,13 @@ class TestCircuitFromID:
 
         monkeypatch.setattr(CircuitFromID, "stage_circuit", _stage_circuit)
 
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
                 "Locations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=locations.ref, amplitude=0.2, duration=50.0
                 ),
             },
@@ -194,7 +199,7 @@ class TestRecordingArrayCircuit:
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
-                "LFP": obi.ExtracellularElectrodeArrayRecordingBlock(
+                "LFP": ExtracellularElectrodeArrayRecordingBlock(
                     electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(
                         id_str=ARRAY_ID
                     )

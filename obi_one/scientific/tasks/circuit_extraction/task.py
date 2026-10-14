@@ -18,7 +18,7 @@ from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
@@ -357,7 +357,7 @@ class CircuitExtractionTask(Task):
 
         # Resolve parent circuit (local path or staging from ID)
         with BenchmarkTracker.section("resolve_circuit"):
-            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+            self._circuit, self._circuit_entity = circuit_db_sdk.resolve_circuit(
                 self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
                 db_client=db_client,
                 entity_cache=entity_cache,

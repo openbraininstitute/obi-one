@@ -8,7 +8,25 @@ from bluepyemodel.preprocessing.schemas import (
     LinearHDPasDistanceDependentDistribution,
 )
 
-import obi_one as obi
+from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    CustomDistanceDependentDistribution,
+    DistanceDependentDistribution,
+    ExponentialDistanceDependentDistribution,
+    ExponentialNaDendDistanceDependentDistribution,
+    LinearEPasApicDistanceDependentDistribution,
+    LinearHDApicDistanceDependentDistribution,
+    SigmoidKADApicDistanceDependentDistribution,
+    SigmoidKADDistanceDependentDistribution,
+    SigmoidKDBMApicDistanceDependentDistribution,
+    StepDistanceDependentDistribution,
+    UniformDistanceDependentDistribution,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     check_distance_function,
     validate_safe_distance_function,
@@ -42,14 +60,14 @@ class TestDistanceDependentDistributions:
     @pytest.mark.parametrize(
         ("distribution_class", "expected_name", "expected_function"),
         [
-            (obi.UniformDistanceDependentDistribution, "uniform", None),
+            (UniformDistanceDependentDistribution, "uniform", None),
             (
-                obi.ExponentialDistanceDependentDistribution,
+                ExponentialDistanceDependentDistribution,
                 "exp",
                 "(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}",
             ),
             (
-                obi.StepDistanceDependentDistribution,
+                StepDistanceDependentDistribution,
                 "step",
                 (
                     "{value} * (0.1 + 0.9 * float(({distance} > {step_begin}) & "
@@ -57,32 +75,32 @@ class TestDistanceDependentDistributions:
                 ),
             ),
             (
-                obi.ExponentialNaDendDistanceDependentDistribution,
+                ExponentialNaDendDistanceDependentDistribution,
                 "exp_na_dend",
                 "math.exp((-{distance})/50.)*{value}",
             ),
             (
-                obi.LinearHDApicDistanceDependentDistribution,
+                LinearHDApicDistanceDependentDistribution,
                 "linear_hd_apic",
                 "(1. + 3./100. * {distance})*{value}",
             ),
             (
-                obi.SigmoidKADApicDistanceDependentDistribution,
+                SigmoidKADApicDistanceDependentDistribution,
                 "sigmoid_kad_apic",
                 "(15./(1. + math.exp((300.-{distance})/50.)))*{value}",
             ),
             (
-                obi.LinearEPasApicDistanceDependentDistribution,
+                LinearEPasApicDistanceDependentDistribution,
                 "linear_e_pas_apic",
                 "({value}-5.*{distance}/150.)",
             ),
             (
-                obi.SigmoidKADDistanceDependentDistribution,
+                SigmoidKADDistanceDependentDistribution,
                 "sigmoid_kad",
                 "(15./(1. + math.exp((150.-{distance})/10.)))*{value}",
             ),
             (
-                obi.SigmoidKDBMApicDistanceDependentDistribution,
+                SigmoidKDBMApicDistanceDependentDistribution,
                 "sigmoid_kdbm_apic",
                 "(15./(1. + math.exp(({distance}-50.)/50.)))*{value}",
             ),
@@ -100,7 +118,7 @@ class TestDistanceDependentDistributions:
         }
 
     def test_custom_distribution_is_validated_and_serialized(self):
-        distribution = obi.CustomDistanceDependentDistribution(
+        distribution = CustomDistanceDependentDistribution(
             function="({value} + {distance}) / 2.0",
             soma_ref_location=0.25,
         )
@@ -112,7 +130,7 @@ class TestDistanceDependentDistributions:
         }
 
     def test_custom_distribution_serializes_parameters(self):
-        distribution = obi.CustomDistanceDependentDistribution(
+        distribution = CustomDistanceDependentDistribution(
             function="math.exp({distance}*{constant})*{value}",
             parameters=["constant"],
         )
@@ -125,7 +143,7 @@ class TestDistanceDependentDistributions:
         }
 
     def test_empty_distribution_parameters_are_not_serialized(self):
-        distribution = obi.CustomDistanceDependentDistribution(
+        distribution = CustomDistanceDependentDistribution(
             function="({value} + {distance}) / 2.0",
             parameters=[],
         )
@@ -133,7 +151,7 @@ class TestDistanceDependentDistributions:
         assert "parameters" not in distribution.to_emc_dict(name="custom_profile")
 
     def test_distribution_parameter_names_are_not_scan_dimensions(self):
-        distribution = obi.CustomDistanceDependentDistribution(
+        distribution = CustomDistanceDependentDistribution(
             function="math.exp({distance}*{constant})*{value}",
             parameters=["constant"],
         )
@@ -143,21 +161,21 @@ class TestDistanceDependentDistributions:
 
     def test_custom_distribution_requires_value_and_distance(self):
         with pytest.raises(ValueError, match=r"\{value\} placeholder"):
-            obi.CustomDistanceDependentDistribution(function="{distance}")
+            CustomDistanceDependentDistribution(function="{distance}")
 
         with pytest.raises(ValueError, match=r"\{distance\} placeholder"):
-            obi.CustomDistanceDependentDistribution(function="{value}")
+            CustomDistanceDependentDistribution(function="{value}")
 
     def test_custom_distribution_requires_declared_parameters(self):
         with pytest.raises(ValueError, match=r"\{constant\} placeholder"):
-            obi.CustomDistanceDependentDistribution(
+            CustomDistanceDependentDistribution(
                 function="math.exp({distance})*{value}",
                 parameters=["constant"],
             )
 
     def test_distribution_parameters_require_a_function(self):
         with pytest.raises(ValueError, match="must define a function"):
-            obi.DistanceDependentDistribution(parameters=["constant"])
+            DistanceDependentDistribution(parameters=["constant"])
 
     def test_standard_distributions_are_available_without_declaration(self):
         """The ten legacy distributions are selectable by name without being declared."""
@@ -190,7 +208,7 @@ class TestDistanceDependentDistributions:
 
         assert isinstance(
             config.distance_dependent_distributions["mouse_decay"],
-            obi.CustomDistanceDependentDistribution,
+            CustomDistanceDependentDistribution,
         )
 
     def test_optimization_parameter_selection_has_no_declared_distributions_by_default(self):
@@ -205,7 +223,7 @@ class TestDistanceDependentDistributions:
         preserved verbatim in the function string for BluePyEModel to substitute
         at runtime via ``get_hotspot_location()``.
         """
-        distribution = obi.StepDistanceDependentDistribution()
+        distribution = StepDistanceDependentDistribution()
 
         assert "{step_begin}" in distribution.function
         assert "{step_end}" in distribution.function
@@ -237,7 +255,7 @@ class TestDistanceFunctionSafety:
     )
     def test_unsafe_custom_distribution_is_rejected(self, unsafe_function):
         with pytest.raises(ValueError, match="Distance function"):
-            obi.CustomDistanceDependentDistribution(function=unsafe_function)
+            CustomDistanceDependentDistribution(function=unsafe_function)
 
     @pytest.mark.parametrize(
         "safe_function",
@@ -250,7 +268,7 @@ class TestDistanceFunctionSafety:
         ],
     )
     def test_safe_custom_distribution_is_accepted(self, safe_function):
-        distribution = obi.CustomDistanceDependentDistribution(function=safe_function)
+        distribution = CustomDistanceDependentDistribution(function=safe_function)
         assert distribution.function == safe_function
 
     @pytest.mark.parametrize(
@@ -266,30 +284,30 @@ class TestDistanceFunctionSafety:
     def test_int_producing_calls_are_rejected(self, unsafe_function):
         """int() and int-returning math functions are forbidden (unbounded-integer DoS)."""
         with pytest.raises(ValueError, match="Distance function"):
-            obi.CustomDistanceDependentDistribution(function=unsafe_function)
+            CustomDistanceDependentDistribution(function=unsafe_function)
 
     def test_overly_complex_function_is_rejected(self):
         """A structurally large expression (under the length cap) is rejected by the node cap."""
         long_function = "{value}" + "+{distance}" * 30
         with pytest.raises(ValueError, match="too complex"):
-            obi.CustomDistanceDependentDistribution(function=long_function)
+            CustomDistanceDependentDistribution(function=long_function)
 
     def test_integer_literals_are_rejected(self):
         """Integer literals are forbidden (arbitrary-precision); users must write floats."""
         with pytest.raises(ValueError, match="must be floats"):
-            obi.CustomDistanceDependentDistribution(function="{value}*{distance} + 3")
+            CustomDistanceDependentDistribution(function="{value}*{distance} + 3")
 
     def test_power_operator_is_rejected(self):
         """`**` is forbidden: integer exponentiation is an unbounded-memory DoS."""
         with pytest.raises(ValueError, match="Pow"):
-            obi.CustomDistanceDependentDistribution(function="{value} ** {distance}")
+            CustomDistanceDependentDistribution(function="{value} ** {distance}")
 
     def test_overly_long_function_is_rejected(self):
         """A giant raw string is rejected before parsing (bounds parse-time cost)."""
         long_function = "{value}+{distance}+" + "9." * 300
         # The field-level ``max_length`` constraint rejects it (Pydantic message).
         with pytest.raises(ValueError, match="at most 500 characters"):
-            obi.CustomDistanceDependentDistribution(function=long_function)
+            CustomDistanceDependentDistribution(function=long_function)
 
     def test_check_distance_function_reports_valid(self):
         result = check_distance_function("math.exp((-{distance})/50.)*{value}")
@@ -433,7 +451,7 @@ class TestDistanceFunctionSafety:
     def test_comment_and_format_spec_channels_are_rejected(self, unsafe_function):
         """The distance function must not smuggle format specs via comments or brace fields."""
         with pytest.raises(ValueError, match="Distance function"):
-            obi.CustomDistanceDependentDistribution(function=unsafe_function)
+            CustomDistanceDependentDistribution(function=unsafe_function)
 
     def test_check_distance_function_flags_comment_position(self):
         fn = "{value}*{distance} # {value:>999999999}"
@@ -466,7 +484,7 @@ class TestDistanceFunctionSafety:
     )
     def test_unbalanced_braces_are_rejected(self, unsafe_function):
         with pytest.raises(ValueError, match="unbalanced"):
-            obi.CustomDistanceDependentDistribution(function=unsafe_function)
+            CustomDistanceDependentDistribution(function=unsafe_function)
 
     def test_unsafe_distribution_config_rejects_comment_dos(self):
         """The comment/format-spec DoS must block config creation, not just the block."""
@@ -503,28 +521,28 @@ class TestDistanceFunctionSafety:
         )
         assert isinstance(
             config.distance_dependent_distributions["decay"],
-            obi.CustomDistanceDependentDistribution,
+            CustomDistanceDependentDistribution,
         )
 
 
 class TestFloatConstantDistribution:
     def test_sample_returns_repeated_scalar_values(self):
         """FloatConstantDistribution.sample() returns repeated scalar values, not nested lists."""
-        dist = obi.FloatConstantDistribution(value=5.0)
+        dist = FloatConstantDistribution(value=5.0)
         samples = dist.sample(n=3)
         assert samples == [5.0, 5.0, 5.0]
         assert all(isinstance(s, float) for s in samples)
 
     def test_sample_with_explicit_rng(self):
         """Passing an explicit numpy Generator to sample() works and is honored."""
-        dist = obi.FloatConstantDistribution(value=math.pi)
+        dist = FloatConstantDistribution(value=math.pi)
         rng = np.random.default_rng(42)
         samples = dist.sample(n=2, rng=rng)
         assert samples == [math.pi, math.pi]
 
     def test_sample_is_concrete_and_usable(self):
         """Distribution.sample() is concrete and usable through subclasses."""
-        dist = obi.FloatConstantDistribution(value=1.5)
+        dist = FloatConstantDistribution(value=1.5)
         # Should not raise NotImplementedError
         result = dist.sample(n=1)
         assert result == [1.5]
@@ -533,7 +551,7 @@ class TestFloatConstantDistribution:
 class TestExponentialDistribution:
     def test_sample_returns_positive_float_samples(self):
         """ExponentialDistribution.sample() returns positive float samples."""
-        dist = obi.ExponentialDistribution(scale=10.0, random_seed=42)
+        dist = ExponentialDistribution(scale=10.0, random_seed=42)
         samples = dist.sample(n=10)
         assert len(samples) == 10
         assert all(isinstance(s, float) for s in samples)
@@ -541,7 +559,7 @@ class TestExponentialDistribution:
 
     def test_sample_with_explicit_rng(self):
         """Passing an explicit numpy Generator to sample() works and is honored."""
-        dist = obi.ExponentialDistribution(scale=5.0)
+        dist = ExponentialDistribution(scale=5.0)
         rng = np.random.default_rng(123)
         samples1 = dist.sample(n=3, rng=rng)
         rng = np.random.default_rng(123)  # Reset seed
@@ -550,21 +568,21 @@ class TestExponentialDistribution:
 
     def test_sample_is_concrete_and_usable(self):
         """Distribution.sample() is concrete and usable through subclasses."""
-        dist = obi.ExponentialDistribution(scale=1.0, random_seed=1)
+        dist = ExponentialDistribution(scale=1.0, random_seed=1)
         result = dist.sample(n=1)
         assert len(result) == 1
         assert isinstance(result[0], float)
         assert result[0] > 0
 
     def test_exponential_distribution_shift(self):
-        dist = obi.ExponentialDistribution(scale=1.0, shift=5.0, random_seed=42)
+        dist = ExponentialDistribution(scale=1.0, shift=5.0, random_seed=42)
         samples = dist.sample(10)
 
         assert all(sample >= 5.0 for sample in samples)
 
     def test_exponential_distribution_shift_adds_constant(self):
-        base = obi.ExponentialDistribution(scale=1.0, random_seed=42)
-        shifted = obi.ExponentialDistribution(scale=1.0, shift=5.0, random_seed=42)
+        base = ExponentialDistribution(scale=1.0, random_seed=42)
+        shifted = ExponentialDistribution(scale=1.0, shift=5.0, random_seed=42)
 
         base_samples = base.sample(5)
         shifted_samples = shifted.sample(5)
@@ -575,7 +593,7 @@ class TestExponentialDistribution:
 class TestGammaDistribution:
     def test_sample_returns_positive_float_samples(self):
         """GammaDistribution.sample() returns positive float samples."""
-        dist = obi.GammaDistribution(shape=2.0, scale=5.0, random_seed=42)
+        dist = GammaDistribution(shape=2.0, scale=5.0, random_seed=42)
         samples = dist.sample(n=10)
         assert len(samples) == 10
         assert all(isinstance(s, float) for s in samples)
@@ -583,7 +601,7 @@ class TestGammaDistribution:
 
     def test_sample_with_explicit_rng(self):
         """Passing an explicit numpy Generator to sample() works and is honored."""
-        dist = obi.GammaDistribution(shape=1.5, scale=2.0)
+        dist = GammaDistribution(shape=1.5, scale=2.0)
         rng = np.random.default_rng(456)
         samples1 = dist.sample(n=3, rng=rng)
         rng = np.random.default_rng(456)  # Reset seed
@@ -592,14 +610,14 @@ class TestGammaDistribution:
 
     def test_sample_is_concrete_and_usable(self):
         """Distribution.sample() is concrete and usable through subclasses."""
-        dist = obi.GammaDistribution(shape=1.0, scale=1.0, random_seed=1)
+        dist = GammaDistribution(shape=1.0, scale=1.0, random_seed=1)
         result = dist.sample(n=1)
         assert len(result) == 1
         assert isinstance(result[0], float)
         assert result[0] > 0
 
     def test_gamma_distribution_shift(self):
-        dist = obi.GammaDistribution(shape=2.0, scale=1.0, shift=5.0, random_seed=42)
+        dist = GammaDistribution(shape=2.0, scale=1.0, shift=5.0, random_seed=42)
         samples = dist.sample(10)
 
         assert all(sample >= 5.0 for sample in samples)
@@ -608,44 +626,44 @@ class TestGammaDistribution:
 class TestDistributionConstraints:
     def test_constraint_validation_ge_gt(self):
         """Constraint validation raises for both ge and gt."""
-        dist = obi.FloatConstantDistribution(value=1.0)
+        dist = FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="Only one of ge and gt can be specified"):
             dist.sample(n=1, ge=0.5, gt=0.5)
 
     def test_constraint_validation_le_lt(self):
         """Constraint validation raises for both le and lt."""
-        dist = obi.FloatConstantDistribution(value=1.0)
+        dist = FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="Only one of le and lt can be specified"):
             dist.sample(n=1, le=2.0, lt=2.0)
 
     def test_constraint_validation_ge_le_inconsistent(self):
         """Constraint validation raises for ge > le."""
-        dist = obi.FloatConstantDistribution(value=1.0)
+        dist = FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="ge must be less than or equal to le"):
             dist.sample(n=1, ge=2.0, le=1.0)
 
     def test_constraint_validation_gt_lt_inconsistent(self):
         """Constraint validation raises for gt >= lt."""
-        dist = obi.FloatConstantDistribution(value=1.0)
+        dist = FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="gt must be less than lt"):
             dist.sample(n=1, gt=2.0, lt=2.0)
 
     def test_constraint_validation_ge_lt_inconsistent(self):
         """Constraint validation raises for ge > lt."""
-        dist = obi.FloatConstantDistribution(value=1.0)
+        dist = FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="ge must be less than or equal to lt"):
             dist.sample(n=1, ge=2.0, lt=1.5)
 
     def test_constraint_validation_gt_le_inconsistent(self):
         """Constraint validation raises for gt >= le."""
-        dist = obi.FloatConstantDistribution(value=1.0)
+        dist = FloatConstantDistribution(value=1.0)
         with pytest.raises(ValueError, match="gt must be less than le"):
             dist.sample(n=1, gt=2.0, le=2.0)
 
 
 class TestNormalDistribution:
     def test_sample_returns_float_samples(self):
-        dist = obi.NormalDistribution(
+        dist = NormalDistribution(
             mean=0.0,
             standard_deviation=1.0,
             random_seed=42,
@@ -657,7 +675,7 @@ class TestNormalDistribution:
         assert all(isinstance(s, float) for s in samples)
 
     def test_sample_with_explicit_rng(self):
-        dist = obi.NormalDistribution(
+        dist = NormalDistribution(
             mean=0.0,
             standard_deviation=1.0,
         )
@@ -673,7 +691,7 @@ class TestNormalDistribution:
 
 class TestLogNormalDistribution:
     def test_sample_returns_positive_float_samples(self):
-        dist = obi.LogNormalDistribution(
+        dist = LogNormalDistribution(
             mean=0.0,
             sigma=1.0,
             random_seed=42,
@@ -686,7 +704,7 @@ class TestLogNormalDistribution:
         assert all(s > 0 for s in samples)
 
     def test_sample_with_explicit_rng(self):
-        dist = obi.LogNormalDistribution(
+        dist = LogNormalDistribution(
             mean=0.0,
             sigma=1.0,
         )
@@ -702,7 +720,7 @@ class TestLogNormalDistribution:
 
 class TestPoissonDistribution:
     def test_sample_returns_non_negative_integer_like_samples(self):
-        dist = obi.PoissonDistribution(
+        dist = PoissonDistribution(
             rate=5.0,
             random_seed=42,
         )
@@ -715,7 +733,7 @@ class TestPoissonDistribution:
         assert all(float(s).is_integer() for s in samples)
 
     def test_sample_with_explicit_rng(self):
-        dist = obi.PoissonDistribution(
+        dist = PoissonDistribution(
             rate=5.0,
         )
 

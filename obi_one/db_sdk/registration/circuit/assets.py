@@ -7,7 +7,7 @@ from pathlib import Path
 from entitysdk import Client, MultipartUploadTransferConfig, models
 from entitysdk.types import AssetLabel
 
-from obi_one.db_sdk.db_sdk import _upload_or_replace_directory, _upload_or_replace_file
+from obi_one.db_sdk.circuit import _upload_or_replace_directory, _upload_or_replace_file
 from obi_one.utils.io import compressed_archive_filename, convert_image_to_webp
 
 L = logging.getLogger(__name__)

@@ -2,10 +2,13 @@ import numpy as np
 import pytest
 from conntility import ConnectivityMatrix
 
-import obi_one as obi
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks import connectivity_matrix_extraction
+from obi_one.scientific.tasks.connectivity_matrix_extraction import (
+    ConnectivityMatrixExtractionScanConfig,
+)
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
@@ -13,21 +16,21 @@ from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 def test_connectivity_matrix_extraction(tmp_path):
     # (a) Matrix extraction with invalid edge population --> Error
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        Circuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
-    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
+    extraction_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit_list,
         edge_population="INVALID__S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
     )
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
+    connectivity_matrix_extractions_form = ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
     grid_scan = GridScanGenerationTask(
@@ -45,21 +48,21 @@ def test_connectivity_matrix_extraction(tmp_path):
 
     # (b) Matrix extraction with invalid node attribute --> Error
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        Circuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
-    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
+    extraction_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit_list,
         edge_population="S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z", "INVALID"),
     )
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
+    connectivity_matrix_extractions_form = ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
     grid_scan = GridScanGenerationTask(
@@ -74,23 +77,23 @@ def test_connectivity_matrix_extraction(tmp_path):
 
     # (c) Matrix extraction from two circuits through grid scan
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        Circuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
 
-    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
+    extraction_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit_list,
         edge_population="S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
     )
 
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
+    connectivity_matrix_extractions_form = ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
 
@@ -134,16 +137,16 @@ def test_connectivity_matrix_extraction(tmp_path):
 
 def test_connectivity_matrix_extraction_suppresses_tqdm(tmp_path, monkeypatch):
     """Regression test: from_bluepy must be called with show_progress=False."""
-    circuit = obi.Circuit(
+    circuit = Circuit(
         name="N_10__top_nodes_dim6",
         path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
     )
-    extraction_init = obi.ConnectivityMatrixExtractionScanConfig.Initialize(
+    extraction_init = ConnectivityMatrixExtractionScanConfig.Initialize(
         circuit=circuit,
         edge_population="S1nonbarrel_neurons__S1nonbarrel_neurons__chemical",
         node_attributes=("synapse_class", "layer", "mtype", "etype", "x", "y", "z"),
     )
-    connectivity_matrix_extractions_form = obi.ConnectivityMatrixExtractionScanConfig(
+    connectivity_matrix_extractions_form = ConnectivityMatrixExtractionScanConfig(
         initialize=extraction_init
     )
     grid_scan = GridScanGenerationTask(

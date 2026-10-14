@@ -28,8 +28,8 @@ _CORE_TYPE_REFS: tuple[ClassRef, ...] = (
 )
 
 _ALIAS_TYPE_REFS: tuple[ClassRef, ...] = (
-    ("obi_one", "CoupledScan"),
-    ("obi_one", "GridScan"),
+    ("obi_one.core.scan", "CoupledScan"),
+    ("obi_one.core.scan", "GridScan"),
     (_SIMULATION_ALIASES, "Simulation"),
     (_SIMULATION_ALIASES, "SimulationsForm"),
 )

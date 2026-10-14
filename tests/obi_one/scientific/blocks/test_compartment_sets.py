@@ -4,8 +4,12 @@ from unittest.mock import MagicMock, call, patch
 import pandas as pd
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.recordings.morphology_location import (
+    MorphologyLocationVoltageRecording,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.library import compartment_sets
 from obi_one.scientific.library.compartment_sets import (
     CompartmentLocation,
@@ -109,7 +113,7 @@ def test_compartment_set_preflight_rejects_oversized_target_before_loading_morph
             node_population="pop",
             population="pop",
             neuron_set=neuron_set,
-            locations_block=obi.RandomMorphologyLocations(number_of_locations=1),
+            locations_block=RandomMorphologyLocations(number_of_locations=1),
         )
 
     circuit.load_morphology.assert_not_called()
@@ -132,7 +136,7 @@ def test_compartment_set_preflight_allows_exact_limit(monkeypatch):
             node_population="pop",
             population="pop",
             neuron_set=neuron_set,
-            locations_block=obi.RandomMorphologyLocations(number_of_locations=1),
+            locations_block=RandomMorphologyLocations(number_of_locations=1),
         )
 
     assert result is expected
@@ -344,14 +348,14 @@ def test_write_compartment_sets_rejects_invalid_file_name(tmp_path, file_name):
 
 
 def test_materialization_uses_default_neuron_set_for_locations_without_target():
-    locations = obi.RandomMorphologyLocations()
+    locations = RandomMorphologyLocations()
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
         block_dict_name="morphology_locations",
         block_name="locations",
     )
     locations_ref.block = locations
-    stimulus = obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations_ref)
+    stimulus = ConstantCurrentClampSomaticStimulus(neuron_set=locations_ref)
     stimulus.set_block_name("stimulus")
     default_ref = MagicMock()
 
@@ -380,14 +384,14 @@ def test_materialization_uses_default_neuron_set_for_locations_without_target():
 
 
 def test_materialization_handles_recording_location_targets():
-    locations = obi.RandomMorphologyLocations()
+    locations = RandomMorphologyLocations()
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
         block_dict_name="morphology_locations",
         block_name="locations",
     )
     locations_ref.block = locations
-    recording = obi.MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
+    recording = MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
     recording.set_block_name("recording")
     default_ref = MagicMock()
 
@@ -418,21 +422,21 @@ def test_materialization_handles_recording_location_targets():
 
 
 def _morphology_location_recording():
-    locations = obi.RandomMorphologyLocations()
+    locations = RandomMorphologyLocations()
     locations.set_block_name("locations")
     locations_ref = MorphologyLocationsReference(
         block_dict_name="morphology_locations",
         block_name="locations",
     )
     locations_ref.block = locations
-    recording = obi.MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
+    recording = MorphologyLocationVoltageRecording(morphology_locations=locations_ref)
     recording.set_block_name("recording")
     return recording
 
 
 def test_morphology_location_recording_rejects_none_locations():
     with pytest.raises(ValueError, match="require morphology locations"):
-        obi.MorphologyLocationVoltageRecording(morphology_locations=None)
+        MorphologyLocationVoltageRecording(morphology_locations=None)
 
 
 def test_morphology_location_recording_requires_end_time():
@@ -458,7 +462,7 @@ def test_morphology_location_recording_requires_end_time_after_start():
 
 
 def test_continuous_stimulus_without_target_uses_default_node_set():
-    stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    stimulus = ConstantCurrentClampSomaticStimulus()
     stimulus.set_block_name("stimulus")
 
     config = stimulus.config(default_node_set="default-target")
@@ -467,7 +471,7 @@ def test_continuous_stimulus_without_target_uses_default_node_set():
 
 
 def test_continuous_stimulus_uses_materialized_compartment_set_target():
-    stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    stimulus = ConstantCurrentClampSomaticStimulus()
     stimulus.set_block_name("stimulus")
     stimulus.set_materialized_compartment_set_target("LocationCurrentClamp__locations")
 
@@ -480,7 +484,7 @@ def test_continuous_stimulus_uses_materialized_compartment_set_target():
 def test_task_injects_default_into_optional_unified_target():
     default_ref = MagicMock()
     task = GenerateSimulationTask.model_construct(config=SimpleNamespace(neuron_sets={}))
-    stimulus = obi.ConstantCurrentClampSomaticStimulus()
+    stimulus = ConstantCurrentClampSomaticStimulus()
 
     with patch.object(GenerateSimulationTask, "_default_neuron_set_ref", return_value=default_ref):
         task._ensure_block_has_neuron_set_reference_if_neuron_sets_dictionary_exists(stimulus)
@@ -490,7 +494,7 @@ def test_task_injects_default_into_optional_unified_target():
 
 def test_task_assigns_implicit_default_to_morphology_locations():
     default_ref = MagicMock()
-    locations = obi.RandomMorphologyLocations()
+    locations = RandomMorphologyLocations()
     task = GenerateSimulationTask.model_construct(
         config=SimpleNamespace(
             morphology_locations={"locations": locations},
