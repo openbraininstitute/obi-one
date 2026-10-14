@@ -75,8 +75,9 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
         " network connectivity. Supports multiple target models (single-compartment,"
-        " LIF, AdEx, Izhikevich, GLIF, GIF). Point-neuron models are automatically"
-        " exported to NEST format."
+        " LIF, AdEx, Izhikevich, GLIF, GIF, Neuron_Reduce). Point-neuron models are"
+        " automatically exported to NEST format; single-compartment and"
+        " Neuron_Reduce produce NEURON circuits."
     )
 
     default_target_neuron_set_name: ClassVar[str] = "Default: All Biophysical Neurons"

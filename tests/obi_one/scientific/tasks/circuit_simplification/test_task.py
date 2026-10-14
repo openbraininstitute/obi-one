@@ -197,6 +197,17 @@ class TestApiCompatibility:
         brian2_entries = {k for k, v in ALGORITHM_EXPORT_MAP.items() if v[1] and "brian2" in v[1]}
         assert brian2_entries == {"adex_brian2"}
 
+    def test_algorithm_export_map_neuron_reduce_no_export(self):
+        """neuron_reduce produces a NEURON SONATA circuit (no exporter)."""
+        base, exporter = ALGORITHM_EXPORT_MAP["neuron_reduce"]
+        assert base == "neuron_reduce"
+        assert exporter is None
+
+    def test_neuron_reduce_block_registered(self):
+        """ALGORITHM_BLOCK_CLASSES should expose the neuron_reduce block."""
+        block = ALGORITHM_BLOCK_CLASSES["neuron_reduce"]()
+        assert block.algorithm_name == "neuron_reduce"
+
 
 class TestTargetNeuronSetField:
     """Tests for the target_neuron_set field in Initialize."""

@@ -3,9 +3,11 @@
 Estimates cores, memory, and time limit based on the input circuit's
 biophysical node count and edge count, plus the selected algorithm type.
 
-Only ``single_compartment`` performs expensive per-cell filter computation
-(Rossert kernels). Point-neuron algorithms (lif, adex, izhikevich, glif, gif)
-skip filter computation entirely and are much cheaper.
+``single_compartment`` performs expensive per-cell filter computation
+(Rossert kernels) and ``neuron_reduce`` performs per-ME-model NEURON
+reduction and re-measurement. Point-neuron algorithms (lif, adex,
+izhikevich, glif, gif) skip filter computation entirely and are much
+cheaper.
 
 Constants below are conservative placeholders pending empirical
 calibration on a real circuit. TODO: calibrate WORK_UNITS_PER_CORE,
@@ -54,8 +56,10 @@ POINT_NEURON_WORK_UNITS_PER_CORE_HOUR = 500_000
 # Default max_filter_locations (matches the pipeline default).
 DEFAULT_MAX_FILTER_LOCATIONS = 100
 
-# Algorithms that require filter computation (expensive)
-FILTER_ALGORITHMS = {"single_compartment"}
+# Algorithms sized on the expensive tier: single_compartment does per-cell
+# filter computation; neuron_reduce runs NEURON reduction + dynamics
+# re-measurement per unique ME-model (spawned workers, same order of cost).
+FILTER_ALGORITHMS = {"single_compartment", "neuron_reduce"}
 
 
 def _get_required_cpu_memory_combo(min_cores: int, mem_gb_required: float) -> tuple[int, int]:
@@ -178,8 +182,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
 
     # Estimate work units based on algorithm type
     if has_filter_algo:
-        # Filter-based: work is n_bio x max_filter_locations
-        # (filter cache key is per-cell, so work is linear in this product)
+        # Expensive tier: work is n_bio x max_filter_locations for filters;
+        # for neuron_reduce the true work scales with unique ME-models, so
+        # this conservatively overestimates until calibrated empirically.
         max_locations = DEFAULT_MAX_FILTER_LOCATIONS
         work_units = nbio * max_locations
         work_per_core = FILTER_WORK_UNITS_PER_CORE

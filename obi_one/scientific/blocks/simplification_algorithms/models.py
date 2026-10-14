@@ -65,6 +65,14 @@ class GifNestAlgorithm(SimplificationAlgorithm):
     )
 
 
+class NeuronReduceAlgorithm(SimplificationAlgorithm):
+    title: ClassVar[str] = ALGORITHM_EXPORT_TITLES["neuron_reduce"]
+    algorithm_name: ClassVar[str] = "neuron_reduce"
+    model_config = ConfigDict(
+        json_schema_extra={"description": ALGORITHM_EXPORT_DESCRIPTIONS["neuron_reduce"]}
+    )
+
+
 _SIMPLIFICATION_ALGORITHM_BLOCKS = (
     SingleCompartmentAlgorithm
     | LifNestAlgorithm
@@ -73,6 +81,7 @@ _SIMPLIFICATION_ALGORITHM_BLOCKS = (
     | IzhikevichNestAlgorithm
     | GlifNestAlgorithm
     | GifNestAlgorithm
+    | NeuronReduceAlgorithm
 )
 SimplificationAlgorithmUnion = Annotated[
     _SIMPLIFICATION_ALGORITHM_BLOCKS,
@@ -89,6 +98,7 @@ ALGORITHM_BLOCK_CLASSES: dict[str, type[SimplificationAlgorithm]] = {
         IzhikevichNestAlgorithm,
         GlifNestAlgorithm,
         GifNestAlgorithm,
+        NeuronReduceAlgorithm,
     )
 }
 

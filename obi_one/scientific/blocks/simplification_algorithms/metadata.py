@@ -10,6 +10,7 @@ ALGORITHM_EXPORT_MAP: dict[str, tuple[str, str | None]] = {
     "izhikevich_nest": ("izhikevich", "nest:izhikevich"),
     "glif_nest": ("glif", "nest:glif_psc"),
     "gif_nest": ("gif", "nest:gif_cond_exp"),
+    "neuron_reduce": ("neuron_reduce", None),
 }
 
 # Display titles for compound names, extending the sonata_simplify metadata with
@@ -24,6 +25,7 @@ ALGORITHM_EXPORT_TITLES: dict[str, str] = {
     "izhikevich_nest": f"{ALGORITHM_TITLES.get('izhikevich', 'Izhikevich')} (NEST)",
     "glif_nest": f"{ALGORITHM_TITLES.get('glif', 'GLIF')} (NEST)",
     "gif_nest": f"{ALGORITHM_TITLES.get('gif', 'GIF')} (NEST)",
+    "neuron_reduce": f"{ALGORITHM_TITLES.get('neuron_reduce', 'Neuron_Reduce')} (NEURON)",
 }
 
 # Descriptions remain sourced from sonata_simplify and are shared by all
