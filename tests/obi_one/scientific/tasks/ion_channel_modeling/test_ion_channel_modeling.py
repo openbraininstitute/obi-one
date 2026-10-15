@@ -100,6 +100,7 @@ GREY = SimpleNamespace(
 )
 ISOCORTEX = SimpleNamespace(id=uuid4(), name="Isocortex", parent_structure_id=GREY.id)
 THALAMUS = SimpleNamespace(id=uuid4(), name="Thalamus", parent_structure_id=GREY.id)
+HUMAN_ROOT = SimpleNamespace(id=uuid4(), name="root", parent_structure_id=None)
 KV62 = SimpleNamespace(id=uuid4(), name="Kv6.2")
 KV11 = SimpleNamespace(id=uuid4(), name="Kv1.1")
 
@@ -126,7 +127,8 @@ def _db_client(*overrides):
         for id_, override in zip(RECORDING_IDS, overrides or ({}, {}), strict=True)
     }
     by_id = {
-        str(item.id): item for item in (RAT, MOUSE, SPRAGUE_DAWLEY, ROOT, GREY, ISOCORTEX, THALAMUS)
+        str(item.id): item
+        for item in (RAT, MOUSE, SPRAGUE_DAWLEY, ROOT, GREY, ISOCORTEX, THALAMUS, HUMAN_ROOT)
     }
     db_client = Mock()
     db_client.get_entity.side_effect = lambda entity_id, entity_type: (
@@ -290,6 +292,18 @@ def test_recordings_in_different_regions_give_their_common_parent():
     assert properties.brain_region is GREY
 
 
+def test_regions_of_different_hierarchies_have_to_be_set():
+    with pytest.raises(ConfigValidationError, match="no common parent"):
+        _resolve(_db_client({}, {"brain_region": HUMAN_ROOT}))
+
+
+def test_a_set_strain_does_not_take_the_recordings_subject():
+    properties = _resolve(_db_client(), strain={"id_str": str(SPRAGUE_DAWLEY.id)})
+
+    assert properties.strain is SPRAGUE_DAWLEY
+    assert properties.subject is None
+
+
 def test_generate_rejects_an_unresolved_property_before_registering_anything(tmp_path, monkeypatch):
     register = Mock()
     monkeypatch.setattr(db_sdk, "register_task_config_with_asset", register)
@@ -403,6 +417,27 @@ def test_a_missing_generic_subject_is_registered(tmp_path):
         mouse,
     )
     assert model.subject is subject
+
+
+def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
+    write, plot, save = Mock(), Mock(return_value={}), Mock(return_value="model id")
+    monkeypatch.setattr(ion_channel_modeling, "extract_all_equations", Mock(return_value={}))
+    monkeypatch.setattr(ion_channel_modeling, "write_vgate_output", write)
+    monkeypatch.setattr(ion_channel_modeling, "run_and_log", Mock())
+    monkeypatch.setattr(ion_channel_modeling, "plot_in_fresh_process", plot)
+    monkeypatch.setattr(ion_channel_modeling, "get_range_params_with_units", Mock(return_value=[]))
+    monkeypatch.setattr(IonChannelFittingTask, "save", save)
+
+    model_id = _task(tmp_path, {"ion_channel_name": "kv62_fast", "temperature": 34.0}).execute(
+        db_client=_db_client()
+    )
+
+    assert model_id == "model id"
+    assert write.call_args.kwargs["suffix"] == "kv62_fast"
+    assert write.call_args.kwargs["output_name"] == tmp_path / "mechanisms" / "kv62_fast.mod"
+    assert plot.call_args.kwargs["mech_suffix"] == "kv62_fast"
+    assert plot.call_args.kwargs["temperature"] == pytest.approx(34.0)
+    assert save.call_args.kwargs["properties"].brain_region is ISOCORTEX
 
 
 def test_plotting_reports_the_fresh_process_error(tmp_path):
