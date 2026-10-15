@@ -66,7 +66,11 @@ class TestIonChannelModelFromIDTypedEntity:
     def test_get_other_parameter_names_excludes_conductance_and_permeability(self):
         obj = IonChannelModelFromID(id_str="ic-id")
         entity = MagicMock()
-        entity.neuron_block.range = ["g_na", "p_na", "custom"]
+        entity.neuron_block.range = [
+            {"g_na": "S/cm2"},
+            {"p_na": "cm/s"},
+            {"custom": None},
+        ]
         entity.conductance_name = "g_na"
         entity.max_permeability_name = "p_na"
         with patch.object(IonChannelModelFromID, "entity", return_value=entity):
@@ -75,7 +79,7 @@ class TestIonChannelModelFromIDTypedEntity:
     def test_get_other_parameter_names_flattens_mapping_entries(self):
         obj = IonChannelModelFromID(id_str="ic-id")
         entity = MagicMock()
-        entity.neuron_block.range = [["param_a", "g_na"]]
+        entity.neuron_block.range = [{"param_a": None, "g_na": "S/cm2"}]
         entity.conductance_name = "g_na"
         entity.max_permeability_name = None
         with (

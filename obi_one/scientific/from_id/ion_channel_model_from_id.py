@@ -51,11 +51,4 @@ class IonChannelModelFromID(EntityFromID[IonChannelModel]):
             self.get_max_permeability_name(db_client),
             None,
         }
-        names: list[str] = []
-        for entry in range_params:
-            if isinstance(entry, str):
-                if entry not in to_remove:
-                    names.append(entry)
-                continue
-            names.extend(param for param in entry if param not in to_remove)
-        return names
+        return [name for entry in range_params for name in entry if name not in to_remove]
