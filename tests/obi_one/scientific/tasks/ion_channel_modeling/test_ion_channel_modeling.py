@@ -5,9 +5,7 @@ from uuid import UUID, uuid4
 
 import neuron
 import pytest
-from entitysdk.models.brain_region import BrainRegion
-from entitysdk.models.subject import Subject
-from entitysdk.models.taxonomy import Species
+from entitysdk import models
 from entitysdk.types import AssetLabel, Sex, TaskActivityType, TaskConfigType
 from pydantic import ValidationError
 
@@ -23,23 +21,48 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
+    neuron_safe_name,
     plot_fitted_model,
     plot_in_fresh_process,
 )
 
 
-def test_ion_channel_name_default_satisfies_its_own_pattern():
-    IonChannelFittingScanConfig.Initialize(
+def test_model_properties_default_to_the_recordings():
+    initialize = IonChannelFittingScanConfig.Initialize(
         recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}]
     )
+
+    assert initialize.model_properties.model_dump(exclude={"type"}) == {
+        "ion_channel_name": None,
+        "temperature": None,
+        "species": None,
+        "strain": None,
+        "brain_region": None,
+    }
 
 
 def test_ion_channel_name_rejects_a_name_neuron_could_not_use():
     with pytest.raises(ValidationError):
         IonChannelFittingScanConfig.Initialize(
             recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}],
-            ion_channel_name="3 bad name",
+            model_properties={"ion_channel_name": "3 bad name"},
         )
+
+
+def test_a_config_from_before_model_properties_keeps_its_channel_name():
+    initialize = IonChannelFittingScanConfig.Initialize(
+        recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}],
+        ion_channel_name="Kv3_1",
+    )
+
+    assert initialize.model_properties.ion_channel_name == "Kv3_1"
+
+
+@pytest.mark.parametrize(
+    ("name", "suffix"), [("Kv6.2", "Kv6_2"), ("ClC-Ka", "ClC_Ka"), ("5-HT3", "_5_HT3")]
+)
+def test_channel_names_become_neuron_suffixes(name, suffix):
+    assert neuron_safe_name(name) == suffix
 
 
 def test_recordings_are_kept_together_rather_than_scanned():
@@ -64,30 +87,79 @@ def test_registration_uses_the_generic_ion_channel_modeling_task_entities():
 
 RECORDING_IDS = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]
 
+RAT = SimpleNamespace(id=uuid4(), name="Rattus norvegicus")
+MOUSE = SimpleNamespace(id=uuid4(), name="Mus musculus")
+SPRAGUE_DAWLEY = SimpleNamespace(id=uuid4(), name="Sprague Dawley", species_id=RAT.id)
+GENERIC_RAT = SimpleNamespace(
+    id=uuid4(), name="Generic Rattus norvegicus", species=RAT, strain=None
+)
+GENERIC_MOUSE = SimpleNamespace(id=uuid4(), name="Generic Mus musculus", species=MOUSE, strain=None)
+ROOT = SimpleNamespace(id=uuid4(), name="root", parent_structure_id=None)
+GREY = SimpleNamespace(
+    id=uuid4(), name="Basic cell groups and regions", parent_structure_id=ROOT.id
+)
+ISOCORTEX = SimpleNamespace(id=uuid4(), name="Isocortex", parent_structure_id=GREY.id)
+THALAMUS = SimpleNamespace(id=uuid4(), name="Thalamus", parent_structure_id=GREY.id)
+HUMAN_ROOT = SimpleNamespace(id=uuid4(), name="root", parent_structure_id=None)
+KV62 = SimpleNamespace(id=uuid4(), name="Kv6.2")
+KV11 = SimpleNamespace(id=uuid4(), name="Kv1.1")
 
-def _db_client(temperatures=(25.0, 25.0)):
-    db_client = Mock()
-    recording_uuids = [UUID(recording_id) for recording_id in RECORDING_IDS]
-    by_id = dict(zip(recording_uuids, temperatures, strict=True))
-    db_client.get_entity.side_effect = lambda entity_id, **_: SimpleNamespace(
-        id=entity_id,
-        temperature=by_id[entity_id],
-        ljp=-float(str(entity_id)[-1]),
-        name=f"Recording {str(entity_id)[-1]}",
+
+def _recording(id_, **overrides):
+    return SimpleNamespace(
+        id=UUID(id_),
+        ljp=-float(id_[-1]),
+        name=f"Recording {id_[-1]}",
+        **{
+            "temperature": 25.0,
+            "subject": GENERIC_RAT,
+            "brain_region": ISOCORTEX,
+            "ion_channel": KV62,
+            **overrides,
+        },
     )
+
+
+def _db_client(*overrides):
+    """A client serving the two recordings, each with its overrides, and the taxonomy above."""
+    recordings = {
+        UUID(id_): _recording(id_, **override)
+        for id_, override in zip(RECORDING_IDS, overrides or ({}, {}), strict=True)
+    }
+    by_id = {
+        str(item.id): item
+        for item in (RAT, MOUSE, SPRAGUE_DAWLEY, ROOT, GREY, ISOCORTEX, THALAMUS, HUMAN_ROOT)
+    }
+    db_client = Mock()
+    db_client.get_entity.side_effect = lambda entity_id, entity_type: (
+        by_id[str(entity_id)]
+        if entity_type is not models.IonChannelRecording
+        else recordings[entity_id]
+    )
+    db_client.search_entity.return_value = []
     db_client.download_assets.side_effect = lambda _entity, output_path, **_: Mock(
         one=Mock(return_value=Mock(path=output_path / "trace.nwb"))
     )
     return db_client
 
 
-def _scan_config(**model_type):
+def _scan_config(model_properties=None, **model_type):
     return IonChannelFittingScanConfig.model_validate(
         {
             "info": {"campaign_name": "Kv3.1 fit", "campaign_description": "From traces."},
-            "initialize": {"recordings": [{"id_str": id_} for id_ in RECORDING_IDS]},
+            "initialize": {
+                "recordings": [{"id_str": id_} for id_ in RECORDING_IDS],
+                "model_properties": model_properties or {},
+            },
             "model_type": {"type": "HodgkinHuxleyIonChannelModel", **model_type},
         }
+    )
+
+
+def _resolve(db_client, **model_properties):
+    config = _scan_config(model_properties)
+    return config.resolve_model_properties(
+        config.input_entities(db_client=db_client), db_client=db_client
     )
 
 
@@ -146,12 +218,93 @@ def test_generate_registers_a_campaign_and_one_config_per_exponent(tmp_path, mon
     assert [c.id for c in generation["generated"]] == ["task config 2", "task config 3"]
 
 
-def test_recordings_at_different_temperatures_are_rejected_even_when_one_is_unknown():
-    with pytest.raises(ConfigValidationError, match="must share a temperature"):
-        _scan_config().input_entities(db_client=_db_client(temperatures=(25.0, None)))
+def test_properties_the_recordings_share_go_to_the_model():
+    properties = _resolve(_db_client())
+
+    assert properties.ion_channel_name == "Kv6_2"
+    assert properties.temperature == pytest.approx(25.0)
+    assert properties.species is RAT
+    assert properties.strain is None
+    assert properties.brain_region is ISOCORTEX
+    assert properties.subject is GENERIC_RAT
 
 
-def test_generate_rejects_mixed_temperatures_before_registering_anything(tmp_path, monkeypatch):
+def test_a_set_property_wins_over_the_recordings():
+    properties = _resolve(
+        _db_client(),
+        ion_channel_name="kv62_fast",
+        temperature=34.0,
+        brain_region={"id_str": str(GREY.id)},
+    )
+
+    assert properties.ion_channel_name == "kv62_fast"
+    assert properties.temperature == pytest.approx(34.0)
+    assert properties.brain_region is GREY
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"temperature": None}, r"differ in temperature \(25.0 °C, none\)"),
+        ({"ion_channel": KV11}, r"differ in ion channel \(Kv1.1, Kv6.2\)"),
+        ({"subject": GENERIC_MOUSE}, r"differ in species \(Mus musculus, Rattus norvegicus\)"),
+    ],
+)
+def test_a_property_the_recordings_differ_in_has_to_be_set(overrides, message):
+    with pytest.raises(ConfigValidationError, match=message):
+        _resolve(_db_client({}, overrides))
+
+
+def test_recordings_of_different_species_take_the_species_that_is_set():
+    properties = _resolve(
+        _db_client({}, {"subject": GENERIC_MOUSE}), species={"id_str": str(MOUSE.id)}
+    )
+
+    assert properties.species is MOUSE
+    assert properties.subject is None
+
+
+def test_the_strain_comes_from_the_recordings_of_the_models_species():
+    sprague_dawley_rat = SimpleNamespace(
+        id=uuid4(), name="Rat 1", species=RAT, strain=SPRAGUE_DAWLEY
+    )
+    properties = _resolve(
+        _db_client({"subject": sprague_dawley_rat}, {"subject": GENERIC_MOUSE}),
+        species={"id_str": str(RAT.id)},
+    )
+
+    assert properties.strain is SPRAGUE_DAWLEY
+    assert properties.subject is None
+
+
+def test_a_strain_of_another_species_is_rejected():
+    with pytest.raises(ConfigValidationError, match="not a strain of Mus musculus"):
+        _resolve(
+            _db_client(),
+            species={"id_str": str(MOUSE.id)},
+            strain={"id_str": str(SPRAGUE_DAWLEY.id)},
+        )
+
+
+def test_recordings_in_different_regions_give_their_common_parent():
+    properties = _resolve(_db_client({}, {"brain_region": THALAMUS}))
+
+    assert properties.brain_region is GREY
+
+
+def test_regions_of_different_hierarchies_have_to_be_set():
+    with pytest.raises(ConfigValidationError, match="no common parent"):
+        _resolve(_db_client({}, {"brain_region": HUMAN_ROOT}))
+
+
+def test_a_set_strain_does_not_take_the_recordings_subject():
+    properties = _resolve(_db_client(), strain={"id_str": str(SPRAGUE_DAWLEY.id)})
+
+    assert properties.strain is SPRAGUE_DAWLEY
+    assert properties.subject is None
+
+
+def test_generate_rejects_an_unresolved_property_before_registering_anything(tmp_path, monkeypatch):
     register = Mock()
     monkeypatch.setattr(db_sdk, "register_task_config_with_asset", register)
 
@@ -160,13 +313,13 @@ def test_generate_rejects_mixed_temperatures_before_registering_anything(tmp_pat
             form=_scan_config(),
             output_root=tmp_path,
             coordinate_directory_option="ZERO_INDEX",
-        ).execute(db_client=_db_client(temperatures=(25.0, 34.0)))
+        ).execute(db_client=_db_client({}, {"temperature": 34.0}))
 
     register.assert_not_called()
 
 
-def _task(tmp_path):
-    form = _scan_config().model_dump(exclude={"type"})
+def _task(tmp_path, model_properties=None):
+    form = _scan_config(model_properties).model_dump(exclude={"type"})
     return IonChannelFittingTask(
         config=IonChannelFittingSingleConfig.model_validate(
             form | {"idx": 0, "coordinate_output_root": tmp_path}
@@ -181,35 +334,110 @@ def test_each_recording_is_downloaded_to_its_own_folder(tmp_path):
     assert trace_ljps == [-1.0, -2.0]
 
 
-def test_the_registered_model_names_every_recording(tmp_path):
-    db_client = _db_client()
-    db_client.register_entity.side_effect = lambda model: model
-    recording_entity = Mock(
-        temperature=25.0,
-        subject=Subject(
-            sex=Sex.male, species=Species(name="Mus musculus", taxonomy_id="NCBITaxon:10090")
-        ),
-        brain_region=BrainRegion(
-            name="my-region",
-            annotation_value=1,
-            acronym="region",
-            parent_structure_id=uuid4(),
-            hierarchy_id=uuid4(),
-            color_hex_triplet="red",
-        ),
+def _species(name, taxonomy_id):
+    return models.Species(id=uuid4(), name=name, taxonomy_id=taxonomy_id)
+
+
+def _region():
+    return models.BrainRegion(
+        id=uuid4(),
+        name="Isocortex",
+        annotation_value=1,
+        acronym="Isocortex",
+        parent_structure_id=None,
+        hierarchy_id=uuid4(),
+        color_hex_triplet="red",
     )
 
-    _task(tmp_path).save(
-        mod_filepath=tmp_path / "DefaultIonChannelName.mod",
+
+def _save(tmp_path, db_client, *, subject, species):
+    task = _task(tmp_path)
+    properties = ion_channel_modeling.ResolvedModelProperties(
+        ion_channel_name="Kv6_2",
+        temperature=25.0,
+        species=species,
+        strain=None,
+        brain_region=_region(),
+        subject=subject,
+    )
+    task.save(
+        mod_filepath=tmp_path / "Kv6_2.mod",
         figure_filepaths={},
         db_client=db_client,
         range_vars=[],
-        recording_entity=recording_entity,
+        properties=properties,
+    )
+    return [call.args[0] for call in db_client.register_entity.call_args_list]
+
+
+def test_the_registered_model_takes_the_resolved_properties(tmp_path):
+    db_client = _db_client()
+    db_client.register_entity.side_effect = lambda entity: entity
+    mouse = _species("Mus musculus", "NCBITaxon:10090")
+    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+
+    (model,) = _save(tmp_path, db_client, subject=subject, species=mouse)
+
+    assert "made using recordings: Recording 1, Recording 2 " in model.description
+    assert model.nmodl_suffix == "Kv6_2"
+    assert model.conductance_name == "gKv6_2bar"
+    assert model.temperature_celsius == pytest.approx(25.0)
+    assert model.subject is subject
+
+
+def test_a_model_of_several_subjects_gets_the_generic_subject_of_its_species(tmp_path):
+    db_client = _db_client()
+    db_client.register_entity.side_effect = lambda entity: entity
+    mouse = _species("Mus musculus", "NCBITaxon:10090")
+    rat = _species("Rattus norvegicus", "NCBITaxon:10116")
+    generic_mouse = models.Subject(
+        id=uuid4(), name="Generic Mus musculus", sex=Sex.unknown, species=mouse
+    )
+    db_client.search_entity.return_value = [
+        models.Subject(id=uuid4(), name="Generic Mus musculus", sex=Sex.unknown, species=rat),
+        generic_mouse,
+    ]
+
+    (model,) = _save(tmp_path, db_client, subject=None, species=mouse)
+
+    assert db_client.search_entity.call_args.kwargs["query"] == {"name": "Generic Mus musculus"}
+    assert model.subject is generic_mouse
+
+
+def test_a_missing_generic_subject_is_registered(tmp_path):
+    db_client = _db_client()
+    db_client.register_entity.side_effect = lambda entity: entity
+    mouse = _species("Mus musculus", "NCBITaxon:10090")
+
+    subject, model = _save(tmp_path, db_client, subject=None, species=mouse)
+
+    assert (subject.name, subject.sex, subject.species) == (
+        "Generic Mus musculus",
+        "unknown",
+        mouse,
+    )
+    assert model.subject is subject
+
+
+def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
+    write, plot, save = Mock(), Mock(return_value={}), Mock(return_value="model id")
+    monkeypatch.setattr(ion_channel_modeling, "extract_all_equations", Mock(return_value={}))
+    monkeypatch.setattr(ion_channel_modeling, "write_vgate_output", write)
+    monkeypatch.setattr(ion_channel_modeling, "run_and_log", Mock())
+    monkeypatch.setattr(ion_channel_modeling, "plot_in_fresh_process", plot)
+    monkeypatch.setattr(ion_channel_modeling, "get_range_params_with_units", Mock(return_value=[]))
+    monkeypatch.setattr(IonChannelFittingTask, "save", save)
+
+    model_id = _task(tmp_path, {"ion_channel_name": "kv62_fast", "temperature": 34.0}).execute(
+        db_client=_db_client()
     )
 
-    ((model,), _) = db_client.register_entity.call_args
-    assert "made using recordings: Recording 1, Recording 2 " in model.description
-    assert model.conductance_name == "gDefaultIonChannelNamebar"
+    assert model_id == "model id"
+    assert write.call_args.kwargs["suffix"] == "kv62_fast"
+    assert write.call_args.kwargs["output_name"] == tmp_path / "mechanisms" / "kv62_fast.mod"
+    assert plot.call_args.kwargs["mech_suffix"] == "kv62_fast"
+    assert plot.call_args.kwargs["temperature"] == pytest.approx(34.0)
+    assert save.call_args.kwargs["properties"].brain_region is ISOCORTEX
 
 
 def test_plotting_reports_the_fresh_process_error(tmp_path):

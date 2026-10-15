@@ -106,6 +106,8 @@ There are two major types of such UI elements:
 
         - [stochasticity](components/stochasticity/stochasticity.md) (one-off)
 
+        - [ion_channel_model_properties](components/ion_channel_model_properties/ion_channel_model_properties.md) (one-off)
+
         - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
         - [boolean_input](components/boolean_input/boolean_input.md)

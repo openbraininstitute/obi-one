@@ -89,6 +89,7 @@ class UIElement(StrEnum):
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
+    ION_CHANNEL_MODEL_PROPERTIES = "ion_channel_model_properties"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = (
         "ion_channel_variable_modification_by_section_list"
