@@ -1,7 +1,7 @@
 import pickle  # ruff: ignore[suspicious-pickle-import]
 from types import SimpleNamespace
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import neuron
 import pytest
@@ -67,12 +67,13 @@ RECORDING_IDS = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-000
 
 def _db_client(temperatures=(25.0, 25.0)):
     db_client = Mock()
-    by_id = dict(zip(RECORDING_IDS, temperatures, strict=True))
+    recording_uuids = [UUID(recording_id) for recording_id in RECORDING_IDS]
+    by_id = dict(zip(recording_uuids, temperatures, strict=True))
     db_client.get_entity.side_effect = lambda entity_id, **_: SimpleNamespace(
         id=entity_id,
         temperature=by_id[entity_id],
-        ljp=-float(entity_id[-1]),
-        name=f"Recording {entity_id[-1]}",
+        ljp=-float(str(entity_id)[-1]),
+        name=f"Recording {str(entity_id)[-1]}",
     )
     db_client.download_assets.side_effect = lambda _entity, output_path, **_: Mock(
         one=Mock(return_value=Mock(path=output_path / "trace.nwb"))
@@ -93,7 +94,7 @@ def _scan_config(**model_type):
 def test_every_recording_is_an_input_of_the_task_config():
     recordings = _scan_config().input_entities(db_client=_db_client())
 
-    assert [recording.id for recording in recordings] == RECORDING_IDS
+    assert [recording.id for recording in recordings] == [UUID(i) for i in RECORDING_IDS]
 
 
 def test_exponents_can_be_swept():
@@ -132,11 +133,13 @@ def test_generate_registers_a_campaign_and_one_config_per_exponent(tmp_path, mon
 
     campaign, *configs = task_configs
     assert campaign["task_config_type"] == TaskConfigType.ion_channel_modeling__campaign
-    assert [r.id for r in campaign["input_entities"]] == RECORDING_IDS
+    assert [r.id for r in campaign["input_entities"]] == [UUID(i) for i in RECORDING_IDS]
     assert [c["task_config_type"] for c in configs] == [
         TaskConfigType.ion_channel_modeling__config
     ] * 2
-    assert all([r.id for r in c["input_entities"]] == RECORDING_IDS for c in configs)
+    assert all(
+        [r.id for r in c["input_entities"]] == [UUID(i) for i in RECORDING_IDS] for c in configs
+    )
     assert all(c["task_config_generator_id"] == "task config 1" for c in configs)
     (generation,) = activities
     assert generation["activity_type"] == TaskActivityType.ion_channel_modeling__config_generation

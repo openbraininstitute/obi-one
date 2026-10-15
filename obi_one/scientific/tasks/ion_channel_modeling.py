@@ -288,7 +288,7 @@ class IonChannelFittingScanConfig(InfoScanConfig):
         entities = [
             recording.entity(db_client=db_client) for recording in self.initialize.recordings
         ]
-        temperatures = {entity.temperature for entity in entities}  # ty:ignore[unresolved-attribute]
+        temperatures = {entity.temperature for entity in entities}
         if len(temperatures) > 1:
             msg = (
                 "Ion channel recordings fitted together must share a temperature, because the "
@@ -329,7 +329,7 @@ class IonChannelFittingTask(Task):
                     db_client=db_client,
                 )
             )
-            trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
+            trace_ljps.append(recording.entity(db_client=db_client).ljp)
         return trace_paths, trace_ljps
 
     @staticmethod

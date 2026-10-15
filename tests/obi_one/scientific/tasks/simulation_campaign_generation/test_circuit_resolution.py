@@ -189,7 +189,8 @@ class _ArrayDBClient(FakeDBClient):
                 method="get_entity", kwargs={"entity_id": entity_id, "entity_type": entity_type}
             )
         )
-        return SimpleNamespace(id=UUID(entity_id), circuit_id=UUID(self.array_circuit_id))
+        entity_uuid = entity_id if isinstance(entity_id, UUID) else UUID(entity_id)
+        return SimpleNamespace(id=entity_uuid, circuit_id=UUID(self.array_circuit_id))
 
 
 @pytest.mark.usefixtures("staging_recorder")

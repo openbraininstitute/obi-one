@@ -134,7 +134,7 @@ def resolve_list_neurons(  # ruff: ignore[too-many-locals]
         use_me_model = isinstance(neuron_entry, MEModelFromID)
         if use_me_model:
             me_model_entity = neuron_entry.entity(db_client)
-            morph_from_id = CellMorphologyFromID(id_str=str(me_model_entity.morphology.id))  # ty:ignore[unresolved-attribute]
+            morph_from_id = CellMorphologyFromID(id_str=str(me_model_entity.morphology.id))
         else:
             morph_from_id = neuron_entry
             me_model_entity = None
@@ -188,7 +188,7 @@ def resolve_list_neurons(  # ruff: ignore[too-many-locals]
         L.info(f"...for neuron id: {pt_root_id}")
         resolved_neuron, mechanisms_placed_ = place_morphologies_and_mechanisms(
             morph_from_id=morph_from_id,
-            me_model_entity=me_model_entity,  # ty:ignore[invalid-argument-type]
+            me_model_entity=me_model_entity,
             source_mesh_entity=source_mesh_entity,
             source_dataset=source_dataset,
             pt_root_id=pt_root_id,

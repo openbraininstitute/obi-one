@@ -53,11 +53,19 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     params_definition_input_from_config,
 )
 
-from .test_parameter_selection import _model_entity, _scan_config_data, _somatic_assignment
+from .test_parameter_selection import (
+    ICM2_ID_STR,
+    ICM_ID_STR,
+    _model_entity,
+    _scan_config_data,
+    _somatic_assignment,
+)
+
+PAS_MODEL_ID_STR = "00000000-0000-0000-0000-000000000006"
 
 
 def _reference() -> IonChannelModelFromID:
-    return IonChannelModelFromID(id_str="icm-1")
+    return IonChannelModelFromID(id_str=ICM_ID_STR)
 
 
 def _selection(**overrides) -> ParametersSelection:
@@ -80,7 +88,7 @@ def _compiler_config(selection: ParametersSelection, custom=None) -> SimpleNames
 
 
 def _normalized_models() -> dict[str, NormalizedIonChannelModel]:
-    return {"icm-1": bpem_parameters.normalize_ion_channel_model(_model_entity())}
+    return {ICM_ID_STR: bpem_parameters.normalize_ion_channel_model(_model_entity())}
 
 
 def test_normalize_model_rejects_missing_required_metadata():
@@ -90,13 +98,13 @@ def test_normalize_model_rejects_missing_required_metadata():
         bpem_parameters.normalize_ion_channel_model(SimpleNamespace(nmodl_suffix="NaTg"))
     with pytest.raises(ValueError, match="no neuron_block"):
         bpem_parameters.normalize_ion_channel_model(
-            SimpleNamespace(nmodl_suffix="NaTg", id="icm-1")
+            SimpleNamespace(nmodl_suffix="NaTg", id=ICM_ID_STR)
         )
 
 
 def test_normalize_model_accepts_mapping_global_metadata_and_ignores_empty_duplicates():
     entity = {
-        "id": "icm-1",
+        "id": ICM_ID_STR,
         "nmodl_suffix": "NaTg",
         "neuron_block": {
             "range": [
@@ -118,19 +126,19 @@ def test_normalize_model_accepts_mapping_global_metadata_and_ignores_empty_dupli
 
 def test_resolve_and_fetch_ion_channel_models_preserve_reference_ids():
     entity = _model_entity()
-    reference = SimpleNamespace(id_str="icm-1", entity=Mock(return_value=entity))
+    reference = SimpleNamespace(id_str=ICM_ID_STR, entity=Mock(return_value=entity))
     reference_entity = reference.entity
     resolved = utils.resolve_ion_channel_models((reference,), object())
 
-    assert resolved["icm-1"].entity_id == "icm-1"
+    assert resolved[ICM_ID_STR].entity_id == ICM_ID_STR
     reference_entity.assert_called_once()
 
     client = SimpleNamespace(get_entity=Mock(return_value=entity))
-    catalog = utils.fetch_variable_catalog(["icm-2"], client)
+    catalog = utils.fetch_variable_catalog([ICM2_ID_STR], client)
 
-    assert catalog["icm-2"].entity_id == "icm-2"
+    assert catalog[ICM2_ID_STR].entity_id == ICM2_ID_STR
     client.get_entity.assert_called_once()
-    assert client.get_entity.call_args.kwargs["entity_id"] == "icm-2"
+    assert client.get_entity.call_args.kwargs["entity_id"] == ICM2_ID_STR
 
 
 @pytest.mark.parametrize(
@@ -194,7 +202,7 @@ def test_parameter_builder_rejects_invalid_global_parameter_sources():
         with pytest.raises(ValueError, match="not a GLOBAL"):
             bpem_parameters._build_global_parameters(selection, model, {})
 
-    unknown_reference = IonChannelModelFromID(id_str="icm-2")
+    unknown_reference = IonChannelModelFromID(id_str=ICM2_ID_STR)
     selection = _selection(
         ion_channel_models=(unknown_reference,),
         global_parameters={
@@ -474,7 +482,7 @@ def _registration_fixture(tmp_path, *, complete=True):
         metadata_entities=Mock(return_value=(species, brain_region)),
     )
     reference = SimpleNamespace(
-        id_str="icm-1", entity=Mock(return_value=SimpleNamespace(id="icm-1"))
+        id_str=ICM_ID_STR, entity=Mock(return_value=SimpleNamespace(id=ICM_ID_STR))
     )
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(id="etype-id")))
     config = SimpleNamespace(
@@ -817,7 +825,7 @@ def test_remaining_block_validation_and_serialization_paths():
 
 
 def test_remaining_parameter_builder_paths():
-    model = _normalized_models()["icm-1"]
+    model = _normalized_models()[ICM_ID_STR]
     assert model.find_variable("gNa_NaTg").name == "gNa_NaTg"
 
     variables = bpem_parameters._normalize_variables(
@@ -828,7 +836,7 @@ def test_remaining_parameter_builder_paths():
     assert [variable.name for variable in variables] == ["h_NaTg", "q_NaTg"]
     assert bpem_parameters._location_sort_key("not-a-region") == (0, "not-a-region")
 
-    pas_reference = IonChannelModelFromID(id_str="pas-model")
+    pas_reference = IonChannelModelFromID(id_str=PAS_MODEL_ID_STR)
     pas_selection = _selection(
         ion_channel_models=(pas_reference,),
         mechanism_regions={"somatic": (MechanismRegionSelection(ion_channel_model=pas_reference),)},
@@ -837,7 +845,7 @@ def test_remaining_parameter_builder_paths():
         },
     )
     pas_model = NormalizedIonChannelModel(
-        entity_id="pas-model",
+        entity_id=PAS_MODEL_ID_STR,
         name="Passive",
         nmodl_suffix="pas",
         is_stochastic=False,
@@ -847,7 +855,7 @@ def test_remaining_parameter_builder_paths():
         global_variables=(),
         ion_names=frozenset(),
     )
-    mechanisms = bpem_parameters._build_mechanisms(pas_selection, {"pas-model": pas_model})
+    mechanisms = bpem_parameters._build_mechanisms(pas_selection, {PAS_MODEL_ID_STR: pas_model})
     assert [mechanism["name"] for mechanism in mechanisms] == ["pas"]
 
     missing_metadata_selection = _selection(
@@ -1010,6 +1018,6 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     assert task._registered_emodel_id == "emodel-id"
     assert task._registered_memodel_id == "memodel-id"
     mechanism = access_points[0].get_available_mechanisms()[0]
-    assert mechanism.id == "icm-1"
+    assert mechanism.id == ICM_ID_STR
     configuration = access_points[0].get_model_configuration()
     assert configuration.morph_modifiers == ["none"]
