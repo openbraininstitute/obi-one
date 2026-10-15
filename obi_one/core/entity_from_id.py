@@ -32,7 +32,7 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
         if self._entity is None:
             self._entity = db_client.get_entity(
                 entity_id=UUID(self.id_str),
-                entity_type=self.entitysdk_type,
+                entity_type=self._entitysdk_type,
             )
         return self._entity
 
@@ -43,5 +43,3 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
 
 class EntityFromID[TEntity: Entity](IdentifiableFromID[TEntity]):
     """Base class for entity references that resolve to full Entity objects (with assets)."""
-
-    _entitysdk_type: type[Entity] = Entity
