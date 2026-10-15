@@ -1641,6 +1641,7 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     )
     monkeypatch.setattr(task_module.emodel_building_utils, "compile_mechanisms", Mock())
     monkeypatch.setattr(task_module.emodel_building_utils, "run_plot_models", Mock())
+    monkeypatch.setattr(task_module, "run_inline_validation", Mock(return_value=None))
     monkeypatch.setattr(task_module, "preflight_morphology", Mock(return_value=object()))
     monkeypatch.setattr(task_module, "resolve_ion_channel_models", Mock(return_value={}))
     monkeypatch.setattr(staging, "derive_mtype", Mock(return_value="L5_TTPC"))
