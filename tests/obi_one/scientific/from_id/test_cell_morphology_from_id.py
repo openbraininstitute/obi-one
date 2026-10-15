@@ -35,13 +35,13 @@ def _em_protocol():
 
 
 def _cell_morphology(**kwargs):
-    defaults = {
-        "id": uuid4(),
-        "name": "cell",
-        "cell_morphology_protocol": _em_protocol(),
-    }
-    defaults.update(kwargs)
-    return CellMorphology.model_construct(**defaults)
+    return CellMorphology.model_construct(
+        _fields_set=None,
+        id=kwargs.pop("id", uuid4()),
+        name=kwargs.pop("name", "cell"),
+        cell_morphology_protocol=kwargs.pop("cell_morphology_protocol", _em_protocol()),
+        **kwargs,
+    )
 
 
 def _used(entity_type=EntityType.task_config, *, entity_id: object = ...):
