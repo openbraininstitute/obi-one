@@ -4,12 +4,15 @@ import entitysdk
 from entitysdk.models import IonChannelRecording
 from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
+from pydantic import Field
 
 from obi_one.core.entity_from_id import EntityFromID
 
 
 class IonChannelRecordingFromID(EntityFromID[IonChannelRecording]):
-    entitysdk_type: type[IonChannelRecording] = IonChannelRecording
+    entitysdk_type: type[IonChannelRecording] = Field(
+        default=IonChannelRecording, exclude=True, repr=False
+    )
 
     def download_asset(
         self,

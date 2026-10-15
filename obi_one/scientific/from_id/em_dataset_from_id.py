@@ -7,7 +7,7 @@ import requests
 from caveclient import CAVEclient, set_session_defaults
 from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
-from pydantic import PrivateAttr
+from pydantic import Field, PrivateAttr
 
 from obi_one.config import settings
 from obi_one.core.entity_from_id import EntityFromID
@@ -69,7 +69,9 @@ _configure_caveclient_retries()
 
 
 class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
-    entitysdk_type: type[EMDenseReconstructionDataset] = EMDenseReconstructionDataset
+    entitysdk_type: type[EMDenseReconstructionDataset] = Field(
+        default=EMDenseReconstructionDataset, exclude=True, repr=False
+    )
 
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     auth_token: str | None = None

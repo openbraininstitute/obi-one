@@ -2,6 +2,7 @@ from pathlib import Path
 
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
+from pydantic import Field
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
@@ -14,7 +15,7 @@ from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircui
 
 
 class CircuitFromID(EntityFromID[models.Circuit]):
-    entitysdk_type: type[models.Circuit] = models.Circuit
+    entitysdk_type: type[models.Circuit] = Field(default=models.Circuit, exclude=True, repr=False)
 
     def stage_circuit(
         self,
@@ -74,7 +75,7 @@ class CircuitFromID(EntityFromID[models.Circuit]):
 
 
 class MEModelWithSynapsesCircuitFromID(EntityFromID[models.Circuit]):
-    entitysdk_type: type[models.Circuit] = models.Circuit
+    entitysdk_type: type[models.Circuit] = Field(default=models.Circuit, exclude=True, repr=False)
 
     def entity(self, db_client: Client) -> models.Circuit:
         entity = super().entity(db_client=db_client)

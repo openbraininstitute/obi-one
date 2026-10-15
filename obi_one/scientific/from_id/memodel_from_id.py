@@ -4,6 +4,7 @@ import morphio
 from entitysdk.client import Client
 from entitysdk.models import MEModel
 from entitysdk.staging.memodel import stage_sonata_from_memodel
+from pydantic import Field
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
@@ -11,7 +12,7 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class MEModelFromID(EntityFromID[MEModel]):
-    entitysdk_type: type[MEModel] = MEModel
+    entitysdk_type: type[MEModel] = Field(default=MEModel, exclude=True, repr=False)
 
     def morphio_morphology(
         self,

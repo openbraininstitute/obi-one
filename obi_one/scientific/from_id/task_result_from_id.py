@@ -3,6 +3,7 @@ from pathlib import Path
 import entitysdk
 from entitysdk.models import TaskResult
 from entitysdk.types import AssetLabel
+from pydantic import Field
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.db_sdk.db_sdk import fetch_asset_by_label, fetch_directory_asset_by_label
@@ -11,7 +12,7 @@ from obi_one.db_sdk.db_sdk import fetch_asset_by_label, fetch_directory_asset_by
 class TaskResultFromID(EntityFromID[TaskResult]):
     """Wrapper for downloading assets from a TaskResult entity."""
 
-    entitysdk_type: type[TaskResult] = TaskResult
+    entitysdk_type: type[TaskResult] = Field(default=TaskResult, exclude=True, repr=False)
 
     def download_asset_by_label(
         self,
