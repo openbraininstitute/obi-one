@@ -1,6 +1,6 @@
+import math
 from typing import Annotated, ClassVar, Self
 
-import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -147,7 +147,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
                     "Ey": self.E_y,
                     "Ez": self.E_z,
                     "frequency": self._frequency,
-                    "phase": np.deg2rad(self._phase_degrees),
+                    "phase": math.radians(self._phase_degrees),
                 }
             ],
         }
