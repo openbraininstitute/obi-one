@@ -12,6 +12,7 @@ from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
 from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
+from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.exception import OBIONEError
 
@@ -81,8 +82,6 @@ def fetch_asset_by_label(
     Uses fetch_assets (checks local data store first).
     Returns the path to the fetched file.
     """
-    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
-
     output_dir = create_dir(output_path)
     asset = client.fetch_assets(
         entity,
@@ -183,8 +182,6 @@ def fetch_directory_asset_by_label(
     Uses fetch_assets (checks local data store first).
     Returns the path to the fetched directory.
     """
-    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
-
     output_dir = create_dir(output_path)
     asset = client.fetch_assets(
         entity,

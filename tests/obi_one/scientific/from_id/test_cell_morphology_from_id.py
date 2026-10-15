@@ -1,111 +1,43 @@
-import shutil
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import morphio
 import pytest
-from entitysdk._server_schemas import AssetLabel
 from entitysdk.exception import EntitySDKError
-from entitysdk.types import ContentType
+from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 
-
-def _morphology_file(tmp_path: Path, extension: str) -> Path:
-    if extension == "asc":
-        return Path(__file__).parents[3] / "test_data" / "cell_morphology.asc"
-
-    swc_path = tmp_path / "cell.swc"
-    swc_path.write_text("1 1 0 0 0 5 -1\n2 3 0 10 0 1 1\n3 3 0 30 0 1 2\n")
-    if extension == "swc":
-        return swc_path
-
-    h5_path = tmp_path / "cell.h5"
-    source = Path(__file__).parents[3] / "test_data" / "cell_morphology.asc"
-    morphio.mut.Morphology(source).write(h5_path)
-    return h5_path
+_SELECT = "obi_one.scientific.from_id.cell_morphology_from_id.select_asset_content"
 
 
-@pytest.mark.parametrize(
-    ("content_type", "extension"),
-    [
-        (ContentType.application_asc, "asc"),
-        (ContentType.application_swc, "swc"),
-        (ContentType.application_x_hdf5, "h5"),
-    ],
-)
-def test_morphio_morphology_loads_supported_entity_asset(tmp_path, content_type, extension):
-    source = _morphology_file(tmp_path, extension)
-    entity = SimpleNamespace(
-        id="morphology-id",
-        assets=[
-            SimpleNamespace(
-                id="asset-id",
-                content_type=content_type,
-                label=AssetLabel.morphology if extension == "h5" else None,
-            )
-        ],
-    )
+def test_morphio_morphology_fetches_h5_to_tempfile():
+    entity = SimpleNamespace(id="morphology-id", assets=[])
     client = Mock()
-    client.download_file.side_effect = lambda **kwargs: shutil.copyfile(
-        source, kwargs["output_path"]
-    )
-    reference = CellMorphologyFromID(id_str="morphology-id")
-
-    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
-        morphology = reference.morphio_morphology(client)
-        cached = reference.morphio_morphology(client)
-
-    assert morphology is cached
-    assert len(morphology.sections) > 0
-    client.download_file.assert_called_once()
-
-
-def test_morphio_morphology_ignores_spiny_h5_asset(tmp_path):
-    source = _morphology_file(tmp_path, "h5")
-    entity = SimpleNamespace(
-        id="morphology-id",
-        assets=[
-            SimpleNamespace(
-                id="spiny-asset-id",
-                content_type=ContentType.application_x_hdf5,
-                label=AssetLabel.morphology_with_spines,
-            ),
-            SimpleNamespace(
-                id="morphology-asset-id",
-                content_type=ContentType.application_x_hdf5,
-                label=AssetLabel.morphology,
-            ),
-        ],
-    )
-    client = Mock()
-    client.download_file.side_effect = lambda **kwargs: shutil.copyfile(
-        source, kwargs["output_path"]
-    )
-    reference = CellMorphologyFromID(id_str="morphology-id")
-
-    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
-        morphology = reference.morphio_morphology(client)
-
-    assert len(morphology.sections) > 0
-    client.download_file.assert_called_once()
-    assert client.download_file.call_args.kwargs["asset_id"] == "morphology-asset-id"
-
-
-def test_morphio_morphology_rejects_unsupported_entity_assets():
-    entity = SimpleNamespace(
-        id="morphology-id",
-        assets=[SimpleNamespace(id="asset-id", content_type="application/json")],
-    )
+    client.fetch_assets.return_value.one.return_value = Mock()
+    expected = object()
     reference = CellMorphologyFromID(id_str="morphology-id")
 
     with (
         patch.object(CellMorphologyFromID, "entity", return_value=entity),
-        pytest.raises(EntitySDKError, match="no ASC, SWC, or H5"),
+        patch("morphio.Morphology", return_value=expected) as morphology_ctor,
     ):
-        reference.morphio_morphology(Mock())
+        morphology = reference.morphio_morphology(client)
+        cached = reference.morphio_morphology(client)
+
+    assert morphology is expected
+    assert cached is expected
+    client.fetch_assets.assert_called_once()
+    assert client.fetch_assets.call_args.args[0] is entity
+    assert client.fetch_assets.call_args.kwargs["selection"] == {
+        "content_type": ContentType.application_x_hdf5,
+        "label": AssetLabel.morphology,
+    }
+    morphology_ctor.assert_called_once()
+    (path_arg,) = morphology_ctor.call_args.args
+    assert str(path_arg).endswith(".h5")
+    assert morphology_ctor.call_args.kwargs["options"] == morphio.Option.nrn_order
 
 
 def test_memodel_morphology_delegates_to_cell_morphology_entity():
@@ -123,99 +55,60 @@ def test_memodel_morphology_delegates_to_cell_morphology_entity():
     load.assert_called_once()
 
 
-def test_morphio_morphology_uses_nrn_order_for_entity_asset(tmp_path):
-    source = tmp_path / "dendrite_before_axon.swc"
-    source.write_text(
-        "1 1 0 0 0 5 -1\n2 3 0 5 0 1 1\n3 3 0 10 0 1 2\n4 2 0 -5 0 1 1\n5 2 0 -10 0 1 4\n"
-    )
-    entity = SimpleNamespace(
-        id="morphology-id",
-        assets=[
-            SimpleNamespace(
-                id="asset-id",
-                content_type=ContentType.application_swc,
-                label=None,
-            )
-        ],
-    )
+def test_neurom_morphology_loads_swc_via_select_asset_content():
+    entity = SimpleNamespace(id="morphology-id", assets=[])
     client = Mock()
-    client.download_file.side_effect = lambda **kwargs: shutil.copyfile(
-        source, kwargs["output_path"]
-    )
+    expected = object()
     reference = CellMorphologyFromID(id_str="morphology-id")
-
-    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
-        morphology = reference.morphio_morphology(client)
-
-    assert [int(section.type) for section in morphology.sections] == [
-        int(morphio.SectionType.axon),
-        int(morphio.SectionType.basal_dendrite),
-    ]
-
-
-def test_write_spiny_neuron_h5_downloads_spiny_asset(tmp_path):
-    morphology_from_id = CellMorphologyFromID(id_str="00000000-0000-0000-0000-000000000011")
-    entity = SimpleNamespace(
-        id="00000000-0000-0000-0000-000000000011",
-        assets=[
-            SimpleNamespace(
-                label=AssetLabel.morphology_with_spines,
-                content_type=ContentType.application_x_hdf5,
-                id="asset-h5",
-            )
-        ],
-    )
-    db_client = Mock()
-    output_path = tmp_path / "spiny.h5"
-
-    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
-        morphology_from_id.write_spiny_neuron_h5(output_path, db_client)
-
-    db_client.download_file.assert_called_once_with(
-        entity_id=entity.id,
-        entity_type=morphology_from_id.entitysdk_type,
-        asset_id="asset-h5",
-        output_path=str(output_path),
-    )
-
-
-def test_swc_file_content_downloads_and_caches_swc_asset():
-    morphology_from_id = CellMorphologyFromID(id_str="morphology-1")
-    entity = SimpleNamespace(
-        id="morphology-1",
-        assets=[SimpleNamespace(content_type="application/swc", id="asset-1")],
-    )
-    db_client = Mock()
-    db_client.download_content.return_value = b"1 1 0.0 0.0 0.0 1.0 -1\n"
-
-    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
-        expected = "1 1 0.0 0.0 0.0 1.0 -1\n"
-        assert morphology_from_id.swc_file_content(db_client) == expected
-        assert morphology_from_id.swc_file_content(db_client) == expected
-
-    db_client.download_content.assert_called_once_with(
-        entity_id="morphology-1",
-        entity_type=morphology_from_id.entitysdk_type,
-        asset_id="asset-1",
-    )
-
-
-@pytest.mark.parametrize(
-    ("asset", "message"),
-    [
-        (SimpleNamespace(content_type="application/asc", id="asset-1"), "No valid"),
-        (SimpleNamespace(content_type="application/swc", id=None), "Asset must have an id"),
-    ],
-)
-def test_swc_file_content_rejects_invalid_assets(asset, message):
-    morphology_from_id = CellMorphologyFromID(id_str="morphology-1")
-    entity = SimpleNamespace(id="morphology-1", assets=[asset])
 
     with (
         patch.object(CellMorphologyFromID, "entity", return_value=entity),
-        pytest.raises(ValueError, match=message),
+        patch(_SELECT, return_value=b"swc-bytes") as select,
+        patch("neurom.load_morphology", return_value=expected) as load,
     ):
-        morphology_from_id.swc_file_content(Mock())
+        morphology = reference.neurom_morphology(client)
+        cached = reference.neurom_morphology(client)
+
+    assert morphology is expected
+    assert cached is expected
+    select.assert_called_once()
+    assert select.call_args.kwargs["selection"] == {
+        "content_type": ContentType.application_swc,
+        "label": AssetLabel.morphology,
+    }
+    load.assert_called_once_with("swc-bytes", reader="swc")
+
+
+def test_spiny_morphology_fetches_spiny_asset(tmp_path):
+    morphology_from_id = CellMorphologyFromID(id_str="00000000-0000-0000-0000-000000000011")
+    entity = SimpleNamespace(
+        id="00000000-0000-0000-0000-000000000011",
+        name="cell",
+    )
+    db_client = Mock()
+    db_client.fetch_assets.return_value.one.return_value = Mock()
+    expected = object()
+    output_path = tmp_path / "spiny.h5"
+
+    with (
+        patch.object(CellMorphologyFromID, "entity", return_value=entity),
+        patch(
+            "morph_spines.load_morphology_with_spines",
+            return_value=expected,
+        ) as load,
+    ):
+        result = morphology_from_id.spiny_morphology(db_client, path=output_path)
+
+    assert result is expected
+    db_client.fetch_assets.assert_called_once_with(
+        entity,
+        selection={
+            "content_type": ContentType.application_x_hdf5,
+            "label": AssetLabel.morphology_with_spines,
+        },
+        output_path=output_path,
+    )
+    load.assert_called_once_with(str(output_path))
 
 
 def test_metadata_entities_returns_species_and_brain_region():
@@ -238,7 +131,7 @@ def test_metadata_entities_returns_species_and_brain_region():
 @pytest.mark.parametrize(
     ("entity", "message"),
     [
-        (SimpleNamespace(brain_region=SimpleNamespace()), "subject relationship"),
+        (SimpleNamespace(subject=None, brain_region=SimpleNamespace()), "subject relationship"),
         (
             SimpleNamespace(
                 subject=SimpleNamespace(species=None),
