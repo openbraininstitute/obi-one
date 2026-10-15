@@ -25,6 +25,7 @@ from entitysdk.models import Circuit
 from entitysdk.models.asset import Asset
 from fastapi import HTTPException
 
+from app.config import settings
 from app.errors import ApiErrorCode
 from app.logger import L
 from app.services.circuit_visualization import (
@@ -54,12 +55,6 @@ from obi_one.scientific.library.morphology_pack.geometry import (
 )
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
 
-MAX_NEURONS = 5_000
-# Points as MorphIO gives them: a fork counts once for each of its branches.
-MAX_POINTS = 5_000_000
-# What may be staged for one pack. A private circuit's files are downloaded into the temporary
-# directory, which in production is memory.
-MAX_STAGED_BYTES = 256 * 1024 * 1024
 DEFAULT_MAX_SEGMENTS = 2_000_000
 FETCHES_AT_ONCE = 8
 # How long a request waits for the build before it.
@@ -90,7 +85,7 @@ def refuse(
 
 
 class Staging:
-    """Fetches a circuit's files into a directory, within `MAX_STAGED_BYTES` in all."""
+    """Fetches a circuit's files into a directory, within the bytes a pack may read in all."""
 
     def __init__(self, client: Client, circuit_id: UUID, asset: Asset, directory: Path) -> None:
         """Read the sizes of the circuit's files; nothing is fetched yet."""
@@ -117,11 +112,12 @@ class Staging:
                 },
             )
         self.staged += sum(self.sizes[path] for path in asset_paths)
-        if self.staged > MAX_STAGED_BYTES:
+        limit = settings.CIRCUIT_MORPHOLOGY_PACK_MAX_STAGED_BYTES
+        if self.staged > limit:
             refuse(
                 Refusal.FILES_TOO_LARGE,
                 f"The circuit's nodes and morphologies take {self.staged} bytes or more, over the"
-                f" {MAX_STAGED_BYTES} a pack built on request may read",
+                f" {limit} a pack built on request may read",
             )
         with ThreadPoolExecutor(max_workers=FETCHES_AT_ONCE) as pool:
             list(pool.map(self.fetch_one, asset_paths))
@@ -165,7 +161,8 @@ def stage_populations(config: libsonata.CircuitConfig, staging: Staging) -> list
 def read_within_limit(
     populations: list[Population], cells: Counter[MorphologyKey]
 ) -> dict[MorphologyKey, Morphology]:
-    """Every distinct morphology that can be read, within `MAX_POINTS` over all the cells."""
+    """Every distinct morphology that can be read, within the points allowed over all the cells."""
+    limit = settings.CIRCUIT_MORPHOLOGY_PACK_MAX_POINTS
     morphologies = {}
     points = 0
     for key, collection in distinct_morphologies(populations):
@@ -176,11 +173,8 @@ def read_within_limit(
             continue
         morphologies[key] = morphology
         points += cells[key] * len(morphology.points)
-        if points > MAX_POINTS:
-            refuse(
-                Refusal.TOO_MANY_POINTS,
-                f"The circuit's morphologies have over {MAX_POINTS} points",
-            )
+        if points > limit:
+            refuse(Refusal.TOO_MANY_POINTS, f"The circuit's morphologies have over {limit} points")
     return morphologies
 
 
@@ -205,14 +199,38 @@ def finest_level_within(
                 }
     refuse(
         Refusal.TOO_MANY_SEGMENTS,
-        f"The circuit's coarsest level has {segments} segments, over the {max_segments} asked for",
+        f"The circuit's coarsest level has {segments} segments, over the {max_segments} the pack"
+        " may hold",
     )
 
 
+def every_level_within(
+    morphologies: dict[MorphologyKey, Morphology], cells: Counter[MorphologyKey], max_segments: int
+) -> dict[MorphologyKey, MorphologyLevels]:
+    """Every morphology at each of `LEVELS`, which come to at most `max_segments` together."""
+    library = {key: simplified(morphology, LEVELS) for key, morphology in morphologies.items()}
+    segments = sum(
+        cells[key] * shape.segments for key, found in library.items() for shape in found.shapes
+    )
+    if segments > max_segments:
+        refuse(
+            Refusal.TOO_MANY_SEGMENTS,
+            f"The circuit's levels have {segments} segments together, over the {max_segments}"
+            " the pack may hold",
+        )
+    return library
+
+
 def placed_cells(
-    client: Client, circuit_id: UUID, asset: Asset, directory: Path, max_segments: int
+    client: Client,
+    circuit_id: UUID,
+    asset: Asset,
+    directory: Path,
+    max_segments: int,
+    *,
+    all_levels: bool,
 ) -> PackWriter:
-    """The circuit's cells, read and placed at the finest level that fits.
+    """The circuit's cells, read and placed at every level, or else at the finest that fits.
 
     What was staged and read is let go of on the way, so that the writer alone is held while
     it packs.
@@ -225,21 +243,35 @@ def placed_cells(
     shutil.rmtree(directory)
     if not morphologies:
         refuse(Refusal.NO_MORPHOLOGIES, "None of the circuit's morphologies could be read")
-    level, shapes = finest_level_within(morphologies, cells, max_segments)
+    cap = settings.CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS
+    if all_levels:
+        levels, shapes = LEVELS, every_level_within(morphologies, cells, cap)
+    else:
+        level, shapes = finest_level_within(morphologies, cells, min(max_segments, cap))
+        levels = (level,)
     del morphologies
-    return place_cells(populations, [level], shapes)
+    return place_cells(populations, levels, shapes)
 
 
 def build_circuit_morphology_pack(
-    client: Client, circuit_id: UUID, directory: Path, max_segments: int
+    client: Client,
+    circuit_id: UUID,
+    directory: Path,
+    max_segments: int,
+    *,
+    all_levels: bool = False,
 ) -> bytes:
-    """Build the pack of a circuit, or refuse one too large for a request."""
+    """Build the pack of a circuit, or refuse one too large for a request.
+
+    With `all_levels`, the pack holds every level and `max_segments` is not used.
+    """
     circuit = get_circuit(client, circuit_id)
-    if circuit.number_neurons > MAX_NEURONS:
+    limit = settings.CIRCUIT_MORPHOLOGY_PACK_MAX_NEURONS
+    if circuit.number_neurons > limit:
         refuse(
             Refusal.TOO_MANY_NEURONS,
-            f"The circuit has {circuit.number_neurons} neurons, over the {MAX_NEURONS} a pack"
-            " built on request may hold",
+            f"The circuit has {circuit.number_neurons} neurons, over the {limit} a pack built on"
+            " request may hold",
         )
     asset = sonata_circuit_asset(client, circuit)
     if not BUILDING.acquire(timeout=PATIENCE_SECONDS):
@@ -247,6 +279,8 @@ def build_circuit_morphology_pack(
             Refusal.BUSY, "Another pack is being built; try again", HTTPStatus.SERVICE_UNAVAILABLE
         )
     try:
-        return placed_cells(client, circuit_id, asset, directory, max_segments).pack()
+        return placed_cells(
+            client, circuit_id, asset, directory, max_segments, all_levels=all_levels
+        ).pack()
     finally:
         BUILDING.release()

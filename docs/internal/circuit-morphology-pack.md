@@ -8,7 +8,7 @@ A pack holds the morphologies of a circuit's biophysical neurons in one binary f
 
 The endpoint is temporary. Circuit registration is to build the pack and store it on the circuit, and the circuits already registered are to get theirs in a backfill. The endpoint is removed once both are done, because it builds the pack while the viewer waits, in the service's own process.
 
-The pack it builds holds one level of detail: the finest that comes to at most `max_segments` segments. The viewer says how many segments it can draw.
+The pack it builds holds one level of detail: the finest that comes to at most `max_segments` segments. The viewer says how many segments it can draw. With `all_levels=true` the pack holds every level instead, finest first, as a pack stored on the circuit is to, and `max_segments` is not used.
 
 It checks a circuit in this order, and refuses as early as it can:
 
@@ -17,12 +17,16 @@ It checks a circuit in this order, and refuses as early as it can:
 3. The points of its morphologies, counted as they are read.
 4. The segments of each level, once the morphologies are simplified.
 
-| Limit | Value | Refusal |
-| --- | --- | --- |
-| Neurons | 5,000 | `too_many_neurons` |
-| Bytes of node and morphology files | 256 MiB | `files_too_large` |
-| Points of every cell's morphology | 5,000,000 | `too_many_points` |
-| Segments of the coarsest level | `max_segments` | `too_many_segments` |
+The limits are settings, so that a service run locally can take larger circuits. Each defaults to the value below.
+
+| Limit | Setting | Default | Refusal |
+| --- | --- | --- | --- |
+| Neurons | `CIRCUIT_MORPHOLOGY_PACK_MAX_NEURONS` | 5,000 | `too_many_neurons` |
+| Bytes of node and morphology files | `CIRCUIT_MORPHOLOGY_PACK_MAX_STAGED_BYTES` | 256 MiB | `files_too_large` |
+| Points of every cell's morphology | `CIRCUIT_MORPHOLOGY_PACK_MAX_POINTS` | 5,000,000 | `too_many_points` |
+| Segments of the pack, over every level it holds | `CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS` | 5,000,000 | `too_many_segments` |
+
+A pack of one level is also held to `max_segments`, so its coarsest level is refused when it comes to more than the lesser of the two.
 
 A refusal is a 422 whose `detail` holds `code`, `reason` and `detail`. A circuit with no biophysical population, or none of whose morphologies can be read, is refused with `no_morphologies`. One pack is built at a time: a request that has waited two minutes for another build gets a 503 with the reason `busy`.
 

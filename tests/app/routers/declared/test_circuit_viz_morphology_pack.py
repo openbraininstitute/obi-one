@@ -42,14 +42,25 @@ class TestMorphologyPack:
         assert response.status_code == HTTPStatus.OK
         assert response.headers["content-type"] == "application/octet-stream"
         assert response.content == b"MPCK and the rest"
-        build.assert_called_once_with(mock_client, circuit_id, tmp_path, DEFAULT_MAX_SEGMENTS)
+        build.assert_called_once_with(
+            mock_client, circuit_id, tmp_path, DEFAULT_MAX_SEGMENTS, all_levels=False
+        )
 
     def test_the_viewer_says_how_many_segments_it_draws(self, build, client, mock_client, tmp_path):
         build.return_value = b""
         circuit_id = uuid4()
         response = client.get(f"/circuit/viz/{circuit_id}/morphology-pack?max_segments=500000")
         assert response.status_code == HTTPStatus.OK
-        build.assert_called_once_with(mock_client, circuit_id, tmp_path, 500000)
+        build.assert_called_once_with(mock_client, circuit_id, tmp_path, 500000, all_levels=False)
+
+    def test_every_level_on_request(self, build, client, mock_client, tmp_path):
+        build.return_value = b""
+        circuit_id = uuid4()
+        response = client.get(f"/circuit/viz/{circuit_id}/morphology-pack?all_levels=true")
+        assert response.status_code == HTTPStatus.OK
+        build.assert_called_once_with(
+            mock_client, circuit_id, tmp_path, DEFAULT_MAX_SEGMENTS, all_levels=True
+        )
 
     @pytest.mark.parametrize("max_segments", [0, -5, "many"])
     def test_a_number_of_segments_out_of_range_is_not_taken(self, build, client, max_segments):
@@ -58,7 +69,7 @@ class TestMorphologyPack:
         build.assert_not_called()
 
     def test_a_refusal_carries_its_reason(self, build, client):
-        build.side_effect = lambda *_: refuse(Refusal.TOO_MANY_NEURONS, "Too many")
+        build.side_effect = lambda *_, **__: refuse(Refusal.TOO_MANY_NEURONS, "Too many")
         response = client.get(f"/circuit/viz/{uuid4()}/morphology-pack")
         assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
         assert response.json()["detail"]["reason"] == "too_many_neurons"

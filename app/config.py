@@ -70,6 +70,16 @@ class Settings(BaseSettings):
 
     SUBDOMAIN_PLACEHOLDER: str = "cell-X"
 
+    # The circuit morphology pack built on request (app/services/circuit_morphology_pack.py)
+    CIRCUIT_MORPHOLOGY_PACK_MAX_NEURONS: int = 5_000
+    # A private circuit's files are downloaded into the temporary directory, which in production
+    # is memory.
+    CIRCUIT_MORPHOLOGY_PACK_MAX_STAGED_BYTES: int = 256 * 1024 * 1024
+    # Points as MorphIO gives them, over every cell: a fork counts once for each of its branches.
+    CIRCUIT_MORPHOLOGY_PACK_MAX_POINTS: int = 5_000_000
+    # Over every level the pack holds, which the writer keeps in memory until it packs them.
+    CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS: int = 5_000_000
+
     def get_virtual_lab_url(self, virtual_lab_id: str) -> str:
         """Return the virtual-lab-api URL for the given virtual lab."""
         return f"{self.VIRTUAL_LAB_API_URL}/virtual-labs/{virtual_lab_id}"

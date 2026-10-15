@@ -85,9 +85,10 @@ def circuit_morphology(
         "Returns the morphologies of every biophysical neuron of a circuit as one binary pack: "
         "simplified, placed in the circuit and cut into chunks of space. The format is specified "
         "in `docs/internal/circuit-morphology-pack.md`. The pack holds one level of detail, the "
-        "finest that comes to at most `max_segments` segments. It is built in the request, so a "
-        "circuit too large for that is refused, with a `reason`. Temporary: to be removed once "
-        "circuit registration stores the pack on the circuit."
+        "finest that comes to at most `max_segments` segments, or with `all_levels` every level, "
+        "as a pack stored on the circuit is to. It is built in the request, so a circuit too "
+        "large for that is refused, with a `reason`. Temporary: to be removed once circuit "
+        "registration stores the pack on the circuit."
     ),
     response_class=Response,
     responses={
@@ -103,8 +104,13 @@ def circuit_morphology_pack(
     max_segments: Annotated[
         int, Query(ge=1, description="The most segments the viewer can draw.")
     ] = DEFAULT_MAX_SEGMENTS,
+    all_levels: Annotated[  # ruff: ignore[boolean-default-value-positional-argument]
+        bool, Query(description="Every level of detail, finest first. `max_segments` is not used.")
+    ] = False,
 ) -> Response:
-    pack = build_circuit_morphology_pack(db_client, circuit_id, temp_dir, max_segments)
+    pack = build_circuit_morphology_pack(
+        db_client, circuit_id, temp_dir, max_segments, all_levels=all_levels
+    )
     return Response(content=pack, media_type="application/octet-stream")
 
 

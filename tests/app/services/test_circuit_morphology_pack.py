@@ -9,6 +9,7 @@ import libsonata
 import pytest
 from fastapi import HTTPException
 
+from app.config import settings
 from app.services import circuit_morphology_pack as service
 from app.services.circuit_morphology_pack import (
     BUILDING,
@@ -16,6 +17,7 @@ from app.services.circuit_morphology_pack import (
     Refusal,
     build_circuit_morphology_pack,
 )
+from obi_one.scientific.library.morphology_pack.geometry import LEVELS
 from obi_one.scientific.library.morphology_pack.reader import read_pack
 
 from tests.utils import CIRCUIT_DIR
@@ -61,8 +63,16 @@ class LocalCircuit:
         output_path.symlink_to(self.replaced.get(asset_path, self.source / asset_path))
 
 
-def build(client, directory, max_segments=DEFAULT_MAX_SEGMENTS):
-    return read_pack(build_circuit_morphology_pack(client, uuid4(), directory, max_segments))
+def build(client, directory, max_segments=DEFAULT_MAX_SEGMENTS, *, all_levels=False):
+    return read_pack(
+        build_circuit_morphology_pack(
+            client, uuid4(), directory, max_segments, all_levels=all_levels
+        )
+    )
+
+
+def kinds(pack) -> list[tuple[float, float]]:
+    return [(level.entry.tolerance_um, level.entry.prune_um) for level in pack.levels]
 
 
 def refusal(error) -> tuple[int, str]:
@@ -151,10 +161,50 @@ class TestLevel:
             build(LocalCircuit(CONTAINER_CIRCUIT), directory, 10)
         assert refusal(error) == (HTTPStatus.UNPROCESSABLE_ENTITY, Refusal.TOO_MANY_SEGMENTS)
 
+    def test_the_service_holds_no_more_than_its_own_limit(
+        self, directory, tmp_path_factory, monkeypatch
+    ):
+        finest = build(LocalCircuit(CONTAINER_CIRCUIT), directory).levels[0]
+        monkeypatch.setattr(
+            settings, "CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS", len(finest.segments) - 1
+        )
+        other = tmp_path_factory.mktemp("capped").resolve()
+        assert kinds(build(LocalCircuit(CONTAINER_CIRCUIT), other)) == [(0.25, 0.0)]
+
+
+class TestAllLevels:
+    def test_every_level_finest_first(self, directory, tmp_path_factory):
+        pack = build(LocalCircuit(CONTAINER_CIRCUIT), directory, all_levels=True)
+        assert kinds(pack) == [(0.125, 0.0), (0.25, 0.0), (1.0, 5.0)]
+        segments = [len(level.segments) for level in pack.levels]
+        assert segments == sorted(segments, reverse=True)
+        assert all(set(level.cells) == set(range(10)) for level in pack.levels)
+        other = tmp_path_factory.mktemp("finest").resolve()
+        finest = build(LocalCircuit(CONTAINER_CIRCUIT), other).levels[0]
+        assert segments[0] == len(finest.segments)
+
+    def test_the_segments_asked_for_are_not_used(self, directory):
+        pack = build(LocalCircuit(CONTAINER_CIRCUIT), directory, 10, all_levels=True)
+        assert len(pack.levels) == len(LEVELS)
+
+    def test_refused_when_the_levels_together_are_too_many(
+        self, directory, tmp_path_factory, monkeypatch
+    ):
+        pack = build(LocalCircuit(CONTAINER_CIRCUIT), directory, all_levels=True)
+        together = sum(len(level.segments) for level in pack.levels)
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS", together - 1)
+        other = tmp_path_factory.mktemp("too-many").resolve()
+        with pytest.raises(HTTPException) as error:
+            build(LocalCircuit(CONTAINER_CIRCUIT), other, all_levels=True)
+        assert refusal(error) == (HTTPStatus.UNPROCESSABLE_ENTITY, Refusal.TOO_MANY_SEGMENTS)
+        assert not BUILDING.locked()
+
 
 class TestLimits:
     def test_too_many_neurons_is_refused_before_anything_is_read(self, directory):
-        client = LocalCircuit(CONTAINER_CIRCUIT, number_neurons=service.MAX_NEURONS + 1)
+        client = LocalCircuit(
+            CONTAINER_CIRCUIT, number_neurons=settings.CIRCUIT_MORPHOLOGY_PACK_MAX_NEURONS + 1
+        )
         with pytest.raises(HTTPException) as error:
             build(client, directory)
         assert refusal(error) == (HTTPStatus.UNPROCESSABLE_ENTITY, Refusal.TOO_MANY_NEURONS)
@@ -164,7 +214,7 @@ class TestLimits:
 
     def test_files_too_large_are_not_fetched(self, directory, monkeypatch):
         nodes_size = (CONTAINER_CIRCUIT / NODES).stat().st_size
-        monkeypatch.setattr(service, "MAX_STAGED_BYTES", nodes_size + 1)
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_MAX_STAGED_BYTES", nodes_size + 1)
         client = LocalCircuit(CONTAINER_CIRCUIT)
         with pytest.raises(HTTPException) as error:
             build(client, directory)
@@ -172,7 +222,7 @@ class TestLimits:
         assert client.fetched == [NODES]
 
     def test_too_many_points_is_refused(self, directory, monkeypatch):
-        monkeypatch.setattr(service, "MAX_POINTS", 1000)
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_MAX_POINTS", 1000)
         with pytest.raises(HTTPException) as error:
             build(LocalCircuit(CONTAINER_CIRCUIT), directory)
         assert refusal(error) == (HTTPStatus.UNPROCESSABLE_ENTITY, Refusal.TOO_MANY_POINTS)
