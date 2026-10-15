@@ -2,7 +2,7 @@ import abc
 from enum import Enum
 from uuid import UUID
 
-import entitysdk
+from entitysdk.client import Client as DBClient
 from entitysdk.models.entity import Entity, Identifiable
 from pydantic import Field, PrivateAttr
 
@@ -26,13 +26,13 @@ class EntityFromID[TEntity: Entity](OBIBaseModel, abc.ABC):
         """Entitysdk model class fetched for this wrapper type."""
 
     @classmethod
-    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> TEntity:
+    def fetch(cls, entity_id: str, db_client: DBClient) -> TEntity:
         return db_client.get_entity(
             entity_id=UUID(entity_id),
             entity_type=cls.entitysdk_class(),
         )
 
-    def entity(self, db_client: entitysdk.client.Client) -> TEntity:
+    def entity(self, db_client: DBClient) -> TEntity:
         if self._entity is None:
             self._entity = self.fetch(self.id_str, db_client=db_client)
         if self._entity is None:
@@ -65,13 +65,13 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel, abc.ABC):
         """Entitysdk model class fetched for this wrapper type."""
 
     @classmethod
-    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> TIdentifiable:
+    def fetch(cls, entity_id: str, db_client: DBClient) -> TIdentifiable:
         return db_client.get_entity(
             entity_id=UUID(entity_id),
             entity_type=cls.entitysdk_class(),
         )
 
-    def entity(self, db_client: entitysdk.client.Client) -> TIdentifiable:
+    def entity(self, db_client: DBClient) -> TIdentifiable:
         if self._entity is None:
             self._entity = self.fetch(self.id_str, db_client=db_client)
         if self._entity is None:
