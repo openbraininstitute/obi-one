@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -201,27 +202,27 @@ def test_execute_tracked_registers_and_updates_activity(
     )
 
 
-@patch(f"{_SINGLE_NEURON}.deserialize_obi_object_from_json_data")
-@patch(f"{_SINGLE_NEURON}.db_sdk.select_json_asset_content")
+@patch(f"{_SINGLE_NEURON}.MEModelSimulationSingleConfig.model_validate_json")
+@patch(f"{_SINGLE_NEURON}.db_sdk.select_asset_content")
 def test_get_generation_single_config(
-    mock_select_json, mock_deserialize, config, generation_config
+    mock_select_content, mock_validate_json, config, generation_config
 ):
-    mock_select_json.return_value = {"type": "memodel"}
-    mock_deserialize.return_value = generation_config
+    json_bytes = b'{"type": "MEModelSimulationSingleConfig"}'
+    mock_select_content.return_value = json_bytes
+    mock_validate_json.return_value = generation_config
 
     task = SingleNeuronSimulationExecutionTask(config=config)
     result = task.get_generation_single_config(db_client=MagicMock())
 
     assert result is generation_config
-    mock_select_json.assert_called_once()
+    mock_select_content.assert_called_once()
+    mock_validate_json.assert_called_once_with(json_bytes)
 
 
-@patch(f"{_SINGLE_NEURON}.deserialize_obi_object_from_json_data")
-@patch(f"{_SINGLE_NEURON}.db_sdk.select_json_asset_content")
-def test_get_generation_single_config_wrong_type(mock_select_json, mock_deserialize, config):
-    mock_select_json.return_value = {"type": "other"}
-    mock_deserialize.return_value = MagicMock()
+@patch(f"{_SINGLE_NEURON}.db_sdk.select_asset_content")
+def test_get_generation_single_config_invalid_json(mock_select_content, config):
+    mock_select_content.return_value = b'{"type": "not-a-memodel-config"}'
 
     task = SingleNeuronSimulationExecutionTask(config=config)
-    with pytest.raises(test_module.OBIONEError, match="Expected MEModelSimulationSingleConfig"):
+    with pytest.raises(ValidationError):
         task.get_generation_single_config(db_client=MagicMock())
