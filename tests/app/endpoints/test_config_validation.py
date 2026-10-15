@@ -72,19 +72,6 @@ def test_valid_fitting_config_parses():
     assert state.ion_channel_fitting_config.initialize.model_properties.ion_channel_name == "Kv3_1"
 
 
-def test_fitting_config_naming_the_channel_at_the_top_level_still_parses():
-    legacy = {
-        **VALID_FITTING_CONFIG,
-        "initialize": {
-            "recordings": VALID_FITTING_CONFIG["initialize"]["recordings"],
-            "ion_channel_name": "Kv3_1",
-        },
-    }
-    state = SharedStatePartial(ion_channel_fitting_config=legacy)
-
-    assert state.ion_channel_fitting_config.initialize.model_properties.ion_channel_name == "Kv3_1"
-
-
 def test_invalid_fitting_config_is_rejected():
     """Bad input fails at parse time; the endpoint turns this into HTTP 422."""
     # ion_channel_name becomes the NEURON SUFFIX, so it must be a valid identifier.

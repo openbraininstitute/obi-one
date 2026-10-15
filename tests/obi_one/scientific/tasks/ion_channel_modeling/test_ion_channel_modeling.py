@@ -49,15 +49,6 @@ def test_ion_channel_name_rejects_a_name_neuron_could_not_use():
         )
 
 
-def test_a_config_from_before_model_properties_keeps_its_channel_name():
-    initialize = IonChannelFittingScanConfig.Initialize(
-        recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}],
-        ion_channel_name="Kv3_1",
-    )
-
-    assert initialize.model_properties.ion_channel_name == "Kv3_1"
-
-
 @pytest.mark.parametrize(
     ("name", "suffix"), [("Kv6.2", "Kv6_2"), ("ClC-Ka", "ClC_Ka"), ("5-HT3", "_5_HT3")]
 )

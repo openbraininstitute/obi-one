@@ -16,7 +16,7 @@ tags:
     - the strain from the recordings of the model's species, none if there are none;
     - the brain region is the deepest region containing every recording's region.
 
-    A set property wins even when the recordings agree. When the recordings differ in the channel, temperature, species or strain, that property has to be set; generation rejects the config before registering anything. Configs that name the channel in `initialize.ion_channel_name` still load.
+    A set property wins even when the recordings agree. When the recordings differ in the channel, temperature, species or strain, that property has to be set; generation rejects the config before registering anything.
 - **Model** (`model_type`): one equation per gating variable (m∞, τₘ, h∞, τₕ) and the exponents of m and h in g = ḡ·mᵖ·hᵠ. The exponents can be swept; each value pair becomes its own config and its own fitted model.
 
 ## Entities
