@@ -13,7 +13,7 @@ bluecellulab==2.6.106
 blueetl==0.13.4
 blueetl-core==0.2.5
 bluepyefe==2.3.63
-bluepyemodel==1.0.47
+bluepyemodel==1.0.50
 bluepyopt==1.14.25
 bluepysnap==3.0.7
 brainbuilder==0.20.8
