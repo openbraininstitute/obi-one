@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
+    DistributionParameter,
     EModelOptimisationParameters,
     GlobalParameterSelection,
     MechanismRegionSelection,
@@ -286,28 +287,32 @@ def test_parameter_builder_rejects_wrong_capability_type():
         )
 
 
+_CONSTANT = {"name": "constant", "value": {"value": 1.0}}
+
+
 @pytest.mark.parametrize(
-    ("payload", "message"),
+    ("cls", "payload", "message"),
     [
-        ({"parameters": ("constant",)}, "must define a function"),
-        ({"function": "{distance}"}, "{value}"),
-        ({"function": "{value}"}, "{distance}"),
+        (DistanceDependentDistribution, {"function": "{distance}"}, "{value}"),
+        (DistanceDependentDistribution, {"function": "{value}"}, "{distance}"),
         (
-            {"function": "{value} * {distance}", "parameters": ("constant",)},
+            CustomDistanceDependentDistribution,
+            {"function": "{value} * {distance}", "parameters": [_CONSTANT]},
             "{constant}",
         ),
+        (DistanceDependentDistribution, {"parameters": ("constant",)}, "Extra inputs"),
     ],
 )
-def test_distance_distribution_validates_function_placeholders(payload, message):
+def test_distance_distribution_validates_function_placeholders(cls, payload, message):
     with pytest.raises(ValueError, match=message):
-        DistanceDependentDistribution(**payload)
+        cls(**payload)
 
 
 def test_distance_distribution_serializes_legacy_fields():
-    distribution = DistanceDependentDistribution(
+    distribution = CustomDistanceDependentDistribution(
         function="{value} * {distance} * {constant}",
         soma_ref_location=0.75,
-        parameters=("constant",),
+        parameters=[_CONSTANT],
     )
 
     assert distribution.to_emc_dict(name="custom") == {
@@ -726,27 +731,31 @@ def _config_data_for_selection(selection, distributions=None, **overrides):
 def _decay_distribution():
     return CustomDistanceDependentDistribution(
         function="math.exp({distance}*{constant})*{value}",
-        parameters=("constant",),
+        parameters=[DistributionParameter(name="constant", value=OptimizationValue(value=1.0))],
     )
 
 
-def test_scan_config_rejects_distribution_declaration_and_usage_errors():
-    undeclared = _selection(
+def test_scan_config_collects_distribution_parameter_values_from_distributions():
+    selection = _selection(
         mechanism_regions=_somatic_assignment(),
-        distribution_parameters={"missing": {"constant": OptimizationValue(value=1.0)}},
+        base_parameters={
+            "all": {
+                "cm": ParameterSelection(
+                    value=OptimizationValue(value=1.0),
+                    distribution="decay",
+                )
+            }
+        },
     )
-    with pytest.raises(ValueError, match="reference undeclared distribution 'missing'"):
-        EModelOptimizationScanConfig.model_validate(_config_data_for_selection(undeclared))
-
-    unknown_parameter = _selection(
-        mechanism_regions=_somatic_assignment(),
-        distribution_parameters={"decay": {"unknown": OptimizationValue(value=1.0)}},
+    config = EModelOptimizationScanConfig.model_validate(
+        _config_data_for_selection(selection, {"decay": _decay_distribution()})
     )
-    with pytest.raises(ValueError, match="undeclared parameters"):
-        EModelOptimizationScanConfig.model_validate(
-            _config_data_for_selection(unknown_parameter, {"decay": _decay_distribution()})
-        )
+    assert config.parameters_selection.distribution_parameters == {
+        "decay": {"constant": OptimizationValue(value=1.0)}
+    }
 
+
+def test_scan_config_rejects_distribution_usage_errors():
     undeclared_usage = _selection(
         mechanism_regions=_somatic_assignment(),
         base_parameters={
@@ -760,22 +769,6 @@ def test_scan_config_rejects_distribution_declaration_and_usage_errors():
     )
     with pytest.raises(ValueError, match="Parameters reference undeclared distributions"):
         EModelOptimizationScanConfig.model_validate(_config_data_for_selection(undeclared_usage))
-
-    missing_value = _selection(
-        mechanism_regions=_somatic_assignment(),
-        base_parameters={
-            "all": {
-                "cm": ParameterSelection(
-                    value=OptimizationValue(value=1.0),
-                    distribution="decay",
-                )
-            }
-        },
-    )
-    with pytest.raises(ValueError, match="Used distribution 'decay' is missing values"):
-        EModelOptimizationScanConfig.model_validate(
-            _config_data_for_selection(missing_value, {"decay": _decay_distribution()})
-        )
 
 
 def test_scan_config_rejects_empty_ion_channel_model_selection():
@@ -1021,3 +1014,16 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     assert mechanism.id == ICM_ID_STR
     configuration = access_points[0].get_model_configuration()
     assert configuration.morph_modifiers == ["none"]
+
+
+def test_root_parameters_reject_legacy_distribution_parameters():
+    legacy = _selection(
+        distribution_parameters={"decay": {"constant": OptimizationValue(value=1.0)}}
+    )
+    with pytest.raises(ValueError, match="no longer part of the parameter selection"):
+        EModelOptimisationParameters.from_parameters_selection(legacy)
+
+    data = _scan_config_data()
+    data["emodel_optimisation_parameters"]["distribution_parameters"] = {}
+    with pytest.raises(ValueError, match="Extra inputs"):
+        EModelOptimizationScanConfig.model_validate(data)
