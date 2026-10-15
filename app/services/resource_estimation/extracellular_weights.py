@@ -42,7 +42,9 @@ MEMORY_GB_PER_PROCESS_AND_ELECTRODE = SEGMENTS_PER_WEIGHTS_BLOCK * 2 * 8 / 1e9
 # about 300 segments, those of an rCA1 slice 582 and L5 pyramidal cells 951.
 SEGMENTS_PER_CELL = 1_000
 DISK_GB_FOR_JOB = 15  # the image, the job's packages and the staged circuit
-SECONDS_PER_CELL = 2.0  # in one process; nbS1-HEX0-L23 took over 0.8 s per cell
+# In one process. Microcircuits take 0.6 to 0.9 s, but nbS1-O1 3.1 s: its morphologies come from a
+# 12.6 GB container read over the S3 mount.
+SECONDS_PER_CELL = 4.0
 SECONDS_PER_WEIGHTS_GB = 30  # writing, checksumming and uploading the weights file
 OVERHEAD_SECONDS = 900  # staging the circuit and compiling its mechanisms
 

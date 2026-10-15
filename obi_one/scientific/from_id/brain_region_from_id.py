@@ -1,11 +1,7 @@
-from typing import ClassVar
-
 from entitysdk.models import BrainRegion
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import IdentifiableFromID
 
 
-class BrainRegionFromID(IdentifiableFromID):
-    entitysdk_class: ClassVar[type[BrainRegion]] = BrainRegion
-    _entity: BrainRegion | None = PrivateAttr(default=None)
+class BrainRegionFromID(IdentifiableFromID[BrainRegion]):
+    _entitysdk_type: type[BrainRegion] = BrainRegion

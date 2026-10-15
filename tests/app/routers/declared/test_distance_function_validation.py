@@ -55,3 +55,13 @@ def test_validate_rejects_function_exceeding_max_length(client):
     response = client.post(ROUTE, json={"function": "x" * 600})
     # The request-model `max_length` rejects it before the handler runs.
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_validate_treats_extra_placeholders_as_parameters(client):
+    body = client.post(ROUTE, json={"function": "{a} * math.exp({distance}*{b})*{value}"}).json()
+    assert body == {"valid": True, "error": None, "from": 0, "to": 0}
+
+
+def test_validate_runtime_step_placeholders_are_accepted(client):
+    fn = "{value} * float(({distance} > {step_begin}) & ({distance} < {step_end}))"
+    assert client.post(ROUTE, json={"function": fn}).json()["valid"] is True

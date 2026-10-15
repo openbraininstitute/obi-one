@@ -227,6 +227,57 @@ class TestResolveListNeurons:
         assert list(coll_bio.properties["morphology"]) == ["morphology/42"]
         mock_place.assert_called_once()
 
+    def test_resolve_memodel_runs_place_morphologies(
+        self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
+    ):
+        me_model_entity = SimpleNamespace(
+            morphology=morph_entity,
+            calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
+        )
+        memodel_ref = Mock(spec=MEModelFromID)
+        memodel_ref.entity.return_value = me_model_entity
+        morph_from_id = Mock(spec=CellMorphologyFromID)
+        morph_from_id.entity.return_value = morph_entity
+        morph_from_id.write_spiny_neuron_h5 = Mock()
+        morph_from_id.neurom_morphology.return_value = _mock_morphio_chain()
+
+        mock_memodel_paths = SimpleNamespace(
+            mechanisms_dir=tmp_path / "mechs",
+            hoc_path=tmp_path / "model.hoc",
+        )
+        (tmp_path / "mechs").mkdir()
+        (tmp_path / "model.hoc").touch()
+
+        with (
+            patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
+            patch(
+                f"{_MODULE}.resolve_provenance",
+                return_value=(42, source_mesh, source_dataset),
+            ),
+            patch(f"{_MODULE}.EMDataSetFromID", return_value=SimpleNamespace(id_str="ds-1")),
+            patch(f"{_MODULE}.default_node_spec_for", return_value={}),
+            patch(
+                f"{_MODULE}.assemble_collection_from_specs",
+                return_value=(SimpleNamespace(properties={}, positions=np.zeros((1, 3))), []),
+            ),
+            patch(f"{_MODULE}.CellMorphologyFromID", return_value=morph_from_id),
+            patch(f"{_MODULE}.load_morphology_with_spines", return_value=_spiny_morph()),
+            patch(f"{_MODULE}.download_memodel", return_value=mock_memodel_paths),
+            patch("shutil.move"),
+            patch("shutil.rmtree"),
+        ):
+            resolved_neurons, _resolved_em_dataset, _coll_bio, mechanisms_placed = (
+                resolve_list_neurons(
+                    init_neurons=[memodel_ref],
+                    db_client=mock_db_client,
+                    out_root=tmp_path,
+                    spiny_dir=tmp_path,
+                )
+            )
+
+        assert resolved_neurons[0].use_me_model is True
+        assert mechanisms_placed is not None
+
     def test_resolve_memodel_resolves_morphology(
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
     ):

@@ -176,3 +176,4 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     assert call_kwargs["circuit_path"] == circuit_path
     assert "Afferent-synaptome-42" in call_kwargs["name"]
     assert call_kwargs["build_category"].value == "em_reconstruction"
+    assert call_kwargs["license"] == "license"

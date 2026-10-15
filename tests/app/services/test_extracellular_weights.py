@@ -84,7 +84,7 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
 #   memory_gb = cpus * (0.5 + 50 * 0.01 + electrodes * 3.2e-5) + cells * 2.5e-4, never below the
 #     default 8 GB
 #   weights_gb = cells * electrodes * 8e-6; storage = ceil(15 + weights_gb) when that is over 20 GB
-#   hours = ceil((900 + cells * 2 / cpus + weights_gb * 30) / 3600), never below the default (2 h)
+#   hours = ceil((900 + cells * 4 / cpus + weights_gb * 30) / 3600), never below the default (2 h)
 
 
 @pytest.mark.parametrize(
@@ -109,8 +109,11 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
         # 400 cells and 4200 electrodes: a 13.4 GB file, so 29 GB of disk
         (CircuitScale.microcircuit, 400, (4200,), 4, 8, "02:00", 29),
         # 10000 cells and 2300 electrodes: 19.7 GB -> (16, 32), and a 184 GB file, so 199 GB of
-        # disk and 900 + 1250 + 5520 s -> 3 h
+        # disk and 900 + 2500 + 5520 s -> 3 h
         (CircuitScale.microcircuit, 10_000, (2300,), 16, 32, "03:00", 199),
+        # nbS1-O1: 211712 cells, 16 processes: 68.9 GB -> (16, 96), a 27 GB file so 43 GB of disk,
+        # and 900 + 52928 + 813 s -> 16 h
+        (CircuitScale.microcircuit, 211_712, (16,), 16, 96, "16:00", 43),
     ],
     ids=[
         "small",
@@ -123,6 +126,7 @@ def _estimate(json_model, task_definition, *, scale, n_cells, n_electrodes_per_p
         "two_probes",
         "disk_for_the_weights",
         "largest_weights",
+        "nbs1_o1",
     ],
 )
 def test_resources_scale_with_cells_and_electrodes(
@@ -141,7 +145,8 @@ def test_resources_scale_with_cells_and_electrodes(
     )
 
     assert (result.cores, result.memory, result.timelimit) == (exp_cores, exp_memory, exp_timelimit)
-    assert result.ephemeral_storage == exp_storage
+    # Serialized as the launch sends it
+    assert result.model_dump(mode="json")["ephemeral_storage"] == exp_storage
     assert result.compute_cell == "cell_b"
 
 

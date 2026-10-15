@@ -2,7 +2,6 @@ import math
 from decimal import Decimal
 from typing import Annotated, Self
 
-import numpy as np
 from pydantic import (
     Discriminator,
     Field,
@@ -122,25 +121,18 @@ class FloatRange(ParametericMultiValue):
     @property
     def values(self) -> list[float]:
         if self._values is None:
-            range_over_step = (Decimal(str(self.end)) - Decimal(str(self.start))) / Decimal(
-                str(self.step)
-            )
+            start_d = Decimal(str(self.start))
+            step_d = Decimal(str(self.step))
+            end_d = Decimal(str(self.end))
+            range_over_step = (end_d - start_d) / step_d
             floor_range_over_step = math.floor(range_over_step)
             n = floor_range_over_step + 1
             ParametericMultiValue.check_n_less_equal_max(n, MAX_N_COORDINATES)
 
-            self._values = np.linspace(  # ty:ignore[invalid-assignment]
-                self.start, self.start + floor_range_over_step * self.step, n
-            )
-
+            step_decimals = len(str(self.step).split(".")[-1])
+            quantize_unit = Decimal(1).scaleb(-step_decimals)
+            self._values = [float((start_d + step_d * i).quantize(quantize_unit)) for i in range(n)]
             self.check_expected_values_length(n)
-
-            decimals = len(str(self.step).split(".")[-1])
-
-            q = Decimal(1).scaleb(
-                -decimals
-            )  # Shift decimal point of 1 to the left by 'decimals' places
-            self._values = [float(Decimal(str(v)).quantize(q)) for v in self._values]  # ty:ignore[not-iterable]
 
         return self._values
 

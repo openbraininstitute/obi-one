@@ -421,7 +421,7 @@ wheels = [
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.8"
+version = "0.20.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -439,7 +439,7 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/ae/3dd2a9b050d3aead9011428c94c237089b05133fbc39e94b3c5e7467f8af/brainbuilder-0.20.8.tar.gz", hash = "sha256:34980802b0044f98b64ce8b05076424fd7353ab6d48960db65ffb6d1382603df", size = 249347, upload-time = "2026-08-28T11:52:45.092Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/18/473c9d08a763ddbed550557361878c0849d5cd5bde2ae2045440d3197de1/brainbuilder-0.20.9.tar.gz", hash = "sha256:f6353b2bfba875afc025d93fef366d59c259f88584f3b7427a127ccd2f891e2c", size = 251197, upload-time = "2026-10-15T13:20:12.001Z" }
 
 [[package]]
 name = "brian2"
@@ -2497,7 +2497,7 @@ requires-dist = [
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
-    { name = "brainbuilder", specifier = ">=0.20.6" },
+    { name = "brainbuilder", specifier = ">=0.20.9" },
     { name = "brian2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },

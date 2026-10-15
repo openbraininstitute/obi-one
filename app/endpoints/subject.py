@@ -1,7 +1,6 @@
 """Endpoints for user-driven subject registration."""
 
 from http import HTTPStatus
-from typing import cast
 
 from entitysdk import models
 from fastapi import APIRouter, Depends
@@ -60,7 +59,7 @@ def _find_duplicate_subject_name(db_client: DatabaseClientDep, name: str) -> mod
     for result in db_client.search_entity(
         entity_type=models.Subject, query={"name__ilike": ilike_pattern}
     ):
-        if normalize_name(cast("str", result.name)) == normalized_input:
+        if result.name is not None and normalize_name(result.name) == normalized_input:
             return result
 
     return None

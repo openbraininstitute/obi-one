@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast, get_args, get_type_hints
+from typing import ClassVar, get_args, get_type_hints
 from uuid import UUID
 
 import entitysdk
@@ -56,9 +56,6 @@ from obi_one.scientific.unions_and_references.simulations import (
     SIMULATION_GENERATION_SINGLE_CONFIGS,
 )
 from obi_one.utils.sonata import write_simulation_config
-
-if TYPE_CHECKING:
-    from entitysdk.models import SimulatableExtracellularRecordingArray
 
 L = logging.getLogger(__name__)
 
@@ -624,10 +621,7 @@ class GenerateSimulationTask(Task):
         the signal with the wrong weights.
         """
         for recording in self._extracellular_recordings():
-            array = cast(
-                "SimulatableExtracellularRecordingArray",
-                recording.electrode_array.entity(db_client=db_client),
-            )
+            array = recording.electrode_array.entity(db_client=db_client)
             if array.circuit_id != UUID(circuit_id):
                 msg = (
                     f"Recording '{recording.block_name}' uses extracellular recording array "

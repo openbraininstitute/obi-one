@@ -153,6 +153,32 @@ def test_morphio_morphology_uses_nrn_order_for_entity_asset(tmp_path):
     ]
 
 
+def test_write_spiny_neuron_h5_downloads_spiny_asset(tmp_path):
+    morphology_from_id = CellMorphologyFromID(id_str="00000000-0000-0000-0000-000000000011")
+    entity = SimpleNamespace(
+        id="00000000-0000-0000-0000-000000000011",
+        assets=[
+            SimpleNamespace(
+                label=AssetLabel.morphology_with_spines,
+                content_type=ContentType.application_x_hdf5,
+                id="asset-h5",
+            )
+        ],
+    )
+    db_client = Mock()
+    output_path = tmp_path / "spiny.h5"
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        morphology_from_id.write_spiny_neuron_h5(output_path, db_client)
+
+    db_client.download_file.assert_called_once_with(
+        entity_id=entity.id,
+        entity_type=morphology_from_id.entitysdk_type,
+        asset_id="asset-h5",
+        output_path=str(output_path),
+    )
+
+
 def test_swc_file_content_downloads_and_caches_swc_asset():
     morphology_from_id = CellMorphologyFromID(id_str="morphology-1")
     entity = SimpleNamespace(

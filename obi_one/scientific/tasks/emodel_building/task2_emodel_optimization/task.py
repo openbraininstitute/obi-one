@@ -433,7 +433,7 @@ class EModelOptimizationTask(Task):
             coord_root=coord_root,
             normalized_models=normalized_models,
             mtype=mtype,
-            etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
+            etype=etype_entity.pref_label,
             species=species_entity.name,
             brain_region=brain_region_entity.name,
             morphology_path=coord_root / "morphologies" / morph_filename,
