@@ -1,8 +1,7 @@
 from entitysdk.models import Species
-from pydantic import Field
 
-from obi_one.core.entity_from_id import IdentifiableFromID
+from obi_one.core.entity_from_id import DBType, IdentifiableFromID
 
 
 class SpeciesFromID(IdentifiableFromID[Species]):
-    entitysdk_type: type[Species] = Field(default=Species, exclude=True, repr=False)
+    entitysdk_type: DBType[Species] = Species

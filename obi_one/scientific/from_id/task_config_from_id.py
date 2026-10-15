@@ -3,16 +3,15 @@ from pathlib import Path
 import entitysdk
 from entitysdk.models import TaskConfig
 from entitysdk.types import AssetLabel
-from pydantic import Field
 
-from obi_one.core.entity_from_id import EntityFromID
+from obi_one.core.entity_from_id import DBType, EntityFromID
 from obi_one.db_sdk.db_sdk import fetch_asset_by_label
 
 
 class TaskConfigFromID(EntityFromID[TaskConfig]):
     """Wrapper for downloading assets from a TaskConfig entity."""
 
-    entitysdk_type: type[TaskConfig] = Field(default=TaskConfig, exclude=True, repr=False)
+    entitysdk_type: DBType[TaskConfig] = TaskConfig
 
     def download_asset_by_label(
         self,

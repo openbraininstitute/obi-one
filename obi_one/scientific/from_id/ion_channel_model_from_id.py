@@ -4,13 +4,12 @@ import entitysdk
 from entitysdk.models import IonChannelModel
 from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
-from pydantic import Field
 
-from obi_one.core.entity_from_id import EntityFromID
+from obi_one.core.entity_from_id import DBType, EntityFromID
 
 
 class IonChannelModelFromID(EntityFromID[IonChannelModel]):
-    entitysdk_type: type[IonChannelModel] = Field(default=IonChannelModel, exclude=True, repr=False)
+    entitysdk_type: DBType[IonChannelModel] = IonChannelModel
 
     def download_asset(
         self,

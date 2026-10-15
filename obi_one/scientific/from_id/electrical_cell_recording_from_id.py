@@ -4,15 +4,12 @@ import entitysdk
 from entitysdk.models import ElectricalCellRecording
 from entitysdk.types import AssetLabel, ContentType
 from entitysdk.utils.filesystem import create_dir
-from pydantic import Field
 
-from obi_one.core.entity_from_id import EntityFromID
+from obi_one.core.entity_from_id import DBType, EntityFromID
 
 
 class ElectricalCellRecordingFromID(EntityFromID[ElectricalCellRecording]):
-    entitysdk_type: type[ElectricalCellRecording] = Field(
-        default=ElectricalCellRecording, exclude=True, repr=False
-    )
+    entitysdk_type: DBType[ElectricalCellRecording] = ElectricalCellRecording
 
     def download_nwb_asset(
         self,

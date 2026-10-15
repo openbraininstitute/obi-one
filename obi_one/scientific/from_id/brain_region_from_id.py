@@ -1,8 +1,7 @@
 from entitysdk.models import BrainRegion
-from pydantic import Field
 
-from obi_one.core.entity_from_id import IdentifiableFromID
+from obi_one.core.entity_from_id import DBType, IdentifiableFromID
 
 
 class BrainRegionFromID(IdentifiableFromID[BrainRegion]):
-    entitysdk_type: type[BrainRegion] = Field(default=BrainRegion, exclude=True, repr=False)
+    entitysdk_type: DBType[BrainRegion] = BrainRegion

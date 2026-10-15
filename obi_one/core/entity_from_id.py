@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Annotated, TypeVar
 from uuid import UUID
 
 from entitysdk.client import Client as DBClient
@@ -6,6 +7,9 @@ from entitysdk.models.entity import Entity, Identifiable
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
+
+T = TypeVar("T")
+DBType = Annotated[type[T], Field(exclude=True, repr=False)]
 
 
 class LoadAssetMethod(Enum):
@@ -22,7 +26,7 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
 
     id_str: str = Field(description="ID of the identifiable in string format.")
     _entity: TIdentifiable | None = PrivateAttr(default=None)
-    entitysdk_type: type[TIdentifiable] = Field(exclude=True, repr=False)
+    entitysdk_type: DBType[TIdentifiable]
 
     def entity(self, db_client: DBClient) -> TIdentifiable:
         if self._entity is None:
