@@ -16,7 +16,7 @@ from typing import Annotated, Any, ClassVar, Literal
 import entitysdk
 from entitysdk import models
 from entitysdk.types import AssetLabel, ContentType, Sex
-from pydantic import Discriminator, Field, StringConstraints, model_validator
+from pydantic import Discriminator, Field, StringConstraints
 
 from obi_one.core.block import Block
 from obi_one.core.exception import ConfigValidationError
@@ -377,17 +377,6 @@ class IonChannelFittingScanConfig(InfoScanConfig):
             ),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_MODEL_PROPERTIES},
         )
-
-        @model_validator(mode="before")
-        @classmethod
-        def move_ion_channel_name(cls, data: Any) -> Any:
-            """Configs from before model_properties name the channel at the top level."""
-            if isinstance(data, dict) and "ion_channel_name" in data:
-                data = dict(data)
-                properties = dict(data.get("model_properties") or {})
-                properties.setdefault("ion_channel_name", data.pop("ion_channel_name"))
-                data["model_properties"] = properties
-            return data
 
     initialize: Initialize = Field(
         title="Initialization",
