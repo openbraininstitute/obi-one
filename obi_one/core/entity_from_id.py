@@ -43,3 +43,5 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
 
 class EntityFromID[TEntity: Entity](IdentifiableFromID[TEntity]):
     """Base class for entity references that resolve to full Entity objects (with assets)."""
+
+    entitysdk_type: DBType[Entity] = Entity

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from entitysdk.models import Species, TaskConfig
 
-from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
+from obi_one.core.entity_from_id import DBType, EntityFromID, LoadAssetMethod
 from obi_one.scientific.from_id.species_from_id import SpeciesFromID
 
 _TEST_ENTITY_ID = "00000000-0000-0000-0000-000000000001"
@@ -11,7 +11,7 @@ _TEST_ENTITY_UUID = UUID(_TEST_ENTITY_ID)
 
 
 class ConcreteEntityFromID(EntityFromID[TaskConfig]):
-    entitysdk_type: type[TaskConfig] = TaskConfig
+    entitysdk_type: DBType[TaskConfig] = TaskConfig
 
 
 class TestLoadAssetMethod:
