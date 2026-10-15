@@ -3,7 +3,7 @@ from uuid import UUID
 
 from entitysdk.client import Client as DBClient
 from entitysdk.models.entity import Entity, Identifiable
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 
@@ -21,7 +21,7 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
     """  # ruff: ignore[line-too-long]
 
     id_str: str = Field(description="ID of the identifiable in string format.")
-    _entity: TIdentifiable | None = PrivateAttr(default=None)
+    _entity: TIdentifiable | None = None
     _entitysdk_type: type[TIdentifiable]
 
     @property
