@@ -5,13 +5,13 @@ from entitysdk.client import Client
 from entitysdk.models import MEModel
 from entitysdk.staging.memodel import stage_sonata_from_memodel
 
-from obi_one.core.entity_from_id import DBType, EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class MEModelFromID(EntityFromID[MEModel]):
-    entitysdk_type: DBType[MEModel] = MEModel
+    _entitysdk_type: type[MEModel] = MEModel
 
     def morphio_morphology(
         self,

@@ -22,7 +22,7 @@ from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivi
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
 
-from obi_one.core.entity_from_id import DBType, EntityFromID, LoadAssetMethod
+from obi_one.core.entity_from_id import EntityFromID, LoadAssetMethod
 
 L = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ _MORPHOLOGY_ASSET_FORMATS = (
 
 
 class CellMorphologyFromID(EntityFromID[CellMorphology]):
-    entitysdk_type: DBType[CellMorphology] = CellMorphology
+    _entitysdk_type: type[CellMorphology] = CellMorphology
 
     _swc_file_path: Path | None = PrivateAttr(default=None)
     _neurom_morphology: neurom.core.Morphology | None = PrivateAttr(default=None)

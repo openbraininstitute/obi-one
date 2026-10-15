@@ -10,7 +10,7 @@ from entitysdk.models import EMDenseReconstructionDataset
 from pydantic import PrivateAttr
 
 from obi_one.config import settings
-from obi_one.core.entity_from_id import DBType, EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
 
 _C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
@@ -69,7 +69,7 @@ _configure_caveclient_retries()
 
 
 class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
-    entitysdk_type: DBType[EMDenseReconstructionDataset] = EMDenseReconstructionDataset
+    _entitysdk_type: type[EMDenseReconstructionDataset] = EMDenseReconstructionDataset
 
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     auth_token: str | None = None

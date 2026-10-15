@@ -1,4 +1,4 @@
-"""Cover ``entitysdk_type`` property on FromID wrappers touched by typed-entity refactor."""
+"""Cover ``entitysdk_type`` on FromID wrappers touched by typed-entity refactor."""
 
 from unittest.mock import MagicMock
 from uuid import UUID

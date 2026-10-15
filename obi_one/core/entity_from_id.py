@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Annotated, TypeVar
 from uuid import UUID
 
 from entitysdk.client import Client as DBClient
@@ -7,9 +6,6 @@ from entitysdk.models.entity import Entity, Identifiable
 from pydantic import Field, PrivateAttr
 
 from obi_one.core.base import OBIBaseModel
-
-T = TypeVar("T")
-DBType = Annotated[type[T], Field(exclude=True, repr=False)]
 
 
 class LoadAssetMethod(Enum):
@@ -26,7 +22,11 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
 
     id_str: str = Field(description="ID of the identifiable in string format.")
     _entity: TIdentifiable | None = PrivateAttr(default=None)
-    entitysdk_type: DBType[TIdentifiable]
+    _entitysdk_type: type[TIdentifiable]
+
+    @property
+    def entitysdk_type(self) -> type[TIdentifiable]:
+        return self._entitysdk_type
 
     def entity(self, db_client: DBClient) -> TIdentifiable:
         if self._entity is None:
@@ -44,4 +44,4 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
 class EntityFromID[TEntity: Entity](IdentifiableFromID[TEntity]):
     """Base class for entity references that resolve to full Entity objects (with assets)."""
 
-    entitysdk_type: DBType[Entity] = Entity
+    _entitysdk_type: type[Entity] = Entity

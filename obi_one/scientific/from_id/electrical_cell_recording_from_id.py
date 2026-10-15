@@ -5,11 +5,11 @@ from entitysdk.models import ElectricalCellRecording
 from entitysdk.types import AssetLabel, ContentType
 from entitysdk.utils.filesystem import create_dir
 
-from obi_one.core.entity_from_id import DBType, EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 
 
 class ElectricalCellRecordingFromID(EntityFromID[ElectricalCellRecording]):
-    entitysdk_type: DBType[ElectricalCellRecording] = ElectricalCellRecording
+    _entitysdk_type: type[ElectricalCellRecording] = ElectricalCellRecording
 
     def download_nwb_asset(
         self,

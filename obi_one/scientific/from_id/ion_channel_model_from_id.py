@@ -5,11 +5,11 @@ from entitysdk.models import IonChannelModel
 from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
 
-from obi_one.core.entity_from_id import DBType, EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 
 
 class IonChannelModelFromID(EntityFromID[IonChannelModel]):
-    entitysdk_type: DBType[IonChannelModel] = IonChannelModel
+    _entitysdk_type: type[IonChannelModel] = IonChannelModel
 
     def download_asset(
         self,

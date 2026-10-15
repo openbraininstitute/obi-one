@@ -1,11 +1,11 @@
 from entitysdk.models import SimulatableExtracellularRecordingArray
 
-from obi_one.core.entity_from_id import DBType, EntityFromID
+from obi_one.core.entity_from_id import EntityFromID
 
 
 class SimulatableExtracellularRecordingArrayFromID(
     EntityFromID[SimulatableExtracellularRecordingArray]
 ):
-    entitysdk_type: DBType[SimulatableExtracellularRecordingArray] = (
+    _entitysdk_type: type[SimulatableExtracellularRecordingArray] = (
         SimulatableExtracellularRecordingArray
     )
