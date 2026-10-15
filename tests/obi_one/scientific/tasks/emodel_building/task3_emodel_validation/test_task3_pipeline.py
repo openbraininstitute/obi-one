@@ -30,7 +30,7 @@ from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config imp
 )
 
 INFO = {"campaign_name": "c", "campaign_description": "d"}
-OPT_TARGETS = "opt-extraction-id"
+OPT_TARGETS = "00000000-0000-4000-8000-000000000001"
 SETTINGS = validation_scoring.ResolvedValidationSettings(
     validation_protocols=["IDrest_250"],
     validation_protocols_only=False,
