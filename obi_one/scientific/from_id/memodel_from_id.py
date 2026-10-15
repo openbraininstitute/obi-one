@@ -11,9 +11,7 @@ from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
 class MEModelFromID(EntityFromID[MEModel]):
-    @classmethod
-    def entitysdk_class(cls) -> type[MEModel]:
-        return MEModel
+    entitysdk_type: type[MEModel] = MEModel
 
     def morphio_morphology(
         self,

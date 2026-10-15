@@ -78,7 +78,7 @@ class TestEModelEFeatureExtractionTask:
                 "download_nwb_asset",
                 return_value=dest,
             ),
-            patch.object(ElectricalCellRecordingFromID, "fetch", return_value=entity),
+            patch.object(ElectricalCellRecordingFromID, "entity", return_value=entity),
         ):
             downloaded = task._download_recordings(tmp_path / "ephys", mock_db_client)
 

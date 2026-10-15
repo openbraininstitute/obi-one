@@ -1,4 +1,4 @@
-"""Cover ``entitysdk_class()`` and ``fetch`` on FromID wrappers touched by typed-entity refactor."""
+"""Cover ``entitysdk_type`` property on FromID wrappers touched by typed-entity refactor."""
 
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -67,14 +67,17 @@ ENTITYSDK_CLASS_CASES = (
 
 class TestFromIDEntitysdkClass:
     @pytest.mark.parametrize(("from_id_cls", "expected_type"), ENTITYSDK_CLASS_CASES)
-    def test_entitysdk_class_returns_entitysdk_model(self, from_id_cls, expected_type):
-        assert from_id_cls.entitysdk_class() is expected_type
+    def test_entitysdk_type_property(self, from_id_cls, expected_type):
+        assert from_id_cls(id_str=_TEST_ID).entitysdk_type is expected_type
 
     @pytest.mark.parametrize(("from_id_cls", "expected_type"), ENTITYSDK_CLASS_CASES)
-    def test_fetch_passes_uuid_and_entity_type(self, from_id_cls, expected_type):
+    def test_entity_passes_uuid_and_entity_type(self, from_id_cls, expected_type):
         client = MagicMock()
-        client.get_entity.return_value = MagicMock()
-        from_id_cls.fetch(_TEST_ID, client)
+        resolved = MagicMock()
+        if from_id_cls is MEModelWithSynapsesCircuitFromID:
+            resolved.scale = "single"
+        client.get_entity.return_value = resolved
+        from_id_cls(id_str=_TEST_ID).entity(client)
         client.get_entity.assert_called_once_with(
             entity_id=_TEST_UUID,
             entity_type=expected_type,

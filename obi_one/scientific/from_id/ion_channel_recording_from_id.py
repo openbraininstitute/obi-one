@@ -9,9 +9,7 @@ from obi_one.core.entity_from_id import EntityFromID
 
 
 class IonChannelRecordingFromID(EntityFromID[IonChannelRecording]):
-    @classmethod
-    def entitysdk_class(cls) -> type[IonChannelRecording]:
-        return IonChannelRecording
+    entitysdk_type: type[IonChannelRecording] = IonChannelRecording
 
     def download_asset(
         self,

@@ -183,7 +183,7 @@ def test_stage_memodel_as_circuit_forwards_max_concurrent(monkeypatch, tmp_path)
     mock_client = MagicMock()
     mock_memodel_entity = MagicMock()
 
-    with patch.object(MEModelFromID, "fetch", return_value=mock_memodel_entity):
+    with patch.object(MEModelFromID, "entity", return_value=mock_memodel_entity):
         test_module.stage_memodel_as_circuit(
             client=mock_client,
             circuit=MEModelFromID(id_str="memodel-id"),

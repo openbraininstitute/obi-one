@@ -1,4 +1,3 @@
-import abc
 from enum import Enum
 from uuid import UUID
 
@@ -14,42 +13,27 @@ class LoadAssetMethod(Enum):
     FILE = "file"
 
 
-class EntityFromID[TEntity: Entity](OBIBaseModel, abc.ABC):
+class EntityFromID[TEntity: Entity](OBIBaseModel):
     """Base class for entity references that resolve to full Entity objects (with assets)."""
 
     id_str: str = Field(description="ID of the entity in string format.")
     _entity: TEntity | None = PrivateAttr(default=None)
-
-    @classmethod
-    @abc.abstractmethod
-    def entitysdk_class(cls) -> type[TEntity]:
-        """Entitysdk model class fetched for this wrapper type."""
-
-    @classmethod
-    def fetch(cls, entity_id: str, db_client: DBClient) -> TEntity:
-        return db_client.get_entity(
-            entity_id=UUID(entity_id),
-            entity_type=cls.entitysdk_class(),
-        )
+    entitysdk_type: type[TEntity] = Field(exclude=True, repr=False)
 
     def entity(self, db_client: DBClient) -> TEntity:
         if self._entity is None:
-            self._entity = self.fetch(self.id_str, db_client=db_client)
-        if self._entity is None:
-            msg = f"{self.__class__.__name__} failed to resolve entity {self.id_str!r}"
-            raise RuntimeError(msg)
+            self._entity = db_client.get_entity(
+                entity_id=UUID(self.id_str),
+                entity_type=self.entitysdk_type,
+            )
         return self._entity
-
-    @property
-    def entitysdk_type(self) -> type[TEntity]:
-        return self.entitysdk_class()
 
     def __str__(self) -> str:
         """Returns a string representation."""
         return f"{self.__class__.__name__}_{self.id_str}"
 
 
-class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel, abc.ABC):
+class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
     """Base class for references to Identifiable objects (controlled vocabularies like Species, BrainRegion, EType).
 
     These are not full Entity objects (no assets), but they are identifiable
@@ -58,25 +42,14 @@ class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel, abc.ABC):
 
     id_str: str = Field(description="ID of the identifiable in string format.")
     _entity: TIdentifiable | None = PrivateAttr(default=None)
-
-    @classmethod
-    @abc.abstractmethod
-    def entitysdk_class(cls) -> type[TIdentifiable]:
-        """Entitysdk model class fetched for this wrapper type."""
-
-    @classmethod
-    def fetch(cls, entity_id: str, db_client: DBClient) -> TIdentifiable:
-        return db_client.get_entity(
-            entity_id=UUID(entity_id),
-            entity_type=cls.entitysdk_class(),
-        )
+    entitysdk_type: type[TIdentifiable] = Field(exclude=True, repr=False)
 
     def entity(self, db_client: DBClient) -> TIdentifiable:
         if self._entity is None:
-            self._entity = self.fetch(self.id_str, db_client=db_client)
-        if self._entity is None:
-            msg = f"{self.__class__.__name__} failed to resolve entity {self.id_str!r}"
-            raise RuntimeError(msg)
+            self._entity = db_client.get_entity(
+                entity_id=UUID(self.id_str),
+                entity_type=self.entitysdk_type,
+            )
         return self._entity
 
     def __str__(self) -> str:

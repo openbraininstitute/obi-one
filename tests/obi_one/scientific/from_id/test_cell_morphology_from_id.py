@@ -173,7 +173,7 @@ def test_write_spiny_neuron_h5_downloads_spiny_asset(tmp_path):
 
     db_client.download_file.assert_called_once_with(
         entity_id=entity.id,
-        entity_type=CellMorphologyFromID.entitysdk_class(),
+        entity_type=morphology_from_id.entitysdk_type,
         asset_id="asset-h5",
         output_path=str(output_path),
     )

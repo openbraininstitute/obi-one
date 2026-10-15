@@ -15,7 +15,7 @@ def test_task_config_from_id_download_asset_by_label(tmp_path):
     client = MagicMock()
 
     with (
-        patch.object(TaskConfigFromID, "fetch", return_value=entity),
+        patch.object(TaskConfigFromID, "entity", return_value=entity),
         patch(f"{_MODULE}.fetch_asset_by_label", return_value=expected_path) as mock_fetch_asset,
     ):
         path = obj.download_asset_by_label(
@@ -31,4 +31,4 @@ def test_task_config_from_id_download_asset_by_label(tmp_path):
         asset_label=AssetLabel.task_config,
         output_path=tmp_path,
     )
-    assert TaskConfigFromID.entitysdk_class() is TaskConfig
+    assert obj.entitysdk_type is TaskConfig

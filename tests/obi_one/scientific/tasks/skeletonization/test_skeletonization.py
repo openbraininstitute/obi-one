@@ -256,7 +256,7 @@ def make_outputs(tmp_path):
 def test_input_entities_resolves_single_em_cell_mesh(skeletonization_single_config):
     mesh_entity = Mock()
     db_client = Mock()
-    with patch.object(EMCellMeshFromID, "fetch", return_value=mesh_entity):
+    with patch.object(EMCellMeshFromID, "entity", return_value=mesh_entity):
         entities = skeletonization_single_config.input_entities(db_client)
     assert entities == [mesh_entity]
 

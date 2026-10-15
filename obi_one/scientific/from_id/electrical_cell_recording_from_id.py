@@ -9,9 +9,7 @@ from obi_one.core.entity_from_id import EntityFromID
 
 
 class ElectricalCellRecordingFromID(EntityFromID[ElectricalCellRecording]):
-    @classmethod
-    def entitysdk_class(cls) -> type[ElectricalCellRecording]:
-        return ElectricalCellRecording
+    entitysdk_type: type[ElectricalCellRecording] = ElectricalCellRecording
 
     def download_nwb_asset(
         self,

@@ -69,9 +69,7 @@ _configure_caveclient_retries()
 
 
 class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
-    @classmethod
-    def entitysdk_class(cls) -> type[EMDenseReconstructionDataset]:
-        return EMDenseReconstructionDataset
+    entitysdk_type: type[EMDenseReconstructionDataset] = EMDenseReconstructionDataset
 
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     auth_token: str | None = None

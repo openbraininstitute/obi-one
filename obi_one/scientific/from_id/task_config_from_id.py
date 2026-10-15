@@ -11,9 +11,7 @@ from obi_one.db_sdk.db_sdk import fetch_asset_by_label
 class TaskConfigFromID(EntityFromID[TaskConfig]):
     """Wrapper for downloading assets from a TaskConfig entity."""
 
-    @classmethod
-    def entitysdk_class(cls) -> type[TaskConfig]:
-        return TaskConfig
+    entitysdk_type: type[TaskConfig] = TaskConfig
 
     def download_asset_by_label(
         self,

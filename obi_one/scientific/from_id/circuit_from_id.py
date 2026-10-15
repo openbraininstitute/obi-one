@@ -14,9 +14,7 @@ from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircui
 
 
 class CircuitFromID(EntityFromID[models.Circuit]):
-    @classmethod
-    def entitysdk_class(cls) -> type[models.Circuit]:
-        return models.Circuit
+    entitysdk_type: type[models.Circuit] = models.Circuit
 
     def stage_circuit(
         self,
@@ -76,9 +74,7 @@ class CircuitFromID(EntityFromID[models.Circuit]):
 
 
 class MEModelWithSynapsesCircuitFromID(EntityFromID[models.Circuit]):
-    @classmethod
-    def entitysdk_class(cls) -> type[models.Circuit]:
-        return models.Circuit
+    entitysdk_type: type[models.Circuit] = models.Circuit
 
     def entity(self, db_client: Client) -> models.Circuit:
         entity = super().entity(db_client=db_client)

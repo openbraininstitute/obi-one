@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from entitysdk.types import ContentType
@@ -26,45 +27,40 @@ FROM_ID_CLASSES = (
 class TestFromIDTypedEntity:
     @pytest.mark.parametrize("from_id_cls", FROM_ID_CLASSES)
     def test_entity_returns_resolved_entity(self, from_id_cls):
-        obj = from_id_cls(id_str="test-entity-id")
+        obj = from_id_cls(id_str="00000000-0000-0000-0000-000000000001")
         expected = MagicMock()
         mock_client = MagicMock()
-        with patch.object(from_id_cls, "fetch", return_value=expected) as mock_fetch:
-            result = obj.entity(mock_client)
+        mock_client.get_entity.return_value = expected
+        result = obj.entity(mock_client)
         assert result is expected
-        mock_fetch.assert_called_once_with("test-entity-id", db_client=mock_client)
+        mock_client.get_entity.assert_called_once_with(
+            entity_id=UUID(obj.id_str),
+            entity_type=obj.entitysdk_type,
+        )
         assert obj._entity is expected
 
     @pytest.mark.parametrize("from_id_cls", FROM_ID_CLASSES)
-    def test_entity_raises_when_resolution_yields_none(self, from_id_cls):
-        obj = from_id_cls(id_str="missing-id")
-        with (
-            patch.object(from_id_cls, "fetch", return_value=None),
-            pytest.raises(RuntimeError, match="failed to resolve entity 'missing-id'"),
-        ):
-            obj.entity(MagicMock())
-
-    @pytest.mark.parametrize("from_id_cls", FROM_ID_CLASSES)
     def test_entity_caches_after_first_resolution(self, from_id_cls):
-        obj = from_id_cls(id_str="cached-id")
+        obj = from_id_cls(id_str="00000000-0000-0000-0000-000000000002")
         expected = MagicMock()
-        with patch.object(from_id_cls, "fetch", return_value=expected) as mock_fetch:
-            assert obj.entity(MagicMock()) is expected
-            assert obj.entity(MagicMock()) is expected
-            mock_fetch.assert_called_once()
+        mock_client = MagicMock()
+        mock_client.get_entity.return_value = expected
+        assert obj.entity(mock_client) is expected
+        assert obj.entity(mock_client) is expected
+        mock_client.get_entity.assert_called_once()
 
 
 class TestIonChannelModelFromIDTypedEntity:
     def test_get_conductance_name_uses_typed_entity(self):
         obj = IonChannelModelFromID(id_str="ic-id")
         entity = MagicMock(conductance_name="g_na")
-        with patch.object(IonChannelModelFromID, "fetch", return_value=entity):
+        with patch.object(IonChannelModelFromID, "entity", return_value=entity):
             assert obj.get_conductance_name(MagicMock()) == "g_na"
 
     def test_get_max_permeability_name_uses_typed_entity(self):
         obj = IonChannelModelFromID(id_str="ic-id")
         entity = MagicMock(max_permeability_name="p_na")
-        with patch.object(IonChannelModelFromID, "fetch", return_value=entity):
+        with patch.object(IonChannelModelFromID, "entity", return_value=entity):
             assert obj.get_max_permeability_name(MagicMock()) == "p_na"
 
     def test_get_other_parameter_names_excludes_conductance_and_permeability(self):
@@ -73,7 +69,7 @@ class TestIonChannelModelFromIDTypedEntity:
         entity.neuron_block.range = ["g_na", "p_na", "custom"]
         entity.conductance_name = "g_na"
         entity.max_permeability_name = "p_na"
-        with patch.object(IonChannelModelFromID, "fetch", return_value=entity):
+        with patch.object(IonChannelModelFromID, "entity", return_value=entity):
             assert obj.get_other_parameter_names(MagicMock()) == ["custom"]
 
     def test_get_other_parameter_names_flattens_mapping_entries(self):
@@ -83,7 +79,7 @@ class TestIonChannelModelFromIDTypedEntity:
         entity.conductance_name = "g_na"
         entity.max_permeability_name = None
         with (
-            patch.object(IonChannelModelFromID, "fetch", return_value=entity),
+            patch.object(IonChannelModelFromID, "entity", return_value=entity),
             patch.object(IonChannelModelFromID, "get_conductance_name", return_value="g_na"),
             patch.object(IonChannelModelFromID, "get_max_permeability_name", return_value=None),
         ):
@@ -92,13 +88,13 @@ class TestIonChannelModelFromIDTypedEntity:
     def test_has_conductance_reflects_conductance_name(self):
         with patch.object(
             IonChannelModelFromID,
-            "fetch",
+            "entity",
             return_value=MagicMock(conductance_name="g_na"),
         ):
             assert IonChannelModelFromID(id_str="ic-with-g").has_conductance(MagicMock()) is True
         with patch.object(
             IonChannelModelFromID,
-            "fetch",
+            "entity",
             return_value=MagicMock(conductance_name=None),
         ):
             assert (
@@ -109,7 +105,7 @@ class TestIonChannelModelFromIDTypedEntity:
         obj = IonChannelModelFromID(id_str="ic-id")
         with patch.object(
             IonChannelModelFromID,
-            "fetch",
+            "entity",
             return_value=MagicMock(max_permeability_name="p_na"),
         ):
             assert obj.has_max_permeability(MagicMock()) is True
@@ -120,7 +116,7 @@ class TestIonChannelModelFromIDTypedEntity:
         asset = MagicMock(path=tmp_path / "channel.mod")
         mock_client = MagicMock()
         mock_client.download_assets.return_value.one.return_value = asset
-        with patch.object(IonChannelModelFromID, "fetch", return_value=entity):
+        with patch.object(IonChannelModelFromID, "entity", return_value=entity):
             path = obj.download_asset(dest_dir=tmp_path, db_client=mock_client)
         assert path == asset.path
         mock_client.download_assets.assert_called_once_with(
@@ -137,7 +133,7 @@ class TestMEModelFromIDTypedEntity:
         obj = MEModelFromID(id_str="me-id")
         mock_client = MagicMock()
         with (
-            patch.object(MEModelFromID, "fetch", return_value=memodel),
+            patch.object(MEModelFromID, "entity", return_value=memodel),
             patch(
                 "obi_one.scientific.from_id.memodel_from_id.CellMorphologyFromID"
             ) as morphology_cls,
@@ -155,7 +151,7 @@ class TestMEModelFromIDTypedEntity:
         dest_dir = tmp_path / "sonata_out"
         config_path = dest_dir / "circuit_config.json"
         with (
-            patch.object(MEModelFromID, "fetch", return_value=memodel),
+            patch.object(MEModelFromID, "entity", return_value=memodel),
             patch(
                 "obi_one.scientific.from_id.memodel_from_id.stage_sonata_from_memodel",
                 return_value=config_path,
@@ -191,17 +187,15 @@ class TestMEModelFromIDTypedEntity:
         dest_dir.mkdir()
         config_path = dest_dir / "circuit_config.json"
         config_path.write_text("{}")
-        with (
-            patch.object(MEModelFromID, "fetch") as mock_fetch,
-            patch(
-                "obi_one.scientific.from_id.memodel_from_id.MEModelCircuit",
-                side_effect=lambda name, path: SimpleNamespace(name=name, path=path),
-            ),
+        mock_client = MagicMock()
+        with patch(
+            "obi_one.scientific.from_id.memodel_from_id.MEModelCircuit",
+            side_effect=lambda name, path: SimpleNamespace(name=name, path=path),
         ):
             circuit = obj.stage_circuit(
-                db_client=MagicMock(),
+                db_client=mock_client,
                 dest_dir=dest_dir,
                 entity_cache=True,
             )
-        mock_fetch.assert_not_called()
+        mock_client.get_entity.assert_not_called()
         assert circuit.path == str(config_path)

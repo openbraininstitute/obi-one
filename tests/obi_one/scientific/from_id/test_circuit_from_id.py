@@ -18,20 +18,30 @@ def _sonata_asset():
     return asset
 
 
-def test_circuit_from_id_entitysdk_class():
-    assert CircuitFromID.entitysdk_class() is models.Circuit
+def test_circuit_from_id_entitysdk_type():
+    assert CircuitFromID(id_str="00000000-0000-0000-0000-000000000001").entitysdk_type is (
+        models.Circuit
+    )
 
 
-def test_memodel_with_synapses_entitysdk_class():
-    assert MEModelWithSynapsesCircuitFromID.entitysdk_class() is models.Circuit
+def test_memodel_with_synapses_entitysdk_type():
+    assert (
+        MEModelWithSynapsesCircuitFromID(
+            id_str="00000000-0000-0000-0000-000000000001"
+        ).entitysdk_type
+        is models.Circuit
+    )
 
 
 def test_memodel_with_synapses_entity_accepts_single_scale():
-    circuit_from_id = MEModelWithSynapsesCircuitFromID(id_str="circuit-1")
+    circuit_from_id = MEModelWithSynapsesCircuitFromID(
+        id_str="00000000-0000-0000-0000-000000000001"
+    )
     entity = MagicMock()
     entity.scale = "single"
-    with patch.object(MEModelWithSynapsesCircuitFromID, "fetch", return_value=entity):
-        assert circuit_from_id.entity(MagicMock()) is entity
+    mock_client = MagicMock()
+    mock_client.get_entity.return_value = entity
+    assert circuit_from_id.entity(mock_client) is entity
 
 
 def test_circuit_from_id_stage_circuit_nodes_only(tmp_path):
