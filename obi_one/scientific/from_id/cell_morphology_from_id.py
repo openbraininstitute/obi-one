@@ -91,7 +91,7 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
         return _morphology_source_mesh_entity(self.entity(db_client=db_client), db_client)
 
     def spiny_morphology(
-        self, db_client: DBClient, path: os.PathLike | None = None
+        self, db_client: DBClient, path: str | os.PathLike | None = None
     ) -> "MorphologyWithSpines":
         from morph_spines import load_morphology_with_spines  # ruff: ignore[import-outside-top-level]
 
