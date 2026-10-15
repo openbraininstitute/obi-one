@@ -3,7 +3,6 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 import morphio
@@ -19,7 +18,6 @@ from entitysdk.models import (
     TaskConfig,
 )
 from entitysdk.models.cell_morphology_protocol import PlaceholderCellMorphologyProtocol
-from entitysdk.models.entity import Entity
 from entitysdk.types import CellMorphologyProtocolDesign, EntityType, TaskActivityType
 from morph_spines import MorphologyWithSpines, load_morphology_with_spines
 from pydantic import PrivateAttr
@@ -35,9 +33,9 @@ _MORPHOLOGY_ASSET_FORMATS = (
 )
 
 
-class CellMorphologyFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = CellMorphology
-    _entity: CellMorphology | None = PrivateAttr(default=None)
+class CellMorphologyFromID(EntityFromID[CellMorphology]):
+    _entitysdk_type: type[CellMorphology] = CellMorphology
+
     _swc_file_path: Path | None = PrivateAttr(default=None)
     _neurom_morphology: neurom.core.Morphology | None = PrivateAttr(default=None)
     _morphio_morphology: morphio.Morphology | None = PrivateAttr(default=None)
@@ -190,7 +188,7 @@ class CellMorphologyFromID(EntityFromID):
                     raise ValueError(msg)
                 db_client.download_file(
                     entity_id=entity.id,
-                    entity_type=self.entitysdk_class,
+                    entity_type=self.entitysdk_type,
                     asset_id=asset.id,
                     output_path=str(path_to),  # ty:ignore[invalid-argument-type]
                 )
@@ -242,7 +240,7 @@ class CellMorphologyFromID(EntityFromID):
                     path = Path(directory) / f"morphology{suffix}"
                     db_client.download_file(
                         entity_id=entity.id,
-                        entity_type=self.entitysdk_class,
+                        entity_type=self.entitysdk_type,
                         asset_id=asset.id,
                         output_path=path,
                     )

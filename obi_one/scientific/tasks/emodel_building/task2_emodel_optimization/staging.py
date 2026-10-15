@@ -147,5 +147,5 @@ def derive_mtype(
     morph_entity = config.morphology.cell_morphology
     entity = morph_entity.entity(db_client=db_client)
     if hasattr(entity, "mtypes") and entity.mtypes:
-        return str(entity.mtypes[0].pref_label)  # ty:ignore[not-subscriptable]
+        return str(entity.mtypes[0].pref_label)
     return None

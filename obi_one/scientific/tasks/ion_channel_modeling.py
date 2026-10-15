@@ -468,8 +468,8 @@ class IonChannelFittingScanConfig(InfoScanConfig):
                 if strains
                 else None
             )
-        if strain and strain.species_id != species.id:  # ty:ignore[unresolved-attribute]
-            msg = f"Strain {strain.name} is not a strain of {species.name}."  # ty:ignore[unresolved-attribute]
+        if strain and strain.species_id != species.id:
+            msg = f"Strain {strain.name} is not a strain of {species.name}."
             raise ConfigValidationError(msg)
         brain_region = (
             given.brain_region.entity(db_client=db_client)
@@ -524,7 +524,7 @@ class IonChannelFittingTask(Task):
                     db_client=db_client,
                 )
             )
-            trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
+            trace_ljps.append(recording.entity(db_client=db_client).ljp)
         return trace_paths, trace_ljps
 
     @staticmethod

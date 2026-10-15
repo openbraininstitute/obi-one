@@ -1,7 +1,7 @@
 import pickle  # ruff: ignore[suspicious-pickle-import]
 from types import SimpleNamespace
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import neuron
 import pytest
@@ -106,7 +106,7 @@ KV11 = SimpleNamespace(id=uuid4(), name="Kv1.1")
 
 def _recording(id_, **overrides):
     return SimpleNamespace(
-        id=id_,
+        id=UUID(id_),
         ljp=-float(id_[-1]),
         name=f"Recording {id_[-1]}",
         **{
@@ -122,7 +122,7 @@ def _recording(id_, **overrides):
 def _db_client(*overrides):
     """A client serving the two recordings, each with its overrides, and the taxonomy above."""
     recordings = {
-        id_: _recording(id_, **override)
+        UUID(id_): _recording(id_, **override)
         for id_, override in zip(RECORDING_IDS, overrides or ({}, {}), strict=True)
     }
     by_id = {
@@ -164,7 +164,7 @@ def _resolve(db_client, **model_properties):
 def test_every_recording_is_an_input_of_the_task_config():
     recordings = _scan_config().input_entities(db_client=_db_client())
 
-    assert [recording.id for recording in recordings] == RECORDING_IDS
+    assert [recording.id for recording in recordings] == [UUID(i) for i in RECORDING_IDS]
 
 
 def test_exponents_can_be_swept():
@@ -203,11 +203,13 @@ def test_generate_registers_a_campaign_and_one_config_per_exponent(tmp_path, mon
 
     campaign, *configs = task_configs
     assert campaign["task_config_type"] == TaskConfigType.ion_channel_modeling__campaign
-    assert [r.id for r in campaign["input_entities"]] == RECORDING_IDS
+    assert [r.id for r in campaign["input_entities"]] == [UUID(i) for i in RECORDING_IDS]
     assert [c["task_config_type"] for c in configs] == [
         TaskConfigType.ion_channel_modeling__config
     ] * 2
-    assert all([r.id for r in c["input_entities"]] == RECORDING_IDS for c in configs)
+    assert all(
+        [r.id for r in c["input_entities"]] == [UUID(i) for i in RECORDING_IDS] for c in configs
+    )
     assert all(c["task_config_generator_id"] == "task config 1" for c in configs)
     (generation,) = activities
     assert generation["activity_type"] == TaskActivityType.ion_channel_modeling__config_generation

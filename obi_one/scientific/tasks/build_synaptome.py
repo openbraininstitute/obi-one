@@ -1,7 +1,7 @@
 import logging
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar, cast
+from typing import Annotated, ClassVar
 
 from entitysdk import Client, models, types
 from pydantic import Discriminator, Field
@@ -234,10 +234,7 @@ class MEModelSynapticModelPlacementTask(Task):
             db_client=db_client,
             execution_activity_id=execution_activity_id,
         )
-        me_model = cast(
-            "models.MEModel",
-            self.config.initialize.me_model.entity(db_client=db_client),
-        )
+        me_model = self.config.initialize.me_model.entity(db_client=db_client)
         subject = me_model.morphology.subject
         if subject is None:
             msg = f"ME-model '{me_model.id}' morphology has no subject for Circuit registration."
