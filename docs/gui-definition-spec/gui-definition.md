@@ -100,6 +100,8 @@ There are two major types of such UI elements:
 
         - [distance_function_input_nullable](components/distance_function_input_nullable/distance_function_input_nullable.md)
 
+        - [distribution_parameter_list](components/distribution_parameter_list/distribution_parameter_list.md)
+
         - [object](components/object/object.md)
 
         - [stochasticity](components/stochasticity/stochasticity.md) (one-off)
