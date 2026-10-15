@@ -19,7 +19,7 @@ blueetl==0.13.4
 blueetl-core==0.2.5
 bluepyefe==2.3.63
 bluepysnap==3.0.7
-brainbuilder==0.20.8
+brainbuilder==0.20.9
 brian2==2.10.1
 cached-property==2.0.1
 cachetools==7.2.1

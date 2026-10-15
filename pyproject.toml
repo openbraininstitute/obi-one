@@ -41,7 +41,7 @@ dependencies = [
     "blueetl",
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.7",
-    "brainbuilder>=0.20.6",
+    "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
