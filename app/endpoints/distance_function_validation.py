@@ -3,6 +3,10 @@
 The function is a math expression that BluePyEModel evaluates per morphology segment. It is a
 security-sensitive input (see ``validate_safe_distance_function``); this endpoint runs the same
 safe-AST check and returns the offending character span so the editor can highlight it.
+
+The function is the source of truth for its parameters: every placeholder other than
+``{value}`` and ``{distance}`` is a parameter the user gives a value for, so no parameter list is
+sent or checked here.
 """
 
 from fastapi import APIRouter, Depends
@@ -12,6 +16,7 @@ from app.dependencies.auth import user_verified
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     MAX_DISTANCE_FUNCTION_LENGTH,
     check_distance_function,
+    function_parameter_names,
 )
 
 router = APIRouter(
@@ -25,8 +30,6 @@ class DistanceFunctionValidationRequest(BaseModel):
     """Request body for distance-function validation."""
 
     function: str = Field(max_length=MAX_DISTANCE_FUNCTION_LENGTH)
-    # Declared parameter names beyond {value}/{distance} the function may reference.
-    parameters: tuple[str, ...] = ()
 
 
 class DistanceFunctionValidationResponse(BaseModel):
@@ -46,14 +49,17 @@ class DistanceFunctionValidationResponse(BaseModel):
     description=(
         "Run the safe-AST validation on a distribution function string and return whether it is "
         "valid, plus an error message and the character span of the first problem for editor "
-        "highlighting. Stateless; does not evaluate the function."
+        "highlighting. Placeholders other than {value} and {distance} are treated as the "
+        "function's parameters. Stateless; does not evaluate the function."
     ),
 )
 def validate_distance_function(
     request: DistanceFunctionValidationRequest,
 ) -> DistanceFunctionValidationResponse:
     """Validate a distance function and return a structured, position-aware result."""
-    result = check_distance_function(request.function, request.parameters or None)
+    result = check_distance_function(
+        request.function, function_parameter_names(request.function) or None
+    )
     return DistanceFunctionValidationResponse(
         valid=result.valid,
         error=result.error,

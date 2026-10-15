@@ -79,6 +79,7 @@ class UIElement(StrEnum):
     BOOLEAN_INPUT = "boolean_input"
     DISTANCE_FUNCTION_INPUT = "distance_function_input"
     DISTANCE_FUNCTION_INPUT_NULLABLE = "distance_function_input_nullable"
+    DISTRIBUTION_PARAMETER_LIST = "distribution_parameter_list"
     EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"

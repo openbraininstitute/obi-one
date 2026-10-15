@@ -20,6 +20,7 @@ from .boolean_input import validate_boolean_input
 from .discrete_probabilities import validate_discrete_probabilities
 from .distance_function_input import validate_distance_function_input
 from .distance_function_input_nullable import validate_distance_function_input_nullable
+from .distribution_parameter_list import validate_distribution_parameter_list
 from .entity_property_dropdown import validate_entity_property_dropdown
 from .etype_selector import validate_etype_selector
 from .float_input import validate_float_input
@@ -78,6 +79,7 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     UIElement.BOOLEAN_INPUT: validate_boolean_input,
     UIElement.DISTANCE_FUNCTION_INPUT: validate_distance_function_input,
     UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE: validate_distance_function_input_nullable,
+    UIElement.DISTRIBUTION_PARAMETER_LIST: validate_distribution_parameter_list,
     UIElement.STOCHASTICITY: validate_stochasticity,
     UIElement.FLOAT_INPUT: validate_float_input,
     UIElement.FLOAT_PARAMETER_SWEEP: validate_float_param_sweep,
