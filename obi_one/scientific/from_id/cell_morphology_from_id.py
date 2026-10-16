@@ -23,6 +23,13 @@ from entitysdk.types import (
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.db_sdk.db_sdk import select_asset_content
 
+_MORPHOLOGY_ASSET_FORMATS = (
+    ContentType.application_asc,
+    ContentType.application_swc,
+    ContentType.application_x_hdf5,
+)
+
+
 if TYPE_CHECKING:
     import morphio
     import neurom
@@ -122,19 +129,60 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
         import morphio  # ruff: ignore[import-outside-top-level]
 
         if self._morphio_morphology is None:
-            with tempfile.NamedTemporaryFile(suffix=".h5") as tmp:
-                path = Path(tmp.name)
-                db_client.fetch_assets(
-                    self.entity(db_client=db_client),
-                    selection={
-                        "content_type": ContentType.application_x_hdf5,
-                        "label": AssetLabel.morphology,
-                    },
-                    output_path=path,
-                ).one()
-                self._morphio_morphology = morphio.Morphology(
-                    path, options=morphio.Option.nrn_order
-                )
+            entity = self.entity(db_client=db_client)
+
+            assets = sorted(
+                db_client.select_assets(
+                    entity=entity,
+                    selection={"label": AssetLabel.morphology},
+                ).all(),
+                key=lambda asset: _MORPHOLOGY_ASSET_FORMATS.index(asset.content_type),
+            )
+
+            if not assets:
+                msg = "Morphology entity has no ASC, SWC, or H5 morphology asset."
+                raise EntitySDKError(msg)
+
+            asset = assets[0]
+            match asset.content_type:
+                case ContentType.application_x_hdf5:
+                    with tempfile.NamedTemporaryFile(suffix=".h5") as tmp:
+                        path = db_client.fetch_file(
+                            entity_id=entity.id,
+                            entity_type=type(entity),
+                            asset_id=asset.id,
+                            output_path=Path(tmp.name),
+                        )
+                        morphio_morphology = morphio.Morphology(
+                            path, options=morphio.Option.nrn_order
+                        )
+                case ContentType.application_swc:
+                    swc_text = db_client.fetch_content(
+                        entity_id=entity.id,
+                        entity_type=type(entity),
+                        asset_or_id=asset,
+                    ).decode()
+                    morphio_morphology = morphio.Morphology(
+                        swc_text,
+                        "swc",
+                        options=morphio.Option.nrn_order,
+                    )
+                case ContentType.application_asc:
+                    asc_text = db_client.fetch_content(
+                        entity_id=entity.id,
+                        entity_type=type(entity),
+                        asset_or_id=asset,
+                    ).decode()
+                    morphio_morphology = morphio.Morphology(
+                        asc_text,
+                        "asc",
+                        options=morphio.Option.nrn_order,
+                    )
+                case _:
+                    msg = f"Unknown format {asset.content_type}"
+                    raise EntitySDKError(msg)
+
+            self._morphio_morphology = morphio_morphology
         return self._morphio_morphology
 
 
