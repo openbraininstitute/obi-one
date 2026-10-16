@@ -147,6 +147,7 @@ class TestPlaceMorphologiesAndMechanisms:
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
     ):
         me_model_entity = SimpleNamespace(
+            id=uuid4(),
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
         )
@@ -231,6 +232,7 @@ class TestResolveListNeurons:
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
     ):
         me_model_entity = SimpleNamespace(
+            id=uuid4(),
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
         )
