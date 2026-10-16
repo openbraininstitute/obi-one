@@ -289,10 +289,10 @@ def place_morphologies_and_mechanisms(
         mechanisms_placed = "mod"
         ensure_mechanisms_placed(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
-        hoc_dir.mkdir(parents=True)
-        shutil.move(memdl_paths.hoc_path, hoc_dir)
+        hoc_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(memdl_paths.hoc_path, hoc_dir / (str(me_model_entity.id) + ".hoc"))
         shutil.rmtree(tmp_staging)
-        phys_node_props["model_template"] = numpy.array([f"hoc:{memdl_paths.hoc_path.stem}"])
+        phys_node_props["model_template"] = numpy.array(["hoc:" + str(me_model_entity.id)])
         phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
         phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
         if me_model_entity.calibration_result is not None:
