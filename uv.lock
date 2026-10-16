@@ -299,7 +299,7 @@ wheels = [
 
 [[package]]
 name = "bluepyemodel"
-version = "1.0.47"
+version = "1.0.50"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepyefe" },
@@ -324,9 +324,9 @@ dependencies = [
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/4b/1e3950262a387ba52ed1734cf7da82ad908d687a4fae3df4ccfc8efae81e/bluepyemodel-1.0.47.tar.gz", hash = "sha256:5cf2b69797db1479baba75108203615004e0a4a8290506697744369029490f3c", size = 13052710, upload-time = "2026-09-09T13:11:58.07Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/0d/329f23785f4b521e82e5c6114d769832295fdb0c08a984834414efd8054e/bluepyemodel-1.0.50.tar.gz", hash = "sha256:9d97555e8266eea281c6d47b704975aa71438eaddd146911d4747b07b82ea778", size = 6126802, upload-time = "2026-10-15T15:01:10.956Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/f1/86cd12188a3d14a3a90b354a78089eaca98350977f17af85617328a5cc35/bluepyemodel-1.0.47-py3-none-any.whl", hash = "sha256:47966b2fddcf97141a9109cc80db6ce0745f4dd6554b3042c611ae46e19d2f96", size = 13427499, upload-time = "2026-09-09T13:11:52.885Z" },
+    { url = "https://files.pythonhosted.org/packages/65/c3/c29d7c65d007852026b2b738f381b1a2ff475a19202c9253ade67b60926f/bluepyemodel-1.0.50-py3-none-any.whl", hash = "sha256:31edcf0b62aaf4304744a3b6ae59ab3536022f71cc837c1c996db7b2bbab53a4", size = 6225274, upload-time = "2026-10-15T15:01:08.435Z" },
 ]
 
 [[package]]
@@ -370,7 +370,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/26/b1/58fefcd7212c9792e
 
 [[package]]
 name = "bluerecording"
-version = "0.6.2"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -382,9 +382,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/1c/744739d3498bd21155d48c87be9029641363ac3d5700b846fbcf6ab3bd2e/bluerecording-0.6.2.tar.gz", hash = "sha256:1d817363abe2788840d4a9a9eef14cb3f82936daa4d142edefa135ad6a4142bd", size = 25602, upload-time = "2026-08-31T11:30:08.851Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/b9/5a5156cc181f82659c6f1ecbe5f35d750f64264afe2b3a5468585c9f9d1b/bluerecording-0.7.0.tar.gz", hash = "sha256:97799b5c51cf5842756191418588ae7a66c193c982f6451a9dc394268752dbbf", size = 28306, upload-time = "2026-10-14T14:40:24.891Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/73/e8b912d9bc8c0e9e5aaaf467a821d214a09c25af1bc2667e7c873603cda3/bluerecording-0.6.2-py3-none-any.whl", hash = "sha256:8b5fb34a6293e7d4327998f3dfa2804326e0b58a2a98ffa84c054a4b54d34287", size = 29138, upload-time = "2026-08-31T11:30:07.62Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/93/abc9a25015bb73f9ad113c86bacada04a77d68b414862005fdbebbfd9464/bluerecording-0.7.0-py3-none-any.whl", hash = "sha256:05ea0855a1557314926b4a5073d928e8c0185ace7c51638b8228d80fd02dcda2", size = 32002, upload-time = "2026-10-14T14:40:23.348Z" },
 ]
 
 [[package]]
@@ -421,7 +421,7 @@ wheels = [
 
 [[package]]
 name = "brainbuilder"
-version = "0.20.8"
+version = "0.20.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -439,7 +439,7 @@ dependencies = [
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/ae/3dd2a9b050d3aead9011428c94c237089b05133fbc39e94b3c5e7467f8af/brainbuilder-0.20.8.tar.gz", hash = "sha256:34980802b0044f98b64ce8b05076424fd7353ab6d48960db65ffb6d1382603df", size = 249347, upload-time = "2026-08-28T11:52:45.092Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/18/473c9d08a763ddbed550557361878c0849d5cd5bde2ae2045440d3197de1/brainbuilder-0.20.9.tar.gz", hash = "sha256:f6353b2bfba875afc025d93fef366d59c259f88584f3b7427a127ccd2f891e2c", size = 251197, upload-time = "2026-10-15T13:20:12.001Z" }
 
 [[package]]
 name = "brian2"
@@ -2234,7 +2234,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.5"
+version = "4.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -2244,9 +2244,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/de/8ad46b453170cd1715770f99b18b517613de603717e68dc34892f6e6e34b/neurodamus-4.2.5.tar.gz", hash = "sha256:2839be9c97e19b9a129782eed37bfc28abbfdc14821ce170e46e2ed05637b23d", size = 200954, upload-time = "2026-10-02T12:09:01.603Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/e0/8a8c82c1375c3c8dd449d82d6fd9e3bc936906568d3349f2c65954cb6844/neurodamus-4.2.8.tar.gz", hash = "sha256:095a1d78e967e323b71b2d836832c20cf3b19d3afefacfb8e66d0dc27115ad2d", size = 202208, upload-time = "2026-10-14T14:40:40.516Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/4d/e651e1b6b0955293a6472c2965ac454ee52605811237410c18d0518e251b/neurodamus-4.2.5-py3-none-any.whl", hash = "sha256:a82131e7dd06b27638245333e58264b50b716c18e3b78187bb8ae9dfa868fe1c", size = 236229, upload-time = "2026-10-02T12:08:59.893Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/ac/9744a49d1c9a437a8158b3579fa746df0a3e765888c7cabb6c4c08a2a8c9/neurodamus-4.2.8-py3-none-any.whl", hash = "sha256:eb6d90a0c581cbb58d053710aecfae78b62b62b7da57d95a5a1601998d28b16b", size = 237538, upload-time = "2026-10-14T14:40:38.61Z" },
 ]
 
 [[package]]
@@ -2438,6 +2438,7 @@ all = [
 ]
 bluerecording = [
     { name = "bluerecording" },
+    { name = "neurodamus" },
 ]
 connectivity = [
     { name = "connectome-analysis" },
@@ -2493,10 +2494,10 @@ requires-dist = [
     { name = "bluecellulab", specifier = ">=2.6.104" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
-    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.47" },
+    { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
     { name = "bluepysnap", specifier = ">=3.0.7" },
-    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.6.2" },
-    { name = "brainbuilder", specifier = ">=0.20.6" },
+    { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
+    { name = "brainbuilder", specifier = ">=0.20.9" },
     { name = "brian2" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
@@ -2513,14 +2514,15 @@ requires-dist = [
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
+    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.8" },
     { name = "neurom" },
     { name = "notebook", marker = "extra == 'notebooks'" },
     { name = "numpy" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.6" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.6" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2556,14 +2558,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.6"
+version = "0.6.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/d2/52d3f467e7355629e6aec4c5b82aae37dfe9856c61c63b551c576f51363d/obp_accounting_sdk-0.6.6.tar.gz", hash = "sha256:9dddbda9bd36da1713806003932d506ac79f4e0faa938207ad62e95cac4df3ed", size = 36789, upload-time = "2026-09-24T12:28:03.176Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/4b/5c2839462cee59097a00830f471a11f225a2a138c236c9d145bc26043a1c/obp_accounting_sdk-0.6.8.tar.gz", hash = "sha256:dd895d3250a1767274550b714620e193196dfc52c834c8357234b6cd57697cf4", size = 37055, upload-time = "2026-10-14T10:24:18.303Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/82/a61a3dec8624a72bb50fb73be0f0b6d9e4bf5522110374c39ed9e668a6c4/obp_accounting_sdk-0.6.6-py3-none-any.whl", hash = "sha256:6c8ce44a96f0bdb78e58acd11432c0e896b5973c6c0f664a06231b56c855f6c5", size = 27820, upload-time = "2026-09-24T12:28:02.049Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/d0/8d16eff282e7730131e61fffc2c2c68cde56b473bf8331bf71ed637f7265/obp_accounting_sdk-0.6.8-py3-none-any.whl", hash = "sha256:ec746ff2d30d598722fe87d0d665c3be81ea2f221881e112383b473618c8013a", size = 27877, upload-time = "2026-10-14T10:24:16.684Z" },
 ]
 
 [[package]]

@@ -43,7 +43,7 @@ The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulatio
 A typical single cell simulation configuration includes:
 
 ```python
-from obi_one import MEModelFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationSingleConfig,
 )

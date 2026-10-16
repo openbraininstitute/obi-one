@@ -13,7 +13,6 @@ from uuid import UUID
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.blocks.recordings.extracellular import (
@@ -21,6 +20,9 @@ from obi_one.scientific.blocks.recordings.extracellular import (
 )
 from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -187,7 +189,8 @@ class _ArrayDBClient(FakeDBClient):
                 method="get_entity", kwargs={"entity_id": entity_id, "entity_type": entity_type}
             )
         )
-        return SimpleNamespace(id=UUID(entity_id), circuit_id=UUID(self.array_circuit_id))
+        entity_uuid = entity_id if isinstance(entity_id, UUID) else UUID(entity_id)
+        return SimpleNamespace(id=entity_uuid, circuit_id=UUID(self.array_circuit_id))
 
 
 @pytest.mark.usefixtures("staging_recorder")
@@ -200,9 +203,7 @@ class TestRecordingArrayCircuit:
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
                 "LFP": ExtracellularElectrodeArrayRecordingBlock(
-                    electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(
-                        id_str=ARRAY_ID
-                    )
+                    electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
                 )
             },
             initialize={"simulator": "CORENEURON"},

@@ -8,7 +8,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 if TYPE_CHECKING:
@@ -18,14 +18,7 @@ import entitysdk
 from bluepyemodel.emodel_pipeline.emodel import EModel as BPEMEModel, format_dict_for_resource
 from bluepyemodel.emodel_pipeline.emodel_metadata import EModelMetadata
 from entitysdk import MultipartDirectoryUploadTransferConfig
-from entitysdk.models import (
-    CellMorphology,
-    ETypeClass,
-    IonChannelModel,
-    License,
-    TaskActivity,
-    TaskResult,
-)
+from entitysdk.models import License, TaskActivity, TaskResult
 from entitysdk.registration.emodel import register_emodel
 from entitysdk.registration.memodel import (
     register_memodel,
@@ -49,6 +42,9 @@ from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
+from obi_one.scientific.tasks.emodel_building.validation_scoring import (
+    register_validation_results,
+)
 
 L = logging.getLogger(__name__)
 
@@ -57,14 +53,17 @@ L = logging.getLogger(__name__)
 class OptimizationPipelineResults:
     """Outputs of ``run_optimization_pipeline`` consumed by registration.
 
-    ``calibration``/``validation`` are ``None`` when the calibration/validation
-    compute failed; ``validation_status`` then reports ``error``.
+    ``calibration``/``memodel_validation`` are the ME-model (BlueCelluLab) calibration and
+    validation results; they are ``None`` when that compute failed, and
+    ``validation_status`` (the MEModel status derived from ``memodel_validation``) then reports
+    ``error``. ``emodel_validation`` is separate: the e-model e-feature score validation.
     """
 
     em_metrics: dict
     calibration: dict | None
-    validation: dict | None
+    memodel_validation: dict | None
     validation_status: ValidationStatus
+    emodel_validation: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -247,9 +246,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     # --- Gather metadata ---
     # Species and brain region come from the morphology entity, so the
     # registered emodel/me-model inherit the morphology's provenance.
-    morph_entity = cast(
-        "CellMorphology", config.morphology.cell_morphology.entity(db_client=db_client)
-    )
+    morph_entity = config.morphology.cell_morphology.entity(db_client=db_client)
     species_entity, brain_region_entity = config.morphology.cell_morphology.metadata_entities(
         db_client=db_client
     )
@@ -261,7 +258,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     ).one()
 
     # ETypeClass entity from user selection
-    etype_class = cast("ETypeClass", init.etype.entity(db_client=db_client))
+    etype_class = init.etype.entity(db_client=db_client)
 
     # Determine authorized_public from execution activity if available
     authorized_public = False
@@ -276,7 +273,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
     final_path = coord_root / "final.json"
     em_metrics = pipeline_results.em_metrics
     calibration = pipeline_results.calibration
-    validation = pipeline_results.validation
+    validation = pipeline_results.memodel_validation
     validation_status = pipeline_results.validation_status
 
     # --- Collect file paths for helpers ---
@@ -370,9 +367,7 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
 
     # --- Collect ion channel model entities ---
     references = config.parameters_selection.ion_channel_model_references
-    ion_channel_models = [
-        cast("IonChannelModel", reference.entity(db_client=db_client)) for reference in references
-    ]
+    ion_channel_models = [reference.entity(db_client=db_client) for reference in references]
 
     # --- Register EModel via helper ---
     # Standalone HOC export is not produced; SONATA may still contain a HOC asset.
@@ -423,6 +418,17 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
 
     memodel_id = str(memodel_entity.id)
     generated_ids = [str(task_result.id), str(emodel_entity.id), memodel_id]
+
+    # --- EModel e-feature score validation (held-out protocols) ---
+    if pipeline_results.emodel_validation is not None:
+        generated_ids.extend(
+            register_validation_results(
+                client=db_client,
+                summary=pipeline_results.emodel_validation,
+                validated_entity_id=emodel_entity.id,
+                authorized_public=authorized_public,
+            )
+        )
 
     # --- MEModel calibration/validation results (computed pre-registration) ---
     if calibration is not None:

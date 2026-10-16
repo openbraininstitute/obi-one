@@ -41,7 +41,7 @@ dependencies = [
     "blueetl",
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.7",
-    "brainbuilder>=0.20.6",
+    "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
@@ -54,14 +54,14 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.6",
+    "obp-accounting-sdk>=0.6.8",
     "numpy",
     "scipy",
 ]
 
 [project.optional-dependencies]
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
-emodel = ["bluepyemodel>=1.0.47"]
+emodel = ["bluepyemodel>=1.0.50"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
@@ -83,7 +83,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.6",
+    "obp-accounting-sdk>=0.6.8",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -97,7 +97,8 @@ service = [
 all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
-bluerecording = ["bluerecording>=0.6.2"]
+# neurodamus 4.2.8 frees the memory of the cells built in each batch.
+bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.8"]
 
 [dependency-groups]
 dev = [

@@ -354,6 +354,27 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_activity_type=TaskActivityType.emodel_optimization__execution,
         requires_package="bluepyemodel",
     ),
+    TaskType.emodel_validation: TaskSpec(
+        task_ref=(f"{_EMODEL_BUILDING}.task3_emodel_validation.task", "EModelValidationTask"),
+        single_config_ref=(
+            f"{_EMODEL_BUILDING}.task3_emodel_validation.config",
+            "EModelValidationSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_EMODEL_BUILDING}.task3_emodel_validation.config",
+            "EModelValidationScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.optimized_emodel_analysis_validation__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.optimized_emodel_analysis_validation__config_generation
+        ),
+        single_task_config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        single_task_activity_type=(
+            TaskActivityType.optimized_emodel_analysis_validation__execution
+        ),
+        requires_package="bluepyemodel",
+    ),
 }
 
 

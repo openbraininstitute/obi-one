@@ -33,7 +33,7 @@ from obi_one.db_sdk.registration.circuit.resolve import (
     get_subject,
 )
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
+from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
 from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
 from obi_one.utils.io import extract_tar_gz
 

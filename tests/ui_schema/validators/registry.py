@@ -20,12 +20,14 @@ from .boolean_input import validate_boolean_input
 from .discrete_probabilities import validate_discrete_probabilities
 from .distance_function_input import validate_distance_function_input
 from .distance_function_input_nullable import validate_distance_function_input_nullable
+from .distribution_parameter_list import validate_distribution_parameter_list
 from .entity_property_dropdown import validate_entity_property_dropdown
 from .etype_selector import validate_etype_selector
 from .float_input import validate_float_input
 from .float_optional import validate_float_optional
 from .float_parameter_sweep import validate_float_param_sweep
 from .int_parameter_sweep import validate_int_param_sweep
+from .ion_channel_model_properties import validate_ion_channel_model_properties
 from .ion_channel_variable_modification_by_neuron import (
     validate_ion_channel_variable_modification_by_neuron,
 )
@@ -78,11 +80,13 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     UIElement.BOOLEAN_INPUT: validate_boolean_input,
     UIElement.DISTANCE_FUNCTION_INPUT: validate_distance_function_input,
     UIElement.DISTANCE_FUNCTION_INPUT_NULLABLE: validate_distance_function_input_nullable,
+    UIElement.DISTRIBUTION_PARAMETER_LIST: validate_distribution_parameter_list,
     UIElement.STOCHASTICITY: validate_stochasticity,
     UIElement.FLOAT_INPUT: validate_float_input,
     UIElement.FLOAT_PARAMETER_SWEEP: validate_float_param_sweep,
     UIElement.INT_PARAMETER_SWEEP: validate_int_param_sweep,
     UIElement.FLOAT_OPTIONAL: validate_float_optional,
+    UIElement.ION_CHANNEL_MODEL_PROPERTIES: validate_ion_channel_model_properties,
     UIElement.ENTITY_PROPERTY_DROPDOWN: validate_entity_property_dropdown,
     UIElement.REFERENCE: validate_reference,
     UIElement.NEURON_SET_COMBINATION: validate_neuron_set_combination,

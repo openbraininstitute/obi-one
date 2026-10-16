@@ -98,7 +98,7 @@ def to_bpem_distributions(
             if isinstance(distribution, CustomDistanceDependentDistribution)
             else type(STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS[name])
         )
-        converted[name] = schema.model_validate(_dump_bpem_payload(distribution))
+        converted[name] = schema.model_validate(distribution.to_bpem_payload())
     return converted
 
 
@@ -111,7 +111,7 @@ def to_bpem_custom_distributions(
     """
     return {
         name: BpemCustomDistanceDependentDistribution.model_validate(
-            _dump_bpem_payload(distribution),
+            distribution.to_bpem_payload(),
         )
         for name, distribution in distributions.items()
         if isinstance(distribution, CustomDistanceDependentDistribution)

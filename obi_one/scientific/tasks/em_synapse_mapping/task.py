@@ -302,7 +302,7 @@ class EMSynapseMappingTask(Task):
             db_client=db_client,
             circuit_path=circuit_config_path,
             resolved_neurons=resolved_neurons,
-            source_dataset=source_dataset,  # ty:ignore[invalid-argument-type]
+            source_dataset=source_dataset,
             em_dataset=em_dataset,
             all_notices=all_notices,
             total_internal=total_internal,

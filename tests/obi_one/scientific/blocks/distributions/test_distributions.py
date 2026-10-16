@@ -16,7 +16,6 @@ from obi_one.scientific.blocks.distributions.normal import NormalDistribution
 from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     CustomDistanceDependentDistribution,
-    DistanceDependentDistribution,
     ExponentialDistanceDependentDistribution,
     ExponentialNaDendDistanceDependentDistribution,
     LinearEPasApicDistanceDependentDistribution,
@@ -29,10 +28,23 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     check_distance_function,
+    function_parameter_names,
     validate_safe_distance_function,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationScanConfig,
+)
+
+STANDARD_DISTANCE_DEPENDENT_DISTRIBUTION_CLASSES = (
+    UniformDistanceDependentDistribution,
+    ExponentialDistanceDependentDistribution,
+    StepDistanceDependentDistribution,
+    ExponentialNaDendDistanceDependentDistribution,
+    LinearHDApicDistanceDependentDistribution,
+    SigmoidKADApicDistanceDependentDistribution,
+    LinearEPasApicDistanceDependentDistribution,
+    SigmoidKADDistanceDependentDistribution,
+    SigmoidKDBMApicDistanceDependentDistribution,
 )
 
 
@@ -132,7 +144,7 @@ class TestDistanceDependentDistributions:
     def test_custom_distribution_serializes_parameters(self):
         distribution = CustomDistanceDependentDistribution(
             function="math.exp({distance}*{constant})*{value}",
-            parameters=["constant"],
+            parameters=[{"name": "constant", "value": {"value": -0.01}}],
         )
 
         assert distribution.to_emc_dict(name="decay") == {
@@ -153,11 +165,44 @@ class TestDistanceDependentDistributions:
     def test_distribution_parameter_names_are_not_scan_dimensions(self):
         distribution = CustomDistanceDependentDistribution(
             function="math.exp({distance}*{constant})*{value}",
-            parameters=["constant"],
+            parameters=[{"name": "constant", "value": {"mode": "bounds", "bounds": [-0.1, 0.0]}}],
         )
 
-        assert distribution.parameters == ("constant",)
+        assert distribution.declared_parameter_names == ("constant",)
+        assert distribution.parameters[0].value.bounds == (-0.1, 0.0)
         assert distribution.multiple_value_parameters(category_name="distributions") == []
+
+    def test_custom_distribution_rejects_duplicate_and_reserved_names(self):
+        value = {"value": 1.0}
+        with pytest.raises(ValueError, match="more than once"):
+            CustomDistanceDependentDistribution(
+                function="{constant}*{value}*{distance}",
+                parameters=[{"name": "constant", "value": value}] * 2,
+            )
+        with pytest.raises(ValueError, match="reserved"):
+            CustomDistanceDependentDistribution(
+                function="{value}*{distance}",
+                parameters=[{"name": "distance", "value": value}],
+            )
+        with pytest.raises(ValueError, match="pattern"):
+            CustomDistanceDependentDistribution(
+                function="{value}*{distance}",
+                parameters=[{"name": "1bad", "value": value}],
+            )
+
+    def test_custom_distribution_parameter_requires_a_value(self):
+        with pytest.raises(ValueError, match="value"):
+            CustomDistanceDependentDistribution(
+                function="{constant}*{value}*{distance}",
+                parameters=[{"name": "constant"}],
+            )
+
+    def test_fixed_formula_distributions_expose_no_parameters(self):
+        for distribution in STANDARD_DISTANCE_DEPENDENT_DISTRIBUTION_CLASSES:
+            assert "parameters" not in distribution.model_fields
+            assert "soma_ref_location" in distribution.model_fields
+            with pytest.raises(ValueError, match="Extra inputs"):
+                distribution(parameters=["constant"])
 
     def test_custom_distribution_requires_value_and_distance(self):
         with pytest.raises(ValueError, match=r"\{value\} placeholder"):
@@ -170,12 +215,12 @@ class TestDistanceDependentDistributions:
         with pytest.raises(ValueError, match=r"\{constant\} placeholder"):
             CustomDistanceDependentDistribution(
                 function="math.exp({distance})*{value}",
-                parameters=["constant"],
+                parameters=[{"name": "constant", "value": {"value": 1.0}}],
             )
-
-    def test_distribution_parameters_require_a_function(self):
-        with pytest.raises(ValueError, match="must define a function"):
-            DistanceDependentDistribution(parameters=["constant"])
+        with pytest.raises(ValueError, match="undeclared placeholders"):
+            CustomDistanceDependentDistribution(
+                function="math.exp({distance}*{constant})*{value}",
+            )
 
     def test_standard_distributions_are_available_without_declaration(self):
         """The ten legacy distributions are selectable by name without being declared."""
@@ -227,7 +272,7 @@ class TestDistanceDependentDistributions:
 
         assert "{step_begin}" in distribution.function
         assert "{step_end}" in distribution.function
-        assert distribution.parameters is None
+        assert distribution.declared_parameter_names == ()
         assert distribution.to_emc_dict() == {
             "name": "step",
             "function": (
@@ -744,3 +789,16 @@ class TestPoissonDistribution:
         samples2 = dist.sample(n=3, rng=rng)
 
         assert samples1 == samples2
+
+
+def test_function_parameter_names_follow_the_function():
+    function = "{b} * {value} + {a} * {distance} * {b} * {step_begin}"
+    assert function_parameter_names(function) == ("b", "a")
+
+
+def test_custom_distribution_revalidates_an_existing_instance():
+    distribution = CustomDistanceDependentDistribution(
+        function="{constant}*{value}*{distance}",
+        parameters=[{"name": "constant", "value": {"value": 1.0}}],
+    )
+    assert CustomDistanceDependentDistribution.model_validate(distribution) == distribution

@@ -1,10 +1,9 @@
-import abc
 from enum import Enum
-from typing import ClassVar
+from uuid import UUID
 
-import entitysdk
+from entitysdk.client import Client as DBClient
 from entitysdk.models.entity import Entity, Identifiable
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 
 from obi_one.core.base import OBIBaseModel
 
@@ -14,51 +13,33 @@ class LoadAssetMethod(Enum):
     FILE = "file"
 
 
-class EntityFromID(OBIBaseModel, abc.ABC):
-    """Base class for entity references that resolve to full Entity objects (with assets)."""
-
-    entitysdk_class: ClassVar[type[Entity]] = None  # ty:ignore[invalid-assignment]
-    id_str: str = Field(description="ID of the entity in string format.")
-    _entity: Entity | None = PrivateAttr(default=None)
-
-    @classmethod
-    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Entity:
-        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)  # ty:ignore[invalid-argument-type]
-
-    def entity(self, db_client: entitysdk.client.Client) -> Entity:
-        if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
-        return self._entity
-
-    @property
-    def entitysdk_type(self) -> type[Entity]:
-        return self.__class__.entitysdk_class
-
-    def __str__(self) -> str:
-        """Returns a string representation."""
-        return f"{self.__class__.__name__}_{self.id_str}"
-
-
-class IdentifiableFromID(OBIBaseModel, abc.ABC):
+class IdentifiableFromID[TIdentifiable: Identifiable](OBIBaseModel):
     """Base class for references to Identifiable objects (controlled vocabularies like Species, BrainRegion, EType).
 
     These are not full Entity objects (no assets), but they are identifiable
     database records that can be fetched by ID.
     """  # ruff: ignore[line-too-long]
 
-    entitysdk_class: ClassVar[type[Identifiable]] = None  # ty:ignore[invalid-assignment]
     id_str: str = Field(description="ID of the identifiable in string format.")
-    _entity: Identifiable | None = PrivateAttr(default=None)
+    _entity: TIdentifiable | None = None
+    _entitysdk_type: type[TIdentifiable]
 
-    @classmethod
-    def fetch(cls, entity_id: str, db_client: entitysdk.client.Client) -> Identifiable:
-        return db_client.get_entity(entity_id=entity_id, entity_type=cls.entitysdk_class)  # ty:ignore[invalid-argument-type]
+    @property
+    def entitysdk_type(self) -> type[TIdentifiable]:
+        return self._entitysdk_type
 
-    def entity(self, db_client: entitysdk.client.Client) -> Identifiable:
+    def entity(self, db_client: DBClient) -> TIdentifiable:
         if self._entity is None:
-            self._entity = self.__class__.fetch(self.id_str, db_client=db_client)
+            self._entity = db_client.get_entity(
+                entity_id=UUID(self.id_str),
+                entity_type=self._entitysdk_type,
+            )
         return self._entity
 
     def __str__(self) -> str:
         """Returns a string representation."""
         return f"{self.__class__.__name__}_{self.id_str}"
+
+
+class EntityFromID[TEntity: Entity](IdentifiableFromID[TEntity]):
+    """Base class for entity references that resolve to full Entity objects (with assets)."""

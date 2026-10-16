@@ -54,6 +54,7 @@ class _BlockBluePyEModel(importlib.abc.MetaPathFinder):
 _MODULES_TO_EVICT = (
     "bluepyemodel",
     "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
+    "obi_one.scientific.tasks.emodel_building.task3_emodel_validation",
     "obi_one.scientific.mappings_and_registry.config_task_map",
     "app.endpoints.ion_channel_properties",
     "app.endpoints.scan_config",
@@ -189,3 +190,13 @@ def test_config_validation_omits_emodel_optimization_without_bluepyemodel():
 # emodel_optimization_without_bluepyemodel` above already cover the two files directly
 # responsible for the real bug (unconditional Task 2 imports in app/endpoints/), which is
 # what actually matters for `import app.application` to succeed without bluepyemodel.
+
+
+@pytest.mark.usefixtures("bluepyemodel_blocked")
+def test_unions_omit_emodel_validation_without_bluepyemodel():
+    scan_configs = _exec_fresh("obi_one.scientific.unions_and_references.scan_configs")
+    tasks = _exec_fresh("obi_one.scientific.unions_and_references.tasks")
+    assert "EModelValidationScanConfig" not in {
+        m.__name__ for m in scan_configs._SCAN_CONFIG_MEMBERS
+    }
+    assert "EModelValidationTask" not in {m.__name__ for m in tasks._TASK_MEMBERS}

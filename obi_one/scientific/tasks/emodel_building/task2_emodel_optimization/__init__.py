@@ -18,6 +18,7 @@ try:  # ruff: ignore[non-empty-init-module]
         MAX_DISTANCE_FUNCTION_LENGTH,
         CustomDistanceDependentDistribution,
         DistanceDependentDistribution,
+        DistributionParameter,
         ExponentialDistanceDependentDistribution,
         ExponentialNaDendDistanceDependentDistribution,
         LinearEPasApicDistanceDependentDistribution,
@@ -44,6 +45,7 @@ try:  # ruff: ignore[non-empty-init-module]
 except ImportError:
     CustomDistanceDependentDistribution: type | None = None
     DistanceDependentDistribution: type | None = None
+    DistributionParameter: type | None = None
     ExponentialDistanceDependentDistribution: type | None = None
     ExponentialNaDendDistanceDependentDistribution: type | None = None
     LinearEPasApicDistanceDependentDistribution: type | None = None
@@ -67,6 +69,7 @@ __all__ = [
     "MAX_DISTANCE_FUNCTION_LENGTH",
     "CustomDistanceDependentDistribution",
     "DistanceDependentDistribution",
+    "DistributionParameter",
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
