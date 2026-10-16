@@ -22,11 +22,7 @@ class BlockGroup(StrEnum):
 
 
 class MEModelBuildScanConfig(InfoScanConfig):
-    """Combine one morphology and one e-model into an ME-model, then calibrate and validate it.
-
-    The campaign name and description become the ME-model's name and description. Species,
-    strain and brain region come from the morphology.
-    """
+    """The campaign name and description become the ME-model's name and description."""
 
     name: ClassVar[str] = "ME-model Build"
     description: ClassVar[str] = (

@@ -6,7 +6,6 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from entitysdk.types import ValidationStatus
 
 from obi_one.scientific.library import memodel_calibration_validation as calibration_validation
 
@@ -149,22 +148,3 @@ class TestComputeCalibrationAndValidation:
                 threshold_current=0.0,
                 output_dir=tmp_path,
             )
-
-
-class TestValidationStatusFromResults:
-    def test_all_passed_is_done(self):
-        results = {"t1": {"name": "A", "passed": True}, "t2": {"name": "B", "passed": True}}
-        assert calibration_validation.validation_status_from_results(results) == (
-            ValidationStatus.done
-        )
-
-    def test_any_failure_stays_created(self):
-        results = {"t1": {"name": "A", "passed": True}, "t2": {"name": "B", "passed": False}}
-        assert calibration_validation.validation_status_from_results(results) == (
-            ValidationStatus.created
-        )
-
-    def test_empty_stays_created(self):
-        assert calibration_validation.validation_status_from_results({}) == (
-            ValidationStatus.created
-        )

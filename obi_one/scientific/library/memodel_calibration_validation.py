@@ -24,8 +24,6 @@ from collections.abc import Callable
 from multiprocessing import get_context
 from pathlib import Path
 
-from entitysdk.types import ValidationStatus
-
 L = logging.getLogger(__name__)
 
 DEFAULT_CELSIUS = 34.0
@@ -42,21 +40,6 @@ def json_default(obj: object) -> object:
     return str(obj)
 
 
-def validation_status_from_results(validation_dict: dict) -> ValidationStatus:
-    """Map a bluecellulab validation result dict to a MEModel ``ValidationStatus``.
-
-    ``done`` only when at least one test ran and every test passed; otherwise the
-    status stays ``created``. (A crash in calibration/validation is reported as
-    ``error`` by the caller.)
-    """
-    tests = [
-        value for value in validation_dict.values() if isinstance(value, dict) and "passed" in value
-    ]
-    if tests and all(bool(value["passed"]) for value in tests):
-        return ValidationStatus.done
-    return ValidationStatus.created
-
-
 def compute_calibration_and_validation(
     coord_root: Path,
     hoc_path: Path,
@@ -66,6 +49,7 @@ def compute_calibration_and_validation(
     holding_current: float,
     threshold_current: float,
     output_dir: Path,
+    n_processes: int | None = None,
 ) -> dict:
     """Compute MEModel calibration, then run bluecellulab validation on it.
 
@@ -90,6 +74,7 @@ def compute_calibration_and_validation(
         holding_current=calibration_dict["holding_current"],
         threshold_current=calibration_dict["rheobase"],
         output_dir=output_dir,
+        n_processes=n_processes,
     )
     return {"calibration": calibration_dict, "validation": validation_dict}
 

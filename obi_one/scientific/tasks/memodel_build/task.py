@@ -22,6 +22,8 @@ L = logging.getLogger(__name__)
 INITIAL_HOLDING_CURRENT = 0.0
 INITIAL_THRESHOLD_CURRENT = 0.1
 DOWNLOAD_CONCURRENCY = 8
+# Matches the 4 cores of the launch definition and the former Bluenaas validation job.
+VALIDATION_PROCESSES = 4
 VALIDATION_FIGURES_DIRNAME = "validation_figures"
 
 
@@ -45,17 +47,7 @@ def stage_memodel(
 
 
 class MEModelBuildTask(Task):
-    """Register an ME-model from a morphology and an e-model, then calibrate and validate it.
-
-    1. Register the ME-model (``validation_status=created``), its creator contribution and
-       classifications, and link it from the execution activity.
-    2. Stage its files and compile the mechanisms.
-    3. Calibrate (holding current, rheobase, input resistance) and run the bluecellulab
-       validations with the calibrated currents.
-    4. Register the calibration and validation results and set ``validation_status=done``.
-
-    A failure after step 1 leaves the ME-model with ``validation_status=error`` and re-raises.
-    """
+    """See docs/memodel-build.md. A failure after registration sets ``validation_status=error``."""
 
     name: ClassVar[str] = "ME-model Build"
     description: ClassVar[str] = (
@@ -96,6 +88,7 @@ class MEModelBuildTask(Task):
                 holding_current=INITIAL_HOLDING_CURRENT,
                 threshold_current=INITIAL_THRESHOLD_CURRENT,
                 output_dir=coord_root / VALIDATION_FIGURES_DIRNAME,
+                n_processes=VALIDATION_PROCESSES,
             )
             registration.register_calibration_and_validation(
                 db_client,

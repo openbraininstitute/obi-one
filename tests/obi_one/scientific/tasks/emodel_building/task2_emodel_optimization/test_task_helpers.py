@@ -1,8 +1,12 @@
 from pathlib import Path
 
 import pytest
+from entitysdk.types import ValidationStatus
 
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import locate_hoc
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
+    locate_hoc,
+    validation_status_from_results,
+)
 
 
 def _coord_root(tmp_path: Path) -> Path:
@@ -58,3 +62,16 @@ class TestLocateHoc:
         (sonata / "EM__emodel=test__seed=7.hoc").unlink()
         with pytest.raises(RuntimeError, match="Ambiguous HOC"):
             locate_hoc(coord_root, 1)
+
+
+class TestValidationStatusFromResults:
+    def test_all_passed_is_done(self):
+        results = {"t1": {"name": "A", "passed": True}, "t2": {"name": "B", "passed": True}}
+        assert validation_status_from_results(results) == (ValidationStatus.done)
+
+    def test_any_failure_stays_created(self):
+        results = {"t1": {"name": "A", "passed": True}, "t2": {"name": "B", "passed": False}}
+        assert validation_status_from_results(results) == (ValidationStatus.created)
+
+    def test_empty_stays_created(self):
+        assert validation_status_from_results({}) == (ValidationStatus.created)

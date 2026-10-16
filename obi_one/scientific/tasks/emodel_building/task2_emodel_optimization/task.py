@@ -240,6 +240,21 @@ def locate_hoc(coord_root: Path, seed: int) -> Path:
     return hoc_path
 
 
+def validation_status_from_results(validation_dict: dict) -> ValidationStatus:
+    """Map a bluecellulab validation result dict to a MEModel ``ValidationStatus``.
+
+    ``done`` only when at least one test ran and every test passed; otherwise the
+    status stays ``created``. (A crash in calibration/validation is reported as
+    ``error`` by the caller.)
+    """
+    tests = [
+        value for value in validation_dict.values() if isinstance(value, dict) and "passed" in value
+    ]
+    if tests and all(bool(value["passed"]) for value in tests):
+        return ValidationStatus.done
+    return ValidationStatus.created
+
+
 def run_optimization_pipeline(
     *,
     config: EModelOptimizationSingleConfig,
@@ -359,7 +374,7 @@ def run_optimization_pipeline(
         )
         calibration_dict = cv_results["calibration"]
         validation_dict = cv_results["validation"]
-        validation_status = calibration_validation.validation_status_from_results(validation_dict)
+        validation_status = validation_status_from_results(validation_dict)
     except Exception:  # ruff: ignore[blind-except]
         L.warning(
             "MEModel calibration/validation failed; results will be registered "
