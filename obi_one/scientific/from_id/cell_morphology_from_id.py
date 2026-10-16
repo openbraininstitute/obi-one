@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from entitysdk.client import Client as DBClient
 from entitysdk.exception import EntitySDKError
@@ -40,8 +40,8 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
     """Reference to a CellMorphology entity."""
 
     _entitysdk_type: type[CellMorphology] = CellMorphology
-    _neurom_morphology: Any = None
-    _morphio_morphology: Any = None
+    _neurom_morphology: "neurom.core.Morphology | None" = None
+    _morphio_morphology: "morphio.Morphology | None" = None
 
     def neurom_morphology(self, db_client: DBClient) -> "neurom.core.Morphology":
         """Load the morphology's SWC asset as a Neurom morphology."""
