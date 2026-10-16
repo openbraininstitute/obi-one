@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -26,6 +27,11 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 
 _SELECT = "obi_one.scientific.from_id.cell_morphology_from_id.select_asset_content"
 _MODULE = "obi_one.scientific.from_id.cell_morphology_from_id"
+_TEST_DATA = Path(__file__).resolve().parents[3] / "test_data"
+
+
+def _minimal_morphology_bytes(filename: str) -> bytes:
+    return (_TEST_DATA / filename).read_bytes()
 
 
 def _em_protocol():
@@ -54,32 +60,108 @@ def _activity(*, used):
     return SimpleNamespace(used=used)
 
 
-def test_morphio_morphology_fetches_h5_to_tempfile():
-    entity = SimpleNamespace(id="morphology-id", assets=[])
+def _morphology_client(*assets):
     client = Mock()
-    client.fetch_assets.return_value.one.return_value = Mock()
-    expected = object()
+    client.select_assets.return_value.all.return_value = list(assets)
+    return client
+
+
+@pytest.mark.parametrize(
+    ("content_type", "fixture_name", "expected_sections"),
+    [
+        (ContentType.application_swc, "minimal_morphology.swc", 1),
+        (ContentType.application_asc, "minimal_morphology.asc", 1),
+    ],
+)
+def test_morphio_morphology_instantiates_morphio_from_real_text_asset(
+    content_type, fixture_name, expected_sections
+):
+    entity = SimpleNamespace(id="morphology-id")
+    asset = SimpleNamespace(id=f"asset-{fixture_name}", content_type=content_type)
+    client = _morphology_client(asset)
+    client.fetch_content.return_value = _minimal_morphology_bytes(fixture_name)
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        morphology = reference.morphio_morphology(client)
+        cached = reference.morphio_morphology(client)
+
+    assert isinstance(morphology, morphio.Morphology)
+    assert morphology is cached
+    assert len(list(morphology.iter())) == expected_sections
+    client.fetch_content.assert_called_once()
+    assert client.fetch_content.call_args.kwargs["asset_or_id"] is asset
+    client.fetch_file.assert_not_called()
+
+
+def test_morphio_morphology_instantiates_morphio_from_real_h5_asset():
+    entity = SimpleNamespace(id="morphology-id")
+    asset = SimpleNamespace(id="asset-h5", content_type=ContentType.application_x_hdf5)
+    client = _morphology_client(asset)
+    h5_bytes = _minimal_morphology_bytes("minimal_morphology.h5")
+
+    def write_h5_file(**kwargs):
+        output_path = kwargs["output_path"]
+        output_path.write_bytes(h5_bytes)
+        return output_path
+
+    client.fetch_file.side_effect = write_h5_file
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        morphology = reference.morphio_morphology(client)
+
+    assert isinstance(morphology, morphio.Morphology)
+    assert len(list(morphology.iter())) == 1
+    client.fetch_file.assert_called_once()
+    assert client.fetch_file.call_args.kwargs["entity_id"] == entity.id
+    assert client.fetch_file.call_args.kwargs["asset_id"] == asset.id
+    client.fetch_content.assert_not_called()
+
+
+def test_morphio_morphology_prefers_asc_over_swc_and_h5():
+    entity = SimpleNamespace(id="morphology-id")
+    asc = SimpleNamespace(id="asc", content_type=ContentType.application_asc)
+    swc = SimpleNamespace(id="swc", content_type=ContentType.application_swc)
+    h5 = SimpleNamespace(id="h5", content_type=ContentType.application_x_hdf5)
+    client = _morphology_client(h5, swc, asc)
+    client.fetch_content.return_value = _minimal_morphology_bytes("minimal_morphology.asc")
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        morphology = reference.morphio_morphology(client)
+
+    client.fetch_content.assert_called_once()
+    assert client.fetch_content.call_args.kwargs["asset_or_id"] is asc
+    assert isinstance(morphology, morphio.Morphology)
+    assert len(list(morphology.iter())) == 1
+
+
+def test_morphio_morphology_raises_when_no_assets():
+    entity = SimpleNamespace(id="morphology-id")
+    client = _morphology_client()
     reference = CellMorphologyFromID(id_str="morphology-id")
 
     with (
         patch.object(CellMorphologyFromID, "entity", return_value=entity),
-        patch("morphio.Morphology", return_value=expected) as morphology_ctor,
+        pytest.raises(EntitySDKError, match="no ASC, SWC, or H5"),
     ):
-        morphology = reference.morphio_morphology(client)
-        cached = reference.morphio_morphology(client)
+        reference.morphio_morphology(client)
 
-    assert morphology is expected
-    assert cached is expected
-    client.fetch_assets.assert_called_once()
-    assert client.fetch_assets.call_args.args[0] is entity
-    assert client.fetch_assets.call_args.kwargs["selection"] == {
-        "content_type": ContentType.application_x_hdf5,
-        "label": AssetLabel.morphology,
-    }
-    morphology_ctor.assert_called_once()
-    (path_arg,) = morphology_ctor.call_args.args
-    assert str(path_arg).endswith(".h5")
-    assert morphology_ctor.call_args.kwargs["options"] == morphio.Option.nrn_order
+
+def test_morphio_morphology_raises_on_unknown_format():
+    entity = SimpleNamespace(id="morphology-id")
+    unknown_type = object()
+    asset = SimpleNamespace(id="asset-unknown", content_type=unknown_type)
+    client = _morphology_client(asset)
+    reference = CellMorphologyFromID(id_str="morphology-id")
+
+    with (
+        patch.object(CellMorphologyFromID, "entity", return_value=entity),
+        patch(f"{_MODULE}._MORPHOLOGY_ASSET_FORMATS", (unknown_type,)),
+        pytest.raises(EntitySDKError, match="Unknown format"),
+    ):
+        reference.morphio_morphology(client)
 
 
 def test_memodel_morphology_delegates_to_cell_morphology_entity():
