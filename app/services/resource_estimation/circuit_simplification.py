@@ -29,7 +29,9 @@ from obi_one.scientific.library.circuit_metrics import (
     CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
-from obi_one.scientific.mappings_and_registry.config_task_map import TASK_SPECS
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_task_type,
+)
 from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationSingleConfig
 
 # --- Calibration constants (PLACEHOLDERS - TODO: calibrate empirically) ---
@@ -139,7 +141,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=TASK_SPECS[task_definition.task_type].asset_label,
+        asset_label=get_task_spec_for_task_type(task_definition.task_type).asset_label,  # ty:ignore[invalid-argument-type]
     ).id
     if config_asset_id is None:
         msg = "Config asset must have an id"

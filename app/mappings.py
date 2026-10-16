@@ -378,9 +378,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.circuit_simplification,
         config_type=TaskConfigType.circuit_simplification__config,
         activity_type=TaskActivityType.circuit_simplification__execution,
-        code=_obi_one_code(
-            "circuit_simplification.txt", capabilities=Capabilities(private_packages=True)
-        ),
+        code=_obi_one_code("circuit_simplification.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,

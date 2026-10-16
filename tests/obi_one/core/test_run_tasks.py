@@ -259,10 +259,11 @@ def test_run_tasks_for_generated_scan_delegates(mock_run_configs):
     )
 
 
+@patch("pathlib.Path.mkdir")
 @patch("obi_one.core.run_tasks.run_task_for_single_config")
 @patch("obi_one.core.run_tasks.deserialize_obi_object_from_json_data")
 def test_run_task_for_single_config_asset_deserializes_and_runs(
-    mock_deserialize, mock_run_single, db_client, mock_single_config
+    mock_deserialize, mock_run_single, _mock_mkdir, db_client, mock_single_config
 ):
     mock_deserialize.return_value = mock_single_config
 
