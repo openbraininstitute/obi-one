@@ -92,6 +92,7 @@ numpy==2.4.6
 obi-auth==1.2.1
 obp-accounting-sdk==0.6.8
 packaging==26.3
+palettable==3.3.3
 pandas==2.3.3
 parso==0.8.7
 partd==1.4.2
