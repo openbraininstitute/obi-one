@@ -29,7 +29,7 @@ def register_memodel(
     *,
     authorized_public: bool,
 ) -> MEModel:
-    """Register the ME-model, its creator contribution and its m-type/e-type classifications.
+    """Register the ME-model alone, with ``validation_status=created``.
 
     ``entitysdk.registration.memodel.register_memodel`` is not used: it requires the holding
     and threshold currents, which are only known after calibration, and has no ``strain``.
@@ -54,6 +54,14 @@ def register_memodel(
         )
     )
     L.info("MEModel registered: %s", memodel.id)
+    return memodel
+
+
+def register_creator_and_classifications(
+    config: MEModelBuildSingleConfig, db_client: entitysdk.Client, memodel: MEModel
+) -> None:
+    morphology = config.initialize.morphology.entity(db_client=db_client)
+    emodel = config.initialize.emodel.entity(db_client=db_client)
 
     creator = db_client.search_entity(
         entity_type=Person, query={"sub_id": memodel.created_by.id}, limit=1
@@ -67,8 +75,6 @@ def register_memodel(
         register_mtype_classification(client=db_client, entity=memodel, mtype_class=mtype)
     for etype in emodel.etypes or []:
         register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
-
-    return memodel
 
 
 def register_calibration_and_validation(

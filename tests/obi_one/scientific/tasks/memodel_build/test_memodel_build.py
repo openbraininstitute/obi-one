@@ -90,6 +90,7 @@ def steps(monkeypatch, tmp_path):
     parent.stage_memodel.return_value = (tmp_path / "cell.hoc", tmp_path / "cell.asc")
     parent.compute.return_value = {"calibration": CALIBRATION, "validation": VALIDATION}
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
+    monkeypatch.setattr(registration, "register_creator_and_classifications", parent.register_links)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
     monkeypatch.setattr(task_module, "compute_calibration_and_validation", parent.compute)
     monkeypatch.setattr(
@@ -112,6 +113,7 @@ class TestExecute:
         assert [name for name, *_ in steps.mock_calls] == [
             "register_memodel",
             "update_execution_activity",
+            "register_links",
             "stage_memodel",
             "compute",
             "register_results",
@@ -142,7 +144,16 @@ class TestExecute:
         assert steps.register_memodel.call_args.kwargs["authorized_public"] is True
         assert steps.register_results.call_args.kwargs["authorized_public"] is True
 
-    @pytest.mark.parametrize("failing_step", ["stage_memodel", "compute", "register_results"])
+    @pytest.mark.parametrize(
+        "failing_step",
+        [
+            "update_execution_activity",
+            "register_links",
+            "stage_memodel",
+            "compute",
+            "register_results",
+        ],
+    )
     def test_failure_after_registration_sets_error_and_raises(self, tmp_path, steps, failing_step):
         getattr(steps, failing_step).side_effect = RuntimeError("NEURON crashed")
         db_client = _db_client()
@@ -154,6 +165,13 @@ class TestExecute:
         steps.set_validation_status.assert_called_once_with(
             db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.error
         )
+
+    def test_a_failed_error_status_keeps_the_original_exception(self, tmp_path, steps):
+        steps.compute.side_effect = RuntimeError("NEURON crashed")
+        steps.set_validation_status.side_effect = ConnectionError("502")
+
+        with pytest.raises(RuntimeError, match="NEURON crashed"):
+            _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
 
     def test_failed_registration_leaves_nothing_to_mark(self, tmp_path, steps):
         steps.register_memodel.side_effect = RuntimeError("entitycore down")
@@ -196,10 +214,8 @@ def entity_classes(monkeypatch):
 class TestRegistration:
     def test_register_memodel(self, tmp_path, inputs, entity_classes):
         db_client = Mock()
-        memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
-        creator, creator_role = object(), object()
-        db_client.register_entity.side_effect = [memodel, object()]
-        db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
+        memodel = SimpleNamespace(id=MEMODEL_ID)
+        db_client.register_entity.return_value = memodel
 
         result = registration.register_memodel(
             _task(tmp_path).config, db_client, authorized_public=True
@@ -217,6 +233,19 @@ class TestRegistration:
             validation_status=ValidationStatus.created,
             authorized_public=True,
         )
+        entity_classes.Contribution.assert_not_called()
+        entity_classes.register_mtype.assert_not_called()
+
+    def test_register_creator_and_classifications(self, tmp_path, inputs, entity_classes):
+        db_client = Mock()
+        memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
+        creator, creator_role = object(), object()
+        db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
+
+        registration.register_creator_and_classifications(
+            _task(tmp_path).config, db_client, memodel
+        )
+
         assert db_client.search_entity.call_args_list[0].kwargs["query"] == {"sub_id": "user-sub"}
         assert db_client.search_entity.call_args_list[1].kwargs["query"] == {
             "name": registration.CREATOR_ROLE_NAME
@@ -289,11 +318,13 @@ def test_stage_memodel_compiles_into_the_coordinate_root(tmp_path, monkeypatch):
     compile_mechanisms = Mock()
     monkeypatch.setattr(task_module, "download_memodel", download)
     monkeypatch.setattr(task_module, "compile_mechanisms", compile_mechanisms)
-    db_client, memodel = Mock(), Mock()
+    db_client = Mock()
 
-    staged = task_module.stage_memodel(db_client, memodel, tmp_path)
+    staged = task_module.stage_memodel(db_client, MEMODEL_ID, tmp_path)
 
     assert staged == (downloaded.hoc_path, downloaded.morphology_paths[0])
+    db_client.get_entity.assert_called_once_with(entity_id=MEMODEL_ID, entity_type=MEModel)
+    assert download.call_args.kwargs["memodel"] is db_client.get_entity.return_value
     assert download.call_args.kwargs["output_dir"] == tmp_path
     assert compile_mechanisms.call_args.kwargs["output_dir"] == tmp_path
     assert compile_mechanisms.call_args.kwargs["mechanisms_dirs"] == [downloaded.mechanisms_dir]

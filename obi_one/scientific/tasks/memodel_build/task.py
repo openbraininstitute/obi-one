@@ -5,7 +5,7 @@ from typing import ClassVar
 import entitysdk
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import MEModel
-from entitysdk.types import ValidationStatus
+from entitysdk.types import ID, ValidationStatus
 
 from obi_one.core.task import Task
 from obi_one.scientific.library.memodel_calibration_validation import (
@@ -28,13 +28,14 @@ VALIDATION_FIGURES_DIRNAME = "validation_figures"
 
 
 def stage_memodel(
-    db_client: entitysdk.Client, memodel: MEModel, coord_root: Path
+    db_client: entitysdk.Client, memodel_id: ID, coord_root: Path
 ) -> tuple[Path, Path]:
     """Download the ME-model's hoc, morphology and mechanisms and compile the mechanisms.
 
     Returns:
         The hoc path and the morphology path, preferring asc over swc over h5.
     """
+    memodel = db_client.get_entity(entity_id=memodel_id, entity_type=MEModel)
     downloaded = download_memodel(
         db_client, memodel=memodel, output_dir=coord_root, max_concurrent=DOWNLOAD_CONCURRENCY
     )
@@ -72,14 +73,15 @@ class MEModelBuildTask(Task):
         memodel = registration.register_memodel(
             self.config, db_client, authorized_public=authorized_public
         )
-        self._update_execution_activity(
-            db_client=db_client,
-            execution_activity=execution_activity,
-            generated=[str(memodel.id)],
-        )
 
         try:
-            hoc_path, morphology_path = stage_memodel(db_client, memodel, coord_root)
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=execution_activity,
+                generated=[str(memodel.id)],
+            )
+            registration.register_creator_and_classifications(self.config, db_client, memodel)
+            hoc_path, morphology_path = stage_memodel(db_client, memodel.id, coord_root)
             results = compute_calibration_and_validation(
                 coord_root,
                 hoc_path,
@@ -98,9 +100,12 @@ class MEModelBuildTask(Task):
                 authorized_public=authorized_public,
             )
         except Exception:
-            registration.set_validation_status(
-                db_client, memodel_id=memodel.id, validation_status=ValidationStatus.error
-            )
+            try:
+                registration.set_validation_status(
+                    db_client, memodel_id=memodel.id, validation_status=ValidationStatus.error
+                )
+            except Exception:  # ruff: ignore[blind-except]
+                L.exception("Could not set validation_status=error on MEModel %s", memodel.id)
             raise
 
         registration.set_validation_status(

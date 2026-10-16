@@ -20,7 +20,7 @@ Generation registers a `memodel_build__campaign` TaskConfig and one `memodel_bui
 
 The task:
 
-1. registers the `MEModel` with `validation_status=created`, a creator `Contribution` and its m-type and e-type classifications, and writes the ME-model to the activity's `generated` straight away, so it can be linked while the rest runs;
+1. registers the `MEModel` with `validation_status=created` and writes it to the activity's `generated` straight away, so it can be linked while the rest runs, then registers its creator `Contribution` and its m-type and e-type classifications;
 2. downloads the ME-model's hoc, morphology and mechanisms and compiles the mechanisms;
 3. calibrates it (holding current, rheobase and input resistance, starting from a holding current of 0 nA and a threshold current of 0.1 nA) and runs the bluecellulab validations with the calibrated currents;
 4. registers an `MEModelCalibrationResult` and one `ValidationResult` per validation, then sets `validation_status=done`.
