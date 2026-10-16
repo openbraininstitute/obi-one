@@ -18,6 +18,7 @@ nav:
   - Small Circuit Simulations: scircuit.md
   - Brian2 Point Neuron Simulations: brian2.md
   - Ion Channel Model Fitting: ion-channel-fitting.md
+  - Circuit Simplification: circuit-simplification.md
 
 # Plugins
 plugins:

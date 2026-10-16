@@ -48,6 +48,12 @@ _TASK_MEMBERS: tuple[type, ...] = (
 )
 if EModelOptimizationTask is not None:
     _TASK_MEMBERS = (*_TASK_MEMBERS, EModelOptimizationTask)
+if EModelOptimizationTask is not None:
+    from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.task import (
+        EModelValidationTask,
+    )
+
+    _TASK_MEMBERS = (*_TASK_MEMBERS, EModelValidationTask)
 
 TasksUnion = Annotated[
     reduce(or_, _TASK_MEMBERS),  # ty: ignore[invalid-type-form]

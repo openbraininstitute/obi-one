@@ -11,7 +11,7 @@ import bluepysnap as snap
 from obi_one.core.block import Block
 from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_metrics import (
+from obi_one.scientific.library.circuit_constants import (
     TYPES_OF_BIOPHYS_NODES,
     TYPES_OF_POINT_NODES,
     TYPES_OF_VIRTUAL_NODES,

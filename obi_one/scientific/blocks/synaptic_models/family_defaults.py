@@ -16,7 +16,7 @@ from obi_one.scientific.blocks.synaptic_models.base import (
     SynapseModelFamily,
     SynapticModelBase,
 )
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
 

@@ -21,12 +21,12 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     optimization_artifact_input_from_config,
 )
 
-from .test_parameter_selection import _model_entity, _scan_config_data
+from .test_parameter_selection import ETYPE_ID_STR, ICM_ID_STR, _model_entity, _scan_config_data
 
 
 def test_artifact_bundle_has_versioned_relative_paths_and_writes_json(tmp_path):
     config = EModelOptimizationScanConfig.model_validate(_scan_config_data())
-    normalized_models = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized_models = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
 
     artifacts = build_optimization_artifacts(
         optimization_artifact_input_from_config(
@@ -70,14 +70,16 @@ def test_registered_single_config_serializes_versioned_contract(tmp_path, monkey
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="ZERO_INDEX",
     )
-    grid_scan.execute(db_client=Mock())
+    db_client = Mock()
+    db_client.get_entity.return_value = Mock()
+    grid_scan.execute(db_client=db_client)
 
     coordinate = grid_scan.single_configs[0]
     serialized = json.loads(
         (coordinate.coordinate_output_root / "obi_one_coordinate.json").read_text()
     )
     assert serialized["contract_version"] == TASK2_CONFIG_CONTRACT_VERSION
-    assert serialized["initialize"]["etype"]["id_str"] == "etype"
+    assert serialized["initialize"]["etype"]["id_str"] == ETYPE_ID_STR
 
     assert register.call_count == 2
     campaign_call, single_call = register.call_args_list

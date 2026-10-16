@@ -9,10 +9,20 @@ neuron count and the links are all part of the contract.
 import entitysdk
 import pytest
 
-import obi_one as obi
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -34,8 +44,8 @@ CORENEURON = {"simulator": "CORENEURON"}
 
 
 def _lfp_recording(array_id):
-    return obi.ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
+    return ExtracellularElectrodeArrayRecordingBlock(
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
     )
 
 
@@ -93,13 +103,13 @@ class TestAssetUploads:
     def test_compartment_sets_are_uploaded_when_present(
         self, morphology_circuit, tmp_path, db_client
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
             },
         )
 
@@ -110,14 +120,14 @@ class TestAssetUploads:
     def test_spike_replay_files_are_uploaded(self, circuit, tmp_path, db_client):
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Source": source,
-                "Spikes": lambda: obi.PoissonSpikeStimulus(source_neuron_set=source.ref),
+                "Spikes": lambda: PoissonSpikeStimulus(source_neuron_set=source.ref),
             },
         )
 
@@ -135,17 +145,15 @@ class TestAssetUploads:
     def test_one_replay_upload_per_spike_stimulus(self, circuit, tmp_path, db_client):
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Source": source,
-                "Poisson": lambda: obi.PoissonSpikeStimulus(source_neuron_set=source.ref),
-                "Synchronous": lambda: obi.FullySynchronousSpikeStimulus(
-                    source_neuron_set=source.ref
-                ),
+                "Poisson": lambda: PoissonSpikeStimulus(source_neuron_set=source.ref),
+                "Synchronous": lambda: FullySynchronousSpikeStimulus(source_neuron_set=source.ref),
             },
         )
 
@@ -165,7 +173,7 @@ class TestNeuronCount:
     def test_the_simulation_target_size_is_recorded(self, circuit, tmp_path, db_client):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[0, 1, 2, 3]),
+            neuron_ids=NamedTuple(name="target", elements=[0, 1, 2, 3]),
         )
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Target": target}

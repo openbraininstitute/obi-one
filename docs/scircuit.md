@@ -79,7 +79,11 @@ Small circuits (≤20 neurons) are optimized for rapid testing and development, 
 A typical circuit simulation configuration includes:
 
 ```python
-from obi_one import CircuitSimulationSingleConfig, CircuitFromID, AllNeurons
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationSingleConfig,
+)
 
 config = CircuitSimulationSingleConfig(
     initialize=CircuitSimulationSingleConfig.Initialize(
@@ -193,6 +197,8 @@ Records the extracellular signal seen by each electrode of a recording array. On
 - **Neuron Set**: Neurons contributing to the signal
 - **Timestep**: Interval between recorded samples in ms
 
+`CreateExtracellularRecordingArrayTask` builds the circuit 50 cells per MPI process at a time and computes the weights 2,000 segments at a time, so its memory barely grows with the circuit or the array. The weights file holds 8 bytes per segment and electrode, and the task asks for disk to fit it, assuming 1,000 segments per cell, up to the 200 GB a task can have: about 23 million cells × electrodes, such as 10,000 cells with 2,300 electrodes. Its time limit allows 4 s per cell in each process: microcircuits need under 1 s, but nbS1-O1 (211,712 cells) needs about 3 s, as its morphologies are read from a 12.6 GB container over S3.
+
 The block emits a SONATA report of type `lfp` whose `electrodes_file` is named after the array, `<array id>.h5`, and generation links the array to the Simulation entity through its `recording_arrays`:
 
 ```json
@@ -229,7 +235,7 @@ The weight matrix's scaling factors are in V/nA, as the SONATA spec defines them
 ### Using GenerateSimulationTask
 
 ```python
-from obi_one import GenerateSimulationTask
+from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 
 task = GenerateSimulationTask(config=config)
 task.execute(db_client=db_client, entity_cache=False)

@@ -16,7 +16,7 @@ As a consequence:
 
 - The frontend hardcodes how to render this element from its `ui_element` alone; the backend does
   not describe the form via the schema.
-- Most nested fields (`global_parameters`, `base_parameters`, `distribution_parameters`, and
+- Most nested fields (`global_parameters`, `base_parameters`, and
   everything under them) carry **no `ui_element`** and no other schema-driven UI metadata (no
   `step`/`step_order`, `entity_query`, `singular_name`, etc.). The frontend already knows what
   each key maps to.
@@ -38,10 +38,16 @@ EModelOptimizationScanConfig
 │   │   ├── ion_channel_models: tuple[IonChannelModelFromID, ...]
 │   │   └── mechanism_regions: dict[SectionListName, tuple[MechanismRegionSelection, ...]]
 │   ├── global_parameters
-│   ├── base_parameters
-│   └── distribution_parameters
-└── distance_dependent_distributions: dict[str, CustomDistanceDependentDistribution]
+│   └── base_parameters
+└── distance_dependent_distributions: dict[str, DistanceDependentDistributionUnion]
+    ├── <standard>: function fixed, soma_ref_location editable, no parameters
+    └── CustomDistanceDependentDistribution
+        ├── function                                               # ui_element: distance_function_input
+        ├── soma_ref_location
+        └── parameters: tuple[DistributionParameter, ...]          # ui_element: distribution_parameter_list
 ```
+
+Distribution parameter values are declared on the custom distribution that uses them (see [distribution_parameter_list](../distribution_parameter_list/distribution_parameter_list.md)); there is no `distribution_parameters` field on `emodel_optimisation_parameters`. Configs that still send it are rejected (clean break). Standard distributions (`uniform`, `exp`, `step`, ...) have fixed formulas with no extra placeholders, so they have no `parameters` field.
 
 `emodel_optimisation_parameters` is a root ScanConfig field using its own registered `ui_element`
 (`UIElement.EMODEL_OPTIMISATION_PARAMETERS` in `obi_one/core/schema.py`), following the same
@@ -75,3 +81,4 @@ The self-validation performed by the Python models (not the UI schema) still app
 - Fixed and bounds values use `OptimizationValue`.
 - Parameter distributions must be declared by the external `distance_dependent_distributions`
   field or be a standard distribution.
+- Each custom distribution's `parameters` must exactly cover the extra placeholders of its `function`, and each entry must carry a fixed value or bounds.

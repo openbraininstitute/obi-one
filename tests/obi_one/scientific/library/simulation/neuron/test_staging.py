@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.simulation.neuron import staging as test_module
 from obi_one.scientific.library.simulation.neuron.schemas import (
@@ -38,6 +39,45 @@ def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set, **kwargs)
         lambda _sim_cfg: (node_sets, circuit_config),
     )
     return simulation_config
+
+
+def test_stage_circuit_raises_when_circuit_name_is_none(tmp_path, monkeypatch):
+    config_path = tmp_path / "circuit_config.json"
+    config_path.write_text("{}")
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.stage_circuit_entity",
+        lambda **_kwargs: config_path,
+    )
+    model = MagicMock()
+    model.name = None
+    model.id = "circuit-uuid"
+    with pytest.raises(OBIONEError, match="has no name"):
+        test_module.stage_circuit(client=MagicMock(), model=model, output_dir=tmp_path)
+
+
+def test_stage_circuit_returns_named_circuit(tmp_path, monkeypatch):
+    config_path = tmp_path / "circuit_config.json"
+    config_path.write_text("{}")
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.stage_circuit_entity",
+        lambda **_kwargs: config_path,
+    )
+    built: dict[str, str] = {}
+
+    def capture_circuit(*, name: str, path: str):
+        built["name"] = name
+        built["path"] = path
+        return MagicMock(name=name, path=path)
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.Circuit",
+        capture_circuit,
+    )
+    model = MagicMock()
+    model.name = "my-circuit"
+    model.id = "circuit-uuid"
+    test_module.stage_circuit(client=MagicMock(), model=model, output_dir=tmp_path)
+    assert built == {"name": "my-circuit", "path": str(config_path)}
 
 
 def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
@@ -109,10 +149,11 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
     expected = MagicMock()
     mock_build_circuit.return_value = expected
 
+    memodel_from_id = MEModelFromID(id_str="00000000-0000-0000-0000-000000000012")
     with patch.object(MEModelFromID, "entity", return_value=mock_memodel_entity):
         circuit = test_module.stage_memodel_as_circuit(
             client=mock_client,
-            circuit=MEModelFromID(id_str="memodel-id"),
+            circuit=memodel_from_id,
             output_dir=mock_output_dir,
         )
 

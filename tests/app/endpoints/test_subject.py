@@ -363,6 +363,15 @@ def test_find_duplicate_subject_name_no_normalized_match(mock_db_client):
     assert _find_duplicate_subject_name(mock_db_client, "Average Rat") is None
 
 
+def test_find_duplicate_subject_name_skips_results_with_none_name(mock_db_client):
+    match = _existing_subject(name="Average-Rat")
+    mock_db_client.search_entity.return_value = _search_result(
+        results=[_existing_subject(name=None), match]
+    )
+
+    assert _find_duplicate_subject_name(mock_db_client, "Average Rat") is match
+
+
 @pytest.mark.parametrize(
     ("name", "expected"),
     [

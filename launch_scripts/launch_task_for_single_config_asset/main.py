@@ -13,6 +13,7 @@ from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.core.run_tasks import run_task_type
 from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
+from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
 
@@ -119,7 +120,7 @@ def main() -> int:
             status=ActivityStatus.running,
         )
         run_task_type(
-            task_type=args.task_type,
+            task_type=TaskType(args.task_type),
             entity_type=config_entity_type,
             entity_id=args.config_entity_id,
             scan_output_root=args.scan_output_root,

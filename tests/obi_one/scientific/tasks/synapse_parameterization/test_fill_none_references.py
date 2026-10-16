@@ -1,9 +1,12 @@
 import json
 
-import obi_one as obi
 from obi_one.core.fill_none_references import fill_none_references_in_config
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
+    AllPairsSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.tasks.synapse_parameterization.config import (
@@ -127,12 +130,12 @@ def test_a_registered_default_carries_the_name_it_is_registered_under():
 def _notebook_shaped_config():
     """The shape the example notebook builds: one named distribution, the rest left unset."""
     config = SynapseParameterizationScanConfig.empty_config()
-    conductance = obi.GammaDistribution(shape=4.0, scale=0.25)
+    conductance = GammaDistribution(shape=4.0, scale=0.25)
     config.add(conductance, "Excitatory conductance distribution")
-    model = obi.ExcitatoryTsodyksMarkramSynapticModel(conductance_distribution=conductance.ref)
+    model = ExcitatoryTsodyksMarkramSynapticModel(conductance_distribution=conductance.ref)
     config.add(model, "Excitatory synaptic model")
     config.add(
-        obi.AllPairsSynapticModelAssigner(edge_population_name="edges", synaptic_model=model.ref),
+        AllPairsSynapticModelAssigner(edge_population_name="edges", synaptic_model=model.ref),
         name="all_pairs",
     )
     config.fill_block_references_and_names()

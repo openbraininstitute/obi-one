@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one==2026.10.8
+obi-one==2026.10.15
 # Pinned by ion_channel_fitting.override, not resolved:
 neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
 h5py==3.16.0
@@ -19,7 +19,7 @@ blueetl==0.13.4
 blueetl-core==0.2.5
 bluepyefe==2.3.63
 bluepysnap==3.0.7
-brainbuilder==0.20.8
+brainbuilder==0.20.9
 brian2==2.10.1
 cached-property==2.0.1
 cachetools==7.2.1
@@ -40,7 +40,7 @@ dask-mpi==2026.3.0
 deprecation==2.1.0
 distributed==2026.8.0
 efel==5.7.34
-entitysdk==0.19.30
+entitysdk==0.19.32
 executing==2.2.1
 find-libpython==0.5.1
 fonttools==4.66.1
@@ -87,7 +87,7 @@ neurom==4.0.6
 numexpr==2.14.2
 numpy==2.4.6
 obi-auth==1.2.1
-obp-accounting-sdk==0.6.7
+obp-accounting-sdk==0.6.8
 packaging==26.3
 palettable==3.3.3
 pandas==2.3.3

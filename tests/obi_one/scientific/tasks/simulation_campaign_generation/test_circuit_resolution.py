@@ -13,9 +13,16 @@ from uuid import UUID
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -70,7 +77,7 @@ class TestLocalCircuit:
         relative_path = os.path.relpath(MULTI_POPULATION_CIRCUIT_PATH, Path.cwd())
         config = build_config(
             CircuitSimulationSingleConfig,
-            circuit=obi.Circuit(name="relative", path=relative_path),
+            circuit=Circuit(name="relative", path=relative_path),
         )
 
         result = generate(config, tmp_path)
@@ -125,13 +132,13 @@ class TestCircuitFromID:
 
         monkeypatch.setattr(CircuitFromID, "stage_circuit", _stage_circuit)
 
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
                 "Locations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=locations.ref, amplitude=0.2, duration=50.0
                 ),
             },
@@ -182,7 +189,8 @@ class _ArrayDBClient(FakeDBClient):
                 method="get_entity", kwargs={"entity_id": entity_id, "entity_type": entity_type}
             )
         )
-        return SimpleNamespace(id=UUID(entity_id), circuit_id=UUID(self.array_circuit_id))
+        entity_uuid = entity_id if isinstance(entity_id, UUID) else UUID(entity_id)
+        return SimpleNamespace(id=entity_uuid, circuit_id=UUID(self.array_circuit_id))
 
 
 @pytest.mark.usefixtures("staging_recorder")
@@ -194,10 +202,8 @@ class TestRecordingArrayCircuit:
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
-                "LFP": obi.ExtracellularElectrodeArrayRecordingBlock(
-                    electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(
-                        id_str=ARRAY_ID
-                    )
+                "LFP": ExtracellularElectrodeArrayRecordingBlock(
+                    electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
                 )
             },
             initialize={"simulator": "CORENEURON"},

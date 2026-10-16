@@ -326,6 +326,22 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinition(
+        task_type=TaskType.emodel_validation,
+        config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        activity_type=TaskActivityType.optimized_emodel_analysis_validation__execution,
+        code=_obi_one_code("emodel_building.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
         activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,

@@ -27,6 +27,7 @@ class TaskType(StrEnum):
     em_synapse_mapping = auto()
     efeature_extraction = auto()
     emodel_optimization = auto()
+    emodel_validation = auto()
     extracellular_recording_weights_calculation = auto()
     ion_channel_fitting = auto()
     ion_channel_model_simulation_execution = auto()

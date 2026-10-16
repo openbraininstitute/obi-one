@@ -238,7 +238,7 @@ class EModelEFeatureExtractionTask(Task):
                 raise TypeError(msg)
             target_dir = ephys_data_root / recording.id_str
             path = recording.download_nwb_asset(dest_dir=target_dir, db_client=db_client)
-            ljp = recording.entity(db_client=db_client).ljp  # ty:ignore[unresolved-attribute]
+            ljp = recording.entity(db_client=db_client).ljp
             downloaded.append((path, ljp))
         return downloaded
 

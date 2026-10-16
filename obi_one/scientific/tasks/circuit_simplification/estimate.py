@@ -7,7 +7,7 @@ from uuid import UUID
 from entitysdk import models
 from entitysdk.client import Client
 
-from obi_one import deserialize_obi_object_from_json_data
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationSingleConfig

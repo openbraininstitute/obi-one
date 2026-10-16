@@ -3,8 +3,19 @@ from pathlib import Path
 
 from entitysdk import models
 
-import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.deprecated import (
+    PredefinedNeuronSet,
+    nbS1POmInputs,
+    nbS1VPMInputs,
+)
+from obi_one.scientific.blocks.recordings.soma import TimeWindowSomaVoltageRecording
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.scientific.blocks.neuron_sets.base import AbstractNeuronSet
+from obi_one.scientific.unions_and_references.neuron_sets import NeuronSetReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 # Key mapping in initialize section
 _INIT_KEY_MAPPING = {
@@ -49,7 +60,7 @@ def get_stimulus_timestamps(campaign_config_dict: dict) -> dict:
         key in campaign_config_dict["attrs"] for key in ["stim_delay", "stim_rate", "num_stims"]
     ):
         return {}
-    timestamps = obi.RegularTimestamps(
+    timestamps = RegularTimestamps(
         start_time=campaign_config_dict["attrs"]["stim_delay"],
         interval=1e3 / campaign_config_dict["attrs"]["stim_rate"],
         number_of_repetitions=campaign_config_dict["attrs"]["num_stims"],
@@ -89,11 +100,11 @@ def get_sim_seed(campaign_config_dict: dict, scan_params: dict) -> dict:
 
 def get_neuron_set_ref(
     neuron_set: str | AbstractNeuronSet, ref_name: str
-) -> (AbstractNeuronSet, obi.NeuronSetReference):
+) -> tuple[AbstractNeuronSet, NeuronSetReference]:
     """Returns a reference to a neuron set."""
     if isinstance(neuron_set, str):
-        neuron_set = obi.PredefinedNeuronSet(node_set=neuron_set)
-    ref = obi.NeuronSetReference(
+        neuron_set = PredefinedNeuronSet(node_set=neuron_set)
+    ref = NeuronSetReference(
         type="NeuronSetReference", block_dict_name="neuron_sets", block_name=ref_name
     )
     return neuron_set, ref
@@ -164,7 +175,7 @@ def get_soma_recordings(sim_config_dicts: list) -> (dict, dict):
             nset_name = f"{rec_name} recording neuron set"
             add_new_ref_to_map(name_key_map, nset_name, "neuron_sets")
             neuron_set, ref = get_neuron_set_ref(node_set, name_key_map[nset_name])
-            rec = obi.TimeWindowSomaVoltageRecording(
+            rec = TimeWindowSomaVoltageRecording(
                 neuron_set=ref,
                 dt=v["dt"],
                 start_time=v["start_time"],
@@ -177,10 +188,10 @@ def get_soma_recordings(sim_config_dicts: list) -> (dict, dict):
 
 def get_single_timestamp_ref(
     t: float, ref_name: str
-) -> (obi.SingleTimestamp, obi.TimestampsReference):
+) -> (SingleTimestamp, TimestampsReference):
     """Returns a reference to a single timestamp."""
-    ts = obi.SingleTimestamp(start_time=t)
-    ref = obi.TimestampsReference(
+    ts = SingleTimestamp(start_time=t)
+    ref = TimestampsReference(
         type="TimestampsReference", block_dict_name="timestamps", block_name=ref_name
     )
     return ts, ref
@@ -201,9 +212,9 @@ def get_spike_replays(sim_config_dicts: list, circuit_entity: models.Circuit) ->
             src_nset_name = v["source"]
             add_new_ref_to_map(name_key_map, src_nset_name, "neuron_sets")
             if "nbS1" in circuit_entity.name and "VPM" in v["source"].upper():
-                src, src_ref = get_neuron_set_ref(obi.nbS1VPMInputs(), name_key_map[src_nset_name])
+                src, src_ref = get_neuron_set_ref(nbS1VPMInputs(), name_key_map[src_nset_name])
             elif "nbS1" in circuit_entity.name and "POM" in v["source"].upper():
-                src, src_ref = get_neuron_set_ref(obi.nbS1POmInputs(), name_key_map[src_nset_name])
+                src, src_ref = get_neuron_set_ref(nbS1POmInputs(), name_key_map[src_nset_name])
             else:
                 msg = "Circuit or projection source not yet implemented!"
                 raise NotImplementedError(msg)
@@ -214,7 +225,7 @@ def get_spike_replays(sim_config_dicts: list, circuit_entity: models.Circuit) ->
             add_new_ref_to_map(name_key_map, ts_name, "timestamps")
             ts, ts_ref = get_single_timestamp_ref(v["delay"], name_key_map[ts_name])
 
-            replay = obi.scientific.blocks.stimulus.SpikeStimulus(
+            replay = SpikeStimulus(
                 source_neuron_set=src_ref, targeted_neuron_set=tgt_ref, timestamps=ts_ref
             )
             add_new_ref_to_map(name_key_map, k, "stimuli")
@@ -334,7 +345,7 @@ def generate_scan_config(
         "coordinate_directory_option": "ZERO_INDEX",
     }
     if validate_config:
-        obi.deserialize_obi_object_from_json_data(obi_one_scan)
+        deserialize_obi_object_from_json_data(obi_one_scan)
     if save_path:
         obi_one_scan_file = save_path / "obi_one_scan.json"
         with obi_one_scan_file.open("w") as f:
@@ -367,7 +378,7 @@ def generate_coordinate_configs(
             coordinate_idx=idx,
         )
         if validate_config:
-            obi.deserialize_obi_object_from_json_data(coord_cfg)
+            deserialize_obi_object_from_json_data(coord_cfg)
         if save_path:
             coords_path = save_path / str(idx)
             coords_path.mkdir(parents=True)

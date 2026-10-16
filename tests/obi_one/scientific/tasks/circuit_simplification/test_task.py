@@ -323,7 +323,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -381,7 +381,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -422,7 +422,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -474,7 +474,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -517,7 +517,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -555,7 +555,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -599,7 +599,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -654,7 +654,7 @@ class TestTaskExecution:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -721,7 +721,7 @@ class TestTaskExecution:
                 TrackingTempDir,
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -888,7 +888,7 @@ class TestMechanismBackendSelection:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -944,7 +944,7 @@ class TestMechanismBackendSelection:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
@@ -1030,7 +1030,7 @@ class TestSmokeCheckLoadability:
 
         with (
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.db_sdk.resolve_circuit",
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
                 return_value=(mock_circuit, mock_entity),
             ),
             patch(
