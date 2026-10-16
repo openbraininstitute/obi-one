@@ -56,9 +56,43 @@ def _dump_bpem_payload(block: Any) -> Any:
     return _strip_block_metadata(block.model_dump(mode="python"))
 
 
-def to_bpem_parameters_selection(selection: Any) -> ParametersSelection:
-    """Convert an obi-one parameter selection block to the bluepyemodel schema."""
-    return ParametersSelection.model_validate(_dump_bpem_payload(selection))
+def to_bpem_parameters_selection(
+    selection: Any,
+    distributions: Mapping[str, Any],
+) -> ParametersSelection:
+    """Convert an obi-one parameter selection block to the bluepyemodel schema.
+
+    Parameters reference a distribution by its ``distance_dependent_distributions`` key, but
+    ``to_bpem_distributions`` re-keys standard distributions to their ``default_name``. The
+    references are translated to the same names here so the compiler, which looks them up in
+    that re-keyed mapping, resolves them (e.g. a key ``'Exp 0'`` holding an exponential becomes
+    ``exp``).
+    """
+    resolver_names = {
+        key: bpem_distribution_name(key, distribution)
+        for key, distribution in distributions.items()
+    }
+    payload = _dump_bpem_payload(selection)
+    for field_name in ("base_parameters", "mechanism_regions"):
+        _retarget_distribution_references(payload.get(field_name), resolver_names)
+    return ParametersSelection.model_validate(payload)
+
+
+def _retarget_distribution_references(value: Any, resolver_names: Mapping[str, str]) -> None:
+    """Rewrite every ``distribution`` reference in a dumped selection subtree in place.
+
+    References that are not dictionary keys are already resolver names (e.g. a bare ``uniform``)
+    and are left unchanged.
+    """
+    if isinstance(value, Mapping):
+        reference = value.get("distribution")
+        if isinstance(reference, str) and reference in resolver_names:
+            value["distribution"] = resolver_names[reference]
+        for nested in value.values():
+            _retarget_distribution_references(nested, resolver_names)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _retarget_distribution_references(item, resolver_names)
 
 
 def bpem_distribution_name(key: str, distribution: Any) -> str:
@@ -121,7 +155,10 @@ def to_bpem_custom_distributions(
 def params_definition_input_from_config(config: Any) -> ParamsDefinitionInput:
     """Extract the local params-compiler inputs from an obi-one optimization config."""
     return ParamsDefinitionInput(
-        parameters_selection=to_bpem_parameters_selection(config.parameters_selection),
+        parameters_selection=to_bpem_parameters_selection(
+            config.parameters_selection,
+            config.distance_dependent_distributions,
+        ),
         distance_dependent_distributions=to_bpem_distributions(
             config.distance_dependent_distributions,
         ),
@@ -139,7 +176,10 @@ def optimization_artifact_input_from_config(
     return OptimizationArtifactInput(
         config_contract_version=config.contract_version,
         emodel=config.initialize.emodel,
-        parameters_selection=to_bpem_parameters_selection(config.parameters_selection),
+        parameters_selection=to_bpem_parameters_selection(
+            config.parameters_selection,
+            config.distance_dependent_distributions,
+        ),
         distance_dependent_distributions=to_bpem_distributions(
             config.distance_dependent_distributions,
         ),
