@@ -311,6 +311,7 @@ class BasicConnectivityPlotsTask(Task):
             ax_main.set_aspect("equal")
 
             # Add network legends
+            node_legend_axes = [ax_exc, ax_inh]
             try:
                 canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
                 axes_specs = [
@@ -320,8 +321,15 @@ class BasicConnectivityPlotsTask(Task):
             except ValueError:
                 axes_specs = [
                     (ax_, label, color_map_nodes[label])
-                    for ax_, label in zip([ax_exc, ax_inh], color_map_nodes.keys(), strict=False)
+                    for ax_, label in zip(node_legend_axes, color_map_nodes.keys(), strict=False)
                 ]
+
+            # Hide any node-legend axis without a spec (e.g. a single-class circuit leaves one
+            # unused), otherwise its empty frame renders where the second legend would be.
+            for ax_ in node_legend_axes:
+                if ax_ not in {spec[0] for spec in axes_specs}:
+                    ax_.set_axis_off()
+
             plot_network_legends(
                 fig=fig,
                 ax_edge=ax_edge,
