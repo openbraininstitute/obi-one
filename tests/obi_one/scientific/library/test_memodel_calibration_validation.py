@@ -1,4 +1,4 @@
-"""Tests for task2 MEModel calibration + validation helpers."""
+"""Tests for the MEModel calibration + validation helpers."""
 
 import json
 from pathlib import Path
@@ -8,9 +8,7 @@ import numpy as np
 import pytest
 from entitysdk.types import ValidationStatus
 
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    calibration_validation,
-)
+from obi_one.scientific.library import memodel_calibration_validation as calibration_validation
 
 
 class FakeProcess:
@@ -55,22 +53,6 @@ def _worker_no_output(*_args):
 
 def _fake_spawn(monkeypatch):
     monkeypatch.setattr(calibration_validation, "get_context", lambda _name: FakeContext())
-
-
-def _coord_root(tmp_path: Path) -> Path:
-    """Minimal coord_root: sonata hoc (+ decoy files), arch dir, staged SWC."""
-    sonata = tmp_path / "export_emodels_sonata"
-    sonata.mkdir(parents=True)
-    (sonata / "EM__emodel=test__seed=7.hoc").write_text("begintemplate T\nendtemplate T")
-    (sonata / "morph.swc").write_text("1 1 0 0 0 1 -1")
-    (sonata / "nodes.h5").write_bytes(b"h5")
-    morph_dir = tmp_path / "morphologies"
-    morph_dir.mkdir()
-    (morph_dir / "morphology.swc").write_text("1 1 0 0 0 1 -1")
-    arch = tmp_path / "arm64"
-    arch.mkdir()
-    (arch / "special").write_text("")
-    return tmp_path
 
 
 class TestRunWorkerInSubprocess:
@@ -126,45 +108,6 @@ class TestJsonDefault:
         assert calibration_validation.json_default(np.bool_(flag)) is True
         assert calibration_validation.json_default(np.array([1, 2])) == [1, 2]
         assert calibration_validation.json_default(tmp_path) == str(tmp_path)
-
-
-class TestLocateHoc:
-    def test_returns_seed_matched_hoc(self, tmp_path):
-        coord_root = _coord_root(tmp_path)
-        hoc = calibration_validation.locate_hoc(coord_root, 7)
-        assert hoc.name == "EM__emodel=test__seed=7.hoc"
-
-    def test_missing_hoc_raises(self, tmp_path):
-        coord_root = _coord_root(tmp_path)
-        (coord_root / "export_emodels_sonata" / "EM__emodel=test__seed=7.hoc").unlink()
-        with pytest.raises(FileNotFoundError, match=r"No \.hoc file"):
-            calibration_validation.locate_hoc(coord_root, 7)
-
-    def test_missing_mechanisms_raises(self, tmp_path):
-        coord_root = _coord_root(tmp_path)
-        (coord_root / "arm64" / "special").unlink()
-        with pytest.raises(FileNotFoundError, match="compiled mechanisms"):
-            calibration_validation.locate_hoc(coord_root, 7)
-
-    def test_seed_match_ignores_prefix_seed(self, tmp_path):
-        """seed=7 must not match a file named seed=70."""
-        coord_root = _coord_root(tmp_path)
-        sonata = coord_root / "export_emodels_sonata"
-        (sonata / "EM__emodel=test__seed=70.hoc").write_text("hoc")
-        hoc = calibration_validation.locate_hoc(coord_root, 7)
-        assert hoc.name == "EM__emodel=test__seed=7.hoc"
-
-    def test_ambiguous_hoc_raises(self, tmp_path):
-        coord_root = _coord_root(tmp_path)
-        sonata = coord_root / "export_emodels_sonata"
-        (sonata / "EM__emodel=test__seed=8.hoc").write_text("hoc")
-        hoc = calibration_validation.locate_hoc(coord_root, 7)
-        assert "seed=7" in hoc.name
-
-        (sonata / "EM__emodel=test__seed=9.hoc").write_text("hoc")
-        (sonata / "EM__emodel=test__seed=7.hoc").unlink()
-        with pytest.raises(RuntimeError, match="Ambiguous HOC"):
-            calibration_validation.locate_hoc(coord_root, 1)
 
 
 class TestComputeCalibrationAndValidation:

@@ -20,6 +20,7 @@ from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsTa
 from obi_one.scientific.tasks.folder_compression import FolderCompressionTask
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingTask
+from obi_one.scientific.tasks.memodel_build import MEModelBuildTask
 from obi_one.scientific.tasks.morphology_containerization import MorphologyContainerizationTask
 from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDecontainerizationTask
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTask
@@ -35,6 +36,7 @@ _TASK_MEMBERS: tuple[type, ...] = (
     EModelEFeatureExtractionTask,
     FolderCompressionTask,
     IonChannelFittingTask,
+    MEModelBuildTask,
     SkeletonizationTask,
     MorphologyContainerizationTask,
     MorphologyDecontainerizationTask,

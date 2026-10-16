@@ -231,6 +231,16 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_config_type=TaskConfigType.ion_channel_modeling__config,
         single_task_activity_type=TaskActivityType.ion_channel_modeling__execution,
     ),
+    TaskType.memodel_build: TaskSpec(
+        task_ref=(f"{_TASKS}.memodel_build.task", "MEModelBuildTask"),
+        single_config_ref=(f"{_TASKS}.memodel_build.config", "MEModelBuildSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.memodel_build.config", "MEModelBuildScanConfig"),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.memodel_build__campaign,
+        campaign_generation_task_activity_type=TaskActivityType.memodel_build__config_generation,
+        single_task_config_type=TaskConfigType.memodel_build__config,
+        single_task_activity_type=TaskActivityType.memodel_build__execution,
+    ),
     TaskType.ion_channel_model_simulation: TaskSpec(
         task_ref=_GENERATE_SIMULATION_TASK_REF,
         single_config_ref=(

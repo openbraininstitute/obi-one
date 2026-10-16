@@ -1,25 +1,24 @@
-"""MEModel calibration and bluecellulab validation helpers for Task 2.
+"""MEModel calibration and bluecellulab validation helpers.
 
 Both computations run in spawned subprocesses because they instantiate a
-``bluecellulab.Cell``: NEURON state accumulated by the optimisation run
-(globals such as ``celsius``/``v_init``, already-defined hoc templates) must not
-leak into the calibration/validation cell, and NEURON mechanism loading is
+``bluecellulab.Cell``: NEURON state accumulated by the caller (e.g. an optimisation
+run setting globals such as ``celsius``/``v_init``, already-defined hoc templates)
+must not leak into the calibration/validation cell, and NEURON mechanism loading is
 irreversible.
 
 bluecellulab resolves the compiled mechanism library lazily at first ``Cell``
 creation from ``<cwd>/<arch>`` (``x86_64``/``arm64``, auto-loaded by NEURON) or
 ``BLUECELLULAB_MOD_LIBRARY_PATH``. The workers therefore ``os.chdir(coord_root)``
-*before* importing bluecellulab, where ``emodel_building_utils.compile_mechanisms``
-has already produced the arch directory.
+*before* importing bluecellulab, where the caller has already compiled the
+mechanisms into the arch directory.
 
 Keep top-level imports light: spawned children re-import this module, so it must
-not import bluepyemodel, bluecellulab, or ``task.py`` at module level.
+not import bluepyemodel or bluecellulab at module level.
 """
 
 import json
 import logging
 import os
-import re
 import tempfile
 from collections.abc import Callable
 from multiprocessing import get_context
@@ -293,43 +292,3 @@ def run_validations_in_subprocess(
         ),
         "Validation",
     )
-
-
-def locate_hoc(coord_root: Path, seed: int) -> Path:
-    """Locate the exported HOC and verify compiled mechanisms exist.
-
-    The HOC comes from the SONATA export (``export_emodels_sonata``). With
-    ``only_best=False`` several candidates may exist; prefer a filename
-    containing ``seed=<seed>``. The morphology and mechanisms are pipeline
-    inputs — the caller passes the morphology path in, and this function only
-    verifies the compiled arch dir (``arm64``/``x86_64``) exists.
-    """
-    sonata_dir = coord_root / "export_emodels_sonata"
-    hoc_candidates = sorted(sonata_dir.rglob("*.hoc")) if sonata_dir.exists() else []
-    if not hoc_candidates:
-        msg = f"No .hoc file found under {sonata_dir}; SONATA export missing."
-        raise FileNotFoundError(msg)
-    if len(hoc_candidates) > 1:
-        seeded = [p for p in hoc_candidates if re.search(rf"seed={seed}(?!\d)", p.stem)]
-        if len(seeded) == 1:
-            hoc_candidates = seeded
-        else:
-            msg = (
-                f"Ambiguous HOC candidates under {sonata_dir}: "
-                f"{[p.name for p in hoc_candidates]} (seed={seed})."
-            )
-            raise RuntimeError(msg)
-    hoc_path = hoc_candidates[0]
-
-    for arch in ("x86_64", "arm64"):
-        if (coord_root / arch / "special").exists():
-            break
-    else:
-        msg = (
-            f"No compiled mechanisms (arm64|x86_64/special) under {coord_root}; "
-            "run compile_mechanisms first."
-        )
-        raise FileNotFoundError(msg)
-
-    L.info("Calibration/validation HOC: %s", hoc_path)
-    return hoc_path

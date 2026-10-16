@@ -54,6 +54,7 @@ CLUSTER_TASK_TYPES = [
 MANAGED_INSTANCES_TASK_TYPES = {
     TaskType.ion_channel_fitting,
     TaskType.ion_channel_model_simulation_execution,
+    TaskType.memodel_build,
     TaskType.single_neuron_simulation_execution,
     TaskType.single_neuron_synaptome_simulation_execution,
 }
