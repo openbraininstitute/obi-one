@@ -1857,7 +1857,8 @@ def test_distribution_dictionary_accepts_standard_entries_keyed_by_fixed_name():
             }
         )
     )
-    # Standard entries are forwarded under their fixed name; custom ones under their key.
+    # Every entry keeps its dictionary key, except standards BluePyEModel references by their
+    # fixed name: step (runtime placeholders) and uniform (the "no distribution" default).
     bpem = params_definition_input_from_config(config).distance_dependent_distributions
     assert set(bpem) == {"uniform", "step", "decay"}
 
@@ -1878,18 +1879,34 @@ def test_standard_distribution_settings_reach_bluepyemodel():
         )
     )
     bpem = params_definition_input_from_config(config).distance_dependent_distributions
-    assert bpem["exp"].soma_ref_location == pytest.approx(0.0)
+    # Exp keeps its dictionary key; step normalizes to its canonical runtime name.
+    assert bpem["Exp 1"].soma_ref_location == pytest.approx(0.0)
     assert bpem["step"].soma_ref_location == pytest.approx(0.25)
     assert bpem["step"].to_emc_dict()["name"] == "step"
 
 
-def test_distribution_dictionary_rejects_duplicate_names():
-    with pytest.raises(ValueError, match=r"declared more than once: \['exp'\]"):
+def test_distribution_dictionary_allows_same_type_under_distinct_keys():
+    # Two exponentials under distinct keys are distinct distributions: each keeps its key.
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "a": {"type": "ExponentialDistanceDependentDistribution"},
+                "b": {"type": "ExponentialDistanceDependentDistribution"},
+            }
+        )
+    )
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert {"a", "b"} <= set(bpem)
+
+
+def test_distribution_dictionary_rejects_duplicate_runtime_names():
+    # Runtime-name standards (step) normalize to their canonical name, so two of them collide.
+    with pytest.raises(ValueError, match=r"declared more than once: \['step'\]"):
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 distance_dependent_distributions={
-                    "a": {"type": "ExponentialDistanceDependentDistribution"},
-                    "b": {"type": "ExponentialDistanceDependentDistribution"},
+                    "s1": {"type": "StepDistanceDependentDistribution"},
+                    "s2": {"type": "StepDistanceDependentDistribution"},
                 }
             )
         )

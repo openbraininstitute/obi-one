@@ -52,14 +52,12 @@ def _used_distribution_names(
     selection: ParametersSelection,
     distributions: Mapping[str, DistanceDependentDistributionUnion],
 ) -> set[str]:
-    """Collect the resolver names of distributions referenced by parameters.
+    """Collect the names of distributions referenced by parameters, as the resolver sees them.
 
-    Parameters reference a distribution by its ``distance_dependent_distributions`` key. That
-    key is translated to the name the BluePyEModel resolver expects via
-    :func:`bpem_distribution_name`: custom distributions resolve to the key, standard ones to
-    their ``default_name`` (e.g. a key ``'Exp 0'`` holding an exponential resolves to ``exp``).
-    References that are not keys are already resolver names (e.g. a bare ``uniform``) and pass
-    through unchanged.
+    Parameters reference a distribution by its ``distance_dependent_distributions`` key, which
+    is also the resolver name for every distribution except runtime-name standards (``step``);
+    those are translated to their canonical name via :func:`bpem_distribution_name`. References
+    that are not keys (e.g. a bare ``uniform``) pass through unchanged.
     """
 
     def resolver_name(reference: str) -> str:

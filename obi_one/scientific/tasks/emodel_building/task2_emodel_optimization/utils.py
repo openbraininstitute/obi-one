@@ -24,10 +24,6 @@ from bluepyemodel.preprocessing.schemas import (
     ParamsDefinitionInput,
 )
 
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
-    CustomDistanceDependentDistribution,
-)
-
 if TYPE_CHECKING:
     from bluepyemodel.preprocessing.morphology_preflight import MorphologyCapabilities
 
@@ -62,27 +58,28 @@ def to_bpem_parameters_selection(
 ) -> ParametersSelection:
     """Convert an obi-one parameter selection block to the bluepyemodel schema.
 
-    Parameters reference a distribution by its ``distance_dependent_distributions`` key, but
-    ``to_bpem_distributions`` re-keys standard distributions to their ``default_name``. The
-    references are translated to the same names here so the compiler, which looks them up in
-    that re-keyed mapping, resolves them (e.g. a key ``'Exp 0'`` holding an exponential becomes
-    ``exp``).
+    Parameters reference a distribution by its ``distance_dependent_distributions`` key. Those
+    references are translated to the name the compiler looks up via :func:`bpem_distribution_name`:
+    identical to the key for every distribution except runtime-name standards (``step``), which
+    use their canonical name.
     """
     resolver_names = {
         key: bpem_distribution_name(key, distribution)
         for key, distribution in distributions.items()
+        if bpem_distribution_name(key, distribution) != key
     }
     payload = _dump_bpem_payload(selection)
-    for field_name in ("base_parameters", "mechanism_regions"):
-        _retarget_distribution_references(payload.get(field_name), resolver_names)
+    if resolver_names:
+        for field_name in ("base_parameters", "mechanism_regions"):
+            _retarget_distribution_references(payload.get(field_name), resolver_names)
     return ParametersSelection.model_validate(payload)
 
 
 def _retarget_distribution_references(value: Any, resolver_names: Mapping[str, str]) -> None:
-    """Rewrite every ``distribution`` reference in a dumped selection subtree in place.
+    """Rewrite ``distribution`` references in a dumped selection subtree in place.
 
-    References that are not dictionary keys are already resolver names (e.g. a bare ``uniform``)
-    and are left unchanged.
+    Only keys present in ``resolver_names`` are rewritten; every other reference already matches
+    the name the compiler uses and is left unchanged.
     """
     if isinstance(value, Mapping):
         reference = value.get("distribution")
@@ -98,13 +95,13 @@ def _retarget_distribution_references(value: Any, resolver_names: Mapping[str, s
 def bpem_distribution_name(key: str, distribution: Any) -> str:
     """Name parameters use to reference a declared distribution.
 
-    Custom distributions are referenced by their dictionary key. Standard distributions use
-    their class-intrinsic ``default_name`` (e.g. ``step``, which BluePyEModel special-cases at
-    runtime), whatever key the user gave them.
+    The dictionary key is the distribution's identity, except for distributions BluePyEModel
+    resolves by their canonical name at runtime (``requires_runtime_name``, currently ``step``),
+    which use their class-intrinsic ``default_name`` whatever key the user gave them.
     """
-    if isinstance(distribution, CustomDistanceDependentDistribution):
-        return key
-    return type(distribution).default_name
+    if distribution.requires_runtime_name:
+        return type(distribution).default_name
+    return key
 
 
 def to_bpem_distributions(
@@ -112,10 +109,11 @@ def to_bpem_distributions(
 ) -> dict[str, DistanceDependentDistribution]:
     """Convert the distribution declarations for the BluePyEModel params compiler.
 
-    Results are keyed by :func:`bpem_distribution_name`, so a standard entry overrides the
-    built-in catalogue entry of the same name (carrying e.g. its ``soma_ref_location``).
-    Standard entries are validated as their BluePyEModel class, which keeps ``step``'s
-    runtime placeholders valid.
+    Results are keyed by :func:`bpem_distribution_name`. Runtime-name distributions (``step``)
+    use their canonical name and are validated as their BluePyEModel class so the runtime
+    placeholders stay valid. Every other distribution (custom formulas and self-contained
+    standards such as ``exp``) keeps its dictionary key and is validated as the generic schema,
+    carrying its own function.
 
     Raises:
         ValueError: If two declarations resolve to the same distribution name.
@@ -128,9 +126,9 @@ def to_bpem_distributions(
     converted: dict[str, DistanceDependentDistribution] = {}
     for name, distribution in zip(names, distributions.values(), strict=True):
         schema = (
-            DistanceDependentDistribution
-            if isinstance(distribution, CustomDistanceDependentDistribution)
-            else type(STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS[name])
+            type(STANDARD_DISTANCE_DEPENDENT_DISTRIBUTIONS[name])
+            if distribution.requires_runtime_name
+            else DistanceDependentDistribution
         )
         converted[name] = schema.model_validate(distribution.to_bpem_payload())
     return converted
@@ -139,16 +137,19 @@ def to_bpem_distributions(
 def to_bpem_custom_distributions(
     distributions: Mapping[str, Any],
 ) -> dict[str, BpemCustomDistanceDependentDistribution]:
-    """Convert the custom entries of a distribution dictionary to bluepyemodel schemas.
+    """Convert the resolver-visible entries of a distribution dictionary to bluepyemodel schemas.
 
-    Standard entries are skipped: BluePyEModel resolves them from its built-in catalogue.
+    Keyed by :func:`bpem_distribution_name`. Runtime-name distributions (``step``) are skipped:
+    BluePyEModel resolves them from its built-in catalogue by canonical name. Every other
+    distribution (custom formulas and self-contained standards such as ``exp``) is exposed here
+    under its dictionary key, so the resolver finds it by the same name the parameters reference.
     """
     return {
-        name: BpemCustomDistanceDependentDistribution.model_validate(
-            distribution.to_bpem_payload(),
+        bpem_distribution_name(key, distribution): (
+            BpemCustomDistanceDependentDistribution.model_validate(distribution.to_bpem_payload())
         )
-        for name, distribution in distributions.items()
-        if isinstance(distribution, CustomDistanceDependentDistribution)
+        for key, distribution in distributions.items()
+        if not distribution.requires_runtime_name
     }
 
 
