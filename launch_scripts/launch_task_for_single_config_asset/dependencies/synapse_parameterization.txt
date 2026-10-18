@@ -10,7 +10,7 @@ asttokens==3.0.2
 attrs==26.1.0
 bigrandomgraphs==0.1.1
 blosc2==4.14.1
-bluecellulab==2.6.106
+bluecellulab==2.6.108
 blueetl==0.13.4
 blueetl-core==0.2.5
 bluepyefe==2.3.63

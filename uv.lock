@@ -218,7 +218,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.106"
+version = "2.6.108"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -237,9 +237,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/9e/f2d68a4c06caf96faafff14ffd9bfe50403d1916989938ad627637e53df8/bluecellulab-2.6.106.tar.gz", hash = "sha256:8f46f481839be548266564136327eb90b11d69f9920391323869d86b6e3509b2", size = 572282, upload-time = "2026-09-30T09:06:02.174Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/63/7800a355df91c0e06fba78831204e4172e4f38a4b3f34d820d1753bd7650/bluecellulab-2.6.108.tar.gz", hash = "sha256:3e2ea3a62f7f42ead966bc234dedb068a6d7ca6f629c0533eb7bd3f643f9e93c", size = 588645, upload-time = "2026-10-15T11:58:50.878Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/c7/89c19e37fe93a29b5eb7eb7a5a22b43f3a1272a738ca8c1cabab292ef2c2/bluecellulab-2.6.106-py3-none-any.whl", hash = "sha256:e1ee69857008a13f6aeaf090a58d409e59e432fb95d6213c32d1c8d01ce533c3", size = 192493, upload-time = "2026-09-30T09:06:00.972Z" },
+    { url = "https://files.pythonhosted.org/packages/52/10/3e10e8335dc244cf13417ea0beadf6466e01974c959b42c3cbd3cc1d29e9/bluecellulab-2.6.108-py3-none-any.whl", hash = "sha256:ef717e84b745471ab136c04983335ff026fc7938eb558a161d27843539b8d76e", size = 207545, upload-time = "2026-10-15T11:58:49.136Z" },
 ]
 
 [[package]]
@@ -2411,7 +2411,7 @@ dependencies = [
     { name = "pylmesh" },
     { name = "python-multipart" },
     { name = "scipy" },
-    { name = "sonata-simplify" },
+    { name = "sonata-simplify", extra = ["simulation"] },
 ]
 
 [package.optional-dependencies]
@@ -2492,7 +2492,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.104" },
+    { name = "bluecellulab", specifier = ">=2.6.108" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
@@ -2534,7 +2534,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
-    { name = "sonata-simplify", extras = ["reduction"], specifier = ">=0.2.4", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
+    { name = "sonata-simplify", extras = ["simulation"], specifier = ">=0.2.4", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3448,6 +3448,16 @@ dependencies = [
 sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.4/sonata_simplify-0.2.4.tar.gz", hash = "sha512:6172c581e3e06bc9a4533fe258cd7de90dc3bd2881d3c971fcfaf48a4d79efd27f9d1b75ee94e5b358b789c9739e08b37b8b2d2d364459551004f145437c764f", size = 2541973, upload-time = "2026-10-15T19:58:28.21Z" }
 wheels = [
     { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.4/sonata_simplify-0.2.4-py3-none-any.whl", hash = "sha512:c2a4090c7481382799aeeed6102ba4fca68b7e0b97fee76a336c3a6d809f1fbaa3a1d5ae297f58a36c4f4bf754865b671dd24d2497fa1c8e0e850e5b4c2d0aba", size = 309715, upload-time = "2026-10-15T19:58:27.834Z" },
+]
+
+[package.optional-dependencies]
+simulation = [
+    { name = "bluecellulab" },
+    { name = "bluepysnap" },
+    { name = "efel" },
+    { name = "libsonata" },
+    { name = "matplotlib" },
+    { name = "neuron" },
 ]
 
 [[package]]

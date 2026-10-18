@@ -37,7 +37,7 @@ dependencies = [
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
-    "bluecellulab>=2.6.104",
+    "bluecellulab>=2.6.108",
     "blueetl",
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.7",
@@ -57,7 +57,7 @@ dependencies = [
     "obp-accounting-sdk>=0.6.8",
     "numpy",
     "scipy",
-    "sonata-simplify[reduction]>=0.2.4",
+    "sonata-simplify[simulation]>=0.2.4",
 ]
 
 [project.optional-dependencies]
