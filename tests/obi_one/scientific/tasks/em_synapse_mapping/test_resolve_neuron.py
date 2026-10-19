@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -15,6 +16,7 @@ from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
     ResolvedEMDataset,
     ResolvedNeuron,
     place_morphologies_and_mechanisms,
+    replace_hoc_template_name,
     resolve_list_neurons,
     write_morphology_with_offset,
 )
@@ -29,6 +31,17 @@ _EXAMPLE_MORPHOLOGY = (
     / "morphologies"
     / "L5_TPC:A_MusMusculus_PrimarySomatosensory_C060114A5"
     / "C060114A5.swc"
+)
+
+# Example .hoc emodel template shipped with the repo, used for the template-rename test.
+_EXAMPLE_HOC = (
+    Path(__file__).parents[5]
+    / "examples"
+    / "data"
+    / "single_neuron_circuits"
+    / "SingleNeuronCircuit__top_nodes_dim6__IDX0"
+    / "emodels_hoc"
+    / "cADpyr_L6BPC.hoc"
 )
 
 
@@ -162,7 +175,8 @@ class TestPlaceMorphologiesAndMechanisms:
             hoc_path=tmp_path / "model.hoc",
         )
         (tmp_path / "mechs").mkdir()
-        (tmp_path / "model.hoc").touch()
+        # Copy a real .hoc file so the template-name extraction/rename step succeeds.
+        shutil.copy(_EXAMPLE_HOC, tmp_path / "model.hoc")
 
         with (
             patch(f"{_MODULE}.load_morphology_with_spines", return_value=_spiny_morph()),
@@ -248,7 +262,8 @@ class TestResolveListNeurons:
             hoc_path=tmp_path / "model.hoc",
         )
         (tmp_path / "mechs").mkdir()
-        (tmp_path / "model.hoc").touch()
+        # Copy a real .hoc file so the template-name extraction/rename step succeeds.
+        shutil.copy(_EXAMPLE_HOC, tmp_path / "model.hoc")
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
@@ -423,3 +438,36 @@ class TestWriteMorphologyWithOffset:
             np.testing.assert_allclose(
                 res_sec.points, orig_sec.points + offset, rtol=1e-4, atol=1e-3
             )
+
+
+class TestReplaceHocTemplateName:
+    def test_replaces_template_name(self, tmp_path):
+        """Rename the template in a real .hoc file and verify the round trip.
+
+        The original template name must be returned, and the output file must use the
+        replacement name in both the ``begintemplate``/``endtemplate`` statements while
+        no longer referencing the old name as a template identifier.
+        """
+        assert _EXAMPLE_HOC.exists(), f"Missing test .hoc file: {_EXAMPLE_HOC}"
+
+        new_name = "replacement_test"
+        out_path = tmp_path / "renamed.hoc"
+
+        old_name = replace_hoc_template_name(
+            hoc_file_in=_EXAMPLE_HOC,
+            hoc_file_out=out_path,
+            new_name=new_name,
+        )
+
+        # The previous template name is returned.
+        assert old_name == "cADpyr_L6BPC"
+
+        # The input file is left untouched.
+        assert f"begintemplate {old_name}" in _EXAMPLE_HOC.read_text(encoding="UTF-8")
+
+        # The replacement succeeded in the output file.
+        output = out_path.read_text(encoding="UTF-8")
+        assert f"begintemplate {new_name}" in output
+        assert f"endtemplate {new_name}" in output
+        assert f"begintemplate {old_name}" not in output
+        assert f"endtemplate {old_name}" not in output
