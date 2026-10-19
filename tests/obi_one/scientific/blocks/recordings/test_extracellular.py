@@ -5,12 +5,23 @@ from uuid import UUID
 import libsonata
 import pytest
 
-import obi_one as obi
 from obi_one.core.schema import SchemaKey
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationScanConfig,
 )
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
@@ -25,8 +36,8 @@ class _ClientThatMustNotBeUsed:
 
 
 def _recording(name="LFPRecording", dt=0.1):
-    recording = obi.ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
+    recording = ExtracellularElectrodeArrayRecordingBlock(
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
         dt=dt,
     )
     recording.set_block_name(name)
@@ -44,6 +55,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
                 "cells": "AllBiophysical",
                 "type": "lfp",
                 "sections": "all",
+                "unit": "V",
                 "dt": 0.1,
                 "start_time": 0.0,
                 "end_time": 100.0,
@@ -87,11 +99,28 @@ class TestExtracellularElectrodeArrayRecordingBlock:
         assert report.type == libsonata.SimulationConfig.Report.Type.lfp
         assert report.electrodes_file == str(tmp_path / f"{ARRAY_ID}.h5")
 
+    def test_the_signal_is_labelled_in_volts(self, tmp_path):
+        """The weights are in V/nA (SONATA spec); libsonata would otherwise default the unit to mV.
+
+        neurodamus passes the report's unit to the writer, which labels the output file with it.
+        """
+        reports = _recording().config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)
+        sonata_config = {
+            "version": 1,
+            "network": "circuit_config.json",
+            "run": {"tstop": 100.0, "dt": 0.025, "random_seed": 1},
+            "reports": reports,
+        }
+
+        parsed = libsonata.SimulationConfig(json.dumps(sonata_config), str(tmp_path))
+
+        assert parsed.report("LFPRecording").unit == "V"
+
 
 class TestCircuitUsability:
     def test_is_offered_only_where_the_circuit_allows_extracellular_recordings(self):
         """The frontend greys the block out when the circuit's usability flag is false."""
-        schema = obi.ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
+        schema = ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
         usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
 
         assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
@@ -101,17 +130,17 @@ class TestCircuitUsability:
 
 class TestCircuitRecordingUnion:
     def test_extracellular_recording_offered_by_circuit_simulations(self):
-        scan_config = obi.CircuitSimulationScanConfig.empty_config()
+        scan_config = CircuitSimulationScanConfig.empty_config()
         scan_config.add(_recording(), name="LFPRecording")
 
         assert isinstance(
             scan_config.recordings["LFPRecording"],
-            obi.ExtracellularElectrodeArrayRecordingBlock,
+            ExtracellularElectrodeArrayRecordingBlock,
         )
 
     def test_extracellular_recording_rejected_by_single_cell_simulations(self):
         """MEModel simulations have no circuit-wide weight matrix, so cannot record LFP."""
-        scan_config = obi.MEModelSimulationScanConfig.empty_config()
+        scan_config = MEModelSimulationScanConfig.empty_config()
 
         # Not in the block mapping, because it is not part of that config's recordings union.
         with pytest.raises(KeyError, match="ExtracellularElectrodeArrayRecordingBlock"):

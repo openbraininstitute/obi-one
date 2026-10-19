@@ -9,14 +9,17 @@ from uuid import uuid4
 import matplotlib.pyplot as plt
 import pytest
 
-import obi_one as obi
 import obi_one.scientific.tasks.create_recording_array.create_recording_array as test_module
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
+    LinearExtracellularLocations,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron.schemas import NeurodamusMechanismBuild
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayTask,
 )
 from obi_one.types import SimulationBackend
+from obi_one.utils.benchmark import BenchmarkTracker
 
 from tests.utils import CIRCUIT_DIR
 
@@ -29,6 +32,13 @@ _PLACED = {
     "rotation_x": 15.0,
     "rotation_z": 30.0,
 }
+
+
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
+def _reset_tracker():
+    BenchmarkTracker.reset()
+    yield
+    BenchmarkTracker.reset()
 
 
 @pytest.fixture
@@ -60,14 +70,14 @@ def _make_task(tmp_path, *, circuit_path=_CIRCUIT_PATH):
     config.initialize.circuit = Mock()
     config.initialize.calculation_method = "PointSource"
     config.electrode_locations = {
-        "probe": obi.LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
+        "probe": LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
     }
     return CreateExtracellularRecordingArrayTask.model_construct(config=config), circuit_path
 
 
 def _resolved_circuit(circuit_path):
     circuit = Circuit(name="tiny", path=str(circuit_path))
-    return circuit, SimpleNamespace(id=uuid4())
+    return circuit, SimpleNamespace(id=uuid4(), number_neurons=291)
 
 
 def test_write_electrode_json_writes_correct_format(tmp_path):
@@ -110,7 +120,7 @@ def test_write_electrode_json_multiple_blocks(tmp_path):
 def test_plot_electrode_array_saves_plot(tmp_path):
     sonata_circuit = Circuit(name="tiny", path=str(_CIRCUIT_PATH)).sonata_circuit
     electrode_locations = {
-        "Lin": obi.LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
+        "Lin": LinearExtracellularLocations(n_electrodes=2, spacing=20.0, **_PLACED),
     }
     image_path = tmp_path / "plots" / "electrode_array.png"
     mock_figure = MagicMock()
@@ -158,7 +168,7 @@ def test_execute_compiles_mechanisms_when_mod_dir_exists(tmp_path, mock_db_clien
             return_value=None,
         ),
         patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
-        patch(f"{_MODULE}.db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}.circuit_db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
         patch(f"{_MODULE}._plot_electrode_array"),
         patch(f"{_MODULE}.compile_mechanisms", return_value=mechanism_build) as mock_compile,
         patch(f"{_MODULE}._write_electrode_json", return_value=electrode_json),
@@ -175,6 +185,70 @@ def test_execute_compiles_mechanisms_when_mod_dir_exists(tmp_path, mock_db_clien
     assert mock_db_client.upload_file.call_count == 2
 
 
+@pytest.mark.parametrize(("job_cpus", "expected"), [("8", 8), (None, 4)])
+def test_execute_runs_an_mpi_process_per_job_cpu(
+    tmp_path, mock_db_client, monkeypatch, job_cpus, expected
+):
+    """One process per CPU in JOB_CPUS; without it, the 4 that 291 cells would be given."""
+    if job_cpus is None:
+        monkeypatch.delenv("JOB_CPUS", raising=False)
+    else:
+        monkeypatch.setenv("JOB_CPUS", job_cpus)
+    task, circuit_path = _make_task(tmp_path)
+    circuit, circuit_entity = _resolved_circuit(circuit_path)
+
+    with (
+        patch.object(
+            CreateExtracellularRecordingArrayTask,
+            "_get_execution_activity",
+            return_value=None,
+        ),
+        patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
+        patch(f"{_MODULE}.circuit_db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}._plot_electrode_array"),
+        patch(f"{_MODULE}.compile_mechanisms", return_value=_mechanism_build(tmp_path)),
+        patch(f"{_MODULE}._write_electrode_json", return_value=tmp_path / "coord" / "e.json"),
+        patch(
+            f"{_MODULE}.run_bluerecording_write_weights",
+            return_value=tmp_path / "coord" / "weights.h5",
+        ) as mock_bluerecording,
+    ):
+        task.execute(db_client=mock_db_client)
+
+    assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == expected
+
+
+def test_execute_benchmarks_each_phase(tmp_path, mock_db_client):
+    task, circuit_path = _make_task(tmp_path)
+    circuit, circuit_entity = _resolved_circuit(circuit_path)
+
+    with (
+        patch.object(
+            CreateExtracellularRecordingArrayTask,
+            "_get_execution_activity",
+            return_value=None,
+        ),
+        patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
+        patch(f"{_MODULE}.circuit_db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}._plot_electrode_array"),
+        patch(f"{_MODULE}.compile_mechanisms", return_value=_mechanism_build(tmp_path)),
+        patch(f"{_MODULE}._write_electrode_json", return_value=tmp_path / "coord" / "e.json"),
+        patch(
+            f"{_MODULE}.run_bluerecording_write_weights",
+            return_value=tmp_path / "coord" / "weights.h5",
+        ),
+    ):
+        task.execute(db_client=mock_db_client)
+
+    results = json.loads((tmp_path / "coord__BENCHMARK__" / "benchmark_results.json").read_text())
+    assert set(results["benchmarks"]) == {
+        "resolve_circuit",
+        "compile_mechanisms",
+        "write_weights",
+        "upload_weights",
+    }
+
+
 def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path, mock_db_client):
     circuit_config_path = tmp_path / "circuit" / "circuit_config.json"
     circuit_config_path.parent.mkdir()
@@ -188,7 +262,7 @@ def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path,
         path=str(circuit_config_path),
         sonata_circuit=MagicMock(),
     )
-    circuit_entity = SimpleNamespace(id=uuid4())
+    circuit_entity = SimpleNamespace(id=uuid4(), number_neurons=10)
     mechanism_build = _mechanism_build(tmp_path)
 
     mock_pop_props = MagicMock()
@@ -204,7 +278,7 @@ def test_execute_compiles_from_config_mechanisms_dir_without_local_mod(tmp_path,
             return_value=None,
         ),
         patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
-        patch(f"{_MODULE}.db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}.circuit_db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
         patch(f"{_MODULE}.libsonata.CircuitConfig.from_file", return_value=mock_circuit_config),
         patch(f"{_MODULE}._plot_electrode_array"),
         patch(f"{_MODULE}.compile_mechanisms", return_value=mechanism_build) as mock_compile,
@@ -244,7 +318,7 @@ def test_execute_uses_neocortex_fallback_without_mods(tmp_path, mock_db_client):
         path=str(circuit_config_path),
         sonata_circuit=MagicMock(),
     )
-    circuit_entity = SimpleNamespace(id=uuid4())
+    circuit_entity = SimpleNamespace(id=uuid4(), number_neurons=10)
     electrode_json = tmp_path / "coord" / "electrodes.json"
     weights_path = tmp_path / "coord" / "weights.h5"
 
@@ -255,7 +329,7 @@ def test_execute_uses_neocortex_fallback_without_mods(tmp_path, mock_db_client):
             return_value=None,
         ),
         patch.object(CreateExtracellularRecordingArrayTask, "_update_execution_activity"),
-        patch(f"{_MODULE}.db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
+        patch(f"{_MODULE}.circuit_db_sdk.resolve_circuit", return_value=(circuit, circuit_entity)),
         patch(f"{_MODULE}._plot_electrode_array"),
         patch(f"{_MODULE}.compile_mechanisms") as mock_compile,
         patch(f"{_MODULE}._write_electrode_json", return_value=electrode_json),

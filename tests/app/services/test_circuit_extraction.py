@@ -12,12 +12,11 @@ from app.mappings import TASK_DEFINITIONS
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import TaskLaunchSubmit, TaskType
 from app.services.resource_estimation import circuit_extraction as test_module
+from obi_one.scientific.library.circuit_constants import EdgePopulationType, NodePopulationType
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsEdgePopulation,
     CircuitMetricsNodePopulation,
     CircuitMetricsOutput,
-    EdgePopulationType,
-    NodePopulationType,
 )
 
 
@@ -42,6 +41,37 @@ def test_get_required_cpu_memory_combo(mem_required, expected):
     assert test_module.get_required_cpu_memory_combo(mem_required) == expected
 
 
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        (1, 2, (2, 4)),
+        (5, 4, (4, 8)),
+        (10, 4, (4, 16)),
+        (59, 16, (16, 64)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_min_cpus(mem_required, min_cpus, expected):
+    assert test_module.get_required_cpu_memory_combo(mem_required, min_cpus=min_cpus) == expected
+
+
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        # 4 CPUs: 5 + 4 * 0.5 = 7 GB
+        (5, 4, (4, 8)),
+        # 4 CPUs: 29.2 + 2 = 31.2 GB is over their 30 GB, and 8 CPUs need 29.2 + 4 = 33.2 GB
+        (29.2, 4, (8, 48)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_memory_per_cpu(mem_required, min_cpus, expected):
+    assert (
+        test_module.get_required_cpu_memory_combo(
+            mem_required, min_cpus=min_cpus, mem_gb_per_cpu=0.5
+        )
+        == expected
+    )
+
+
 def test_get_required_cpu_memory_combo_too_large():
     with pytest.raises(ValueError, match="No CPU/memory combination found"):
         test_module.get_required_cpu_memory_combo(200)
@@ -49,18 +79,20 @@ def test_get_required_cpu_memory_combo_too_large():
 
 def test_get_required_extra_storage_space_default():
     # Under 20 GB -> no extra storage needed
-    assert test_module._get_required_extra_storage_space(10.0) is None
+    assert test_module.get_required_extra_storage_space(10.0) is None
 
 
 def test_get_required_extra_storage_space_extra():
     # Between 20 and 200 GB -> allocate extra storage (ceiling)
-    assert test_module._get_required_extra_storage_space(25.0) == 25
-    assert test_module._get_required_extra_storage_space(25.3) == 26
+    assert test_module.get_required_extra_storage_space(25.0) == 25
+    assert test_module.get_required_extra_storage_space(25.3) == 26
+    # A numpy integer would compare equal but fail the launch's JSON serialization
+    assert type(test_module.get_required_extra_storage_space(25.3)) is int
 
 
 def test_get_required_extra_storage_space_too_large():
     with pytest.raises(ValueError, match="Not enough disk space"):
-        test_module._get_required_extra_storage_space(250.0)
+        test_module.get_required_extra_storage_space(250.0)
 
 
 def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
@@ -148,8 +180,8 @@ def _run_estimate_task_resources(
             return_value=fake_config,
         ),
         patch(
-            "app.services.resource_estimation.circuit_extraction.task_registry.get_task_type_config_asset_label",
-            return_value="circuit_extraction_config",
+            "app.services.resource_estimation.circuit_extraction.get_task_spec_for_task_type",
+            return_value=SimpleNamespace(asset_label="circuit_extraction_config"),
         ),
         patch(
             "app.services.resource_estimation.circuit_extraction.db_sdk.get_entity_asset_by_label"
@@ -279,7 +311,7 @@ def test_estimate_task_resources_with_accounting_parameters_reduces_disk(db_clie
     metrics = _make_circuit_metrics(100_000, 0, 500_000_000, 0)
 
     result_without = _run_estimate_task_resources(db_client, metrics, do_virtual=False)
-    assert result_without.ephemeral_storage == 94
+    assert result_without.model_dump(mode="json")["ephemeral_storage"] == 94
 
     accounting_params = AccountingParameters(
         count=10_000,
@@ -304,7 +336,7 @@ def test_estimate_task_resources_with_accounting_parameters_full_extraction(db_c
     result = _run_estimate_task_resources(
         db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
     )
-    assert result.ephemeral_storage == 94
+    assert result.model_dump(mode="json")["ephemeral_storage"] == 94
 
 
 def test_estimate_task_resources_with_accounting_parameters_disk_limit(db_client):

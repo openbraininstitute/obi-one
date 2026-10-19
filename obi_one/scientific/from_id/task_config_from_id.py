@@ -1,21 +1,17 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import TaskConfig
-from entitysdk.models.entity import Entity
 from entitysdk.types import AssetLabel
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.db_sdk.db_sdk import fetch_asset_by_label
 
 
-class TaskConfigFromID(EntityFromID):
+class TaskConfigFromID(EntityFromID[TaskConfig]):
     """Wrapper for downloading assets from a TaskConfig entity."""
 
-    entitysdk_class: ClassVar[type[Entity]] = TaskConfig
-    _entity: TaskConfig | None = PrivateAttr(default=None)
+    _entitysdk_type: type[TaskConfig] = TaskConfig
 
     def download_asset_by_label(
         self,

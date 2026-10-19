@@ -827,6 +827,84 @@ def test_connection_override_weight_scales_circuit_weights(tmp_path):
     npt.assert_allclose(weights[~from_0], 250)
 
 
+def _replay_input(path, delay):
+    return {
+        "input_type": "spikes",
+        "module": "synapse_replay",
+        "delay": delay,
+        "duration": 400.0,
+        "spike_file": str(path),
+        "node_set": "All",
+    }
+
+
+def test_connection_override_reaches_spike_replay(tmp_path):
+    timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1])
+    path = test_module._write_spikes(
+        tmp_path / "spikes.h5",
+        population_name="drosophila",
+        timestamps=timestamps,
+        node_ids=np.array([0] * len(timestamps)),
+    )
+    reconnect = 1.5
+    config = {
+        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {
+            # replayed while 0 is disconnected...
+            "early": _replay_input(path, delay=0.0),
+            # ...and again once it is reconnected
+            "late": _replay_input(path, delay=1.9),
+        },
+        "connection_overrides": [
+            {"name": "Cut", "source": "0", "target": "All", "delay": 0.0, "weight": 0.0},
+            {"name": "Restore", "source": "0", "target": "All", "delay": reconnect, "weight": 1.0},
+        ],
+    }
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
+    spikes = dict(spike_monitor.spike_trains().items())
+
+    assert len(spikes[0]) == 0
+    # The early replay never reaches 1 & 2, so the late one finds them exactly as
+    # `test_spike_replay` does when its only replay is delayed by 1.9
+    npt.assert_allclose(spikes[1], np.array([1.9 + 0.3 + 0.9]) * brian2.units.msecond)
+    assert spikes[1] == spikes[2]
+
+
+def test_connection_override_changes_only_the_replayed_edges_it_selects(tmp_path):
+    path = test_module._write_spikes(
+        tmp_path / "spikes.h5",
+        population_name="drosophila",
+        timestamps=np.array([1.0]),
+        node_ids=np.array([0]),
+    )
+    # `sugar` is 0 and 1, so of the replayed edges 0 -> 1 and 0 -> 2 only 0 -> 1 is selected
+    sugar = {"source": "sugar", "target": "sugar"}
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "inputs": {"replay": _replay_input(path, delay=0.0)},
+        "connection_overrides": [
+            {"name": "Halve", **sugar, "delay": 0.0, "weight": 0.5},
+            # scales the circuit's weights again, rather than the already halved ones
+            {"name": "HalveAgain", **sugar, "delay": 1.0, "weight": 0.5},
+            {"name": "Slow", **sugar, "delay": 0.0, "synapse_delay_override": 2.0},
+        ],
+    }
+    (replay,) = _run_simulation(tmp_path, config)[1].replay_synapses
+
+    targets = np.asarray(replay.synapses.j[:])
+    weights = np.asarray(replay.synapses.w[:] / brian2.units.mV)
+    delays = np.asarray(replay.synapses.delay[:] / brian2.units.ms)
+    npt.assert_allclose(weights[targets == 1], 125)
+    npt.assert_allclose(weights[targets == 2], 250)
+    npt.assert_allclose(delays[targets == 1], 2.0)
+    npt.assert_allclose(delays[targets == 2], 0.0)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

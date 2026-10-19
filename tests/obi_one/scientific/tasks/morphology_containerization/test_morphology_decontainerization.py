@@ -1,6 +1,11 @@
 from pathlib import Path
 
-import obi_one as obi
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.morphology_decontainerization import (
+    MorphologyDecontainerizationScanConfig,
+)
 
 from tests.utils import CIRCUIT_DIR
 
@@ -8,31 +13,31 @@ from tests.utils import CIRCUIT_DIR
 def test_morphology_decontainerization(tmp_path):
     # Set up morphology decontainerization
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        Circuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
 
-    decontainerization_init = obi.MorphologyDecontainerizationScanConfig.Initialize(
+    decontainerization_init = MorphologyDecontainerizationScanConfig.Initialize(
         circuit=circuit_list, output_format=["swc", "asc", "h5"]
     )
-    morphology_decontainerization_scan_config = obi.MorphologyDecontainerizationScanConfig(
+    morphology_decontainerization_scan_config = MorphologyDecontainerizationScanConfig(
         initialize=decontainerization_init
     )
 
     # Run decontainerization
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=morphology_decontainerization_scan_config,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="VALUE",
     )
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     # Check that output circuits with individual morphologies have been created and are accessible
     instances = grid_scan.single_configs
@@ -42,7 +47,7 @@ def test_morphology_decontainerization(tmp_path):
         fmt = instance.initialize.output_format
         out_path = tmp_path / grid_scan.output_root / cname / fmt
         # Check output circuit
-        circuit = obi.Circuit(name=cname, path=str(out_path / "circuit_config.json"))
+        circuit = Circuit(name=cname, path=str(out_path / "circuit_config.json"))
         nodes = circuit.sonata_circuit.nodes[circuit.default_population_name]
         # Check morph dir
         morph_dir = Path(nodes.morph.get_morphology_dir(extension=fmt))

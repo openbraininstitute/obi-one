@@ -6,6 +6,7 @@ class SchemaKey(StrEnum):
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
     DEFAULT_BLOCK_REFERENCE_LABEL = "default_block_reference_label"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
+    DEFAULT_NAME = "default_name"
     DESCRIPTION_BY_KEY = "description_by_key"
     EFEL_DOC_ANCHOR = "efel_doc_anchor"
     EFEL_DOC_BASE_URL = "efel_doc_base_url"
@@ -18,7 +19,6 @@ class SchemaKey(StrEnum):
     GROUP = "group"
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
-    LATEX_EQUATION = "latex_equation"
     SAMPLED_PARAMETER = "sampled_parameter"
     # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
     # sampled - the column it becomes. It is declared because a field's own name need not match
@@ -79,6 +79,7 @@ class UIElement(StrEnum):
     BOOLEAN_INPUT = "boolean_input"
     DISTANCE_FUNCTION_INPUT = "distance_function_input"
     DISTANCE_FUNCTION_INPUT_NULLABLE = "distance_function_input_nullable"
+    DISTRIBUTION_PARAMETER_LIST = "distribution_parameter_list"
     EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
@@ -88,6 +89,7 @@ class UIElement(StrEnum):
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
+    ION_CHANNEL_MODEL_PROPERTIES = "ion_channel_model_properties"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = (
         "ion_channel_variable_modification_by_section_list"

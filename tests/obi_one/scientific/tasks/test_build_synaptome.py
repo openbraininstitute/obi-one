@@ -24,7 +24,7 @@ from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )

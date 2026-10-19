@@ -19,9 +19,11 @@ from bluepysnap.exceptions import BluepySnapError
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
 
+from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.library.circuit_id_mapping import validate_id_mapping_files
-from obi_one.scientific.library.circuit_metrics import TYPES_OF_BIOPHYS_NODES
-from obi_one.utils.circuit import run_validation
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
+from obi_one.types import SimulationBackend
+from obi_one.utils.circuit_validation import run_validation
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -73,15 +75,30 @@ def run_circuit_validation(
             _update_lifecycle_status(db_client, circuit_id, "disqualified")
             return {"valid": False, "errors": [msg], "warnings": []}
 
-        # Compile MOD files if present
+        # Compile MOD files if present. The bluecellulab backend selects plain
+        # nrnivmodl compilation, which is what validation needs to load mechanisms and
+        # instantiate HOC templates. It does not exercise the Neurodamus/CoreNEURON
+        # compile path, so a MOD that builds here could still fail under CoreNEURON for
+        # a Neurodamus-targeted circuit.
         mod_dir = _find_mod_dir(snap_circuit)
         has_mods = bool(mod_dir and mod_dir.exists() and any(mod_dir.glob("*.mod")))
         if has_mods:
+            L.info("Compiling MOD files from %s", mod_dir)
             try:
-                _compile_mechanisms(mod_dir, staged_dir)
-            except RuntimeError as e:
+                compile_mechanisms(
+                    output_dir=staged_dir,
+                    mechanisms_dirs=[mod_dir],
+                    simulation_backend=SimulationBackend.bluecellulab,
+                )
+            except (RuntimeError, subprocess.CalledProcessError) as e:
+                stderr = getattr(e, "stderr", None) or str(e)
                 _update_lifecycle_status(db_client, circuit_id, "disqualified")
-                return {"valid": False, "errors": [str(e)], "warnings": []}
+                return {
+                    "valid": False,
+                    "errors": [f"MOD compilation failed: {stderr[:500]}"],
+                    "warnings": [],
+                }
+            L.info("MOD compilation successful")
 
         fatal_errors: list[str] = []
         warning_messages: list[str] = []
@@ -613,20 +630,3 @@ def _find_mod_dir(circuit: SnapCircuitType) -> Path | None:
         if nested.exists() and any(nested.glob("*.mod")):
             return nested
     return None
-
-
-def _compile_mechanisms(mod_dir: Path, working_dir: Path) -> None:
-    """Compile MOD files with nrnivmodl. Raises on failure."""
-    L.info("Compiling MOD files from %s", mod_dir)
-    try:
-        subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-            ["nrnivmodl", "-incflags", "-DDISABLE_REPORTINGLIB", str(mod_dir)],  # ruff: ignore[start-process-with-partial-path]
-            check=True,
-            capture_output=True,
-            cwd=str(working_dir),
-        )
-    except subprocess.CalledProcessError as e:
-        stderr = e.stderr.decode(errors="replace") if e.stderr else ""
-        msg = f"MOD compilation failed: {stderr[:500]}"
-        raise RuntimeError(msg) from e
-    L.info("MOD compilation successful")

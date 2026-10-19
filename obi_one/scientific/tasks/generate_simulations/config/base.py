@@ -193,6 +193,14 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         simulators with structural requirements override it to fail early with a clear message.
         """
 
+    def validate_recordings(self, circuit: "Circuit") -> None:
+        """Check the simulator's job can hold every recording this configuration asks for.
+
+        Called by the generation task once every recording has a neuron set, so the recorded
+        neurons can be counted. The default accepts anything; simulators whose recordings are
+        bounded by the job's memory override it to fail before anything is launched.
+        """
+
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
         if sonata_config is None:

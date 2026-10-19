@@ -5,14 +5,16 @@ from types import SimpleNamespace
 
 import pytest
 
-import obi_one as obi
 from app.dependencies.entitysdk import get_client
 from app.endpoints import scan_config
 from obi_one.core.exception import ConfigValidationError
+from obi_one.core.info import Info
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -43,7 +45,7 @@ OVERSIZED_SWEEP = [float(i) for i in range(200)]
 def _payload(amplitude):
     config = CircuitSimulationScanConfig.empty_config()
     config.set(
-        obi.Info(campaign_name="Test campaign", campaign_description="Test description"),
+        Info(campaign_name="Test campaign", campaign_description="Test description"),
         name="info",
     )
     neuron_set = BiophysicalPopulationPredefinedNeuronSet(
@@ -52,14 +54,14 @@ def _payload(amplitude):
     config.add(neuron_set, name="my_set")
     # Carries a reference, so a test can point that reference at nothing.
     config.add(
-        obi.ConstantCurrentClampSomaticStimulus(
+        ConstantCurrentClampSomaticStimulus(
             neuron_set=neuron_set.ref, amplitude=amplitude, duration=50.0
         ),
         name="stim",
     )
     config.set(
         CircuitSimulationScanConfig.Initialize(
-            circuit=obi.Circuit(name="c", path=str(CIRCUIT_PATH)),
+            circuit=Circuit(name="c", path=str(CIRCUIT_PATH)),
             simulation_length=100.0,
         ),
         name="initialize",

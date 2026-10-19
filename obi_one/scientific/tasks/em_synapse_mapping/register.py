@@ -55,7 +55,7 @@ def register_output(
         description += notice + "\n"
 
     # Get publication links
-    publications = assemble_publication_links(db_client, em_entity, all_notices)  # ty:ignore[invalid-argument-type]
+    publications = assemble_publication_links(db_client, em_entity, all_notices)
 
     # Register circuit (entity + assets + links)
     registered_circuit = circuit_registration.register_circuit(
@@ -68,7 +68,7 @@ def register_output(
         subject=source_dataset.subject,  # ty:ignore[invalid-argument-type]
         target_simulator=target_simulator,
         experiment_date=source_dataset.experiment_date,
-        license=em_entity.license,  # ty:ignore[unresolved-attribute]
+        license=em_entity.license,
         publications=publications,
         skip_additional_assets=False,
         skip_validation=True,

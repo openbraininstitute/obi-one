@@ -18,11 +18,11 @@ try:  # ruff: ignore[non-empty-init-module]
         MAX_DISTANCE_FUNCTION_LENGTH,
         CustomDistanceDependentDistribution,
         DistanceDependentDistribution,
+        DistributionParameter,
         ExponentialDistanceDependentDistribution,
         ExponentialNaDendDistanceDependentDistribution,
         LinearEPasApicDistanceDependentDistribution,
         LinearHDApicDistanceDependentDistribution,
-        LinearHDPasDistanceDependentDistribution,
         SigmoidKADApicDistanceDependentDistribution,
         SigmoidKADDistanceDependentDistribution,
         SigmoidKDBMApicDistanceDependentDistribution,
@@ -45,11 +45,11 @@ try:  # ruff: ignore[non-empty-init-module]
 except ImportError:
     CustomDistanceDependentDistribution: type | None = None
     DistanceDependentDistribution: type | None = None
+    DistributionParameter: type | None = None
     ExponentialDistanceDependentDistribution: type | None = None
     ExponentialNaDendDistanceDependentDistribution: type | None = None
     LinearEPasApicDistanceDependentDistribution: type | None = None
     LinearHDApicDistanceDependentDistribution: type | None = None
-    LinearHDPasDistanceDependentDistribution: type | None = None
     SigmoidKADApicDistanceDependentDistribution: type | None = None
     SigmoidKADDistanceDependentDistribution: type | None = None
     SigmoidKDBMApicDistanceDependentDistribution: type | None = None
@@ -69,6 +69,7 @@ __all__ = [
     "MAX_DISTANCE_FUNCTION_LENGTH",
     "CustomDistanceDependentDistribution",
     "DistanceDependentDistribution",
+    "DistributionParameter",
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
@@ -76,7 +77,6 @@ __all__ = [
     "ExponentialNaDendDistanceDependentDistribution",
     "LinearEPasApicDistanceDependentDistribution",
     "LinearHDApicDistanceDependentDistribution",
-    "LinearHDPasDistanceDependentDistribution",
     "SigmoidKADApicDistanceDependentDistribution",
     "SigmoidKADDistanceDependentDistribution",
     "SigmoidKDBMApicDistanceDependentDistribution",

@@ -10,7 +10,9 @@ import json
 
 import pytest
 
-import obi_one as obi
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.recordings.soma import SomaVoltageRecording
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -220,7 +222,7 @@ class TestStepOrdering:
 
     def test_locations_are_materialised_before_inputs_are_built(self, morphology_circuit, tmp_path):
         """The stimulus only knows its compartment set because materialisation ran first."""
-        locations = obi.RandomMorphologyLocations(
+        locations = RandomMorphologyLocations(
             random_seed=0, number_of_locations=2, section_types=(3, 4)
         )
         config = build_config(
@@ -228,7 +230,7 @@ class TestStepOrdering:
             circuit=morphology_circuit,
             blocks={
                 "ClampLocations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
             },
         )
 
@@ -245,7 +247,7 @@ class TestStepOrdering:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Voltage": obi.SomaVoltageRecording()},
+            blocks={"Voltage": SomaVoltageRecording()},
         )
 
         result = generate(config, tmp_path)

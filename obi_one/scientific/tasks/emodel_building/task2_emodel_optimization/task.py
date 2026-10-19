@@ -17,6 +17,7 @@ runs MEModel calibration + bluecellulab validation in isolated subprocesses (pur
 compute, no database access).
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, ClassVar, cast
@@ -30,7 +31,10 @@ from entitysdk.types import ValidationStatus
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
-from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
+from obi_one.scientific.tasks.emodel_building import (
+    utils as emodel_building_utils,
+    validation_scoring,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
     calibration_validation,
     registration,
@@ -45,6 +49,8 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
 from obi_one.utils.filesystem import chdir
 
 L = logging.getLogger(__name__)
+
+EMODEL_VALIDATION_FILENAME = "emodel_validation_results.json"
 
 
 def tag_local_mechanisms(
@@ -87,6 +93,112 @@ def fresh_morph_modifiers(pipeline_settings: Any) -> list[str] | None:
     return list(configured)
 
 
+def resolve_inline_validation_settings(
+    config: EModelOptimizationSingleConfig,
+    access_point: Any,
+    features_path: Path,
+) -> validation_scoring.ResolvedValidationSettings | None:
+    """Validation settings of the optimisation, or ``None`` when nothing is held out.
+
+    Validation protocols come from the recipe, falling back to the protocols Task 1
+    flagged as validation in the extracted features.
+    """
+    protocols = list(
+        access_point.pipeline_settings.validation_protocols or []
+    ) or validation_scoring.flagged_validation_protocols(features_path)
+    if not protocols:
+        return None
+    settings = config.optimization_settings
+    return validation_scoring.ResolvedValidationSettings(
+        validation_protocols=protocols,
+        validation_protocols_only=False,
+        validation_function=str(settings.validation_function),
+        validation_threshold=float(settings.validation_threshold),  # ty:ignore[invalid-argument-type]
+    )
+
+
+def run_inline_validation(
+    *,
+    config: EModelOptimizationSingleConfig,
+    access_point: Any,
+    access_point_kwargs: dict,
+    coord_root: Path,
+    seed: int,
+) -> dict | None:
+    """Score the optimised model against its held-out validation protocols.
+
+    Scoring runs in a spawned process (see ``validation_scoring.score_model_isolated``)
+    so the optimisation's NEURON state cannot change the result. Returns ``None`` when
+    no protocol is held out. Like calibration, a failure is logged and does not abort
+    the pipeline; the EModel is then registered without e-feature validation results.
+    """
+    features_path = coord_root / "config" / "features" / f"{config.initialize.emodel}.json"
+    settings = resolve_inline_validation_settings(config, access_point, features_path)
+    if settings is None:
+        L.info("No validation protocols held out; skipping e-feature validation.")
+        return None
+    try:
+        summary = validation_scoring.score_model_isolated(
+            access_point_factory=create_entitycore_access_point,
+            access_point_kwargs=access_point_kwargs,
+            working_dir=coord_root,
+            seed=seed,
+            settings=settings,
+        )
+    except Exception:  # ruff: ignore[blind-except]
+        L.warning(
+            "E-feature validation failed; the EModel is registered without it.",
+            exc_info=True,
+        )
+        return None
+    return summary
+
+
+def create_entitycore_access_point(
+    *,
+    normalized_models: dict[str, NormalizedIonChannelModel],
+    emodel: str,
+    etype: str | None,
+    mtype: str | None,
+    species: str | None,
+    brain_region: str | None,
+    iteration_tag: str | None = None,
+    recipes_path: str = "./config/recipes.json",
+) -> Any:
+    """Create a BluePyEModel ``LocalAccessPoint`` backed by staged EntityCore assets.
+
+    Must be called from inside the staged working directory: the access point resolves
+    ``recipes_path``, ``final.json`` and the compiled mechanisms relative to the cwd.
+    """
+    from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
+        LocalAccessPoint,
+    )
+
+    class EntityCoreLocalAccessPoint(LocalAccessPoint):
+        """Use downloaded mechanisms and EntityCore metadata without Nexus lookup."""
+
+        def get_available_mechanisms(self) -> list[Any] | None:
+            mechanisms = super().get_available_mechanisms()
+            return tag_local_mechanisms(mechanisms, normalized_models)
+
+        def get_model_configuration(self, *args: Any, **kwargs: Any) -> Any:
+            """Hand every evaluator build its own morphology-modifier list."""
+            configuration = super().get_model_configuration(*args, **kwargs)
+            configuration.morph_modifiers = fresh_morph_modifiers(self.pipeline_settings)
+            return configuration
+
+    return EntityCoreLocalAccessPoint(
+        emodel=emodel,
+        etype=etype,
+        mtype=mtype,
+        ttype=None,
+        species=species,
+        brain_region=brain_region,
+        iteration_tag=iteration_tag,
+        recipes_path=recipes_path,
+    )
+
+
 def run_optimization_pipeline(
     *,
     config: EModelOptimizationSingleConfig,
@@ -114,9 +226,6 @@ def run_optimization_pipeline(
         ``final.json``), ``calibration``, ``validation``, and
         ``validation_status`` for downstream registration.
     """
-    from bluepyemodel.access_point.local import (  # ruff: ignore[import-outside-top-level]
-        LocalAccessPoint,
-    )
     from bluepyemodel.export_emodel.export_emodel import (  # ruff: ignore[import-outside-top-level]
         export_emodels_sonata,
     )
@@ -130,30 +239,16 @@ def run_optimization_pipeline(
 
     emodel = config.initialize.emodel
 
-    class EntityCoreLocalAccessPoint(LocalAccessPoint):
-        """Use downloaded mechanisms and EntityCore metadata without Nexus lookup."""
-
-        def get_available_mechanisms(self) -> list[Any] | None:
-            mechanisms = super().get_available_mechanisms()
-            return tag_local_mechanisms(mechanisms, normalized_models)
-
-        def get_model_configuration(self, *args: Any, **kwargs: Any) -> Any:
-            """Hand every evaluator build its own morphology-modifier list."""
-            configuration = super().get_model_configuration(*args, **kwargs)
-            configuration.morph_modifiers = fresh_morph_modifiers(self.pipeline_settings)
-            return configuration
-
+    access_point_kwargs: dict[str, Any] = {
+        "normalized_models": normalized_models,
+        "emodel": emodel,
+        "etype": etype,
+        "mtype": mtype,
+        "species": species,
+        "brain_region": brain_region,
+    }
     with chdir(coord_root):
-        access_point = EntityCoreLocalAccessPoint(
-            emodel=emodel,
-            etype=etype,
-            mtype=mtype,
-            ttype=None,
-            species=species,
-            brain_region=brain_region,
-            iteration_tag=None,
-            recipes_path="./config/recipes.json",
-        )
+        access_point = create_entitycore_access_point(**access_point_kwargs)
 
         mapper = map
         seeds = [config.optimization_settings.seed]
@@ -176,6 +271,15 @@ def run_optimization_pipeline(
                 if not h5_path.exists():
                     L.info("Converting checkpoint %s → %s", pkl_path.name, h5_path.name)
                     convert_checkpoint(str(pkl_path), str(h5_path))
+        # Score the held-out validation protocols before plotting/export so the
+        # verdict is stored in final.json and the registered EModel output.
+        emodel_validation = run_inline_validation(
+            config=config,
+            access_point=access_point,
+            access_point_kwargs=access_point_kwargs,
+            coord_root=coord_root,
+            seed=cast("int", seeds[0]),
+        )
 
         emodel_building_utils.run_plot_models(
             access_point=access_point,
@@ -228,11 +332,16 @@ def run_optimization_pipeline(
         emodel,
         validation_status.value,
     )
+    if emodel_validation is not None:
+        (coord_root / EMODEL_VALIDATION_FILENAME).write_text(
+            json.dumps(emodel_validation, indent=2), encoding="utf-8"
+        )
     return registration.OptimizationPipelineResults(
         em_metrics=em_metrics,
         calibration=calibration_dict,
-        validation=validation_dict,
+        memodel_validation=validation_dict,
         validation_status=validation_status,
+        emodel_validation=emodel_validation,
     )
 
 
@@ -280,7 +389,7 @@ class EModelOptimizationTask(Task):
         mtype = staging.derive_mtype(self.config, db_client)
 
         # --- 1. Download extracted features ---
-        extraction_tr = self.config.initialize.target_efeatures
+        extraction_tr = self.config.target_efeatures.task_result
         staging.download_extraction_features(self.config, extraction_tr, coord_root, db_client)
 
         # --- 2. Download and preflight morphology ---
@@ -316,15 +425,15 @@ class EModelOptimizationTask(Task):
 
         # --- 7. Run optimisation / plot / export / calibration / validation ---
         etype_entity = init.etype.entity(db_client=db_client)
-        species_entity, brain_region_entity = self.config.initialize.morphology.metadata_entities(
-            db_client=db_client
+        species_entity, brain_region_entity = (
+            self.config.morphology.cell_morphology.metadata_entities(db_client=db_client)
         )
         pipeline_results = run_optimization_pipeline(
             config=self.config,
             coord_root=coord_root,
             normalized_models=normalized_models,
             mtype=mtype,
-            etype=etype_entity.pref_label,  # ty:ignore[unresolved-attribute]
+            etype=etype_entity.pref_label,
             species=species_entity.name,
             brain_region=brain_region_entity.name,
             morphology_path=coord_root / "morphologies" / morph_filename,

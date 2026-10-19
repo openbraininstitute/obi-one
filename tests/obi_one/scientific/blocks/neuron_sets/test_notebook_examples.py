@@ -19,7 +19,6 @@ import re
 
 import pytest
 
-import obi_one as obi
 from obi_one.scientific.blocks.neuron_sets.combined import (
     BiophysicalCombinedNeuronSet,
     SetOperation,
@@ -37,6 +36,7 @@ from obi_one.scientific.blocks.neuron_sets.property import (
     BiophysicalPopulationPropertyNeuronSet,
     NeuronPropertyFilter,
 )
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     VirtualNeuronSetReference,
@@ -50,7 +50,7 @@ BIO_POP = "S1nonbarrel_neurons"
 
 @pytest.fixture(scope="module")
 def circuit():
-    return obi.Circuit(
+    return Circuit(
         name=CIRCUIT_NAME,
         path=str(CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"),
     )

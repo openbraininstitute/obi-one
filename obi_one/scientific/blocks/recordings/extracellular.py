@@ -21,6 +21,8 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
     The array's weight matrix maps the membrane current of every segment of the recorded neurons
     onto every electrode, so the recorded neuron set must be part of the circuit the array was
     built for.
+
+    LFP recordings need CoreNEURON as the simulator, which cannot apply electric field stimuli.
     """
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -67,6 +69,11 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
                 # LFP sums the membrane current over the whole neuron, not just the soma, and the
                 # weight matrix holds a weight per segment.
                 "sections": "all",
+                # The recorded values are volts: the weight matrix's scaling factors are in V/nA,
+                # as the SONATA spec defines them, and they multiply membrane currents in nA. This
+                # only labels the output; unset, libsonata would label it mV, the default for
+                # every report, and the values would read 1000 times too small.
+                "unit": "V",
                 "dt": self.recording_timestep,
                 "start_time": self._start_time,
                 "end_time": self._end_time,

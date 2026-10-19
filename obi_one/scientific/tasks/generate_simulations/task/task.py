@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast, get_args, get_type_hints
+from typing import ClassVar, get_args, get_type_hints
 from uuid import UUID
 
 import entitysdk
+from libsonata import SimulatorType
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
@@ -18,6 +19,7 @@ from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
+from obi_one.scientific.blocks.stimuli.electric_field import SpatiallyUniformElectricFieldStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -54,9 +56,6 @@ from obi_one.scientific.unions_and_references.simulations import (
     SIMULATION_GENERATION_SINGLE_CONFIGS,
 )
 from obi_one.utils.sonata import write_simulation_config
-
-if TYPE_CHECKING:
-    from entitysdk.models import SimulatableExtracellularRecordingArray
 
 L = logging.getLogger(__name__)
 
@@ -584,6 +583,33 @@ class GenerateSimulationTask(Task):
             {recording.electrode_array.id_str for recording in self._extracellular_recordings()}
         )
 
+    def _check_the_simulator_runs_every_block(self) -> None:
+        """Refuse blocks the chosen simulator cannot run, before anything is staged or written.
+
+        Neurodamus computes LFP reports only under CoreNEURON, and applies electric fields through
+        NEURON's extracellular mechanism, which CoreNEURON cannot simulate.
+        """
+        simulator = self._sonata_config["target_simulator"]
+        recordings = [recording.block_name for recording in self._extracellular_recordings()]
+        fields = [
+            stimulus.block_name
+            for stimulus in getattr(self.config, "stimuli", {}).values()
+            if isinstance(stimulus, SpatiallyUniformElectricFieldStimulus)
+        ]
+        if simulator == SimulatorType.NEURON.name and recordings:
+            msg = (
+                f"LFP recordings ({', '.join(map(repr, recordings))}) need CoreNEURON: select it "
+                "as the simulator."
+            )
+            raise ConfigValidationError(msg)
+        if simulator == SimulatorType.CORENEURON.name and fields:
+            msg = (
+                f"Electric field stimuli ({', '.join(map(repr, fields))}) need NEURON: CoreNEURON "
+                "cannot simulate the extracellular mechanism they are applied through. Select "
+                "NEURON as the simulator."
+            )
+            raise ConfigValidationError(msg)
+
     def _check_recording_arrays_belong_to_circuit(
         self, db_client: entitysdk.client.Client, circuit_id: str
     ) -> None:
@@ -595,10 +621,7 @@ class GenerateSimulationTask(Task):
         the signal with the wrong weights.
         """
         for recording in self._extracellular_recordings():
-            array = cast(
-                "SimulatableExtracellularRecordingArray",
-                recording.electrode_array.entity(db_client=db_client),
-            )
+            array = recording.electrode_array.entity(db_client=db_client)
             if array.circuit_id != UUID(circuit_id):
                 msg = (
                     f"Recording '{recording.block_name}' uses extracellular recording array "
@@ -688,6 +711,7 @@ class GenerateSimulationTask(Task):
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
+        self._check_the_simulator_runs_every_block()
         self._resolve_circuit(db_client)
         self.config.validate_circuit(self._circuit)
         # Only a circuit from entitycore has an id to compare a recording array's circuit with.
@@ -696,6 +720,7 @@ class GenerateSimulationTask(Task):
             self._check_recording_arrays_belong_to_circuit(db_client, circuit.id_str)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
+        self.config.validate_recordings(self._circuit)  # ty:ignore[invalid-argument-type]
         self._materialize_location_targets()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports(db_client)

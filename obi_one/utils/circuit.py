@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import bluepysnap as snap
-import bluepysnap.circuit_validation
 import libsonata
 
 from obi_one.core.exception import OBIONEError
@@ -25,22 +24,11 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_metrics import TYPES_OF_POINT_NODES
+from obi_one.scientific.library.circuit_constants import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
 L = logging.getLogger(__name__)
-
-# Properties to ignore in SNAP validation
-# TODO: Refine SNAP validation
-# https://github.com/openbraininstitute/prod-build-circuit/issues/49
-_IGNORE_EDGE_PROPERTIES: list[str] = [
-    "afferent_surface_x",
-    "afferent_surface_y",
-    "afferent_surface_z",
-    "spine_length",
-    "afferent_section_type",
-]
 
 
 def fix_node_sets_file(circuit_path: Path) -> None:
@@ -265,51 +253,6 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
         elif isinstance(value, list):
             for v in value:
                 rebase_config(v, old_base, new_base)
-
-
-def run_validation(
-    circuit_path: str | Path,
-    *,
-    raise_on_error: bool = True,
-) -> tuple[list[str], list[str]]:
-    """Run SONATA circuit validation with OBI-specific ignore rules.
-
-    Wraps ``bluepysnap.circuit_validation.validate`` and always applies
-    ``_IGNORE_EDGE_PROPERTIES``. Unlike calling SNAP directly with
-    ``only_errors=True``, this collects both FATAL errors and WARNINGs.
-
-    Args:
-        circuit_path: Path to ``circuit_config.json``.
-        raise_on_error: When True (default), raise ``ValueError`` if any FATAL
-            errors are found. Callers that want to aggregate results (e.g. the
-            async circuit validation task) should pass ``False``.
-
-    Returns:
-        ``(fatal_errors, warnings)`` as lists of string messages. Empty lists
-        when validation is clean.
-    """
-    errors = snap.circuit_validation.validate(
-        str(circuit_path),
-        skip_slow=False,
-        only_errors=False,
-        print_errors=False,
-        ignore_edge_properties=_IGNORE_EDGE_PROPERTIES,
-    )
-    fatal_errors = [str(e) for e in errors if e.level == "FATAL"]
-    warnings = [str(e) for e in errors if e.level == "WARNING"]
-
-    if fatal_errors:
-        L.warning("SONATA validation found %d fatal error(s)", len(fatal_errors))
-        if raise_on_error:
-            msg = f"Circuit validation error(s) found:\n{fatal_errors}"
-            raise ValueError(msg)
-        return fatal_errors, warnings
-
-    if warnings:
-        L.warning("SONATA validation found %d warning(s)", len(warnings))
-    else:
-        L.info("No SONATA validation errors found!")
-    return fatal_errors, warnings
 
 
 def get_morph_dirs(

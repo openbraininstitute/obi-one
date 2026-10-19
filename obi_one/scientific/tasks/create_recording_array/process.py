@@ -12,20 +12,39 @@ if TYPE_CHECKING:
 
 L = logging.getLogger(__name__)
 
+# write_weights runs an MPI process on each CPU and splits the cells between them. These are
+# the CPU counts a launch-system job can have.
+MPI_PROCESS_COUNTS = (1, 2, 4, 8, 16)
+CELLS_PER_MPI_PROCESS = 100
+# Each process builds this many cells at a time, and computes and writes the weights of this
+# many segments at a time, so write_weights' memory does not grow with the circuit's cells.
+CELLS_PER_BATCH_PER_PROCESS = 50
+SEGMENTS_PER_WEIGHTS_BLOCK = 2_000
+
+
+def get_number_of_mpi_processes(n_cells: int) -> int:
+    """Number of MPI processes, and so CPUs, to calculate the weights of n_cells cells with."""
+    return next(
+        (n for n in MPI_PROCESS_COUNTS if n * CELLS_PER_MPI_PROCESS >= n_cells),
+        MPI_PROCESS_COUNTS[-1],
+    )
+
 
 def run_bluerecording_write_weights(
     circuit_config: Path,
     electrode_json: Path,
     output_path: Path,
     nrnmech_lib_path: Path,
+    number_of_mpi_processes: int,
 ) -> Path:  # pragma: no cover
-    """Run bluerecording write_weights as a subprocess.
+    """Run bluerecording write_weights under MPI as a subprocess.
 
     Args:
         circuit_config: Path to the SONATA circuit or simulation config.
         electrode_json: Path to the electrode JSON file.
         output_path: Path for the output weights H5 file.
         nrnmech_lib_path: Path to .so file that is placed in the environment in NRNMECH_LIB_PATH
+        number_of_mpi_processes: Number of MPI processes, at most the number of CPUs.
 
     Returns:
         The output weights path.
@@ -33,11 +52,19 @@ def run_bluerecording_write_weights(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = [
+        "mpirun",
+        "--use-hwthread-cpus",
+        "-np",
+        str(number_of_mpi_processes),
         "bluerecording",
         "write_weights",
         str(circuit_config),
         str(electrode_json),
         str(output_path),
+        "--cells-per-batch",
+        str(CELLS_PER_BATCH_PER_PROCESS * number_of_mpi_processes),
+        "--segment-chunk-size",
+        str(SEGMENTS_PER_WEIGHTS_BLOCK),
     ]
 
     L.info("Running bluerecording: %s", " ".join(cmd))

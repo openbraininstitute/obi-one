@@ -952,7 +952,7 @@ def test_register_circuit_sets_lifecycle_status_draft():
         _patch_models_circuit,
         patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validate,
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validate,
     ):
         register_circuit(
             client=client,
@@ -1026,7 +1026,7 @@ def test_register_circuit_passes_include_overview_images():
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
     ):
         register_circuit(
             client=client,
@@ -1044,13 +1044,20 @@ def test_register_circuit_passes_include_overview_images():
     assert mock_gen.call_args.kwargs["include_overview_images"] is False
 
 
+def _tmp_circuit_config(tmp_path):
+    """Copy the tiny circuit so the sibling __CIRCUIT_VIZ__ dir is created under tmp_path."""
+    circuit_dir = tmp_path / "circuits" / "N_10__top_nodes_dim6"
+    shutil.copytree(CIRCUIT_DIR / "N_10__top_nodes_dim6", circuit_dir)
+    return circuit_dir / "circuit_config.json"
+
+
 def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_assets(tmp_path):
     """A user-uploaded image is registered synchronously even with skip_additional_assets=True.
 
     The draft path skips generated assets (deferred to the post-validation job) but must still
     attach the image the user supplied, so it is present before that job runs.
     """
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     overview = tmp_path / "overview.png"
     overview.write_bytes(b"fake png")
     client = MagicMock()
@@ -1072,7 +1079,7 @@ def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_a
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
         ) as mock_sim,
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
     ):
         register_circuit(
             client=client,
@@ -1101,7 +1108,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
     The real image helpers run (only add_image_assets is mocked) so the viz_dir derivation and
     the file copy are exercised end-to-end.
     """
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     overview = tmp_path / "overview.png"
     overview.write_bytes(b"fake overview")
     sim_designer = tmp_path / "sim.png"
@@ -1120,7 +1127,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
             "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
         ) as mock_gen,
         patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
     ):
         register_circuit(
             client=client,
@@ -1148,7 +1155,7 @@ def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_
 
 def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
     """When only a sim-designer image is provided, it is attached and the overview one is not."""
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     sim_designer = tmp_path / "sim.png"
     sim_designer.write_bytes(b"fake sim")
     client = MagicMock()
@@ -1170,7 +1177,7 @@ def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
         ) as mock_sim,
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
     ):
         register_circuit(
             client=client,
@@ -1194,7 +1201,7 @@ def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
 
 def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
     """A dry run registers nothing, so a provided image is not attached."""
-    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    circuit_path = _tmp_circuit_config(tmp_path)
     overview = tmp_path / "overview.png"
     overview.write_bytes(b"fake png")
     client = MagicMock()
@@ -1209,7 +1216,7 @@ def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
         patch(
             "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
         ) as mock_sim,
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
     ):
         register_circuit(
             client=client,
@@ -1317,7 +1324,7 @@ def test_register_circuit_skip_validation():
     with (
         _patch_models_circuit,
         patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validation,
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validation,
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
@@ -1349,7 +1356,7 @@ def test_register_circuit_runs_validation_by_default():
     with (
         _patch_models_circuit,
         patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validation,
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validation,
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
     ):
         register_circuit(
@@ -1793,9 +1800,9 @@ def test_register_circuit_neurodamus_validation_runs_in_process():
         _patch_models_circuit,
         patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation") as mock_validate,
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validate,
         patch(
-            "obi_one.db_sdk.registration.circuit.register.run_circuit_validation"
+            "obi_one.scientific.tasks.circuit_validation.task.run_circuit_validation"
         ) as mock_neurodamus,
     ):
         mock_neurodamus.return_value = {"valid": True, "errors": [], "warnings": []}
@@ -1836,9 +1843,9 @@ def test_register_circuit_neurodamus_validation_raises_on_failure():
         _patch_models_circuit,
         patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
         patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
-        patch("obi_one.db_sdk.registration.circuit.register.run_validation"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
         patch(
-            "obi_one.db_sdk.registration.circuit.register.run_circuit_validation"
+            "obi_one.scientific.tasks.circuit_validation.task.run_circuit_validation"
         ) as mock_neurodamus,
     ):
         mock_neurodamus.return_value = {

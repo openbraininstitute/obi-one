@@ -41,6 +41,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
 
     def input_entities(self, db_client: Client) -> list[Entity]:
         L.info("-- Register SkeletonizationCampaign Entity")
+        input_meshes: list[Entity]
         if isinstance(
             self.initialize.cell_mesh,
             EMCellMeshFromID,

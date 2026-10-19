@@ -190,6 +190,25 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             compute_cell="local",
         ),
     ),
+    TaskDefinition(
+        task_type=TaskType.ion_channel_fitting,
+        config_type=TaskConfigType.ion_channel_modeling__config,
+        activity_type=TaskActivityType.ion_channel_modeling__execution,
+        code=_obi_one_code(
+            "ion_channel_fitting.txt", capabilities=Capabilities(private_packages=True)
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
     TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
@@ -304,6 +323,22 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             instance_type="large",
             timelimit="02:00",
             compute_cell="cell_a",
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.emodel_validation,
+        config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        activity_type=TaskActivityType.optimized_emodel_analysis_validation__execution,
+        code=_obi_one_code("emodel_building.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskDefinition(

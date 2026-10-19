@@ -1,19 +1,15 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import ElectricalCellRecording
-from entitysdk.models.entity import Entity
 from entitysdk.types import AssetLabel, ContentType
 from entitysdk.utils.filesystem import create_dir
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 
 
-class ElectricalCellRecordingFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = ElectricalCellRecording
-    _entity: ElectricalCellRecording | None = PrivateAttr(default=None)
+class ElectricalCellRecordingFromID(EntityFromID[ElectricalCellRecording]):
+    _entitysdk_type: type[ElectricalCellRecording] = ElectricalCellRecording
 
     def download_nwb_asset(
         self,
