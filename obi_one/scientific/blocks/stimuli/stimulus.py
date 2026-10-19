@@ -11,7 +11,7 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.parametric_multi_values import FloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -559,7 +559,7 @@ class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
                 f"represented at a timestep of {timestep} ms, which can only carry frequencies "
                 f"below {maximum_frequency} Hz. Lower the frequency, or shorten the timestep."
             )
-            raise OBIONEError(msg)
+            raise ConfigValidationError(msg)
 
     def _single_timestamp_stimulus_config(self, offset_timestamp: NonNegativeFloat) -> dict:
         self._check_frequency_against_timestep()
@@ -773,7 +773,7 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
         sonata_config[self.block_name] = {
             # cannot have any delay with SEClamp, so timestamps are used in duration_levels
             "delay": 0,
-            "duration": sum(combination.duration for combination in self.duration_voltage),
+            "duration": sum(combination.duration for combination in self.duration_voltage),  # ty:ignore[no-matching-overload]
             "voltage": self.duration_voltage[0].voltage,
             # converts durations into starting times for each level,
             # with the first level starting at time 0

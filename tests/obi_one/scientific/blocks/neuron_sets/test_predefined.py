@@ -3,12 +3,14 @@
 import numpy as np
 import pytest
 
-import obi_one as obi
+from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
     MultiPopulationPredefinedNeuronSet,
     VirtualPopulationPredefinedNeuronSet,
 )
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 
 from tests.utils import CIRCUIT_DIR, MATRIX_DIR
 
@@ -17,7 +19,7 @@ CIRCUIT_NAME = "N_10__top_nodes_dim6"
 
 @pytest.fixture
 def circuit():
-    return obi.Circuit(
+    return Circuit(
         name=CIRCUIT_NAME,
         path=str(CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"),
         matrix_path=str(MATRIX_DIR / CIRCUIT_NAME / "connectivity_matrix.h5"),
@@ -73,7 +75,7 @@ def test_predefined_neuron_set_invalid_node_set(circuit):
     nset = MultiPopulationPredefinedNeuronSet(node_set="NONEXISTENT")
     nset.set_block_name("predef_invalid")
 
-    with pytest.raises(ValueError, match="not found in circuit"):
+    with pytest.raises(ConfigValidationError, match="not found in circuit"):
         nset.get_neuron_ids(circuit)
 
 
@@ -108,7 +110,7 @@ def test_predefined_population_sampling(circuit):
 
 
 def test_predefined_population_symbolic_single_pop(circuit):
-    """Test symbolic expression when node set resolves in only one population."""
+    """A basic node set is inlined and pinned to the population, with no materialized IDs."""
     nset = BiophysicalPopulationPredefinedNeuronSet(
         node_set="Layer6", population="S1nonbarrel_neurons"
     )
@@ -116,8 +118,90 @@ def test_predefined_population_symbolic_single_pop(circuit):
 
     # No sampling -> symbolic path
     nset_def, combined = nset.get_node_set_definition(circuit)
-    # Should be symbolic since Layer6 resolves only in S1nonbarrel_neurons
-    assert nset_def == ["Layer6"] or "node_id" in nset_def
+    # "Layer6" is {"layer": "6"}; libsonata intersects the clauses of a multi-key object.
+    assert nset_def == {"layer": "6", "population": "S1nonbarrel_neurons"}
+    assert combined == {}
+
+
+def test_predefined_population_symbolic_resolves_to_the_same_ids(circuit):
+    """The symbolic definition selects exactly the neurons the node set resolves to."""
+    nset = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer6", population="S1nonbarrel_neurons"
+    )
+    nset.set_block_name("predef_pop_sym_ids")
+
+    nset_def, _ = nset.get_node_set_definition(circuit)
+
+    sonata_circuit = circuit.sonata_circuit
+    add_node_set_to_circuit(sonata_circuit, {"__test__": nset_def})
+    resolved = sonata_circuit.nodes["S1nonbarrel_neurons"].ids("__test__").tolist()
+
+    assert resolved == nset.get_neuron_ids(circuit)["S1nonbarrel_neurons"]
+
+
+def test_predefined_population_compound_node_set_is_a_symbolic_union(circuit):
+    """A compound node set flattens into a union of clause objects, each pinned to the pop."""
+    nset = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer6Excitatory", population="S1nonbarrel_neurons"
+    )
+    nset.set_block_name("predef_pop_compound")
+
+    nset_def, combined = nset.get_node_set_definition(circuit)
+
+    # "Layer6Excitatory" is a list of six mtype node sets.
+    assert isinstance(nset_def, list)
+    assert len(nset_def) == 6
+    assert set(nset_def) == set(combined)
+    assert all("node_id" not in clause for clause in combined.values())
+    assert all(
+        clause["population"] == "S1nonbarrel_neurons" and "mtype" in clause
+        for clause in combined.values()
+    )
+
+
+def test_predefined_population_nested_compound_node_set_resolves_to_the_same_ids(circuit):
+    """A compound of compounds still flattens, and selects the same neurons."""
+    nset = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer23Excitatory", population="S1nonbarrel_neurons"
+    )
+    nset.set_block_name("predef_pop_nested")
+
+    nset_def, combined = nset.get_node_set_definition(circuit)
+
+    sonata_circuit = circuit.sonata_circuit
+    add_node_set_to_circuit(sonata_circuit, {**combined, "__test__": nset_def})
+    resolved = sonata_circuit.nodes["S1nonbarrel_neurons"].ids("__test__").tolist()
+
+    assert resolved == nset.get_neuron_ids(circuit)["S1nonbarrel_neurons"]
+
+
+def test_predefined_population_conflicting_population_is_empty(circuit):
+    """Pinning a node set that names another population selects nothing."""
+    nset = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="proj_Thalamocortical_VPM_Source", population="S1nonbarrel_neurons"
+    )
+    nset.set_block_name("predef_pop_conflict")
+
+    nset_def, combined = nset.get_node_set_definition(circuit)
+
+    assert nset_def == {"population": "S1nonbarrel_neurons", "node_id": []}
+    assert combined == {}
+
+
+def test_predefined_population_sampling_still_resolves_ids(circuit):
+    """Sub-sampling has no SONATA equivalent, so it remains materialized."""
+    nset = BiophysicalPopulationPredefinedNeuronSet(
+        node_set="Layer6",
+        population="S1nonbarrel_neurons",
+        sample_percentage=50,
+        sample_seed=1,
+    )
+    nset.set_block_name("predef_pop_sampled_def")
+
+    nset_def, combined = nset.get_node_set_definition(circuit)
+
+    assert nset_def["population"] == "S1nonbarrel_neurons"
+    assert 4 <= len(nset_def["node_id"]) <= 5
     assert combined == {}
 
 

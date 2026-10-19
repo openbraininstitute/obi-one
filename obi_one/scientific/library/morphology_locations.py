@@ -65,8 +65,14 @@ def path_distance_all_segments_from(
         ],
         axis=0,
     ).reset_index(drop=True)
+
     if lst_sec_types is not None:
         locs_all = locs_all.loc[locs_all[_SEC_TYP].isin(lst_sec_types)].reset_index(drop=True)
+
+    if locs_all.empty:
+        msg = "No morphology segments match the selected section types."
+        raise ValueError(msg)
+
     locs_all[_SEG_OFF] = normalized_seg_loc * locs_all[_SEG_LEN]
 
     path_distances = path_distance_calculator.path_distances(locs_ref, locs_all, **kwargs)

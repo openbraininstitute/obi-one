@@ -23,7 +23,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
 
     title: ClassVar[str] = "Inter Neuron Set"
 
-    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set (Source)",
         description="Source neuron set to simulate",
@@ -35,7 +35,7 @@ class InterNeuronSetSynapticModelAssigner(SynapseModelAssigner):
         },
     )
 
-    targeted_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    targeted_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set (Target)",
         description="Target neuron set to simulate",

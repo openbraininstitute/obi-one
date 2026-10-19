@@ -6,6 +6,7 @@ class SchemaKey(StrEnum):
     BLOCK_USABILITY_DICTIONARY = "block_usability_dictionary"
     DEFAULT_BLOCK_REFERENCE_LABEL = "default_block_reference_label"
     DEFAULT_BLOCK_REFERENCE_LABELS = "default_block_reference_labels"
+    DEFAULT_NAME = "default_name"
     DESCRIPTION_BY_KEY = "description_by_key"
     EFEL_DOC_ANCHOR = "efel_doc_anchor"
     EFEL_DOC_BASE_URL = "efel_doc_base_url"
@@ -18,7 +19,6 @@ class SchemaKey(StrEnum):
     GROUP = "group"
     GROUP_ORDER = "group_order"
     LATEX_BY_KEY = "latex_by_key"
-    LATEX_EQUATION = "latex_equation"
     SAMPLED_PARAMETER = "sampled_parameter"
     # Note: SAMPLED_PARAMETER is the name of the value a field supplies when the block is
     # sampled - the column it becomes. It is declared because a field's own name need not match
@@ -65,6 +65,10 @@ class SchemaKey(StrEnum):
     UI_ENABLED = "ui_enabled"
     UI_HIDDEN = "ui_hidden"
     UNITS = "units"
+    # path to a sibling field whose entity id should populate entity_query filters.
+    # Used by the frontend; e.g. "initialize.circuit" for a circuit model_identifier.
+    # A filter whose value is a list is a placeholder for that id; a plain value is static.
+    VALUE_FROM = "value_from"
 
 
 class UIElement(StrEnum):
@@ -73,6 +77,9 @@ class UIElement(StrEnum):
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"
+    DISTANCE_FUNCTION_INPUT = "distance_function_input"
+    DISTANCE_FUNCTION_INPUT_NULLABLE = "distance_function_input_nullable"
+    DISTRIBUTION_PARAMETER_LIST = "distribution_parameter_list"
     EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
@@ -82,6 +89,7 @@ class UIElement(StrEnum):
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
+    ION_CHANNEL_MODEL_PROPERTIES = "ion_channel_model_properties"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = (
         "ion_channel_variable_modification_by_section_list"
@@ -91,6 +99,7 @@ class UIElement(StrEnum):
     MODEL_IDENTIFIER = "model_identifier"
     MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"
+    MODEL_IDENTIFIER_GROUPED = "model_identifier_grouped"
     MODEL_SELECTOR_SINGLE = "model_selector_single"
     MORPHOLOGY_LOCATION_SELECTION = "morphology_location_selection"
     MORPHOLOGY_SECTION_TYPE_SELECTION = "morphology_section_type_selection"

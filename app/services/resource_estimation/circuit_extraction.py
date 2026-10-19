@@ -1,36 +1,50 @@
 import json
+import math
+from http import HTTPStatus
 
 import entitysdk
 import numpy as np
 from entitysdk import models
 
+from app.errors import ApiError, ApiErrorCode
 from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
-from obi_one import deserialize_obi_object_from_json_data
-from obi_one.core.registry import task_registry
+from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.library.circuit_metrics import (
-    CircuitStatsLevelOfDetail,
-    get_circuit_metrics,
+from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
+from obi_one.scientific.library.circuit_metrics import get_circuit_metrics
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_task_type,
 )
 
+# From launch-system: the memory (GB) a task can have for each number of CPUs, and the disk
+# space (GB) it gets by default and at most.
+CPU_MEMORY_COMBINATIONS: dict[int, set[int]] = {
+    1: {2, 4, 6, 8},
+    2: {4, 8, 12, 16},
+    4: {8, 16, 24, 30},
+    8: {16, 32, 48, 60},
+    16: {32, 64, 96, 120},
+}
+MAX_MEMORY_GB = max(max(memory) for memory in CPU_MEMORY_COMBINATIONS.values())
+DEFAULT_DISK_SPACE_LIMIT_GB = 20
+EXTRA_DISK_SPACE_LIMIT_GB = 200
 
-def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
-    """Returns the required CPU/memory combination."""
-    # From launch-system
-    cpu_memory_combinations: dict[int, set[int]] = {
-        1: {2, 4, 6, 8},
-        2: {4, 8, 12, 16},
-        4: {8, 16, 24, 30},
-        8: {16, 32, 48, 60},
-        16: {32, 64, 96, 120},
-    }
 
+def get_required_cpu_memory_combo(
+    mem_gb_required: float, min_cpus: int = 1, mem_gb_per_cpu: float = 0
+) -> tuple[int, int]:
+    """Returns the smallest CPU/memory combination with at least min_cpus CPUs.
+
+    Its memory exceeds mem_gb_required plus mem_gb_per_cpu for each of its CPUs.
+    """
     max_mem = 0
-    for ncpu, mem_values in cpu_memory_combinations.items():
+    for ncpu, mem_values in CPU_MEMORY_COMBINATIONS.items():
+        if ncpu < min_cpus:
+            continue
         for mem in sorted(mem_values):
             max_mem = max(max_mem, mem)
-            if mem > mem_gb_required:
+            if mem > mem_gb_required + ncpu * mem_gb_per_cpu:
                 return (ncpu, mem)
     msg = (
         f"No CPU/memory combination found"
@@ -39,23 +53,19 @@ def _get_required_cpu_memory_combo(mem_gb_required: float) -> tuple[int, int]:
     raise ValueError(msg)
 
 
-def _get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
+def get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
     """Return the required extra storage space."""
-    # From launch-system
-    default_disk_space_limit_gb = 20
-    extra_disk_space_limit_gb = 200
-
-    if disk_space_gb_required <= default_disk_space_limit_gb:
+    if disk_space_gb_required <= DEFAULT_DISK_SPACE_LIMIT_GB:
         # No extra space requires, use default
         return None
-    if disk_space_gb_required <= extra_disk_space_limit_gb:
+    if disk_space_gb_required <= EXTRA_DISK_SPACE_LIMIT_GB:
         # Allocate extra space
-        return np.ceil(disk_space_gb_required).astype(int)
+        return math.ceil(disk_space_gb_required)
 
     msg = (
         f"Not enough disk space"
         f" (required: {disk_space_gb_required:.1f} GB,"
-        f" available: {extra_disk_space_limit_gb:.1f} GB)!"
+        f" available: {EXTRA_DISK_SPACE_LIMIT_GB:.1f} GB)!"
     )
     raise ValueError(msg)
 
@@ -77,7 +87,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
-        asset_label=task_registry.get_task_type_config_asset_label(task_definition.task_type),  # ty:ignore[invalid-argument-type]
+        asset_label=get_task_spec_for_task_type(task_definition.task_type).asset_label,  # ty:ignore[invalid-argument-type]
     ).id
     if config_asset_id is None:
         msg = "Config asset must have an id"
@@ -109,7 +119,23 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio  # ty:ignore[unresolved-attribute]
 
     mem_gb_required = 1 + 55e-6 * input_size_neurons
-    ncpu, mem_gb = _get_required_cpu_memory_combo(mem_gb_required)
+    hint = (
+        "Extract fewer neurons, or turn off Include Virtual Populations."
+        if single_config.initialize.do_virtual and nvirt  # ty:ignore[unresolved-attribute]
+        else "Extract fewer neurons."
+    )
+    try:
+        ncpu, mem_gb = get_required_cpu_memory_combo(mem_gb_required)
+    except ValueError as e:
+        msg = (
+            f"Extracting {input_size_neurons:,} neurons needs about {mem_gb_required:.0f} GB of"
+            f" memory, more than the largest machine has ({MAX_MEMORY_GB} GB). {hint}"
+        )
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        ) from e
 
     # Estimate time limit based on the number input neurons
     time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
@@ -133,7 +159,19 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
     output_size_synapses = input_size_synapses * output_fraction
     output_size_gb = 1 + output_size_synapses * 1.85e-7
-    storage_gb = _get_required_extra_storage_space(output_size_gb)
+    try:
+        storage_gb = get_required_extra_storage_space(output_size_gb)
+    except ValueError as e:
+        msg = (
+            f"The extracted circuit would hold about {output_size_synapses:,.0f} synapses, about"
+            f" {output_size_gb:.0f} GB, more than the {EXTRA_DISK_SPACE_LIMIT_GB} GB of storage"
+            f" a task can have. {hint}"
+        )
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        ) from e
 
     # Update resources
     return task_definition.resources.model_copy(

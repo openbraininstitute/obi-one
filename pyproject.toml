@@ -33,7 +33,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.19.25",
+    "entitysdk>=0.19.31",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
@@ -41,7 +41,7 @@ dependencies = [
     "blueetl",
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.7",
-    "brainbuilder>=0.20.6",
+    "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.12",
@@ -54,20 +54,20 @@ dependencies = [
     "psutil>=6.1.0",
     "pylmesh",
     "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.6",
+    "obp-accounting-sdk>=0.6.8",
     "numpy",
     "scipy",
 ]
 
 [project.optional-dependencies]
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
-emodel = ["bluepyemodel>=1.0.47"]
+emodel = ["bluepyemodel>=1.0.50"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 
-# MESHING - optional, private dependency needed to create meshes from morphologies
-meshing = ["neuromorphomesh", "ultraliser>=2.1.9"]
+# MESHING - optional, private dependency needed for skeletonization and mesh LOD generation
+meshing = ["ultraliser>=2.1.9"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
@@ -83,7 +83,7 @@ service = [
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.6",
+    "obp-accounting-sdk>=0.6.8",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -97,9 +97,8 @@ service = [
 all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
-# Requires MPI-enabled h5py and NEURON built from source.
-# Use BlueRecording/dev_setup.sh for full setup, then pip install -e obi-one[bluerecording]
-bluerecording = ["bluerecording>=0.4.6"]
+# neurodamus 4.2.8 frees the memory of the cells built in each batch.
+bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.8"]
 
 [dependency-groups]
 dev = [
@@ -109,9 +108,9 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
-    "respx==0.22.0",
+    "respx>=0.22.0",
     "ruff",
-    "ty>=0.0.33",
+    "ty>=0.0.35",
 ]
 docs = ["mkdocs>=1.6.1", "mkdocs-material>=9.7.1"]
 
@@ -137,7 +136,7 @@ version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.uv]
-required-version = ">=0.9.22"
+required-version = ">=0.12.22"
 
 [[tool.uv.index]]
 name = "obi-codeartifact"
@@ -146,7 +145,6 @@ explicit = true
 
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch = "main" }
-neuromorphomesh = { index = "obi-codeartifact" }
 ultraliser = { index = "obi-codeartifact" }
 
 [tool.ruff]
@@ -221,6 +219,11 @@ builtins-ignorelist = ["license"]
     "unused-method-argument",
 ]
 "launch_scripts/**/*.py" = ["implicit-namespace-package"]
+"launch_scripts/tools/*.py" = [
+    "print",                                # `print` found (this is a CLI tool)
+    "suspicious-subprocess-import",         # `subprocess` module is possibly insecure
+    "subprocess-without-shell-equals-true", # check for execution of untrusted input
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -243,6 +246,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 minversion = "6.0"
+pythonpath = ["launch_scripts/tools"]
 addopts = [
     "--import-mode=importlib",
     "-vv",

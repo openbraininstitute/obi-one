@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )

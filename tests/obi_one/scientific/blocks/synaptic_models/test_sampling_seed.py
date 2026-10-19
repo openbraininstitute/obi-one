@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference

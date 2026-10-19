@@ -82,6 +82,12 @@ _SCAN_CONFIG_MEMBERS: tuple[type, ...] = (
 )
 if EModelOptimizationScanConfig is not None:
     _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelOptimizationScanConfig)
+if EModelOptimizationScanConfig is not None:
+    from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config import (
+        EModelValidationScanConfig,
+    )
+
+    _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelValidationScanConfig)
 
 ScanConfigsUnion = Annotated[
     reduce(or_, _SCAN_CONFIG_MEMBERS),  # ty: ignore[invalid-type-form]

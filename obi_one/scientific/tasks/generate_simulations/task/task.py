@@ -1,19 +1,25 @@
 import logging
 from pathlib import Path
 from typing import ClassVar, get_args, get_type_hints
+from uuid import UUID
 
 import entitysdk
+from libsonata import SimulatorType
 from pydantic import PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.task import Task
 from obi_one.scientific.blocks.morphology_locations.base import (
     GeneratedMorphologyLocationsBlock,
 )
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
+from obi_one.scientific.blocks.stimuli.electric_field import SpatiallyUniformElectricFieldStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import (
@@ -38,6 +44,9 @@ from obi_one.scientific.tasks.generate_simulations.materialize_locations import 
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
+)
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BaseNeuronSetReference,
@@ -66,6 +75,22 @@ class GenerateSimulationTask(Task):
     _materialized_compartment_sets: dict[str, MaterializedCompartmentSet] = PrivateAttr(
         default_factory=dict
     )
+
+    def _needs_circuit_morphologies(self) -> bool:
+        """Whether generation has to read morphologies out of the circuit.
+
+        Only MorphologyLocations targets do: they are turned into compartment sets by
+        ``_materialize_location_targets``, which walks the morphology of each selected neuron.
+        Mirrors the block discovery in ``materialize_locations_to_compartment_sets``.
+        """
+        return any(
+            isinstance(
+                getattr(block, "morphology_locations", None) or getattr(block, "neuron_set", None),
+                MorphologyLocationsReference,
+            )
+            for block_dict_name in ("stimuli", "recordings")
+            for block in getattr(self.config, block_dict_name, {}).values()
+        )
 
     def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
@@ -103,8 +128,18 @@ class GenerateSimulationTask(Task):
                     / self._circuit_id
                 )
 
+            stage_kwargs = {}
+            if isinstance(circuit, CircuitFromID) and not self._needs_circuit_morphologies():
+                # Generation reads node properties and node sets; nothing here opens the edge
+                # files, which are the bulk of a large circuit. Staging them would be a wasted
+                # download for a private-project circuit, which cannot be symlinked.
+                stage_kwargs["nodes_only"] = True
+
             self._circuit = circuit.stage_circuit(
-                db_client=db_client, dest_dir=circuit_dest_dir, entity_cache=self._entity_cache
+                db_client=db_client,
+                dest_dir=circuit_dest_dir,
+                entity_cache=self._entity_cache,
+                **stage_kwargs,
             )
 
             self._sonata_config["network"] = str(
@@ -123,12 +158,12 @@ class GenerateSimulationTask(Task):
             if isinstance(stimulus, SpikeStimulus):
                 self._sonata_config["inputs"].update(
                     stimulus.config(
-                        circuit=self._circuit,  # ty:ignore[invalid-argument-type]
-                        sonata_simulation_config_directory=self.config.coordinate_output_root,
-                        simulation_length=self.config.initialize.simulation_length,  # ty:ignore[invalid-argument-type]
+                        circuit=self._circuit,  # ty:ignore[unknown-argument, invalid-argument-type]
+                        sonata_simulation_config_directory=self.config.coordinate_output_root,  # ty:ignore[unknown-argument]
+                        simulation_length=self.config.initialize.simulation_length,  # ty:ignore[unknown-argument, invalid-argument-type]
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
-                        default_source_neuron_set_reference=self._default_neuron_set_ref(),
-                        default_target_neuron_set_reference=self._default_neuron_set_ref(),
+                        default_source_neuron_set_reference=self._default_neuron_set_ref(),  # ty:ignore[unknown-argument]
+                        default_target_neuron_set_reference=self._default_neuron_set_ref(),  # ty:ignore[unknown-argument]
                     )
                 )
             elif isinstance(stimulus, Brian2DirectPoissonStimulus):
@@ -451,6 +486,12 @@ class GenerateSimulationTask(Task):
         predefined neuron set, in which case a new node set is created which references the
         existing one. This makes behaviour consistent whether random subsampling is used or not.
         It also means, however, that existing node_set names cannot be used as keys in neuron_sets.
+
+        Node set definitions are kept symbolic wherever SONATA can express them, so that the
+        simulator resolves them against the circuit it already has staged. Only sub-sampling and
+        the combined set operations SONATA has no construct for (intersection, difference) fall
+        back to explicit neuron IDs. This keeps the written file small and, more importantly,
+        means generation does not have to read node properties for the common cases.
         """
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
 
@@ -467,9 +508,7 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
 
                 # 2.Add node set to SONATA circuit object - raises error if already existing
-                neuron_set_.add_node_set_definition_to_sonata_circuit(
-                    self._circuit, sonata_circuit, force_resolve_ids=True
-                )
+                neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
 
         else:
             neuron_set = self.config.default_neuron_set_type()
@@ -477,7 +516,6 @@ class GenerateSimulationTask(Task):
             neuron_set.add_node_set_definition_to_sonata_circuit(
                 self._circuit,  # ty:ignore[invalid-argument-type]
                 sonata_circuit,
-                force_resolve_ids=True,
             )
 
         # 3. Write node sets from SONATA circuit object to .json file
@@ -531,6 +569,81 @@ class GenerateSimulationTask(Task):
                 entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
                 attrs_or_entity={"number_neurons": number_neurons},
             )
+
+    def _extracellular_recordings(self) -> list[ExtracellularElectrodeArrayRecordingBlock]:
+        return [
+            recording
+            for recording in getattr(self.config, "recordings", {}).values()
+            if isinstance(recording, ExtracellularElectrodeArrayRecordingBlock)
+        ]
+
+    def _recording_array_ids(self) -> list[str]:
+        """The extracellular recording arrays this simulation's LFP reports read, each once."""
+        return sorted(
+            {recording.electrode_array.id_str for recording in self._extracellular_recordings()}
+        )
+
+    def _check_the_simulator_runs_every_block(self) -> None:
+        """Refuse blocks the chosen simulator cannot run, before anything is staged or written.
+
+        Neurodamus computes LFP reports only under CoreNEURON, and applies electric fields through
+        NEURON's extracellular mechanism, which CoreNEURON cannot simulate.
+        """
+        simulator = self._sonata_config["target_simulator"]
+        recordings = [recording.block_name for recording in self._extracellular_recordings()]
+        fields = [
+            stimulus.block_name
+            for stimulus in getattr(self.config, "stimuli", {}).values()
+            if isinstance(stimulus, SpatiallyUniformElectricFieldStimulus)
+        ]
+        if simulator == SimulatorType.NEURON.name and recordings:
+            msg = (
+                f"LFP recordings ({', '.join(map(repr, recordings))}) need CoreNEURON: select it "
+                "as the simulator."
+            )
+            raise ConfigValidationError(msg)
+        if simulator == SimulatorType.CORENEURON.name and fields:
+            msg = (
+                f"Electric field stimuli ({', '.join(map(repr, fields))}) need NEURON: CoreNEURON "
+                "cannot simulate the extracellular mechanism they are applied through. Select "
+                "NEURON as the simulator."
+            )
+            raise ConfigValidationError(msg)
+
+    def _check_recording_arrays_belong_to_circuit(
+        self, db_client: entitysdk.client.Client, circuit_id: str
+    ) -> None:
+        """Refuse an LFP recording whose array was built for another circuit.
+
+        The UI only offers the arrays of the simulated circuit, but a config can also come from
+        the API or an agent. An array's weight matrix covers the segments of the circuit it was
+        built for, so another circuit's would at best fail the simulation and at worst record
+        the signal with the wrong weights.
+        """
+        for recording in self._extracellular_recordings():
+            array = recording.electrode_array.entity(db_client=db_client)
+            if array.circuit_id != UUID(circuit_id):
+                msg = (
+                    f"Recording '{recording.block_name}' uses extracellular recording array "
+                    f"'{array.id}', which was built for circuit '{array.circuit_id}', not for the "
+                    f"simulated circuit '{circuit_id}'."
+                )
+                raise ConfigValidationError(msg)
+
+    def _link_recording_arrays_to_simulation(
+        self, db_client: entitysdk.client.Client, array_ids: list[str]
+    ) -> None:
+        """Link the Simulation entity to the recording arrays its LFP reports read.
+
+        entitysdk's stage_simulation stages the weight matrix of every linked array when the
+        simulation is run, and refuses an LFP report whose array is not linked, so this is what
+        lets generation leave the matrix alone.
+        """
+        db_client.update_entity(
+            entity_id=self.config.single_entity.id,
+            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+            attrs_or_entity={"recording_arrays": [{"id": array_id} for array_id in array_ids]},
+        )
 
     def _write_simulation_config_to_file(self) -> None:
         write_simulation_config(
@@ -598,10 +711,16 @@ class GenerateSimulationTask(Task):
         """Generates SONATA simulation files."""
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
+        self._check_the_simulator_runs_every_block()
         self._resolve_circuit(db_client)
         self.config.validate_circuit(self._circuit)
+        # Only a circuit from entitycore has an id to compare a recording array's circuit with.
+        circuit = getattr(self.config.initialize, "circuit", None)
+        if db_client and isinstance(circuit, CircuitFromID):
+            self._check_recording_arrays_belong_to_circuit(db_client, circuit.id_str)
         self._ensure_simulation_target_node_set()
         self._ensure_all_blocks_have_neuron_set_reference_if_neuron_sets_dictionary_exists()
+        self.config.validate_recordings(self._circuit)  # ty:ignore[invalid-argument-type]
         self._materialize_location_targets()
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports(db_client)
@@ -609,5 +728,8 @@ class GenerateSimulationTask(Task):
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._write_materialized_compartment_sets_file()
         self._update_simulation_number_neurons(db_client)
+        array_ids = self._recording_array_ids()
+        if db_client and array_ids:
+            self._link_recording_arrays_to_simulation(db_client, array_ids)
         self._write_simulation_config_to_file()
         self._save_generated_simulation_assets_to_entity(db_client)

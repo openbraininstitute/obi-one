@@ -28,7 +28,7 @@ class BaseRecording(Block, ABC):
     a parameter of its own, :class:`SimulationDtRecording` from the simulation timestep.
     """
 
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Neuron set to record from.",

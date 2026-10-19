@@ -6,7 +6,7 @@ from obi_one.scientific.blocks.distributions.constant import (
     IntConstantDistribution,
 )
 from obi_one.scientific.blocks.synaptic_models.domains import is_valid_parameter_sample
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )

@@ -16,6 +16,20 @@ L = logging.getLogger(__name__)
 POPULATION = "drosophila"
 UNKNOWN_STRING = "[unknown]"
 
+# Node sets are named by bare column values, so a value found in several columns gets one node set:
+# that of the column selecting the most neurons, a tie going to the column listed first here. The
+# others stay reachable with a property filter. Unlisted columns come last, in the table's order.
+NODE_SET_COLUMN_ORDER = (
+    "super_class",
+    "cell_class",
+    "cell_sub_class",
+    "flow",
+    "side",
+    "nerve",
+    "top_nt",
+    "synapse_class",
+)
+
 
 def _write_indexes(
     edge_file_name: str | Path, new_pop_name: str, source_node_count: int, target_node_count: int
@@ -232,9 +246,25 @@ def _create_nodesets(output: Path, nodes: pd.DataFrame, sugar_nodes: list[int]) 
 
     # see: https://github.com/openbraininstitute/prod-circuit-simulation/issues/174#issuecomment-4621972177
     ignored_columns = {"model_type", "model_template", "cell_type", "ito_lee_hemilineage"}
-    for k in set(nodes.select_dtypes(include=["object", "string"]).columns) - ignored_columns:
+    string_columns = nodes.select_dtypes(include=["object", "string"]).columns
+    rank = {k: i for i, k in enumerate(NODE_SET_COLUMN_ORDER)}
+    columns = sorted(
+        (k for k in string_columns if k not in ignored_columns),
+        key=lambda k: rank.get(k, len(rank)),
+    )
+
+    owners = {}  # value -> (neuron count, column)
+    for k in columns:
+        counts = nodes[k].value_counts()
         for v in nodes[k].unique():
-            node_sets[v] = {k: v}
+            if v not in owners or counts[v] > owners[v][0]:
+                owners[v] = (counts[v], k)
+
+    for v, (_, k) in owners.items():
+        if v in node_sets:
+            msg = f"Column {k!r} has the value {v!r}, which would replace the {v!r} node set"
+            raise ValueError(msg)
+        node_sets[v] = {k: v}
 
     with path.open("w") as fd:
         json.dump(node_sets, fd)

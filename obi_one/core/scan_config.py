@@ -8,6 +8,7 @@ from typing import ClassVar, get_args, get_origin
 import entitysdk
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
+from entitysdk.models.activity import Activity
 from entitysdk.types import (
     ActivityStatus,
     TaskActivityType,
@@ -24,10 +25,13 @@ from obi_one.core.fill_none_references import (
     fill_none_references_in_config,
     resolve_block_default,
 )
-from obi_one.core.registry import block_ref_registry, task_registry
 from obi_one.core.schema import SchemaKey
 from obi_one.core.serialization_constants import SCAN_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.block_reference_registry import block_ref_registry
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_scan_config,
+)
 
 L = logging.getLogger(__name__)
 
@@ -41,6 +45,28 @@ _DEFAULT_LABEL_PREFIX = "Default: "
 # resolved block reads distinctly from the "Default: ..." label the schema still advertises for
 # the unset field. A collision with a different block stacks an index: "Resolved (1) ...".
 _RESOLVED_PREFIX = "Resolved "
+
+
+def _reference_type_name_for_block(
+    block_class_name: str, candidate_ref_names: list[str]
+) -> str | None:
+    """Return the first reference class name (from ``candidate_ref_names``) that accepts the block.
+
+    A reference accepts a block when its ``allowed_block_types`` lists the block class (or when
+    it declares no restriction). Returns None if no candidate accepts the block class.
+    """
+    for ref_name in candidate_ref_names:
+        ref_cls = block_ref_registry.get_by_name(ref_name)
+        if ref_cls is None:
+            continue
+        extras = getattr(ref_cls, "json_schema_extra_additions", None)
+        if extras is None:
+            # No restrictions — accept any block.
+            return ref_name
+        allowed = extras.get("allowed_block_types", [])
+        if not allowed or block_class_name in allowed:
+            return ref_name
+    return None
 
 
 def _resolved_default_name(default_name: str, index: int = 0) -> str:
@@ -153,7 +179,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         extra = cls.model_config.get("json_schema_extra")
         if not isinstance(extra, dict):
             return
-        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {  # ty:ignore[invalid-assignment]
+        extra[SchemaKey.REFERENCE_TAG_DEFAULTS] = {
             tag: {"name": reference.block_name, "block": reference.block.model_dump(mode="json")}
             for tag, reference in defaults.items()
         }
@@ -311,17 +337,13 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def campaign_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_scan_config(type(self))
-        return registration.campaign_task_config_type if registration is not None else None
+        task_spec = get_task_spec_for_scan_config(type(self))
+        return task_spec.campaign_task_config_type if task_spec is not None else None
 
     @property
     def campaign_generation_task_activity_type(self) -> TaskActivityType | None:
-        registration = task_registry.get_registration_for_scan_config(type(self))
-        return (
-            registration.campaign_generation_task_activity_type
-            if registration is not None
-            else None
-        )
+        task_spec = get_task_spec_for_scan_config(type(self))
+        return task_spec.campaign_generation_task_activity_type if task_spec is not None else None
 
     def create_campaign_entity_with_config(
         self,
@@ -349,7 +371,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     def create_campaign_generation_entity(
         self, generated: list[TaskConfig], db_client: Client
-    ) -> None:
+    ) -> Activity:
         if self.campaign_generation_task_activity_type is None:
             msg = (
                 "campaign_generation_task_activity_type must be defined to create "
@@ -359,7 +381,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         time_now = datetime.now(UTC)
 
-        db_sdk.create_generic_activity(
+        return db_sdk.create_generic_activity(
             client=db_client,
             activity_type=self.campaign_generation_task_activity_type,
             used=[self._campaign],
@@ -480,6 +502,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
                 # ValueError, not KeyError: only ValueError/AssertionError are folded into a
                 # ValidationError by the model validator this runs inside.
                 raise ValueError(msg) from None
+            self._correct_reference_type(block_reference)
 
         elif not block_reference.block_dict_name and block_reference.block_name:
             # If the block_dict_name is empty, we assume the block_name
@@ -489,6 +512,26 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         else:
             msg = "BlockReference must have a non-empty block_dict_name and block_name."
             raise ValueError(msg)
+
+    def _correct_reference_type(self, block_reference: BlockReference) -> None:
+        """Align a reference's ``type`` with the variant of the block it resolves to.
+
+        Incoming references carry no ``type`` (the frontend omits it), so Pydantic stamps the
+        first-matching member of the field's reference union - which is not necessarily the
+        reference class that matches the referenced block's actual variant (e.g. a virtual
+        neuron set wrongly tagged as ``BiophysicalNeuronSetReference``). We re-derive the
+        correct reference type from the resolved block so the serialized coordinate config is
+        consistent. Also heals already-stored configs that carry the wrong ``type``.
+        """
+        block_class_name = block_reference.block.__class__.__name__
+        mapping_entry = self.block_mapping.get(block_class_name)
+        if mapping_entry is None:
+            # Target block type is not part of this config's reference mapping; leave as-is.
+            return
+        candidate_ref_names = mapping_entry[SchemaKey.REFERENCE_TYPES]
+        correct_ref_name = _reference_type_name_for_block(block_class_name, candidate_ref_names)
+        if correct_ref_name is not None and block_reference.type != correct_ref_name:
+            block_reference.type = correct_ref_name
 
     @model_validator(mode="after")
     def fill_block_references_and_names(self) -> "ScanConfig":
@@ -512,15 +555,15 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
     @property
     def single_config_class(self) -> type[OBIBaseModel]:
-        """The SingleConfig class this ScanConfig expands into, from TASK_MAP."""
-        registration = task_registry.get_registration_for_scan_config(type(self))
-        if registration is None:
+        """The SingleConfig class this ScanConfig expands into, from its task spec."""
+        task_spec = get_task_spec_for_scan_config(type(self))
+        if task_spec is None:
             msg = (
-                f"'{type(self).__name__}' has no entry in TASK_MAP, so the SingleConfig "
+                f"'{type(self).__name__}' has no task spec, so the SingleConfig "
                 "class it expands into cannot be resolved."
             )
             raise OBIONEError(msg)
-        return registration.single_config_cls
+        return task_spec.single_config_cls
 
     def cast_to_single_coord(self) -> OBIBaseModel:
         """Cast the form to a single coordinate object."""
@@ -545,26 +588,16 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
 
         # Find the reference type that accepts this block class
         block_class_name = block.__class__.__name__
-        reference_type = None
-        for ref_name in reference_type_names:
-            ref_cls = block_ref_registry.get_by_name(ref_name)
-            if ref_cls is None:
-                continue
-            extras = getattr(ref_cls, "json_schema_extra_additions", None)
-            if extras is None:
-                # No restrictions — accept any block
-                reference_type = ref_cls
-                break
-            allowed = extras.get("allowed_block_types", [])
-            if not allowed or block_class_name in allowed:
-                reference_type = ref_cls
-                break
-
-        if reference_type is None:
+        reference_type_name = _reference_type_name_for_block(block_class_name, reference_type_names)
+        if reference_type_name is None:
             msg = (
                 f"No reference type from {reference_type_names}"
                 f" accepts block class '{block_class_name}'."
             )
+            raise OBIONEError(msg)
+        reference_type = block_ref_registry.get_by_name(reference_type_name)
+        if reference_type is None:
+            msg = f"Reference type '{reference_type_name}' is not registered."
             raise OBIONEError(msg)
 
         ref = reference_type(block_dict_name=block_dict_name, block_name=name)

@@ -588,7 +588,8 @@ class TestRegisterCircuitEndpoint:
         call_kwargs = mock_register_circuit.call_args.kwargs
         assert call_kwargs["lifecycle_status"] == "draft"
         assert call_kwargs["skip_validation"] is True
-        assert call_kwargs["include_visualization"] is True
+        # Draft carries no generated assets; the post-validation job produces them.
+        assert call_kwargs["skip_additional_assets"] is True
         assert call_kwargs["dry_run"] is False
         assert call_kwargs["name"] == "test-circuit"
         assert call_kwargs["published_in"] is None
@@ -639,7 +640,6 @@ class TestRegisterCircuitEndpoint:
         call_kwargs = mock_register_circuit.call_args.kwargs
         assert call_kwargs["dry_run"] is True
         assert call_kwargs["skip_additional_assets"] is True
-        assert call_kwargs["include_visualization"] is False
         mock_trigger_validation.assert_not_called()
         assert result["status"] == "dry_run"
         assert result["circuit_id"] is None

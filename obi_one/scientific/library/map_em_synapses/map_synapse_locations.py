@@ -121,10 +121,10 @@ def synapse_info_df(
     return syns
 
 
-def morph_to_segs_df(morph: Morphology) -> pandas.DataFrame:
+def morph_to_segs_df(morph: MorphologyWithSpines) -> pandas.DataFrame:
     segs = []
     sec_id_keys = []
-    for sec in morph.morphology.sections:  # ty:ignore[unresolved-attribute]
+    for sec in morph.morphology.sections:
         if len(sec.points) <= 1:
             continue
         seg_start, seg_end = zip(*sec.segments, strict=False)
@@ -161,17 +161,17 @@ def morph_to_spine_and_soma_df(m: MorphologyWithSpines) -> pandas.DataFrame:
     return spine_and_soma_points
 
 
-def map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas.DataFrame:
+def map_points_to_segs_df(segs: pandas.DataFrame, pts: pandas.DataFrame) -> pandas.DataFrame:
     chunk_sz = 250
     if len(pts) <= chunk_sz:
-        res = _map_points_to_segs_df(segs, pts.to_numpy())  # ty:ignore[unresolved-attribute]
+        res = _map_points_to_segs_df(segs, pts.to_numpy())
     else:
         chunk_ab = numpy.arange(0, len(pts) + chunk_sz, chunk_sz)
         res = []
         for a, b in zip(chunk_ab[:-1], chunk_ab[1:], strict=False):  # ruff: ignore[zip-instead-of-pairwise]
-            res.append(_map_points_to_segs_df(segs, pts.iloc[a:b].to_numpy()))  # ty:ignore[unresolved-attribute]
+            res.append(_map_points_to_segs_df(segs, pts.iloc[a:b].to_numpy()))
         res = pandas.concat(res, axis=0)
-    res.index = pts.index  # ty:ignore[unresolved-attribute]
+    res.index = pts.index
     return res
 
 
@@ -227,7 +227,7 @@ def _map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas
 
 
 def calc_section_offset(
-    syns: pandas.DataFrame, morph: MorphologyWithSpines, prefix: str = ""
+    syns: pandas.DataFrame, morph: Morphology, prefix: str = ""
 ) -> numpy.ndarray:
     try:
         from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
@@ -237,8 +237,8 @@ def calc_section_offset(
         err_str = "Optional dependency Connectome-Utilities not installed!"
         raise RuntimeError(err_str) from None
 
-    pd_calc = MorphologyPathDistanceCalculator(morph.to_morphio())  # ty:ignore[unresolved-attribute]
-    all_sec_l = numpy.array([sec.length for sec in morph.sections])  # ty:ignore[unresolved-attribute]
+    pd_calc = MorphologyPathDistanceCalculator(morph.to_morphio())
+    all_sec_l = numpy.array([sec.length for sec in morph.sections])
     is_not_on_neurite = syns[prefix + _STR_SEC_ID] < 1
 
     abs_off = pd_calc.offset[syns[prefix + _STR_SEC_ID] - 1, syns[prefix + _STR_SEG_ID]]
@@ -253,10 +253,10 @@ def segment_interpolator(seg: tuple, o: float) -> pandas.Series:
     return pandas.Series(a[:3] + o * c / numpy.linalg.norm(c), index=_C_CENTER)
 
 
-def calc_center_positions(df: pandas.DataFrame, morph: MorphologyWithSpines) -> pandas.DataFrame:
+def calc_center_positions(df: pandas.DataFrame, morph: Morphology) -> pandas.DataFrame:
     return df.apply(
         lambda row: segment_interpolator(
-            morph.section(int(row[_STR_SEC_ID]) - 1).segments[int(row[_STR_SEG_ID])],  # ty:ignore[unresolved-attribute]
+            morph.section(int(row[_STR_SEC_ID]) - 1).segments[int(row[_STR_SEG_ID])],
             row[_STR_SEG_OFF],
         ),
         axis=1,
@@ -305,7 +305,7 @@ def edges_dataframe_for_soma_syns(
     c[_STR_SEC_ID] = 0
     c[_STR_SEG_ID] = 0
     c[_STR_SEG_OFF] = 0.0
-    c[_STR_SEC_OFF] = calc_section_offset(c, m.morphology)  # ty:ignore[invalid-argument-type]
+    c[_STR_SEC_OFF] = calc_section_offset(c, m.morphology)
     for col, coord in zip(_C_CENTER, m.morphology.soma.center, strict=False):
         c[col] = coord
     c["distance"] = mpd.loc[is_on_soma, "distance"]
@@ -334,8 +334,8 @@ def edges_dataframe_for_shaft_syns(
         ],
         axis=1,
     )
-    b = pandas.concat([b, calc_center_positions(b, m.morphology)], axis=1)  # ty:ignore[invalid-argument-type]
-    b[_STR_SEC_OFF] = calc_section_offset(b, m.morphology)  # ty:ignore[invalid-argument-type]
+    b = pandas.concat([b, calc_center_positions(b, m.morphology)], axis=1)
+    b[_STR_SEC_OFF] = calc_section_offset(b, m.morphology)
     b = rename_directed_dataframe_colums(b, _PF_AFF)
     return b
 
@@ -375,8 +375,8 @@ def map_afferents_to_spiny_morphology(
     m: MorphologyWithSpines,
     syns: pandas.DataFrame,
     add_quality_info: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
-) -> pandas.DataFrame:
-    segs_df = morph_to_segs_df(m)  # ty:ignore[invalid-argument-type]
+) -> tuple[pandas.DataFrame, float | None]:
+    segs_df = morph_to_segs_df(m)
     spine_and_soma_points = morph_to_spine_and_soma_df(m)
 
     mpd_nrt = map_points_to_segs_df(segs_df, syns[_C_P_LOCS])
@@ -405,5 +405,5 @@ def map_afferents_to_spiny_morphology(
             competing_dist[is_on_spine].to_numpy(), mpd_nrt.loc[is_on_spine, "distance"].to_numpy()
         )
         df_concat["competing_distance"] = competing_dist
-        return df_concat, estimate_mesh_resolution(spine_and_soma_points)  # ty:ignore[invalid-return-type]
-    return df_concat
+        return df_concat, estimate_mesh_resolution(spine_and_soma_points)
+    return df_concat, None

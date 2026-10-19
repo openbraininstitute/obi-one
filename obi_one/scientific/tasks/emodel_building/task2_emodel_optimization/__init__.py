@@ -15,18 +15,20 @@ from obi_one.core.scan_config import ScanConfig
 
 try:  # ruff: ignore[non-empty-init-module]
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
+        MAX_DISTANCE_FUNCTION_LENGTH,
         CustomDistanceDependentDistribution,
         DistanceDependentDistribution,
+        DistributionParameter,
         ExponentialDistanceDependentDistribution,
         ExponentialNaDendDistanceDependentDistribution,
         LinearEPasApicDistanceDependentDistribution,
         LinearHDApicDistanceDependentDistribution,
-        LinearHDPasDistanceDependentDistribution,
         SigmoidKADApicDistanceDependentDistribution,
         SigmoidKADDistanceDependentDistribution,
         SigmoidKDBMApicDistanceDependentDistribution,
         StepDistanceDependentDistribution,
         UniformDistanceDependentDistribution,
+        check_distance_function,
     )
     from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
         EModelOptimizationScanConfig,
@@ -43,11 +45,11 @@ try:  # ruff: ignore[non-empty-init-module]
 except ImportError:
     CustomDistanceDependentDistribution: type | None = None
     DistanceDependentDistribution: type | None = None
+    DistributionParameter: type | None = None
     ExponentialDistanceDependentDistribution: type | None = None
     ExponentialNaDendDistanceDependentDistribution: type | None = None
     LinearEPasApicDistanceDependentDistribution: type | None = None
     LinearHDApicDistanceDependentDistribution: type | None = None
-    LinearHDPasDistanceDependentDistribution: type | None = None
     SigmoidKADApicDistanceDependentDistribution: type | None = None
     SigmoidKADDistanceDependentDistribution: type | None = None
     SigmoidKDBMApicDistanceDependentDistribution: type | None = None
@@ -57,13 +59,17 @@ except ImportError:
     EModelOptimizationSingleConfig: type[ScanConfig] | None = None
     EModelOptimizationTask: type | None = None
     fetch_variable_catalog: Callable[..., dict] | None = None
+    check_distance_function: Callable[..., object] | None = None
+    MAX_DISTANCE_FUNCTION_LENGTH: int | None = None
 
     HAS_EMODEL_OPTIMIZATION = False
 
 __all__ = [
     "HAS_EMODEL_OPTIMIZATION",
+    "MAX_DISTANCE_FUNCTION_LENGTH",
     "CustomDistanceDependentDistribution",
     "DistanceDependentDistribution",
+    "DistributionParameter",
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
@@ -71,11 +77,11 @@ __all__ = [
     "ExponentialNaDendDistanceDependentDistribution",
     "LinearEPasApicDistanceDependentDistribution",
     "LinearHDApicDistanceDependentDistribution",
-    "LinearHDPasDistanceDependentDistribution",
     "SigmoidKADApicDistanceDependentDistribution",
     "SigmoidKADDistanceDependentDistribution",
     "SigmoidKDBMApicDistanceDependentDistribution",
     "StepDistanceDependentDistribution",
     "UniformDistanceDependentDistribution",
+    "check_distance_function",
     "fetch_variable_catalog",
 ]

@@ -48,10 +48,11 @@ def register_simulation_results(
     simulation_id: UUID,
     spike_report_file: Path,
     voltage_report_files: Sequence[Path],
+    lfp_report_files: Sequence[Path] = (),
     name: str,
     description: str,
 ) -> models.SimulationResult:
-    """Register a SimulationResult and attach its spike and voltage report assets.
+    """Register a SimulationResult and attach its spike, voltage and lfp report assets.
 
     Args:
         client: The entitycore SDK client.
@@ -59,6 +60,8 @@ def register_simulation_results(
         spike_report_file: Path to the spike report (HDF5).
         voltage_report_files: Paths to the voltage reports. The content type of each is
             derived from its extension via EXTENSION_TO_CONTENT_TYPE.
+        lfp_report_files: Paths to the lfp reports (HDF5), the extracellular signal per
+            electrode. Only simulations recording with an extracellular array have any.
         name: Name for the registered entity.
         description: Description for the registered entity.
 
@@ -89,6 +92,15 @@ def register_simulation_results(
             file_path=path,
             file_content_type=EXTENSION_TO_CONTENT_TYPE[path.suffix],
             asset_label=AssetLabel.voltage_report,
+        )
+
+    for path in lfp_report_files:
+        _upload_report(
+            client=client,
+            simulation_result=simulation_result,
+            file_path=path,
+            file_content_type=ContentType.application_x_hdf5,
+            asset_label=AssetLabel.lfp_report,
         )
 
     return simulation_result

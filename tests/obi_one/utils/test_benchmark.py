@@ -1,13 +1,17 @@
 import json
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import sys
 import time
 from pathlib import Path
+from unittest.mock import Mock
 
+import psutil
 import pytest
 
 from obi_one.utils.benchmark import BenchmarkTracker
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def _reset_tracker():
     """Reset and enable BenchmarkTracker before each test."""
     BenchmarkTracker.reset()
@@ -149,3 +153,24 @@ def test_print_summary_to_file_oserror_logs_warning(tmp_path, caplog, monkeypatc
 
     assert not output_file.exists()
     assert any("Failed to save benchmark results" in r.message for r in caplog.records)
+
+
+def test_section_counts_the_memory_of_processes_it_starts():
+    child_mb = 100
+    code = f"import time; data = b'x' * ({child_mb} * 2**20); time.sleep(1)"
+    with BenchmarkTracker.section("child"):
+        subprocess.run([sys.executable, "-c", code], check=True)  # ruff: ignore[subprocess-without-shell-equals-true]
+
+    data = BenchmarkTracker._benchmarks["child"]
+    assert data["peak_mem_mb"] - data["mem_before_mb"] > 0.9 * child_mb
+
+
+def test_memory_skips_processes_that_have_ended(monkeypatch):
+    ended = Mock()
+    ended.memory_info.side_effect = psutil.NoSuchProcess(pid=1)
+    process = Mock()
+    process.memory_info.return_value.rss = 2**20
+    process.children.return_value = [ended]
+    monkeypatch.setattr(BenchmarkTracker, "_process", process)
+
+    assert BenchmarkTracker._rss_mb() == 1

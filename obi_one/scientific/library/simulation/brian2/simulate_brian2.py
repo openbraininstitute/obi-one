@@ -6,11 +6,13 @@ import logging
 import math
 import os
 import re
+import sys
 import tempfile
+import time
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
-from datetime import UTC, datetime
+from collections.abc import Callable, Generator
+from datetime import UTC, datetime, timedelta
 from functools import partial, singledispatch
 from pathlib import Path
 from typing import Protocol
@@ -45,6 +47,9 @@ KNOWN_UNITS = {u for u in dir(brian2.units) if not u.startswith("_")}
 # so anything combining the two has to convert first.
 MILLISECONDS_PER_SECOND = 1000.0
 
+# Wall-clock seconds between two lines of `SimulationProgress`.
+PROGRESS_REPORT_PERIOD_SECONDS = 2.0
+
 
 class NetworkOperation(BaseModel):
     """Operations to apply to the brian2.Network after an event fires."""
@@ -75,14 +80,30 @@ class Event(BaseModel):
         return self.at < other.at
 
 
+class ReplaySynapses(BaseModel):
+    """The synapses that deliver replayed spikes: copies of some of the circuit's edges."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    synapses: brian2.Synapses
+    # Synapse `k` copies circuit edge `edge_ids[k]`, which is how a connection override finds it.
+    edge_ids: np.ndarray
+    # As `Brian2Network.synapse_weights`, for these synapses.
+    synapse_weights: brian2.Quantity
+
+
 class Brian2Network(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     neurons: brian2.NeuronGroup
     synapses: brian2.Synapses
+    # The synaptic weights as the circuit defines them. Connection overrides scale these rather
+    # than the current weights, so one override never compounds another.
+    synapse_weights: brian2.Quantity
     spike_monitor: brian2.SpikeMonitor
     state_monitor: brian2.StateMonitor | None
     inputs: list
+    replay_synapses: list[ReplaySynapses]
     report_id_mapping: np.ndarray
     events: list[Event]
 
@@ -344,12 +365,13 @@ def _get_spike_replay(
     input_: bluepysnap.input.SynapseReplay,
     n0: brian2.NeuronGroup,
     synapse_template: SynapseTemplate,
-) -> tuple[brian2.SpikeGeneratorGroup, brian2.Synapses] | None:
+) -> tuple[brian2.SpikeGeneratorGroup, ReplaySynapses] | None:
     """Create a SpikeGeneratorGroup from a spike file and network connectivity.
 
     Unfortunately, a new set of synapses needs to be created, and
     network connectivity needs to be recreated - one cannot piggy-back on the
-    existing network.
+    existing network. They are returned with the edges they copy, so that connection
+    overrides can reach them as they reach the network's own synapses.
     """
     assert len(input_.reader.get_population_names()) == 1
     population_name = next(iter(input_.reader.get_population_names()))
@@ -406,7 +428,15 @@ def _get_spike_replay(
         selection=selection,
     )
 
-    return (replay, replay_connectivity)
+    return (
+        replay,
+        ReplaySynapses(
+            synapses=replay_connectivity,
+            # `_build_synapses` connects the edges in the order `flatten` lists them.
+            edge_ids=selection.flatten(),
+            synapse_weights=replay_connectivity.w[:].copy(),
+        ),
+    )
 
 
 class Inputs:
@@ -478,21 +508,24 @@ def _get_non_current_inputs(
     simulation: bluepysnap.Simulation,
     n0: brian2.NeuronGroup,
     synapse_template: SynapseTemplate,
-) -> tuple[brian2.NeuronGroup, list[brian2.Group]]:
+) -> tuple[brian2.NeuronGroup, list[brian2.Group], list[ReplaySynapses]]:
     """Filter inputs that are known from the SONATA config, return simulatable brian objects."""
     inputs = []
+    replay_synapses = []
     for name, input_ in simulation.inputs.items():
         if isinstance(input_, bluepysnap.input.SynapseReplay):
             new_inputs = _get_spike_replay(simulation, input_, n0, synapse_template)
             if new_inputs:
-                inputs += new_inputs
+                replay, synapses = new_inputs
+                inputs += [replay, synapses.synapses]
+                replay_synapses.append(synapses)
         elif isinstance(input_, libsonata.SimulationConfig.Poisson):
             pass
         elif type(input_) not in STIMULATION_TYPES:
             msg = f"Input {name} of type: `{type(input_)}` is not currently supported."
             raise RuntimeError(msg)
 
-    return n0, inputs
+    return n0, inputs, replay_synapses
 
 
 def _get_reports(
@@ -718,17 +751,30 @@ class ConnectionOverride:
         edges = circuit.edges[next(iter(circuit.edges.population_names))]
         edge_pop = edges.to_libsonata
         # All synapses have been instantiated, so we can index using the `connecting_edges`
-        selection = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten())
+        edge_ids = edge_pop.connecting_edges(src_ids.flatten(), tgt_ids.flatten()).flatten()
+        self._apply(net.synapses, net.synapse_weights, edge_ids)
 
-        if self.config.weight is not None:
-            net.synapses.w[selection.flatten()] = self.config.weight * brian2.units.mV
-
-        if self.config.synapse_delay_override is not None:
-            net.synapses.delay[selection.flatten()] = (
-                self.config.synapse_delay_override * brian2.units.ms
+        # Replayed spikes travel through copies of the same edges, which the override changes too.
+        for replay in net.replay_synapses:
+            self._apply(
+                replay.synapses,
+                replay.synapse_weights,
+                np.flatnonzero(np.isin(replay.edge_ids, edge_ids)),
             )
 
         return NetworkOperation(add=[], remove=[])
+
+    def _apply(
+        self, synapses: brian2.Synapses, weights: brian2.Quantity, indices: np.ndarray
+    ) -> None:
+        """Override the synapses at `indices`, whose circuit weights are `weights`."""
+        if self.config.weight is not None:
+            # SONATA's `weight` is a factor on each synapse's own weight, not a weight: 0
+            # disconnects, and 1 restores the circuit's weight whatever came before.
+            synapses.w[indices] = self.config.weight * weights[indices]
+
+        if self.config.synapse_delay_override is not None:
+            synapses.delay[indices] = self.config.synapse_delay_override * brian2.units.ms
 
 
 class InputPoisson:
@@ -759,19 +805,26 @@ class InputPoisson:
             assert self.config.delay <= t <= self.config.delay + self.config.duration
             simulation = bluepysnap.Simulation(self.sim_config_path)
             population_name = _get_single_node_population(simulation.circuit)
-            selections = simulation.node_sets.to_libsonata.materialize(
+            node_ids = simulation.node_sets.to_libsonata.materialize(
                 self.config.node_set, simulation.circuit.nodes[population_name].to_libsonata
-            )
+            ).flatten()
 
-            for start, end in selections.ranges:
-                p = brian2.PoissonInput(
-                    target=net.neurons[start:end],
-                    target_var="v",
-                    N=1,
-                    rate=self.config.rate * brian2.units.Hz,
-                    weight=self.config.weight * brian2.units.mV,
+            # a stimulus without duration is added and removed before it could ever run
+            if node_ids.size and self.config.duration > 0:
+                # One Poisson source per targeted neuron, wired one-to-one onto it. A PoissonInput
+                # can only target a contiguous range of neurons, and one per range costs seconds
+                # and memory each: FlyWire's olfactory node set alone has 2,220 ranges.
+                sources = brian2.PoissonGroup(
+                    node_ids.size, rates=self.config.rate * brian2.units.Hz
                 )
-                self._inputs.append(p)
+                kicks = brian2.Synapses(
+                    sources,
+                    net.neurons,
+                    on_pre="v_post += weight",
+                    namespace={"weight": self.config.weight * brian2.units.mV},
+                )
+                kicks.connect(i=np.arange(node_ids.size), j=np.array(node_ids, np.int64))
+                self._inputs.extend((sources, kicks))
 
             return NetworkOperation(add=list(self._inputs), remove=[])
 
@@ -826,13 +879,18 @@ def _build_brian2_network(simulation: bluepysnap.Simulation) -> Brian2Network:
 
     state_monitor, report_id_mapping = _get_reports(simulation, neurons)
 
-    neurons, inputs = _get_non_current_inputs(simulation, neurons, synapse_template)
+    neurons, inputs, replay_synapses = _get_non_current_inputs(
+        simulation, neurons, synapse_template
+    )
 
     net = Brian2Network(
         neurons=neurons,
         synapses=synapses,
+        # A copy: `w[:]` is a view, which would follow the overrides it is meant to anchor.
+        synapse_weights=synapses.w[:].copy(),
         spike_monitor=spike_monitor,
         inputs=inputs,
+        replay_synapses=replay_synapses,
         state_monitor=state_monitor,
         report_id_mapping=report_id_mapping,
         events=events,
@@ -851,8 +909,16 @@ def _write_soma_report(
     end: float,
     dt: float,
 ) -> None:
-    """Write soma report in SONATA format."""
-    values = values[:, math.floor(start / dt) : min(math.ceil(end / dt) + 1, values.shape[1])]
+    """Write soma report in SONATA format.
+
+    SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
+    so a window holds `(end - start) / dt` frames. Both ends are rounded to the nearest sample
+    rather than floored and ceiled, since e.g. `0.3 / 0.1 == 2.9999999999999996`, and the
+    mapping records the times of the frames actually written.
+    """
+    first = round(start / dt)
+    last = min(round(end / dt), values.shape[1])
+    values = values[:, first:last]
     string_dtype = h5py.special_dtype(vlen=str)
     with h5py.File(output_path, "w") as h5f:
         g = h5f.create_group(f"/report/{name}")
@@ -865,9 +931,9 @@ def _write_soma_report(
             "index_pointers", data=np.arange(values.shape[0] + 1), dtype=np.uint64
         )
         mapping.create_dataset("element_ids", data=np.zeros(values.shape[0]), dtype=np.uint32)
-        mapping.create_dataset("time", data=(start, end, dt), dtype=np.double).attrs.create(
-            "units", data="ms", dtype=string_dtype
-        )
+        mapping.create_dataset(
+            "time", data=(first * dt, last * dt, dt), dtype=np.double
+        ).attrs.create("units", data="ms", dtype=string_dtype)
 
 
 def _write_reports(
@@ -926,6 +992,56 @@ def _write_reports(
         )
 
 
+class SimulationProgress:
+    """Print the simulation's progress the way neurodamus does.
+
+    A line such as `[t=450.00] Completed 45% ETA: 0:00:12` goes to stdout at most every
+    `period` seconds of wall time, and always once the end is reached. The run is split into
+    one `network.run` per interval between events, and brian2 reports each of those as a
+    fraction of its own interval, so this is handed to every one of them as their `report`
+    and turns that fraction back into the time through the whole simulation.
+
+    Each update is a line of its own, where neurodamus redraws one with a carriage return:
+    the job log is read a line at a time, so a redrawn line would only show up once the next
+    update had started it.
+    """
+
+    def __init__(self, tstop: float, period: float) -> None:
+        """Ibid."""
+        self.tstop = tstop
+        self.period = period
+        self._wall_start = time.monotonic()
+        self._last_report = -math.inf
+
+    def __call__(
+        self,
+        _elapsed: brian2.Quantity,
+        completed: float,
+        start: brian2.Quantity,
+        duration: brian2.Quantity,
+    ) -> None:
+        """Brian2's `report` callable, called at the start, end and every report period."""
+        now = time.monotonic()
+        t = float((start + completed * duration) / brian2.units.ms)
+        if t <= 0:
+            # Building and compiling what runs from t=0 can take longer than simulating it, and
+            # would otherwise inflate the first estimates of the time remaining.
+            self._wall_start = now
+            return
+
+        finished = math.isclose(t, self.tstop) or t > self.tstop
+        if not finished and now - self._last_report < self.period:
+            return
+
+        self._last_report = now
+        remaining = 0.0 if finished else (now - self._wall_start) * (self.tstop / t - 1)
+        print(  # ruff: ignore[print]
+            f"[t={t:5.2f}] Completed {t * 100 / self.tstop:2.0f}% "
+            f"ETA: {timedelta(seconds=int(remaining))}",
+            flush=True,
+        )
+
+
 def run_sonata_brian2_trial(
     simulation_config_path: Path, *, profile: bool = False
 ) -> Brian2Network:
@@ -953,11 +1069,16 @@ def run_sonata_brian2_trial(
     queue = list(net.events)
     heapq.heapify(queue)
 
-    report = "text" if profile else None
+    progress = SimulationProgress(simulation.run.tstop, period=PROGRESS_REPORT_PERIOD_SECONDS)
     current_t = 0.0
     while current_t < simulation.run.tstop:
         next_t = min(queue[0].at, simulation.run.tstop) if queue else simulation.run.tstop
-        network.run((next_t - current_t) * brian2.units.ms, profile=profile, report=report)
+        network.run(
+            (next_t - current_t) * brian2.units.ms,
+            profile=profile,
+            report=progress,
+            report_period=progress.period * brian2.units.second,
+        )
         current_t = next_t
 
         while queue and queue[0].at <= current_t:
@@ -1034,7 +1155,7 @@ def activity_wrapper(
     entitysdk_client: Client,
     activity_id: uuid.UUID,
     activity_type: type[Activity],
-) -> Iterator[None]:
+) -> Generator[None, None, None]:
     """Ensure that the activity status is updated correctly in entitycore."""
 
     def _update_activity_status(attrs: dict) -> None:
@@ -1131,7 +1252,15 @@ def sonata_simulation_task(
 
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level, force=True)
-    L.setLevel(log_level)
+    # This module's own messages say which phase a job is in - on FlyWire, staging, building and
+    # compiling the network take about a minute before simulated time starts to move - so they
+    # go to stdout, at INFO at least, next to the progress lines. Everything else keeps
+    # `log_level`, on stderr.
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    L.addHandler(handler)
+    L.propagate = False
+    L.setLevel(min(log_level, logging.INFO))
     if verbose > 1:
         brian2.BrianLogger.log_level_debug()
 
