@@ -4,6 +4,7 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
+import obi_one.scientific.tasks.simulation_execution.neuron.task as test_module
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.simulation.neuron.schemas import (
@@ -15,19 +16,15 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron import (
-    single_neuron_simulation_execution as test_module,
-)
-from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution import (  # ruff: ignore[line-too-long]
+from obi_one.scientific.tasks.simulation_execution.neuron.config import (
     SingleNeuronSimulationExecutionSingleConfig,
+)
+from obi_one.scientific.tasks.simulation_execution.neuron.task import (
     SingleNeuronSimulationExecutionTask,
 )
 from obi_one.types import SimulationBackend
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
-_SINGLE_NEURON = (
-    "obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_simulation_execution"
-)
+_TASK = "obi_one.scientific.tasks.simulation_execution.neuron.task"
 
 
 @pytest.fixture
@@ -82,13 +79,13 @@ def _neurodamus_mechanism_build(tmp_path):
     )
 
 
-@patch(f"{_SINGLE_NEURON}.SingleNeuronSimulationExecutionTask.get_generation_single_config")
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_SINGLE_NEURON}.stage_memodel_as_circuit")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.SingleNeuronSimulationExecutionTask.get_generation_single_config")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_memodel_as_circuit")
+@patch(f"{_TASK}.create_dir")
 def test_execute_local_does_not_register(
     mock_create_dir,
     mock_stage_circuit,
@@ -137,14 +134,14 @@ def test_execute_local_does_not_register(
     db_client.update_entity.assert_not_called()
 
 
-@patch(f"{_SINGLE_NEURON}.SingleNeuronSimulationExecutionTask.get_generation_single_config")
-@patch(f"{_BASE}.register_simulation_results")
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_SINGLE_NEURON}.stage_memodel_as_circuit")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.SingleNeuronSimulationExecutionTask.get_generation_single_config")
+@patch(f"{_TASK}.register_simulation_results")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_memodel_as_circuit")
+@patch(f"{_TASK}.create_dir")
 def test_execute_tracked_registers_and_updates_activity(
     mock_create_dir,
     mock_stage_circuit,
@@ -202,8 +199,8 @@ def test_execute_tracked_registers_and_updates_activity(
     )
 
 
-@patch(f"{_SINGLE_NEURON}.MEModelSimulationSingleConfig.model_validate_json")
-@patch(f"{_SINGLE_NEURON}.db_sdk.select_asset_content")
+@patch(f"{_TASK}.MEModelSimulationSingleConfig.model_validate_json")
+@patch(f"{_TASK}.db_sdk.select_asset_content")
 def test_get_generation_single_config(
     mock_select_content, mock_validate_json, config, generation_config
 ):
@@ -219,7 +216,7 @@ def test_get_generation_single_config(
     mock_validate_json.assert_called_once_with(json_bytes)
 
 
-@patch(f"{_SINGLE_NEURON}.db_sdk.select_asset_content")
+@patch(f"{_TASK}.db_sdk.select_asset_content")
 def test_get_generation_single_config_invalid_json(mock_select_content, config):
     mock_select_content.return_value = b'{"type": "not-a-memodel-config"}'
 
