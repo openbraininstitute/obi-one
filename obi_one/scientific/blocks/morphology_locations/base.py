@@ -88,10 +88,7 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
 
     section_types: SectionTypes = Field(
         title="Section Types",
-        description=(
-            "Neurite section types where locations may be generated. Defaults to basal and "
-            "apical dendrites."
-        ),
+        description="Neurite section types where locations may be generated.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY,
