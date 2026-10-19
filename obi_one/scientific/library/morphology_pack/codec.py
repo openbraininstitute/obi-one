@@ -21,6 +21,7 @@ HEADER = struct.Struct("<4sHHI")
 COUNTS = struct.Struct("<II")
 WIDEST = 4
 DEFLATE_LEVEL = 6
+PLAIN_DEFLATE_BYTES = 1024
 
 
 class Entry(BaseModel):
@@ -90,11 +91,17 @@ def unzigzag(values: np.ndarray) -> np.ndarray:
     return (wide >> 1) ^ -(wide & 1)
 
 
-def planes(values: np.ndarray) -> bytes:
+def byte_planes(values: np.ndarray) -> list[bytes]:
+    """A stream as its width byte with its first byte plane, then each further plane."""
     numbers = np.ascontiguousarray(values, dtype="<u4")
     most = int(numbers.max()) if len(numbers) else 0
     width = max(1, (most.bit_length() + 7) // 8)
-    return bytes([width]) + numbers.view(np.uint8).reshape(-1, WIDEST)[:, :width].T.tobytes()
+    stored = numbers.view(np.uint8).reshape(-1, WIDEST)[:, :width].T
+    return [bytes([width]) + stored[0].tobytes(), *(plane.tobytes() for plane in stored[1:])]
+
+
+def planes(values: np.ndarray) -> bytes:
+    return b"".join(byte_planes(values))
 
 
 def read_planes(data: bytes, at: int, count: int) -> tuple[np.ndarray, int]:
@@ -130,12 +137,23 @@ class Runs:
         )
 
 
+def deflate_planes(parts: list[bytes]) -> bytes:
+    """One zlib stream, a deflate block a byte plane: each plane gets Huffman tables of its own."""
+    if sum(map(len, parts)) <= PLAIN_DEFLATE_BYTES:
+        return zlib.compress(b"".join(parts), DEFLATE_LEVEL)
+    deflate = zlib.compressobj(
+        DEFLATE_LEVEL, zlib.DEFLATED, zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, zlib.Z_FILTERED
+    )
+    blocks = [deflate.compress(part) + deflate.flush(zlib.Z_BLOCK) for part in parts[:-1]]
+    return b"".join([*blocks, deflate.compress(parts[-1]), deflate.flush()])
+
+
 def encode_chunk(runs: Runs) -> bytes:
-    streams = [planes(np.diff(runs.cells, prepend=0)), planes(runs.types), planes(runs.lengths)]
-    streams += [planes(zigzag(column)) for column in runs.starts.T]
-    streams += [planes(zigzag(column)) for column in runs.steps.T]
-    counts = COUNTS.pack(len(runs.cells), len(runs.steps))
-    return zlib.compress(counts + b"".join(streams), DEFLATE_LEVEL)
+    columns = [np.diff(runs.cells, prepend=0), runs.types, runs.lengths]
+    columns += [zigzag(column) for column in (*runs.starts.T, *runs.steps.T)]
+    parts = [part for column in columns for part in byte_planes(column)]
+    parts[0] = COUNTS.pack(len(runs.cells), len(runs.steps)) + parts[0]
+    return deflate_planes(parts)
 
 
 def decode_chunk(block: bytes) -> Runs:

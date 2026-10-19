@@ -4,9 +4,11 @@ import numpy as np
 import pytest
 
 from obi_one.scientific.library.morphology_pack.codec import (
+    COUNTS,
     GRID_UM,
     HEADER,
     MAGIC,
+    PLAIN_DEFLATE_BYTES,
     RADIUS_STEPS,
     VERSION,
     Index,
@@ -122,6 +124,25 @@ class TestChunk:
         data = zlib.decompress(encode_chunk(some_runs()))
         assert int.from_bytes(data[:4], "little") == 3
         assert int.from_bytes(data[4:8], "little") == 6
+
+    def test_a_large_block_deflated_by_planes_inflates_to_the_same_streams(self):
+        rng = np.random.default_rng(7)
+        lengths = rng.integers(1, 40, 300)
+        runs = Runs(
+            cells=np.sort(rng.integers(0, 5000, 300)),
+            types=rng.integers(2, 5, 300).astype(np.uint8),
+            lengths=lengths,
+            starts=rng.integers(-80000, 80000, (300, 4)),
+            steps=rng.integers(-300, 300, (int(lengths.sum()), 4)),
+        )
+        data = zlib.decompress(encode_chunk(runs))
+        assert len(data) > PLAIN_DEFLATE_BYTES
+        streams = [planes(np.diff(runs.cells, prepend=0)), planes(runs.types), planes(runs.lengths)]
+        streams += [planes(zigzag(column)) for column in (*runs.starts.T, *runs.steps.T)]
+        assert data == COUNTS.pack(300, len(runs.steps)) + b"".join(streams)
+        back = decode_chunk(encode_chunk(runs))
+        for name in ("cells", "types", "lengths", "starts", "steps"):
+            np.testing.assert_array_equal(getattr(back, name), getattr(runs, name))
 
     def test_a_part_keeps_its_runs_and_their_segments(self):
         part = some_runs().part(slice(1, 3), slice(2, 6))

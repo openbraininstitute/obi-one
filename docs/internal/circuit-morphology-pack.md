@@ -95,6 +95,8 @@ A chunk's block, inflated, starts with the number of runs and the number of segm
 
 A stream is one byte giving the width of its numbers in bytes, 1 to 4, then every number's lowest byte, then every number's next byte, and so on. A signed number is stored zigzag: `(n << 1) ^ (n >> 31)`.
 
+A block over 1 KB inflated is written as one zlib stream whose deflate blocks end at every byte plane, so each plane gets Huffman tables of its own; any inflater reads it as it reads a block deflated whole.
+
 Runs are ordered by cell within a chunk. A segment's near point is the far point of the segment before it in its run, or the run's first point.
 
 ### What is in it
