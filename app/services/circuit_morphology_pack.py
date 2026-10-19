@@ -53,6 +53,7 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     MorphologyLevels,
     simplified,
 )
+from obi_one.scientific.library.morphology_pack.memory import give_back
 from obi_one.scientific.library.morphology_pack.parallel import Processes, available_cpus
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
 
@@ -271,6 +272,7 @@ def placed_cells(
         level, shapes = finest_level_within(morphologies, cells, min(max_segments, cap), processes)
         levels = (level,)
     del morphologies
+    give_back()
     return place_cells(populations, levels, shapes)
 
 

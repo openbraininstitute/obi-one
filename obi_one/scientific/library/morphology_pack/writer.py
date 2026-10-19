@@ -26,6 +26,7 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     Polylines,
     spans,
 )
+from obi_one.scientific.library.morphology_pack.memory import give_back
 from obi_one.scientific.library.morphology_pack.parallel import ALONE, Processes
 
 CHUNK_UM = 50.0
@@ -418,7 +419,7 @@ class PackWriter:
 
         A writer packs once. The coarsest level is packed first; each level's cells are joined
         only when it comes to be packed, and its points let go of once the finer level is
-        packed over it.
+        packed over it; what each level frees is handed back to the system.
         """
         if not self.placed:
             msg = "A writer packs once"
@@ -434,6 +435,7 @@ class PackWriter:
             packed, coarser = packed_level(points, boxes, coarser, processes)
             made.insert(0, packed)
             del points
+            give_back()
         blocks = [encode_somas(self.somas)]
         offset = len(blocks[0])
         entries = []

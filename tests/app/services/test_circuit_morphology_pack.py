@@ -193,7 +193,11 @@ class TestAllLevels:
 
     def test_processes_build_the_same_pack(self, directory, tmp_path_factory, monkeypatch):
         alone = build_circuit_morphology_pack(
-            LocalCircuit(CONTAINER_CIRCUIT), uuid4(), directory, DEFAULT_MAX_SEGMENTS, all_levels=True
+            LocalCircuit(CONTAINER_CIRCUIT),
+            uuid4(),
+            directory,
+            DEFAULT_MAX_SEGMENTS,
+            all_levels=True,
         )
         monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_WORKERS", 2)
         other = tmp_path_factory.mktemp("processes").resolve()
