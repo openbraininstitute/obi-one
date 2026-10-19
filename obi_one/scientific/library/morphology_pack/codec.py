@@ -183,6 +183,17 @@ def travel(steps: np.ndarray, lengths: np.ndarray) -> np.ndarray:
     return np.add.reduceat(steps, np.cumsum(lengths) - lengths, axis=0)
 
 
+def alike(rows: np.ndarray) -> np.ndarray:
+    """A number for each row of `rows`, the same for rows alike."""
+    order = np.lexsort(rows.T[::-1])
+    ordered = rows[order]
+    new = np.ones(len(rows), dtype=bool)
+    new[1:] = np.any(ordered[1:] != ordered[:-1], axis=1)
+    group = np.empty(len(rows), dtype=np.int64)
+    group[order] = np.cumsum(new) - 1
+    return group
+
+
 def back_references(runs: Runs, chunk_steps: int) -> tuple[np.ndarray, np.ndarray]:
     """For each run, 0 or how many runs back the nearest run of its cell ends where it starts.
 
@@ -203,8 +214,7 @@ def back_references(runs: Runs, chunk_steps: int) -> tuple[np.ndarray, np.ndarra
                 np.column_stack([runs.cells, runs.starts[:, :width]]),
             ]
         )
-        _, group = np.unique(rows, axis=0, return_inverse=True)
-        group = group.ravel().astype(np.int64)
+        group = alike(rows)
         span = count + 1
         end_keys = np.sort(group[:count] * span + order)
         at = np.searchsorted(end_keys, group[count:] * span + order, side="left") - 1

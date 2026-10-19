@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     CIRCUIT_MORPHOLOGY_PACK_MAX_POINTS: int = 5_000_000
     # Over every level the pack holds, which the writer keeps in memory until it packs them.
     CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS: int = 5_000_000
+    # Processes that simplify the morphologies and encode the chunks; unset, one a CPU the
+    # process may use.
+    CIRCUIT_MORPHOLOGY_PACK_WORKERS: int | None = None
 
     def get_virtual_lab_url(self, virtual_lab_id: str) -> str:
         """Return the virtual-lab-api URL for the given virtual lab."""

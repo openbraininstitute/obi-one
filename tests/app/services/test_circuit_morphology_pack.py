@@ -93,6 +93,14 @@ def directory(tmp_path):
     return tmp_path.resolve()
 
 
+@pytest.fixture
+def one_process(monkeypatch):
+    monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_WORKERS", 1)
+
+
+pytestmark = pytest.mark.usefixtures("one_process")
+
+
 class TestPack:
     def test_a_circuit_with_a_container_of_morphologies(self, directory):
         client = LocalCircuit(CONTAINER_CIRCUIT)
@@ -182,6 +190,18 @@ class TestAllLevels:
         other = tmp_path_factory.mktemp("finest").resolve()
         finest = build(LocalCircuit(CONTAINER_CIRCUIT), other).levels[0]
         assert segments[0] == len(finest.segments)
+
+    def test_processes_build_the_same_pack(self, directory, tmp_path_factory, monkeypatch):
+        alone = build_circuit_morphology_pack(
+            LocalCircuit(CONTAINER_CIRCUIT), uuid4(), directory, DEFAULT_MAX_SEGMENTS, all_levels=True
+        )
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_WORKERS", 2)
+        other = tmp_path_factory.mktemp("processes").resolve()
+        spread = build_circuit_morphology_pack(
+            LocalCircuit(CONTAINER_CIRCUIT), uuid4(), other, DEFAULT_MAX_SEGMENTS, all_levels=True
+        )
+        same = alone == spread
+        assert same
 
     def test_the_segments_asked_for_are_not_used(self, directory):
         pack = build(LocalCircuit(CONTAINER_CIRCUIT), directory, 10, all_levels=True)

@@ -6,7 +6,7 @@ A pack holds the morphologies of a circuit's biophysical neurons in one binary f
 
 `GET /circuit/viz/{circuit_id}/morphology-pack?max_segments=2000000` answers with the pack as `application/octet-stream`.
 
-The endpoint is temporary. Circuit registration is to build the pack and store it on the circuit, and the circuits already registered are to get theirs in a backfill. The endpoint is removed once both are done, because it builds the pack while the viewer waits, in the service's own process.
+The endpoint is temporary. Circuit registration is to build the pack and store it on the circuit, and the circuits already registered are to get theirs in a backfill. The endpoint is removed once both are done, because it builds the pack while the viewer waits, in the service's own processes.
 
 The pack it builds holds one level of detail: the finest that comes to at most `max_segments` segments. The viewer says how many segments it can draw. With `all_levels=true` the pack holds every level instead, finest first, as a pack stored on the circuit is to, and `max_segments` is not used.
 
@@ -31,6 +31,8 @@ A pack of one level is also held to `max_segments`, so its coarsest level is ref
 A refusal is a 422 whose `detail` holds `code`, `reason` and `detail`. A circuit with no biophysical population, or none of whose morphologies can be read, is refused with `no_morphologies`. One pack is built at a time: a request that has waited two minutes for another build gets a 503 with the reason `busy`.
 
 A morphology that cannot be read is left out: a file that is not a morphology, or a name its container does not hold. Its cells are in the pack as somas with a radius of zero. So is a cell whose position or rotation is not a finite number.
+
+The morphologies are simplified, and the chunks encoded, over `CIRCUIT_MORPHOLOGY_PACK_WORKERS` processes: by default one for each CPU the service may use, within its container's quota. They are forked from a server process started with the first build, and the pack is the same to the byte on any number of them.
 
 Only the node files of the biophysical populations and their morphologies are fetched. A public circuit's files are linked from the mounted store; a private circuit's are downloaded into the request's temporary directory, and deleted as soon as they are read.
 

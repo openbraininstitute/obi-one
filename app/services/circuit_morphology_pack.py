@@ -11,6 +11,7 @@ from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
+from functools import partial
 from http import HTTPStatus
 from itertools import groupby
 from pathlib import Path
@@ -52,10 +53,12 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     MorphologyLevels,
     simplified,
 )
+from obi_one.scientific.library.morphology_pack.parallel import Processes, available_cpus
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
 
 DEFAULT_MAX_SEGMENTS = 2_000_000
 FETCHES_AT_ONCE = 8
+MORPHOLOGIES_A_JOB = 4
 # How long a request waits for the build before it.
 PATIENCE_SECONDS = 120
 # What reading a morphology raises for a file that is not one, or a name its container lacks.
@@ -177,8 +180,26 @@ def read_within_limit(
     return morphologies
 
 
+def workers() -> int:
+    return settings.CIRCUIT_MORPHOLOGY_PACK_WORKERS or available_cpus()
+
+
+def simplified_all(
+    morphologies: dict[MorphologyKey, Morphology],
+    levels: tuple[Level, ...],
+    processes: Processes,
+) -> dict[MorphologyKey, MorphologyLevels]:
+    each = processes.map(
+        partial(simplified, levels=levels), morphologies.values(), per_job=MORPHOLOGIES_A_JOB
+    )
+    return dict(zip(morphologies, each, strict=True))
+
+
 def finest_level_within(
-    morphologies: dict[MorphologyKey, Morphology], cells: Counter[MorphologyKey], max_segments: int
+    morphologies: dict[MorphologyKey, Morphology],
+    cells: Counter[MorphologyKey],
+    max_segments: int,
+    processes: Processes,
 ) -> tuple[Level, dict[MorphologyKey, MorphologyLevels]]:
     """The finest level of at most `max_segments` segments, and every morphology at it."""
     segments = 0
@@ -186,7 +207,7 @@ def finest_level_within(
     # pass is made only for a circuit the finer ones are too many segments for.
     for _, together in groupby(LEVELS, key=lambda level: level.prune_um):
         levels = tuple(together)
-        library = {key: simplified(morphology, levels) for key, morphology in morphologies.items()}
+        library = simplified_all(morphologies, levels, processes)
         for place, level in enumerate(levels):
             segments = sum(
                 cells[key] * found.shapes[place].segments for key, found in library.items()
@@ -201,10 +222,13 @@ def finest_level_within(
 
 
 def every_level_within(
-    morphologies: dict[MorphologyKey, Morphology], cells: Counter[MorphologyKey], max_segments: int
+    morphologies: dict[MorphologyKey, Morphology],
+    cells: Counter[MorphologyKey],
+    max_segments: int,
+    processes: Processes,
 ) -> dict[MorphologyKey, MorphologyLevels]:
     """Every morphology at each of `LEVELS`, which come to at most `max_segments` together."""
-    library = {key: simplified(morphology, LEVELS) for key, morphology in morphologies.items()}
+    library = simplified_all(morphologies, LEVELS, processes)
     segments = sum(
         cells[key] * shape.segments for key, found in library.items() for shape in found.shapes
     )
@@ -223,6 +247,7 @@ def placed_cells(
     asset: Asset,
     directory: Path,
     max_segments: int,
+    processes: Processes,
     *,
     all_levels: bool,
 ) -> PackWriter:
@@ -241,9 +266,9 @@ def placed_cells(
         refuse(Refusal.NO_MORPHOLOGIES, "None of the circuit's morphologies could be read")
     cap = settings.CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS
     if all_levels:
-        levels, shapes = LEVELS, every_level_within(morphologies, cells, cap)
+        levels, shapes = LEVELS, every_level_within(morphologies, cells, cap, processes)
     else:
-        level, shapes = finest_level_within(morphologies, cells, min(max_segments, cap))
+        level, shapes = finest_level_within(morphologies, cells, min(max_segments, cap), processes)
         levels = (level,)
     del morphologies
     return place_cells(populations, levels, shapes)
@@ -275,8 +300,9 @@ def build_circuit_morphology_pack(
             Refusal.BUSY, "Another pack is being built; try again", HTTPStatus.SERVICE_UNAVAILABLE
         )
     try:
-        return placed_cells(
-            client, circuit_id, asset, directory, max_segments, all_levels=all_levels
-        ).pack()
+        with Processes(workers()) as processes:
+            return placed_cells(
+                client, circuit_id, asset, directory, max_segments, processes, all_levels=all_levels
+            ).pack(processes)
     finally:
         BUILDING.release()

@@ -1,5 +1,6 @@
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 
 import numpy as np
 
@@ -25,11 +26,14 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     Polylines,
     spans,
 )
+from obi_one.scientific.library.morphology_pack.parallel import ALONE, Processes
 
 CHUNK_UM = 50.0
 MAX_CHUNKS = 4096
+CHUNKS_A_JOB = 8
 NONE = np.zeros(0, dtype=np.int64)
 NO_POINTS = np.zeros((0, 4), dtype=np.int64)
+NO_BOXES = np.zeros((0, 3), dtype=np.int64)
 
 
 @dataclass(frozen=True)
@@ -58,17 +62,31 @@ def placed(points: np.ndarray, rotation: np.ndarray, position: np.ndarray) -> np
     return turned + points[:, 2:3] * rotation[:, 2] + position
 
 
+def distinct_rows(rows: np.ndarray) -> np.ndarray:
+    """Each row of `rows`, whole numbers spanning little, once."""
+    if not len(rows):
+        return NO_BOXES
+    least = rows.min(axis=0)
+    span = tuple(rows.max(axis=0) - least + 1)
+    keys = np.unique(np.ravel_multi_index(tuple((rows - least).T), span))
+    return np.column_stack(np.unravel_index(keys, span)) + least
+
+
 @dataclass
 class Placed:
-    """The cells of one level, placed on the grid. Each list has an entry a cell."""
+    """The cells of one level, placed on the grid. Each list has an entry a cell.
 
-    grid: list[np.ndarray] = field(default_factory=list)
-    radius: list[np.ndarray] = field(default_factory=list)
+    `boxes` has the chunks of side `chunk_steps` that the cell's segments end in.
+    """
+
+    chunk_steps: int
+    values: list[np.ndarray] = field(default_factory=list)
     opens: list[np.ndarray] = field(default_factory=list)
     types: list[np.ndarray] = field(default_factory=list)
     cell: list[int] = field(default_factory=list)
     counts: list[np.ndarray] = field(default_factory=list)
     follows: list[np.ndarray] = field(default_factory=list)
+    boxes: list[np.ndarray] = field(default_factory=list)
 
     def add(
         self,
@@ -79,8 +97,11 @@ class Placed:
         counts: np.ndarray,
         follows: np.ndarray,
     ) -> None:
-        self.grid.append(on_grid(placed(shape.points, rotation, position)))
-        self.radius.append(radius_steps(shape.radii))
+        values = np.empty((len(shape.points), 4), dtype=np.int32)
+        values[:, :3] = on_grid(placed(shape.points, rotation, position))
+        values[:, 3] = radius_steps(shape.radii)
+        self.values.append(values)
+        self.boxes.append(distinct_rows(values[~shape.opens, :3] // self.chunk_steps))
         self.opens.append(shape.opens)
         self.types.append(shape.types)
         self.cell.append(cell)
@@ -88,20 +109,20 @@ class Placed:
         self.follows.append(follows)
 
     def joined(self) -> Points:
-        if not self.grid:
-            return Points(NO_POINTS, NONE.astype(bool), NONE, NONE, NONE, NONE)
+        if not self.values:
+            empty = np.zeros((0, 4), dtype=np.int32)
+            return Points(empty, NONE.astype(bool), NONE, NONE, NONE, NONE)
         points = [len(opens) for opens in self.opens]
-        values = np.empty((sum(points), 4), dtype=np.int32)
-        np.concatenate(self.grid, out=values[:, :3])
-        np.concatenate(self.radius, out=values[:, 3])
         first = np.cumsum(points) - points
         return Points(
-            values,
+            np.concatenate(self.values),
             np.concatenate(self.opens),
             np.concatenate(self.types),
             np.repeat(np.array(self.cell, dtype=np.int32), points),
-            np.concatenate(self.counts),
-            np.concatenate([f + at for f, at in zip(self.follows, first, strict=True)]),
+            np.concatenate(self.counts, dtype=np.int32),
+            np.concatenate(
+                [f + at for f, at in zip(self.follows, first, strict=True)], dtype=np.int32
+            ),
         )
 
 
@@ -120,12 +141,12 @@ class Boxes:
         return np.column_stack(np.unravel_index(key, tuple(self.span))) + self.least
 
 
-def boxes_of(levels: Sequence[Points], chunk_um: float) -> Boxes:
-    """Chunks of `chunk_um`, doubled until every level's segments lie in at most `MAX_CHUNKS`."""
-    chunk_steps = round(chunk_um / GRID_UM)
+def boxes_of(levels: Sequence[Placed], chunk_steps: int) -> Boxes:
+    """The chunks every level's segments end in, their side doubled from `chunk_steps` until
+    there are at most `MAX_CHUNKS`.
+    """
     boxes = np.unique(
-        np.concatenate([np.unique(p.values[~p.opens, :3] // chunk_steps, axis=0) for p in levels]),
-        axis=0,
+        np.concatenate([NO_BOXES, *(boxes for level in levels for boxes in level.boxes)]), axis=0
     )
     while len(boxes) > MAX_CHUNKS:
         chunk_steps *= 2
@@ -164,14 +185,15 @@ def cut(far: np.ndarray, key: np.ndarray, cell: np.ndarray) -> Cut:
     return Cut(far, run[order], length[order], key[run[order]])
 
 
-def runs_of(points: Points, made: Cut, corners: np.ndarray) -> Runs:
-    """The runs of `made`; `corners` has the corner of each run's chunk."""
-    end = made.read()
-    head = made.far[made.run]
+def runs_in(points: Points, made: Cut, runs: slice, corner: np.ndarray) -> Runs:
+    """The runs `runs` of `made`, all in the chunk whose corner is `corner`."""
+    run, length = made.run[runs], made.length[runs]
+    head = made.far[run]
+    end = made.far[spans(run, length)]
     starts = points.values[head - 1]
-    starts[:, :3] -= corners
+    starts[:, :3] -= corner
     steps = points.values[end] - points.values[end - 1]
-    return Runs(points.cell[head], points.types[head], made.length, starts, steps)
+    return Runs(points.cell[head], points.types[head], length, starts, steps)
 
 
 @dataclass(frozen=True)
@@ -189,59 +211,46 @@ class Read:
     counts: np.ndarray
 
 
-def reach_of(
-    points: Points, order: np.ndarray, edges: np.ndarray, corners: np.ndarray, chunk_steps: int
-) -> np.ndarray:
-    """How far, in steps, the ends of each chunk's segments lie outside its cube at most."""
-    if not len(order):
-        return NONE
-    near, far = points.values[order - 1, :3], points.values[order, :3]
-    least = np.minimum.reduceat(np.minimum(near, far), edges[:-1], axis=0)
-    most = np.maximum.reduceat(np.maximum(near, far), edges[:-1], axis=0)
-    out = np.maximum(corners - least, most - (corners + chunk_steps - 1))
-    return np.maximum(out.max(axis=1), 0)
-
-
 @dataclass(frozen=True)
 class Followers:
     """A level's segments that follow the coarser level's, in the order the coarser is read.
 
-    `far` and `keys` have a row a segment: its far point and its chunk's key. `counts` has a row a
-    coarser segment, and `inner` a row an inner point as stored, with `inner_edges` where each
-    of the coarser level's chunks starts in it.
+    `far` has a row a segment, its far point, and `counts` a row a coarser segment; `edges` has
+    where each of the coarser level's chunks starts in `far`.
     """
 
     far: np.ndarray
-    keys: np.ndarray
     counts: np.ndarray
-    inner: np.ndarray
-    inner_edges: np.ndarray
+    edges: np.ndarray
 
 
 def followers(points: Points, coarser: Read) -> Followers:
     counts = coarser.counts[coarser.order]
     first = np.cumsum(coarser.counts) - coarser.counts
     far = points.follows[spans(first[coarser.order], counts)]
-    keys = np.repeat(np.repeat(coarser.keys, np.diff(coarser.edges)), counts)
+    return Followers(far, counts, np.concatenate([[0], np.cumsum(counts)])[coarser.edges])
+
+
+def inner_points(points: Points, far: np.ndarray, counts: np.ndarray) -> np.ndarray:
+    """The inner points of the segments `far`, `counts[i]` of them following coarser segment `i`,
+    each less the chord's guess.
+    """
     last = np.repeat(np.cumsum(counts) - 1, counts)
     inner = np.arange(len(far)) < last
     # how many segments are left to the coarser segment's far point, this one's included
     left = np.repeat(np.cumsum(counts), counts) - np.arange(len(far))
     at = far[inner]
-    stored = points.values[at] - towards(
+    return points.values[at] - towards(
         points.values[at - 1], points.values[far[last[inner]]], left[inner, None]
     )
-    inner_edges = np.concatenate([[0], np.cumsum(np.maximum(counts - 1, 0))])[coarser.edges]
-    return Followers(far, keys, counts, stored, inner_edges)
 
 
-def own_runs(points: Points, boxes: Boxes) -> tuple[Cut, Runs]:
-    """The level's segments that follow no coarser segment, as runs."""
+def own_runs(points: Points, boxes: Boxes) -> Cut:
+    """The level's segments that follow no coarser segment, cut into runs."""
     claimed = np.zeros(len(points.values), dtype=bool)
     claimed[points.follows] = True
     own = np.flatnonzero(~points.opens & ~claimed)
-    made = cut(own, boxes.key(points.values[own, :3] // boxes.chunk_steps), points.cell)
-    return made, runs_of(points, made, boxes.box(made.key) * boxes.chunk_steps)
+    return cut(own, boxes.key(points.values[own, :3] // boxes.chunk_steps), points.cell)
 
 
 def edges_of(keys: np.ndarray, wanted: np.ndarray) -> np.ndarray:
@@ -249,65 +258,109 @@ def edges_of(keys: np.ndarray, wanted: np.ndarray) -> np.ndarray:
     return np.append(np.searchsorted(keys, wanted), len(keys))
 
 
-def read_order(follow: Followers, made: Cut) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """The level's chunk keys, and its segments' far points in the order they are read, with
-    where each chunk starts: the followers of a chunk first, then its runs.
+def places_in(keys: np.ndarray, wanted: np.ndarray) -> np.ndarray:
+    """Where each of `wanted` is in the sorted `keys`, -1 where it is not."""
+    at = np.searchsorted(keys, wanted)
+    found = at < len(keys)
+    found[found] = keys[at[found]] == wanted[found]
+    return np.where(found, at, -1)
+
+
+@dataclass(frozen=True)
+class Layout:
+    """A level's chunks: their keys, each one's place among the coarser level's chunks (-1 where
+    the coarser level has none there) and where its runs start among the level's own.
     """
-    keys = np.concatenate([follow.keys, np.repeat(made.key, made.length)])
-    first = np.lexsort((np.arange(len(keys)) >= len(follow.keys), keys))
-    keys = keys[first]
-    chunks = np.unique(keys)
-    return chunks, np.concatenate([follow.far, made.read()])[first], edges_of(keys, chunks)
+
+    keys: np.ndarray
+    coarser: np.ndarray
+    runs: np.ndarray
 
 
-def chunk_blocks(
-    chunks: np.ndarray, follow: Followers, coarser: Read, own: tuple[Cut, Runs], chunk_steps: int
-) -> list[bytes]:
-    made, runs = own
-    run_edges = edges_of(made.key, chunks)
-    segment_edges = np.append(np.cumsum(made.length) - made.length, len(runs.steps))[run_edges]
-    in_coarser = np.searchsorted(coarser.keys, chunks)
-    blocks = []
-    for c, (key, k) in enumerate(zip(chunks, in_coarser, strict=True)):
-        if k < len(coarser.keys) and coarser.keys[k] == key:
+def layout_of(follow: Followers, coarser: Read, made: Cut) -> Layout:
+    keys = np.union1d(coarser.keys[np.diff(follow.edges) > 0], made.key)
+    return Layout(keys, places_in(coarser.keys, keys), edges_of(made.key, keys))
+
+
+def read_order(layout: Layout, follow: Followers, made: Cut) -> tuple[np.ndarray, np.ndarray]:
+    """The level's segments' far points in the order they are read, and where each chunk starts:
+    the followers of a chunk first, then its runs.
+    """
+    own = made.read()
+    own_edges = np.append(np.cumsum(made.length) - made.length, len(own))[layout.runs]
+    following = np.append(np.diff(follow.edges), 0)[layout.coarser]
+    edges = np.concatenate([[0], np.cumsum(following + np.diff(own_edges))])
+    order = np.empty(edges[-1], dtype=np.int32)
+    for c, k in enumerate(layout.coarser):
+        at = edges[c] + following[c]
+        if k >= 0:
+            order[edges[c] : at] = follow.far[follow.edges[k] : follow.edges[k + 1]]
+        order[at : edges[c + 1]] = own[own_edges[c] : own_edges[c + 1]]
+    return order, edges
+
+
+def chunk_parts(
+    points: Points,
+    layout: Layout,
+    coarser: Read,
+    follow: Followers,
+    made: Cut,
+    corners: np.ndarray,
+) -> Iterator[Chunk]:
+    for c, k in enumerate(layout.coarser):
+        if k >= 0:
             counts = follow.counts[coarser.edges[k] : coarser.edges[k + 1]]
-            inner = follow.inner[follow.inner_edges[k] : follow.inner_edges[k + 1]]
+            far = follow.far[follow.edges[k] : follow.edges[k + 1]]
+            inner = inner_points(points, far, counts)
         else:
             counts, inner = NONE, NO_POINTS
-        part = runs.part(
-            slice(run_edges[c], run_edges[c + 1]), slice(segment_edges[c], segment_edges[c + 1])
-        )
-        blocks.append(encode_chunk(Chunk(counts, inner, part), chunk_steps))
-    return blocks
+        runs = runs_in(points, made, slice(layout.runs[c], layout.runs[c + 1]), corners[c])
+        yield Chunk(counts, inner, runs)
+
+
+def reach_of(
+    points: Points, order: np.ndarray, edges: np.ndarray, corners: np.ndarray, chunk_steps: int
+) -> np.ndarray:
+    """How far, in steps, the ends of each chunk's segments lie outside its cube at most."""
+    reach = np.zeros(len(corners), dtype=np.int64)
+    for c, corner in enumerate(corners):
+        far = order[edges[c] : edges[c + 1]]
+        ends = np.concatenate([points.values[far - 1, :3], points.values[far, :3]])
+        out = np.maximum(corner - ends.min(axis=0), ends.max(axis=0) - (corner + chunk_steps - 1))
+        reach[c] = max(int(out.max()), 0)
+    return reach
 
 
 @dataclass(frozen=True)
 class Packed:
-    """A level's chunks, a row each: block and reach; its runs and how it is read."""
+    """A level's chunks, a row each: key, block, segments and reach; and its number of runs."""
 
+    keys: np.ndarray
     blocks: list[bytes]
+    segments: np.ndarray
     reach: np.ndarray
     runs: int
-    read: Read
-
-    @property
-    def segments(self) -> np.ndarray:
-        return np.diff(self.read.edges)
 
 
-def packed_level(points: Points, boxes: Boxes, coarser: Read | None) -> Packed:
+def packed_level(
+    points: Points, boxes: Boxes, coarser: Read | None, processes: Processes
+) -> tuple[Packed, Read]:
     """A level's chunks: the segments that follow the coarser level's first, in the order the
     coarser level's chunk is read, then the level's own runs, cut as the coarser segments leave
-    them.
+    them. Returns them with the level as the finer level reads over it.
     """
     coarser = coarser or Read(NONE, NONE, np.zeros(1, dtype=np.int64), NONE)
     follow = followers(points, coarser)
-    own = own_runs(points, boxes)
-    chunks, order, edges = read_order(follow, own[0])
-    blocks = chunk_blocks(chunks, follow, coarser, own, boxes.chunk_steps)
-    corners = boxes.box(chunks) * boxes.chunk_steps
+    made = own_runs(points, boxes)
+    layout = layout_of(follow, coarser, made)
+    order, edges = read_order(layout, follow, made)
+    corners = boxes.box(layout.keys) * boxes.chunk_steps
+    parts = chunk_parts(points, layout, coarser, follow, made, corners)
+    encode = partial(encode_chunk, chunk_steps=boxes.chunk_steps)
+    blocks = list(processes.map(encode, parts, per_job=CHUNKS_A_JOB))
     reach = reach_of(points, order, edges, corners, boxes.chunk_steps)
-    return Packed(blocks, reach, len(own[0].run), Read(chunks, order, edges, points.counts))
+    packed = Packed(layout.keys, blocks, np.diff(edges), reach, len(made.run))
+    return packed, Read(layout.keys, order, edges, points.counts)
 
 
 def bounds_of(values: np.ndarray) -> np.ndarray:
@@ -337,9 +390,9 @@ class PackWriter:
         """
         self.populations = list(populations)
         self.levels = tuple(levels)
-        self.chunk_um = chunk_um
+        self.chunk_steps = round(chunk_um / GRID_UM)
         self.somas = np.zeros((sum(count for _, count in populations), 4), dtype="<f4")
-        self.placed = [Placed() for _ in self.levels]
+        self.placed = [Placed(self.chunk_steps) for _ in self.levels]
 
     def add_cell(
         self, cell: int, morphology: MorphologyLevels, rotation: np.ndarray, position: np.ndarray
@@ -360,24 +413,27 @@ class PackWriter:
         """Place a cell that has no morphology: its soma alone, with a radius of zero."""
         self.somas[cell, :3] = position
 
-    def pack(self) -> bytes:
-        """The pack of the cells added.
+    def pack(self, processes: Processes = ALONE) -> bytes:
+        """The pack of the cells added, its chunks encoded over `processes`.
 
-        A writer packs once: it lets go of the cells as it joins them, and of each level's points
-        once the finer level is packed over it. The coarsest level is packed first.
+        A writer packs once. The coarsest level is packed first; each level's cells are joined
+        only when it comes to be packed, and its points let go of once the finer level is
+        packed over it.
         """
         if not self.placed:
             msg = "A writer packs once"
             raise RuntimeError(msg)
-        levels: list[Points] = [placed.joined() for placed in self.placed]
-        self.placed = []
-        boxes = boxes_of(levels, self.chunk_um)
-        bounds = bounds_of(levels[0].values)
+        placed, self.placed = self.placed, []
+        boxes = boxes_of(placed, self.chunk_steps)
         made: list[Packed] = []
         coarser = None
-        while levels:
-            made.insert(0, packed_level(levels.pop(), boxes, coarser))
-            coarser = made[0].read
+        while placed:
+            points = placed.pop().joined()
+            if not placed:
+                bounds = bounds_of(points.values)
+            packed, coarser = packed_level(points, boxes, coarser, processes)
+            made.insert(0, packed)
+            del points
         blocks = [encode_somas(self.somas)]
         offset = len(blocks[0])
         entries = []
@@ -392,7 +448,7 @@ class PackWriter:
                     offset=offset,
                     base=i + 1 if i + 1 < len(made) else None,
                     chunks=Chunks(
-                        box=boxes.box(packed.read.keys).ravel().tolist(),
+                        box=boxes.box(packed.keys).ravel().tolist(),
                         bytes=[len(block) for block in packed.blocks],
                         segments=packed.segments.tolist(),
                         reach=packed.reach.tolist(),

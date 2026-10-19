@@ -13,6 +13,7 @@ from obi_one.scientific.library.morphology_pack.codec import (
     take_apart,
 )
 from obi_one.scientific.library.morphology_pack.geometry import FAR, FINEST, LEVELS, simplified
+from obi_one.scientific.library.morphology_pack.parallel import ALONE, Processes
 from obi_one.scientific.library.morphology_pack.reader import read_pack, run_segments
 from obi_one.scientific.library.morphology_pack.writer import PackWriter, placed
 
@@ -256,6 +257,18 @@ class TestWriter:
             for n in range(1, 40):
                 part = placed(points[start : start + n], rotation, position)
                 assert np.array_equal(part, every[start : start + n])
+
+    def test_processes_write_the_same_pack(self):
+        shapes = simplified(load(), LEVELS)
+        packs = []
+        for processes in (ALONE, Processes(2)):
+            writer = PackWriter([("only", len(PLACES))], LEVELS, chunk_um=7.0)
+            for cell, (rotation, position) in enumerate(PLACES):
+                writer.add_cell(cell, shapes, rotation, position)
+            with processes:
+                packs.append(writer.pack(processes))
+        same = packs[0] == packs[1]
+        assert same
 
     def test_a_writer_packs_once(self):
         writer = PackWriter([("only", 1)], [FINEST])
