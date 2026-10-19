@@ -108,7 +108,7 @@ def test_execute_local_skips_registration(
     task.execute(db_client=db_client, execution_activity_id=None)
 
     mock_compile.assert_called_once_with(
-        mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+        mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
         output_dir=staged_circuit.directory.resolve(),
         simulation_backend=SimulationBackend.neurodamus,
     )
@@ -162,6 +162,7 @@ def test_execute_tracked_registers_results(
     sim_results = SimulationResults(
         spike_report_file=tmp_path / "spikes.h5",
         voltage_report_files=[],
+        lfp_report_files=[tmp_path / "LFP.h5"],
     )
     mock_get_params.return_value = NeurodamusSimulationParameters(
         number_of_cells=2,
@@ -184,6 +185,7 @@ def test_execute_tracked_registers_results(
         entity_type=test_module.CircuitSimulationExecutionTask.activity_type,
     )
     mock_register.assert_called_once()
+    assert mock_register.call_args.kwargs["lfp_report_files"] == [tmp_path / "LFP.h5"]
     db_client.update_entity.assert_called_once_with(
         entity_id=execution_activity.id,
         entity_type=test_module.CircuitSimulationExecutionTask.activity_type,

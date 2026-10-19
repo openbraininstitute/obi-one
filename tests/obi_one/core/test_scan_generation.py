@@ -12,6 +12,7 @@ from obi_one.core.scan_generation import (
 from obi_one.core.single import SingleCoordinateScanParams
 from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionScanConfig,
+    FolderCompressionSingleConfig,
 )
 
 
@@ -324,3 +325,103 @@ class TestCoupledScanExecute:
         scan.execute()
 
         assert len(scan.single_configs) == 1
+
+
+class FakeEntity:
+    def __init__(self, entity_id):
+        self.id = entity_id
+
+
+class FakeCampaign(FakeEntity):
+    pass
+
+
+class FakeSingle(FakeEntity):
+    pass
+
+
+class FakeGeneration(FakeEntity):
+    pass
+
+
+class RecordingClient:
+    """Records each deletion; raises for the ids in `fail_for`."""
+
+    def __init__(self, fail_for=()):
+        self.deleted = []
+        self.fail_for = set(fail_for)
+
+    def delete_entity(self, *, entity_id, entity_type):
+        if entity_id in self.fail_for:
+            msg = f"cannot delete {entity_id}"
+            raise RuntimeError(msg)
+        self.deleted.append((entity_type.__name__, entity_id))
+
+
+class TestDeleteRegisteredEntities:
+    @staticmethod
+    def registered_scan(tmp_path, *, singles=True, generation=True):
+        scan = make_grid_scan(make_config(file_format=["gz", "bz2"]), output_root=tmp_path)
+        scan.execute()
+        scan.form._campaign = FakeCampaign("campaign")
+        if singles:
+            for idx, single_config in enumerate(scan.single_configs):
+                single_config.set_single_entity(FakeSingle(f"single-{idx}"))
+        if generation:
+            scan._campaign_generation = FakeGeneration("generation")
+        return scan
+
+    def test_deletes_the_generation_then_the_singles_then_the_campaign(self, tmp_path):
+        client = RecordingClient()
+
+        self.registered_scan(tmp_path).delete_registered_entities(client)
+
+        assert client.deleted == [
+            ("FakeGeneration", "generation"),
+            ("FakeSingle", "single-1"),
+            ("FakeSingle", "single-0"),
+            ("FakeCampaign", "campaign"),
+        ]
+
+    def test_skips_what_was_never_registered(self, tmp_path):
+        client = RecordingClient()
+
+        scan = self.registered_scan(tmp_path, singles=False, generation=False)
+        scan.delete_registered_entities(client)
+
+        assert client.deleted == [("FakeCampaign", "campaign")]
+
+    def test_a_failed_deletion_does_not_stop_the_others(self, tmp_path):
+        client = RecordingClient(fail_for={"single-1"})
+
+        with pytest.raises(OBIONEError, match="FakeSingle single-1: cannot delete single-1"):
+            self.registered_scan(tmp_path).delete_registered_entities(client)
+
+        assert client.deleted == [
+            ("FakeGeneration", "generation"),
+            ("FakeSingle", "single-0"),
+            ("FakeCampaign", "campaign"),
+        ]
+
+    def test_execute_keeps_the_generation_it_registers(self, tmp_path, monkeypatch):
+        generation = FakeGeneration("generation")
+        monkeypatch.setattr(
+            FolderCompressionScanConfig,
+            "create_campaign_entity_with_config",
+            lambda *_args, **_kwargs: FakeCampaign("campaign"),
+        )
+        monkeypatch.setattr(
+            FolderCompressionSingleConfig,
+            "create_single_entity_with_config",
+            lambda *_args, **_kwargs: FakeSingle("single"),
+        )
+        monkeypatch.setattr(
+            FolderCompressionScanConfig,
+            "create_campaign_generation_entity",
+            lambda *_args, **_kwargs: generation,
+        )
+        scan = make_grid_scan(make_config(), output_root=tmp_path)
+
+        scan.execute(db_client=object())
+
+        assert scan._campaign_generation is generation

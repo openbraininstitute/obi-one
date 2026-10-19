@@ -4,11 +4,15 @@ from typing import get_args
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import OBIONEError
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.recordings.soma import (
+    SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -55,6 +59,7 @@ class TestUnionCoverage:
         assert union_member_names(RecordingUnion) == {
             "MorphologyLocationVoltageRecording",
             "SomaVoltageRecording",
+            "TimeWindowMorphologyLocationVoltageRecording",
             "TimeWindowSomaVoltageRecording",
         }
 
@@ -97,7 +102,7 @@ class TestSomaVoltageRecording:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Voltage": obi.SomaVoltageRecording()},
+            blocks={"Voltage": SomaVoltageRecording()},
         )
 
         result = generate(config, tmp_path)
@@ -115,7 +120,7 @@ class TestSomaVoltageRecording:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Voltage": obi.SomaVoltageRecording()},
+            blocks={"Voltage": SomaVoltageRecording()},
             initialize={"simulation_length": 400.0},
         )
 
@@ -127,7 +132,7 @@ class TestSomaVoltageRecording:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Voltage": obi.SomaVoltageRecording(dt=0.5)},
+            blocks={"Voltage": SomaVoltageRecording(dt=0.5)},
         )
 
         result = generate(config, tmp_path)
@@ -137,14 +142,14 @@ class TestSomaVoltageRecording:
     def test_explicit_neuron_set_is_recorded_from(self, circuit, tmp_path):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="target", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Target": target,
-                "Voltage": lambda: obi.SomaVoltageRecording(neuron_set=target.ref),
+                "Voltage": lambda: SomaVoltageRecording(neuron_set=target.ref),
             },
         )
 
@@ -158,7 +163,7 @@ class TestTimeWindowSomaVoltageRecording:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Window": obi.TimeWindowSomaVoltageRecording(start_time=20.0, end_time=60.0)},
+            blocks={"Window": TimeWindowSomaVoltageRecording(start_time=20.0, end_time=60.0)},
         )
 
         result = generate(config, tmp_path)
@@ -170,7 +175,7 @@ class TestTimeWindowSomaVoltageRecording:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Window": obi.TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0)},
+            blocks={"Window": TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0)},
             initialize={"simulation_length": 500.0},
         )
 
@@ -185,8 +190,8 @@ class TestReportsSection:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Whole run": obi.SomaVoltageRecording(),
-                "First window": obi.TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0),
+                "Whole run": SomaVoltageRecording(),
+                "First window": TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0),
             },
         )
 
@@ -214,12 +219,12 @@ class TestReportsSection:
         """There is nothing to record on a virtual population."""
         virtual = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="virtual", elements=[0, 1]),
+            neuron_ids=NamedTuple(name="virtual", elements=[0, 1]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Virtual": virtual, "Voltage": obi.SomaVoltageRecording()},
+            blocks={"Virtual": virtual, "Voltage": SomaVoltageRecording()},
         )
         config.recordings["Voltage"].neuron_set = config.neuron_sets["Virtual"].ref
 

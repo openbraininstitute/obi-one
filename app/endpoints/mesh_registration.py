@@ -16,8 +16,17 @@ from app.dependencies.entitysdk import get_client
 from app.dependencies.launch_system import LaunchSystemClientDep
 from app.endpoints.mesh_validation import _save_upload_to_tempfile
 from app.logger import L
+from app.types import MachinePlacementType
+from obi_one.utils.versions import release_tag_ref
 
 router = APIRouter(prefix="/declared", tags=["mesh-registration"])
+
+# This job is built by hand rather than from TASK_DEFINITIONS, so it declares its own per-cell
+# placement. It uses the default python_3_12_compiler image, which both cells offer.
+MESH_LOD_PLACEMENT_TYPE_MAP = {
+    "cell_a": MachinePlacementType.fargate,
+    "cell_b": MachinePlacementType.azure_container_apps,
+}
 
 
 class MeshRegistrationResponse(BaseModel):
@@ -94,24 +103,26 @@ def _trigger_mesh_lod_generation_task(
 ) -> UUID:
     """Submit a mesh LOD generation job directly to the launch-system."""
     launch_path = "launch_scripts/launch_mesh_lod_generation"
+    resources: dict = {
+        "type": "machine",
+        "cores": 4,
+        "memory": 8,
+        "timelimit": "01:00",
+        "compute_cell": compute_cell,
+    }
+    placement_type = MESH_LOD_PLACEMENT_TYPE_MAP.get(compute_cell)
+    if placement_type is not None:
+        resources["placement_type"] = placement_type
     job_data = {
         "code": {
             "type": "python_repository",
             "location": settings.OBI_ONE_REPO,
-            "ref": f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}",
+            "ref": release_tag_ref(settings.APP_VERSION),
             "path": f"{launch_path}/main.py",
-            "dependencies": (
-                "launch_scripts/launch_mesh_lod_generation/dependencies/mesh_lod_generation.txt"
-            ),
+            "dependencies": f"{launch_path}/dependencies/mesh_lod_generation.txt",
             "capabilities": {"private_packages": True},
         },
-        "resources": {
-            "type": "machine",
-            "cores": 4,
-            "memory": 8,
-            "timelimit": "01:00",
-            "compute_cell": compute_cell,
-        },
+        "resources": resources,
         "inputs": [
             f"--entity_id {entity_id}",
             f"--mesh_asset_id {mesh_asset_id}",

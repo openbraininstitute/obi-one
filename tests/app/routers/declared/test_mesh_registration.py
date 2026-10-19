@@ -13,10 +13,12 @@ from fastapi import HTTPException
 from app.dependencies.compute_cell import get_compute_cell
 from app.dependencies.entitysdk import get_client
 from app.endpoints.mesh_registration import (
+    MESH_LOD_PLACEMENT_TYPE_MAP,
     _delete_existing_assets,
     _resolve_source_mesh_asset,
     _trigger_mesh_lod_generation_task,
 )
+from app.types import MachinePlacementType
 
 ENTITY_ID = str(uuid4())
 TARGET_MODULE = "app.endpoints.mesh_registration"
@@ -165,6 +167,42 @@ def test_trigger_mesh_lod_generation_task_success():
     _, kwargs = mock_ls_client.post.call_args
     assert kwargs["url"] == "/job"
     assert kwargs["json"]["resources"]["compute_cell"] == FAKE_COMPUTE_CELL
+    assert kwargs["json"]["resources"]["placement_type"] == MachinePlacementType.fargate
+
+
+@pytest.mark.parametrize(
+    ("compute_cell", "expected_placement"),
+    [
+        ("cell_a", MachinePlacementType.fargate),
+        ("cell_b", MachinePlacementType.azure_container_apps),
+        ("local", None),
+    ],
+)
+def test_trigger_mesh_lod_generation_task_pins_placement_per_cell(compute_cell, expected_placement):
+    """Mesh LOD jobs pin placement the same way TASK_DEFINITIONS do for known cells."""
+    mock_ls_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.is_success = True
+    mock_response.json.return_value = {"id": str(FAKE_JOB_ID)}
+    mock_ls_client.post.return_value = mock_response
+
+    _trigger_mesh_lod_generation_task(
+        ls_client=mock_ls_client,
+        entity_id=uuid4(),
+        mesh_asset_id=uuid4(),
+        mesh_format="obj",
+        project_id=uuid4(),
+        virtual_lab_id=uuid4(),
+        compute_cell=compute_cell,
+    )
+
+    resources = mock_ls_client.post.call_args.kwargs["json"]["resources"]
+    assert resources["compute_cell"] == compute_cell
+    if expected_placement is None:
+        assert "placement_type" not in resources
+    else:
+        assert resources["placement_type"] == expected_placement
+        assert MESH_LOD_PLACEMENT_TYPE_MAP[compute_cell] == expected_placement
 
 
 def test_trigger_mesh_lod_generation_task_failure():

@@ -5,7 +5,7 @@ https://github.com/openbraininstitute/BluePyEModel/blob/main/examples/L5PC/READM
 
 * ``efeature_extraction``: extract experimental e-features from raw traces.
 * ``emodel_optimization``: optimise model parameters, run analysis, and export
-  draft emodel (Workflow A — merged optimisation + analysis + export).
+  emodel (Workflow A — merged optimisation + analysis + export).
 * ``export_and_validation``: validate optimised models, plot validation
   figures, and re-export only validated models to HOC/SONATA (Workflow B).
 

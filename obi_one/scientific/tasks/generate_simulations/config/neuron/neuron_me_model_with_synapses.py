@@ -78,7 +78,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         },
     )
 
-    neuron_sets: dict[str, NEURONMEModelWithSynapsesNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONMEModelWithSynapsesNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

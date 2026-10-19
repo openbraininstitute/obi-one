@@ -50,9 +50,9 @@ SYNAPTOME_SONATA_CONFIG = {
 
 
 def default_node_spec_for(em_dataset: EMDataSetFromID, db_client: Client) -> dict:
-    node_specs = DEFAULT_NODE_SPECS[em_dataset._entity.name].copy()  # ruff: ignore[private-member-access]  # ty:ignore[invalid-argument-type, unresolved-attribute]
-
     resolution = em_dataset.viewer_resolution(db_client)
+    em_name = str(em_dataset.entity(db_client=db_client).name)
+    node_specs = DEFAULT_NODE_SPECS[em_name].copy()
     node_specs["__position"]["resolution"] = {
         "x": resolution[0] * 1e-3,
         "y": resolution[1] * 1e-3,
@@ -69,6 +69,7 @@ def sonata_config_for(
     virtual_population: str | None = None,
     morphologies_dir: str = "morphologies",
     alternate_morphologies_h5: str | None = None,
+    mechanisms_dir: str | None = None,
 ) -> dict:
     """Build a SONATA circuit_config.json.
 
@@ -84,9 +85,13 @@ def sonata_config_for(
         morphologies_dir: Directory containing morphology files
         alternate_morphologies_h5: [Optional] Adds an 'alternate_morphologies'
             entry pointing to this H5 path (mostly for single-neuron spiny case).
+        mechanisms_dir: [Optional] Changes the entry of components/mechanisms_dir
+            from "" to this (prepending $BASE_DIR).
     """
     cfg = deepcopy(SYNAPTOME_SONATA_CONFIG)
 
+    if mechanisms_dir is not None:
+        cfg["components"]["mechanisms_dir"] = "$BASE_DIR/" + mechanisms_dir  # ty:ignore[invalid-assignment]
     # Edge populations
     if edge_populations:
         cfg["networks"]["edges"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
@@ -100,7 +105,7 @@ def sonata_config_for(
         "type": "biophysical",
     }
     if alternate_morphologies_h5 is not None:
-        bio_props["alternate_morphologies"] = {"h5v1": "$BASE_DIR/" + alternate_morphologies_h5}  # ty:ignore[invalid-assignment]
+        bio_props["alternate_morphologies"] = {"h5v1": "$BASE_DIR/" + alternate_morphologies_h5}
     cfg["networks"]["nodes"].append(  # ty:ignore[invalid-argument-type, not-subscriptable, unresolved-attribute]
         {
             "nodes_file": "$BASE_DIR/" + fn_nodes_out,

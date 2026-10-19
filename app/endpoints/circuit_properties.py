@@ -12,11 +12,11 @@ from pydantic import BaseModel
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
+from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
     CircuitNodesetsResponse,
     CircuitPopulationsResponse,
-    CircuitStatsLevelOfDetail,
     get_circuit_metrics,
 )
 from obi_one.scientific.library.entity_property_types import (
@@ -200,6 +200,19 @@ def mapped_circuit_properties_endpoint(
             + circuit_metrics.names_of_point_node_populations
             + circuit_metrics.names_of_virtual_node_populations
         )
+        # Edge population *names* come from the circuit config, so they cost nothing extra
+        # even though level_of_detail_edges is `none` above - that only skips the per-edge
+        # statistics, not the names.
+        mapped_circuit_properties[CircuitMappedProperties.CHEMICAL_EDGE_POPULATION] = (
+            circuit_metrics.names_of_chemical_edge_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.ELECTRICAL_EDGE_POPULATION] = (
+            circuit_metrics.names_of_electrical_edge_populations
+        )
+        mapped_circuit_properties[CircuitMappedProperties.EDGE_POPULATION] = (
+            circuit_metrics.names_of_chemical_edge_populations
+            + circuit_metrics.names_of_electrical_edge_populations
+        )
         mapped_circuit_properties[
             CircuitMappedProperties.NODE_PROPERTY_UNIQUE_VALUES_BY_POPULATION
         ] = {
@@ -244,6 +257,13 @@ def mapped_circuit_properties_endpoint(
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: circuit.scale
+                in {
+                    entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.region,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.system,  # ty:ignore[possibly-missing-submodule]
+                    entitysdk.types.CircuitScale.whole_brain,  # ty:ignore[possibly-missing-submodule]
+                },
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
                 and circuit.scale
                 in {
@@ -289,6 +309,7 @@ def mapped_circuit_properties_endpoint(
             # If we can't get the circuit entity, set default usability
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+                CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: False,
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
@@ -303,6 +324,7 @@ def mapped_circuit_properties_endpoint(
         # For MEModel entities, set default usability
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
+            CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: False,
             CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,

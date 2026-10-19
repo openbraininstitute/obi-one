@@ -66,20 +66,26 @@ def test_download_mesh_execution(mock_client_cls, tmp_path):
     )
 
 
+@pytest.fixture
+def mock_ultraliser(monkeypatch):
+    ultraliser = MagicMock()
+    task_module = "obi_one.scientific.tasks.mesh_lod_generation.task"
+    monkeypatch.setattr(f"{task_module}.ultraliser", ultraliser, raising=False)
+    monkeypatch.setattr(f"{task_module}.HAS_MESHING", True)
+    return ultraliser
+
+
+@pytest.mark.usefixtures("mock_ultraliser")
 def test_generate_lods_empty_failure(tmp_path):
     input_mesh = tmp_path / "empty.obj"
     input_mesh.write_text("v 0 0 0")
     out_dir = tmp_path / "lods"
 
-    with (
-        patch("ultraliser.LODGenerator"),
-        patch("ultraliser.Mesh"),
-        pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"),
-    ):
+    with pytest.raises(RuntimeError, match="ultraliser produced no LOD output files"):
         _generate_lods(input_mesh, "obj", out_dir)
 
 
-def test_generate_lods_success(tmp_path):
+def test_generate_lods_success(tmp_path, mock_ultraliser):
     input_mesh = tmp_path / "valid.obj"
     input_mesh.write_text("v 0 0 0")
     out_dir = tmp_path / "lods"
@@ -88,13 +94,12 @@ def test_generate_lods_success(tmp_path):
         pathlib.Path(path_str).mkdir(parents=True, exist_ok=True)
         (pathlib.Path(path_str) / "lod_1.gltf").write_text("data")
 
-    with patch("ultraliser.LODGenerator") as mock_gen, patch("ultraliser.Mesh"):
-        mock_gen.return_value.generate_web_lods.side_effect = side_effect
-        res = _generate_lods(input_mesh, "obj", out_dir)
-        assert pathlib.Path("lod_1.gltf") in res
+    mock_ultraliser.LODGenerator.return_value.generate_web_lods.side_effect = side_effect
+    res = _generate_lods(input_mesh, "obj", out_dir)
+    assert pathlib.Path("lod_1.gltf") in res
 
 
-def test_generate_lods_glb_success(tmp_path):
+def test_generate_lods_glb_success(tmp_path, mock_ultraliser):
     input_mesh = tmp_path / "valid.glb"
     input_mesh.write_bytes(b"glb-data")
     out_dir = tmp_path / "lods"
@@ -103,21 +108,18 @@ def test_generate_lods_glb_success(tmp_path):
         pathlib.Path(path_str).mkdir(parents=True, exist_ok=True)
         (pathlib.Path(path_str) / "lod_1.gltf").write_text("data")
 
-    with patch("ultraliser.LODGenerator") as mock_gen, patch("ultraliser.Mesh"):
-        mock_gen.return_value.generate_web_lods.side_effect = side_effect
-        res = _generate_lods(input_mesh, "glb", out_dir)
-        assert pathlib.Path("lod_1.gltf") in res
+    mock_ultraliser.LODGenerator.return_value.generate_web_lods.side_effect = side_effect
+    res = _generate_lods(input_mesh, "glb", out_dir)
+    assert pathlib.Path("lod_1.gltf") in res
 
 
+@pytest.mark.usefixtures("mock_ultraliser")
 def test_generate_lods_unsupported_format(tmp_path):
     input_mesh = tmp_path / "valid.stl"
     input_mesh.write_text("solid")
     out_dir = tmp_path / "lods"
 
-    with (
-        patch("ultraliser.Mesh"),
-        pytest.raises(RuntimeError, match="Unsupported mesh format"),
-    ):
+    with pytest.raises(RuntimeError, match="Unsupported mesh format"):
         _generate_lods(input_mesh, "stl", out_dir)
 
 

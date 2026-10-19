@@ -4,7 +4,7 @@ from entitysdk import Client, models
 
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import CLUSTER_INSTANCES_INFO
-from app.schemas.task import ClusterResources, TaskDefinition, TaskLaunchSubmit
+from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
 
 # This was chosen based off the simulations run and recorded here:
 # https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a
@@ -16,7 +16,7 @@ MEM_GB_PER_CELL = 0.03
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: Client,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     compute_cell: str,
 ) -> ClusterResources:
     if compute_cell not in CLUSTER_INSTANCES_INFO:

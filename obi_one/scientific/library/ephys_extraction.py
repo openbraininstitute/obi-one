@@ -298,7 +298,7 @@ def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-l
             )
             raise ProtocolNotFoundError(msg)  # ty:ignore[invalid-argument-type]
 
-        output_features = {}
+        output_features: dict[str, dict[str, Any]] = {}
         logger.debug("Efeatures: %s", efeatures)
         # Format the extracted features into a readable dict for the model
         for protocol_name in protocol_definitions:

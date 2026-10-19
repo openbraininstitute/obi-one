@@ -26,6 +26,7 @@ class ExtractionInitialize(Block):
             " ``ephys_data/`` folder."
         ),
         min_length=1,
+        max_length=3,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
         },

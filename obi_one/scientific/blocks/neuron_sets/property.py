@@ -132,29 +132,22 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
     def _get_expression(self, circuit: Circuit) -> dict:
         """Returns the SONATA node set expression (w/o subsampling).
 
-        If the property filter only matches neurons in self.population, keeps
-        it symbolic (without population key). Otherwise resolves IDs.
+        The property clauses are combined with a ``population`` clause in a single node set
+        object. libsonata builds a multi-clause rule from an object with several keys and
+        intersects the clauses (see ``NodeSetBasicMultiClause`` in ``libsonata``), so pinning
+        the filter to one population never requires materializing neuron IDs.
         """
         self.check_populations_in_circuit(circuit=circuit)
         self.check_properties(circuit)
 
-        # Check if properties also resolve in other populations
-        resolves_elsewhere = any(
-            len(self._resolve_in_population(circuit, npop)) > 0
-            for npop in circuit.sonata_circuit.nodes.population_names
-            if npop != self.population
-        )
+        expression: dict = {}
+        for key, values in self.property_filter.filter_dict.items():  # ty:ignore[unresolved-attribute]
+            expression[key] = values[0] if len(values) == 1 else list(values)
 
-        if not resolves_elsewhere:
-            # Only resolves in self.population — keep symbolic (no population key)
-            expression = {}
-            for key, values in self.property_filter.filter_dict.items():  # ty:ignore[unresolved-attribute]
-                expression[key] = values[0] if len(values) == 1 else list(values)
-            return expression
-
-        # Resolves in multiple populations — must use explicit IDs
-        node_ids = self._resolve_in_population(circuit, self.population)
-        return {"population": self.population, "node_id": node_ids}
+        # No collision to worry about: check_properties has already rejected any filter key that
+        # is not a node attribute, and "population" is a node set keyword rather than one.
+        expression["population"] = self.population
+        return expression
 
 
 class BiophysicalPopulationPropertyNeuronSet(

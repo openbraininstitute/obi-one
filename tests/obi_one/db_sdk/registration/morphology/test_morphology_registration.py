@@ -1,13 +1,14 @@
 import uuid
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from entitysdk.exception import EntitySDKError
+from entitysdk.models import MeasurementAnnotation
+from entitysdk.types import AssetLabel
 
-from app.errors import ApiError
 from obi_one.db_sdk.registration.morphology import (
+    register_morphology_with_assets_and_metrics,
     register_morphometrics,
-    try_generate_and_upload_mesh,
     upload_morphology_content,
     upload_morphology_file,
 )
@@ -51,66 +52,50 @@ def test_register_morphometrics_entity_sdk_error():
         register_morphometrics(client, uuid.uuid4(), [])
 
 
-def test_try_generate_and_upload_mesh_no_meshing():
-    with patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=False):
-        client = MagicMock()
-        result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_bytes=b"swc")
-    assert result is None
+COMPUTE_MORPHOMETRICS = "obi_one.db_sdk.registration.morphology.register.compute_morphometrics"
 
 
-def test_try_generate_and_upload_mesh_success():
-    mesh_id = uuid.uuid4()
-    with (
-        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
-        patch(
-            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
-            MagicMock(return_value=MagicMock(id=mesh_id)),
-        ),
-    ):
-        client = MagicMock()
-        result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_bytes=b"swc")
-    assert result is not None
-    assert result.id == mesh_id
+@pytest.fixture
+def morphology_files(tmp_path):
+    files = {}
+    for ext in (".swc", ".h5"):
+        path = tmp_path / f"morph{ext}"
+        path.write_bytes(b"data")
+        files[ext] = path
+    return files
 
 
-def test_try_generate_and_upload_mesh_api_error():
-    with (
-        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
-        patch(
-            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
-            MagicMock(side_effect=ApiError(message="mesh failed", error_code="TEST_ERR")),
-        ),
-    ):
-        client = MagicMock()
-        result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_bytes=b"swc")
-    assert result is None
+def test_register_morphology_with_assets_and_metrics(morphology_files, tmp_path):
+    client = MagicMock()
+    registered = MagicMock(id=uuid.uuid4())
+    client.register_entity.return_value = registered
+    spines_file = tmp_path / "spines.h5"
+    spines_file.write_bytes(b"data")
+
+    with patch(COMPUTE_MORPHOMETRICS, return_value=[]) as compute:
+        result = register_morphology_with_assets_and_metrics(
+            client,
+            MagicMock(),
+            morphology_files,
+            extra_assets={AssetLabel.morphology_with_spines: spines_file},
+        )
+
+    assert result is registered
+    compute.assert_called_once_with(morphology_files[".h5"])
+    assert client.upload_file.call_count == 3
+    assert client.upload_file.call_args.kwargs["asset_label"] == AssetLabel.morphology_with_spines
+    measurement = client.register_entity.call_args_list[-1].kwargs["entity"]
+    assert isinstance(measurement, MeasurementAnnotation)
+    assert measurement.entity_id == registered.id
 
 
-def test_try_generate_and_upload_mesh_unexpected_error():
-    with (
-        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
-        patch(
-            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
-            MagicMock(side_effect=RuntimeError("crash")),
-        ),
-    ):
-        client = MagicMock()
-        result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_bytes=b"swc")
-    assert result is None
+def test_register_morphology_with_assets_and_metrics_metrics_failure(morphology_files):
+    client = MagicMock()
+    registered = MagicMock(id=uuid.uuid4())
+    client.register_entity.return_value = registered
 
+    with patch(COMPUTE_MORPHOMETRICS, side_effect=RuntimeError("bad morphology")):
+        result = register_morphology_with_assets_and_metrics(client, MagicMock(), morphology_files)
 
-def test_try_generate_and_upload_mesh_from_path(tmp_path):
-    mesh_id = uuid.uuid4()
-    swc_file = tmp_path / "cell.swc"
-    swc_file.write_bytes(b"swc data")
-    with (
-        patch("obi_one.scientific.library.morphology_mesh.HAS_MESHING", new=True),
-        patch(
-            "obi_one.scientific.library.morphology_mesh.mesh_and_upload",
-            MagicMock(return_value=MagicMock(id=mesh_id)),
-        ) as mock_mesh,
-    ):
-        client = MagicMock()
-        result = try_generate_and_upload_mesh(client, uuid.uuid4(), swc_path=swc_file)
-    assert result is not None
-    mock_mesh.assert_called_once_with(client, ANY, b"swc data")
+    assert result is registered
+    client.register_entity.assert_called_once()

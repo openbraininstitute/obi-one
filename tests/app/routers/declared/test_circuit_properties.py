@@ -4,7 +4,10 @@ import entitysdk
 import pytest
 
 from app.endpoints import circuit_properties
-from obi_one.scientific.library.entity_property_types import CircuitUsability
+from obi_one.scientific.library.entity_property_types import (
+    CircuitMappedProperties,
+    CircuitUsability,
+)
 
 
 def _circuit_metrics():
@@ -22,6 +25,8 @@ def _circuit_metrics():
         ],
         point_node_populations=[],
         virtual_node_populations=[],
+        names_of_chemical_edge_populations=["chemical"],
+        names_of_electrical_edge_populations=[],
     )
 
 
@@ -67,6 +72,22 @@ def test_circuit_populations_endpoint_returns_biophysical_populations(monkeypatc
     )
 
     assert response.populations == ["biophysical"]
+
+
+def test_mapped_properties_offer_edge_populations(monkeypatch):
+    # The synaptic model assigners select an edge population from this, so the chemical and
+    # electrical lists have to stay separate: a Tsodyks-Markram model on a gap junction
+    # population would be a nonsensical assignment the UI should never offer.
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(entitysdk.types.CircuitScale.microcircuit),
+    )
+
+    assert response[CircuitMappedProperties.CHEMICAL_EDGE_POPULATION] == ["chemical"]
+    assert response[CircuitMappedProperties.ELECTRICAL_EDGE_POPULATION] == []
+    assert response[CircuitMappedProperties.EDGE_POPULATION] == ["chemical"]
 
 
 def test_circuit_populations_endpoint_maps_sdk_error_to_500(monkeypatch):
@@ -150,6 +171,45 @@ def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch
 
 
 @pytest.mark.parametrize(
+    "scale",
+    [
+        entitysdk.types.CircuitScale.single,
+        entitysdk.types.CircuitScale.pair,
+        entitysdk.types.CircuitScale.small,
+    ],
+)
+def test_extracellular_recordings_are_disabled_up_to_small_microcircuits(scale, monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(scale),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [
+        entitysdk.types.CircuitScale.microcircuit,
+        entitysdk.types.CircuitScale.region,
+        entitysdk.types.CircuitScale.system,
+        entitysdk.types.CircuitScale.whole_brain,
+    ],
+)
+def test_extracellular_recordings_are_enabled_from_microcircuits_up(scale, monkeypatch):
+    monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
+
+    response = circuit_properties.mapped_circuit_properties_endpoint(
+        circuit_id="circuit-id",
+        db_client=_db_client(scale),
+    )
+
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is True
+
+
+@pytest.mark.parametrize(
     ("scale", "expected"),
     [
         (entitysdk.types.CircuitScale.single, True),
@@ -210,6 +270,7 @@ def test_memodel_without_circuit_metrics_gets_default_usability(monkeypatch):
 
     assert "MechanismVariablesByIonChannel" not in response
     assert response["usability"][CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS] is True
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
     assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False
 
 
@@ -252,4 +313,5 @@ def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
     )
 
     assert response["usability"][CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] is False
+    assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
     assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False

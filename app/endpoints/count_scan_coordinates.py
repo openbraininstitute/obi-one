@@ -29,7 +29,7 @@ def grid_scan_parameters_count_endpoint(
     try:
         grid_scan = GridScanGenerationTask(
             form=scan_config,
-            output_root="",  # ty:ignore[invalid-argument-type]
+            output_root="",
             coordinate_directory_option="ZERO_INDEX",
         )
 

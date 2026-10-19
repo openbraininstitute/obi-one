@@ -63,7 +63,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
     def variables(self) -> list[str]:
         current_variables = [
             IonChannelVariable(
-                ion_channel_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
+                ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
                 variable_name=f"{current}_{self.ion_channel_suffix}",
                 unit="mA/cm2",
@@ -72,7 +72,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         ]
         non_specific_current_variables = [
             IonChannelVariable(
-                ion_channel_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
+                ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
                 variable_name=f"{non_specific_current}_{self.ion_channel_suffix}",
                 unit="mA/cm2",
@@ -81,7 +81,7 @@ class IonChannelVariablesOutput(BaseModel, Mapping):
         ]
         concentration = [
             IonChannelVariable(
-                ion_channel_id=self.ion_channel_id,  # ty:ignore[invalid-argument-type]
+                ion_channel_id=self.ion_channel_id,
                 channel_name=self.ion_channel_suffix,
                 variable_name=conc,
                 unit="mM",

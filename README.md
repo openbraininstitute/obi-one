@@ -51,9 +51,16 @@ brew install uv open-mpi boost cmake
 <br>
 
 
+# Launch-script Dependencies
+
+The scripts under [**launch_scripts/**](launch_scripts/) run as tasks in the [launch-system](https://github.com/openbraininstitute/launch-system), each with its own pinned requirements files.
+See [**docs/internal/launch-script-dependencies.md**](docs/internal/launch-script-dependencies.md) for how to compile, check, and pin these dependencies.
+
+<br>
+
+
 # Examples
-Notebooks are available in [**examples/**](examples/)
-Remember to install notebook dependencies with
+Notebooks are available in [**examples/**](examples/). Remember to install notebook dependencies with
 ```bash
 make install-notebooks
 ```
@@ -129,6 +136,6 @@ This ensures that documentation is updated alongside code changes. The check onl
 
 # Contributions
 Please see [**CONTRIBUTING.md**](CONTRIBUTING.md) for guidelines on how to contribute.
- 
+
 # Acknowledgements
 Copyright © 2025-2026 Open Brain Institute

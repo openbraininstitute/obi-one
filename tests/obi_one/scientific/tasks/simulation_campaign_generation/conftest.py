@@ -14,10 +14,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import libsonata
 import pytest
+from bluepysnap import Circuit as SnapCircuit
 
-import obi_one as obi
 from obi_one.core.block_reference import BlockReference
+from obi_one.core.info import Info
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import (
     MEModelCircuit,
     MEModelWithSynapsesCircuit,
@@ -75,6 +78,18 @@ def union_member_names(union: Any) -> set[str]:
         # A single-member "union" annotates the class directly.
         return {inner.__name__}
     return {cls.__name__ for cls in typing.get_args(inner) if inspect.isclass(cls)}
+
+
+def union_block_class(name: str, *unions: Any) -> type:
+    """Return the block class registered under ``name`` in one of ``unions``."""
+    for union in unions:
+        inner = typing.get_args(union)[0]
+        candidates = [inner] if inspect.isclass(inner) else typing.get_args(inner)
+        for cls in candidates:
+            if inspect.isclass(cls) and cls.__name__ == name:
+                return cls
+    msg = f"No block class {name!r} in the given unions"
+    raise LookupError(msg)
 
 
 def reference_types_in(annotation: Any) -> set[type]:
@@ -146,6 +161,18 @@ class GeneratedSimulation:
         """Referenced node set names that were never written to ``node_sets.json``."""
         return self.referenced_node_sets() - set(self.node_sets)
 
+    def resolved_node_set_ids(self, name: str, circuit_path: Path, population: str) -> list[int]:
+        """The neuron IDs a written node set selects, resolved the way the simulator does.
+
+        Node set definitions are written symbolically wherever SONATA can express them, so the
+        IDs cannot simply be read back out of the file. neurodamus loads this file with
+        ``libsonata.NodeSets.from_file`` and calls ``materialize`` once per node population;
+        this does the same, which makes it an end-to-end check of the written definition.
+        """
+        node_sets = libsonata.NodeSets.from_file(str(self.directory / "node_sets.json"))
+        nodes = SnapCircuit(str(circuit_path)).nodes[population].to_libsonata
+        return node_sets.materialize(name, nodes).flatten().tolist()
+
 
 @dataclass
 class RecordedCall:
@@ -161,7 +188,8 @@ class FakeDBClient:
 
     ``GenerateSimulationTask`` only ever calls ``update_entity`` and ``upload_file`` on the
     client, and only when one is supplied, so a recorder is enough to pin the persistence
-    behaviour.
+    behaviour. The one read is a circuit from entitycore's LFP recording arrays, checked
+    against that circuit; the tests that exercise it serve the arrays themselves.
     """
 
     calls: list[RecordedCall] = field(default_factory=list)
@@ -204,7 +232,7 @@ def build_config(
     """
     config = config_class.empty_config()
     config.set(
-        obi.Info(campaign_name="Test campaign", campaign_description="Test description"),
+        Info(campaign_name="Test campaign", campaign_description="Test description"),
         name="info",
     )
 
@@ -269,13 +297,13 @@ def read_generated(coordinate_root: Path) -> GeneratedSimulation:
 @pytest.fixture
 def circuit():
     """A 10-neuron biophysical circuit with virtual VPM/POm populations."""
-    return obi.Circuit(name="N_10__top_nodes_dim6", path=str(MULTI_POPULATION_CIRCUIT_PATH))
+    return Circuit(name="N_10__top_nodes_dim6", path=str(MULTI_POPULATION_CIRCUIT_PATH))
 
 
 @pytest.fixture
 def morphology_circuit():
     """A circuit with detailed morphologies, for morphology-location targeting."""
-    return obi.Circuit(name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5", path=str(MORPHOLOGY_CIRCUIT_PATH))
+    return Circuit(name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5", path=str(MORPHOLOGY_CIRCUIT_PATH))
 
 
 @pytest.fixture
@@ -295,7 +323,7 @@ def me_model_with_synapses_circuit():
 @pytest.fixture
 def point_circuit():
     """The synthetic drosophila point-neuron circuit used by Brian2 and LearningEngine."""
-    return obi.Circuit(name="drosophila", path=str(POINT_CIRCUIT_PATH))
+    return Circuit(name="drosophila", path=str(POINT_CIRCUIT_PATH))
 
 
 @pytest.fixture

@@ -1,3 +1,31 @@
+## Float input
+
+ui_element: `float_input`
+
+- A single required (non-nullable, non-swept) floating-point value.
+- The value must be a single `number` (and nothing else — not `null`, not an array).
+- Optional `minimum` and `maximum` and `default`.
+- Optional `units` string.
+
+Reference schema [float_input](reference_schemas/float_input.jsonc)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    soma_ref_location: float = Field(
+            default=0.5,
+            ge=0.0,
+            le=1.0,
+            title="Soma reference location",
+            description="Reference location of the soma along the morphology.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT})
+```
+
+### UI design
+
+(To be specified.)
+
 ## Float parameter sweep
 
 ui_element: `float_parameter_sweep`

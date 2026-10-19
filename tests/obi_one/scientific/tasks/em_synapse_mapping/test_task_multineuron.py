@@ -16,6 +16,21 @@ from obi_one.scientific.tasks.em_synapse_mapping.task import (
 )
 
 
+class _FakeCollection:
+    """Minimal stand-in for voxcell.CellCollection.
+
+    Exposes a pandas-backed ``properties`` table (supporting item and ``.loc``
+    assignment) and ``__len__`` reporting the node count, matching the subset of
+    the CellCollection API used by EMSynapseMappingTask.
+    """
+
+    def __init__(self, n_nodes):
+        self.properties = pd.DataFrame(index=range(n_nodes))
+
+    def __len__(self):
+        return len(self.properties)
+
+
 @pytest.fixture
 def mock_db_client():
     return Mock()
@@ -50,6 +65,15 @@ def _make_resolved_pair():
     return [rn1, rn2]
 
 
+def _resolved_em_dataset():
+    """Stand-in for the ResolvedEMDataset returned by resolve_list_neurons."""
+    em_dataset = Mock()
+    em_dataset.entity.return_value = SimpleNamespace(
+        id=uuid4(), name="source-ds", license=SimpleNamespace(id="lic")
+    )
+    return SimpleNamespace(dataset_from_id=em_dataset, cave_version=3)
+
+
 def _synapses_df(pre_ids, post_id):
     return pd.DataFrame(
         {
@@ -75,6 +99,7 @@ def _make_task(
     custom_virtual_edge_population_name="",
     custom_biophysical_node_population="",
     custom_virtual_node_population="",
+    include_spiny_morphologies=False,
 ):
     config = Mock()
     config.coordinate_output_root = tmp_path / "out"
@@ -93,6 +118,7 @@ def _make_task(
     )
     config.advanced_options.custom_biophysical_node_population = custom_biophysical_node_population
     config.advanced_options.custom_virtual_node_population = custom_virtual_node_population
+    config.advanced_options.include_spiny_morphologies = include_spiny_morphologies
     return EMSynapseMappingTask.model_construct(config=config)
 
 
@@ -105,40 +131,10 @@ class TestEMSynapseMappingTask:
         with pytest.raises(ValueError, match="db_client"):
             task.execute(db_client=None)
 
-    def test_execute_rejects_mixed_datasets(self, tmp_path, mock_db_client):
-        task = _make_task(tmp_path)
-        rn1 = _resolved_neuron(111, "A")
-        rn2 = _resolved_neuron(222, "B")
-        # Different dataset ids
-
-        with (
-            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
-            patch(
-                f"{_TASK_MODULE}.resolve_neuron",
-                side_effect=[rn1, rn2],
-            ),
-            pytest.raises(ValueError, match="same EM dense reconstruction"),
-        ):
-            task.execute(db_client=mock_db_client)
-
-    def test_execute_rejects_duplicate_pt_root_ids(self, tmp_path, mock_db_client):
-        task = _make_task(tmp_path)
-        rn1 = _resolved_neuron(111, "neuron_A")
-        rn2 = _resolved_neuron(111, "neuron_B")  # same pt_root_id
-
-        with (
-            patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
-            patch(
-                f"{_TASK_MODULE}.resolve_neuron",
-                side_effect=[rn1, rn2],
-            ),
-            pytest.raises(ValueError, match=r"Duplicate pt_root_id 111.*neuron_B.*neuron_A"),
-        ):
-            task.execute(db_client=mock_db_client)
-
     def test_execute_happy_path(self, tmp_path, mock_db_client):
         task = _make_task(tmp_path)
         resolved = _make_resolved_pair()
+        coll_bio = _FakeCollection(len(resolved))
 
         # Neuron 0 (pt_root_id=111): 2 internal synapses from 222, 1 external from 999
         syns_0 = _synapses_df([222, 222, 999], 111)
@@ -148,34 +144,26 @@ class TestEMSynapseMappingTask:
         syns_1 = _synapses_df([111, 888], 222)
         mapped_1 = _mapped_df(2)
 
-        coll_bio = SimpleNamespace(properties={})
-        coll_virt = SimpleNamespace(properties={})
-
-        call_count = {"n": 0}
-
-        def fake_synapses_and_nodes(*_args, **_kwargs):
-            idx = call_count["n"]
-            call_count["n"] += 1
-            if idx == 0:
-                return syns_0, Mock(), Mock(), ["notice-0"]
-            return syns_1, Mock(), Mock(), ["notice-1"]
+        # Synapses are now read directly via the EM dataset's synapse_info_df,
+        # once per neuron, each returning (synapses_df, notice).
+        em_ds = _resolved_em_dataset()
+        em_ds.dataset_from_id.synapse_info_df.side_effect = [
+            (syns_0, "notice-0"),
+            (syns_1, "notice-1"),
+        ]
 
         def fake_assemble(*_args, **_kwargs):
-            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping")
-            if len(mapping) == 2:
-                return coll_bio, []
-            return coll_virt, []
+            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
+            return _FakeCollection(len(mapping)), []
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
             patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
-            patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
-            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
-            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                side_effect=fake_synapses_and_nodes,
+                f"{_TASK_MODULE}.resolve_list_neurons",
+                return_value=(resolved, em_ds, coll_bio, None),
             ),
+            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 side_effect=[(mapped_0, 0.5), (mapped_1, 0.5)],
@@ -199,7 +187,6 @@ class TestEMSynapseMappingTask:
             ) as mock_register,
             patch.object(EMSynapseMappingTask, "_update_execution_activity") as mock_update,
         ):
-            mock_em_ds.return_value = Mock()
             task.execute(db_client=mock_db_client)
 
         mock_register.assert_called_once()
@@ -213,31 +200,28 @@ class TestEMSynapseMappingTask:
         resolved[0].use_me_model = True
         resolved[0].phys_node_props = {
             "model_template": np.array(["hoc:model"]),
-            "threshold_current": np.array([0.5], dtype=np.float32),
+            "@dynamics:threshold_current": np.array([0.5], dtype=np.float32),
         }
+        coll_bio = _FakeCollection(len(resolved))
 
         syns = _synapses_df([999], 111)
         mapped = _mapped_df(1)
 
-        bio_props = {}
-        coll_bio = SimpleNamespace(properties=bio_props)
-
-        def fake_synapses(*_a, **_k):
-            return syns, Mock(), Mock(), []
+        em_ds = _resolved_em_dataset()
+        em_ds.dataset_from_id.synapse_info_df.return_value = (syns, "notice")
 
         def fake_assemble(*_a, **_k):
-            return coll_bio, []
+            mapping = _a[4] if len(_a) > 4 else _k.get("mapping", [])
+            return _FakeCollection(len(mapping)), []
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
             patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
-            patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
-            patch(f"{_TASK_MODULE}.EMDataSetFromID"),
-            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                side_effect=fake_synapses,
+                f"{_TASK_MODULE}.resolve_list_neurons",
+                return_value=(resolved, em_ds, coll_bio, "mod"),
             ),
+            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 return_value=(mapped, 0.5),
@@ -260,8 +244,8 @@ class TestEMSynapseMappingTask:
         ):
             task.execute(db_client=mock_db_client)
 
-        assert "model_template" in bio_props
-        assert "threshold_current" in bio_props
+        assert "model_template" in coll_bio.properties.columns
+        assert "@dynamics:threshold_current" in coll_bio.properties.columns
 
     def test_execute_uses_custom_population_names(self, tmp_path, mock_db_client):
         """Custom population names propagate to writers and SONATA config (multi-neuron)."""
@@ -273,6 +257,7 @@ class TestEMSynapseMappingTask:
             custom_virtual_node_population="my_virt_nodes",
         )
         resolved = _make_resolved_pair()
+        coll_bio = _FakeCollection(len(resolved))
 
         # Neuron 0 (pt_root_id=111): 2 internal from 222, 1 external from 999
         syns_0 = _synapses_df([222, 222, 999], 111)
@@ -282,34 +267,24 @@ class TestEMSynapseMappingTask:
         syns_1 = _synapses_df([111, 888], 222)
         mapped_1 = _mapped_df(2)
 
-        coll_bio = SimpleNamespace(properties={})
-        coll_virt = SimpleNamespace(properties={})
-
-        call_count = {"n": 0}
-
-        def fake_synapses_and_nodes(*_args, **_kwargs):
-            idx = call_count["n"]
-            call_count["n"] += 1
-            if idx == 0:
-                return syns_0, Mock(), Mock(), ["notice-0"]
-            return syns_1, Mock(), Mock(), ["notice-1"]
+        em_ds = _resolved_em_dataset()
+        em_ds.dataset_from_id.synapse_info_df.side_effect = [
+            (syns_0, "notice-0"),
+            (syns_1, "notice-1"),
+        ]
 
         def fake_assemble(*_args, **_kwargs):
-            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping")
-            if len(mapping) == 2:
-                return coll_bio, []
-            return coll_virt, []
+            mapping = _args[4] if len(_args) > 4 else _kwargs.get("mapping", [])
+            return _FakeCollection(len(mapping)), []
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
             patch.object(EMSynapseMappingTask, "_get_execution_activity", return_value=None),
-            patch(f"{_TASK_MODULE}.resolve_neuron", side_effect=resolved),
-            patch(f"{_TASK_MODULE}.EMDataSetFromID") as mock_em_ds,
-            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
-                f"{_TASK_MODULE}.synapses_and_nodes_dataframes_from_EM",
-                side_effect=fake_synapses_and_nodes,
+                f"{_TASK_MODULE}.resolve_list_neurons",
+                return_value=(resolved, em_ds, coll_bio, None),
             ),
+            patch(f"{_TASK_MODULE}.merge_spiny_morphologies"),
             patch(
                 f"{_TASK_MODULE}.map_afferents_to_spiny_morphology",
                 side_effect=[(mapped_0, 0.5), (mapped_1, 0.5)],
@@ -332,7 +307,6 @@ class TestEMSynapseMappingTask:
             patch(f"{_TASK_MODULE}.register_output", return_value="circuit-id"),
             patch.object(EMSynapseMappingTask, "_update_execution_activity"),
         ):
-            mock_em_ds.return_value = Mock()
             task.execute(db_client=mock_db_client)
 
         # Node populations use the custom biophysical / virtual names.

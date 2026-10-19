@@ -16,7 +16,7 @@ from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launch_system import LaunchSystemAsyncClientDep, LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from app.mappings import TASK_DEFINITIONS
+from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.job import JobRead
 from app.schemas.task import (
     TaskAccountingCreate,
@@ -87,7 +87,7 @@ def task_launch_endpoint(
         msg = f"Mapped circuit_simulation -> {task_type}"
         L.info(msg)
 
-    task_definition = TASK_DEFINITIONS[json_model.task_type]
+    task_definition = get_launchable_task_definition(json_model.task_type)
 
     # Gate: block simulation of customized circuits still in "draft" status
     if json_model.task_type in {
@@ -104,6 +104,17 @@ def task_launch_endpoint(
         task_definition=task_definition,
         accounting_factory=accounting_factory,
     )
+    # Before reserving credits, and outside the try below, so that a task no machine can run
+    # is refused with the estimator's own error rather than a generic submission failure.
+    updated_resources = task_service.estimate_task_resources(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell=compute_cell,
+        accounting_parameters=accounting_info.parameters,
+    )
+    task_definition = task_definition.model_copy(update={"resources": updated_resources})
+
     accounting_session = accounting_service.make_task_reservation(
         user_context=user_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
@@ -118,15 +129,6 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
-        updated_resources = task_service.estimate_task_resources(
-            json_model=json_model,
-            db_client=db_client,
-            task_definition=task_definition,
-            compute_cell=compute_cell,
-            accounting_parameters=accounting_info.parameters,
-        )
-        task_definition = task_definition.model_copy(update={"resources": updated_resources})
-
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -183,7 +185,7 @@ def estimate_endpoint(
         config_id=json_model.config_id,
         project_context=db_client.project_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
-        task_definition=TASK_DEFINITIONS[json_model.task_type],
+        task_definition=get_launchable_task_definition(json_model.task_type),
     )
 
 

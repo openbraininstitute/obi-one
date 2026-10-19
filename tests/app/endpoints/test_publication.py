@@ -62,7 +62,7 @@ def mock_db_client():
     return _make_mock_db_client()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def _override_db_client(mock_db_client, monkeypatch):
     """Override the DatabaseClientDep with a mock for all tests in this module."""
     monkeypatch.setitem(app.dependency_overrides, get_client, lambda: mock_db_client)
