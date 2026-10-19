@@ -14,7 +14,7 @@ from obi_one.scientific.library.morphology_pack.codec import (
 )
 from obi_one.scientific.library.morphology_pack.geometry import FAR, FINEST, LEVELS, simplified
 from obi_one.scientific.library.morphology_pack.reader import read_pack, run_segments
-from obi_one.scientific.library.morphology_pack.writer import PackWriter
+from obi_one.scientific.library.morphology_pack.writer import PackWriter, placed
 
 from tests.obi_one.scientific.library.morphology_pack.utils import (
     AXON,
@@ -244,6 +244,18 @@ class TestWriter:
         writer = PackWriter([("only", 1)], LEVELS)
         with pytest.raises(ValueError, match="zip"):
             writer.add_cell(0, shapes, np.eye(3), np.zeros(3))
+
+    def test_a_point_is_placed_alike_wherever_it_sits(self):
+        rng = np.random.default_rng(7)
+        points = (rng.normal(size=(256, 3)) * 800).astype(np.float32)
+        rotation, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+        position = rng.normal(size=3) * 3000
+        every = placed(points, rotation, position)
+        # A matrix product rounds a short array's last rows apart from the same rows in a long one.
+        for start in range(9):
+            for n in range(1, 40):
+                part = placed(points[start : start + n], rotation, position)
+                assert np.array_equal(part, every[start : start + n])
 
     def test_a_writer_packs_once(self):
         writer = PackWriter([("only", 1)], [FINEST])

@@ -48,6 +48,16 @@ class Points:
     follows: np.ndarray
 
 
+def placed(points: np.ndarray, rotation: np.ndarray, position: np.ndarray) -> np.ndarray:
+    """Points turned by `rotation` and moved, each alike wherever it sits in `points`.
+
+    Not a matrix product: BLAS may round a row by where it sits, and a point a coarser level
+    shares with a finer one has to land on the same point of the grid at both.
+    """
+    turned = points[:, :1] * rotation[:, 0] + points[:, 1:2] * rotation[:, 1]
+    return turned + points[:, 2:3] * rotation[:, 2] + position
+
+
 @dataclass
 class Placed:
     """The cells of one level, placed on the grid. Each list has an entry a cell."""
@@ -69,7 +79,7 @@ class Placed:
         counts: np.ndarray,
         follows: np.ndarray,
     ) -> None:
-        self.grid.append(on_grid(shape.points @ rotation.T + position))
+        self.grid.append(on_grid(placed(shape.points, rotation, position)))
         self.radius.append(radius_steps(shape.radii))
         self.opens.append(shape.opens)
         self.types.append(shape.types)
