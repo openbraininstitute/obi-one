@@ -26,6 +26,7 @@ from app.endpoints.morphology_metrics_calculation import (
     run_morphology_analysis,
 )
 from app.services.morphology import (
+    MorphologyFileError,
     MorphologyFiles,
     convert_morphology,
 )
@@ -720,13 +721,7 @@ class TestStoreInvalidMorphology:
     @pytest.fixture
     def failing_validation(self, monkeypatch):
         def _fail(*_args, **_kwargs):
-            raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "INVALID_REQUEST",
-                    "detail": self.VALIDATION_DETAIL,
-                },
-            )
+            raise MorphologyFileError(self.VALIDATION_DETAIL)
 
         monkeypatch.setattr(
             "app.endpoints.morphology_metrics_calculation.load_morphio_morphology",
@@ -821,20 +816,15 @@ class TestStoreInvalidMorphology:
         assert "store_if_invalid" not in payload
 
     def test_system_error_during_conversion_stays_an_error(self, client, spies):
-        """A 500 from conversion is a server problem (e.g. full disk), not a bad file.
+        """A system error during conversion (OSError, e.g. full disk) is not a bad file.
 
-        It must surface as an error and must not create a disqualified entity, otherwise a
+        It must surface as a 500 and must not create a disqualified entity, otherwise a
         transient outage would leave orphaned records behind.
         """
 
         def _fail(*_args, **_kwargs):
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": "INVALID_REQUEST",
-                    "detail": "Failed to convert the file due to a system error: no space",
-                },
-            )
+            msg = "No space left on device"
+            raise OSError(msg)
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
@@ -857,19 +847,14 @@ class TestStoreInvalidMorphology:
     def test_unconvertible_file_is_disqualified(self, client, spies):
         """A file that loads but cannot be converted is a file problem, stored as disqualified.
 
-        convert_morphology raises 422 for structural problems it cannot convert (an unsupported
-        soma type, for example). With the opt-in, that is kept rather than rejected, the same as
-        a file morphio cannot load at all.
+        convert_morphology raises MorphologyFileError for structural problems it cannot convert
+        (an unsupported soma type, for example). With the opt-in, that is kept rather than
+        rejected, the same as a file morphio cannot load at all.
         """
 
         def _fail(*_args, **_kwargs):
-            raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "INVALID_REQUEST",
-                    "detail": "Failed to convert the file: unsupported soma type",
-                },
-            )
+            msg = "Failed to convert the file: unsupported soma type"
+            raise MorphologyFileError(msg)
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
@@ -893,16 +878,11 @@ class TestStoreInvalidMorphology:
         spies["register"].assert_called_once()
 
     def test_conversion_failure_without_opt_in_still_errors(self, client, spies):
-        """Without the opt-in, a 422 conversion failure is rejected as before."""
+        """Without the opt-in, an unconvertible file is rejected as a 422."""
 
         def _fail(*_args, **_kwargs):
-            raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "INVALID_REQUEST",
-                    "detail": "Failed to convert the file: unsupported soma type",
-                },
-            )
+            msg = "Failed to convert the file: unsupported soma type"
+            raise MorphologyFileError(msg)
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(

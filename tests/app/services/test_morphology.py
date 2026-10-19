@@ -1,13 +1,12 @@
-from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import morphio
 import pytest
-from fastapi import HTTPException
 from neurom.exceptions import NeuroMError
 
 from app.services.morphology import (
+    MorphologyFileError,
     MorphologyFiles,
     _check_soma_radius,
     _check_warnings,
@@ -156,18 +155,15 @@ class TestLoadMorphioMorphology:
 
         assert result is mock_morphology
 
-    def test_raises_http_exception_on_morphio_error(self, tmp_path):
+    def test_raises_file_error_on_morphio_error(self, tmp_path):
         mock_handler = MagicMock()
 
         with (
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(MorphologyFileError, match="Morphology validation failed"),
             patch(_COLLECTOR, return_value=mock_handler),
             patch(_MORPHOLOGY, side_effect=morphio.MorphioError("bad morphology")),
         ):
             load_morphio_morphology(tmp_path / "bad.swc", raise_warnings=False)
-
-        assert exc_info.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert "Morphology validation failed" in exc_info.value.detail["detail"]
 
     def test_raise_warnings_true_calls_check_warnings(self, tmp_path):
         mock_morphology = MagicMock(spec=morphio.Morphology)
@@ -196,19 +192,17 @@ class TestLoadMorphioMorphology:
 
         mock_check.assert_not_called()
 
-    def test_warnings_with_raise_warnings_true_raises_http_exception(self, tmp_path):
+    def test_warnings_with_raise_warnings_true_raises_file_error(self, tmp_path):
         mock_morphology = MagicMock(spec=morphio.Morphology)
         mock_handler = MagicMock()
 
         with (
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(MorphologyFileError),
             patch(_COLLECTOR, return_value=mock_handler),
             patch(_MORPHOLOGY, return_value=mock_morphology),
             patch(_CHECK_WARNINGS, side_effect=morphio.MorphioError("a warning")),
         ):
             load_morphio_morphology(tmp_path / "neuron.swc", raise_warnings=True)
-
-        assert exc_info.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 class TestCheckSomaRadius:
@@ -237,27 +231,22 @@ class TestValidateSomaDiameter:
         with patch(_LOAD_MORPHOLOGY, return_value=mock_morphology):
             validate_soma_diameter(tmp_path / "neuron.swc")
 
-    def test_invalid_soma_radius_raises_http_exception(self, tmp_path):
+    def test_invalid_soma_radius_raises_file_error(self, tmp_path):
         mock_morphology = MagicMock()
         mock_morphology.soma.radius = 999.0
 
         with (
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(MorphologyFileError, match="Soma diameter validation failed"),
             patch(_LOAD_MORPHOLOGY, return_value=mock_morphology),
         ):
             validate_soma_diameter(tmp_path / "neuron.swc")
 
-        assert exc_info.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert "Soma diameter validation failed" in exc_info.value.detail["detail"]
-
-    def test_neurom_error_raises_http_exception(self, tmp_path):
+    def test_neurom_error_raises_file_error(self, tmp_path):
         with (
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(MorphologyFileError),
             patch(_LOAD_MORPHOLOGY, side_effect=NeuroMError("neurom failed")),
         ):
             validate_soma_diameter(tmp_path / "neuron.swc")
-
-        assert exc_info.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
     def test_soma_radius_within_custom_threshold_does_not_raise(self, tmp_path):
         mock_morphology = MagicMock()
@@ -271,7 +260,7 @@ class TestValidateSomaDiameter:
         mock_morphology.soma.radius = 10.0
 
         with (
-            pytest.raises(HTTPException),
+            pytest.raises(MorphologyFileError),
             patch(_LOAD_MORPHOLOGY, return_value=mock_morphology),
         ):
             validate_soma_diameter(tmp_path / "neuron.swc", threshold=5.0)
@@ -323,13 +312,13 @@ class TestConvertMorphology:
 
         assert result.swc == tmp_path / "neuron.swc"
 
-    def test_conversion_error_is_unprocessable(self, tmp_path):
-        """A file that loads but cannot be converted is the file's fault, so 422 not 400/500."""
+    def test_conversion_error_raises_file_error(self, tmp_path):
+        """A file that loads but cannot be converted is the file's fault: MorphologyFileError."""
         input_file = tmp_path / "neuron.swc"
         input_file.write_text("dummy")
 
         with (
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(MorphologyFileError, match="Failed to convert the file"),
             patch(_MORPH_TOOL, side_effect=Exception("conversion failed")),
         ):
             convert_morphology(
@@ -339,16 +328,13 @@ class TestConvertMorphology:
                 target_exts=[".h5"],
             )
 
-        assert exc_info.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-        assert "Failed to convert the file" in exc_info.value.detail["detail"]
-
-    def test_system_error_during_conversion_is_500(self, tmp_path):
-        """An OSError (disk full, permissions) is a server problem, so 500."""
+    def test_system_error_during_conversion_propagates_oserror(self, tmp_path):
+        """An OSError (disk full, permissions) is a server problem: it propagates unchanged."""
         input_file = tmp_path / "neuron.swc"
         input_file.write_text("dummy")
 
         with (
-            pytest.raises(HTTPException) as exc_info,
+            pytest.raises(OSError, match="No space left on device"),
             patch(_MORPH_TOOL, side_effect=OSError("No space left on device")),
         ):
             convert_morphology(
@@ -357,9 +343,6 @@ class TestConvertMorphology:
                 single_point_soma_by_ext={".h5": False},
                 target_exts=[".h5"],
             )
-
-        assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-        assert "system error" in exc_info.value.detail["detail"]
 
     def test_single_point_soma_passed_to_morph_tool(self, tmp_path):
         input_file = tmp_path / "neuron.h5"
@@ -406,9 +389,9 @@ class TestValidateAndConvertMorphology:
             patch(_CONVERT) as mock_convert,
             patch(
                 _LOAD_MORPHIO,
-                side_effect=HTTPException(status_code=422, detail="bad"),
+                side_effect=MorphologyFileError("bad"),
             ),
-            pytest.raises(HTTPException),
+            pytest.raises(MorphologyFileError),
         ):
             validate_and_convert_morphology(
                 input_file,

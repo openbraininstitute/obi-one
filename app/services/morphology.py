@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Iterable
-from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Final
 
@@ -8,12 +7,18 @@ import morph_tool
 import morphio
 import neurom
 import neurom.check.morphology_checks as morph_checks
-from fastapi import HTTPException
 from neurom.check.runner import CheckRunner
 from neurom.exceptions import NeuroMError
 from pydantic import BaseModel
 
-from app.errors import ApiErrorCode
+
+class MorphologyFileError(ValueError):
+    """The uploaded file itself is the problem: it cannot be parsed or converted.
+
+    This is a property of the file, so callers may surface it as a validation error or, with
+    the opt-in, keep the morphology as disqualified.
+    """
+
 
 DEFAULT_SINGLE_POINT_SOMA_BY_EXT: dict[str, bool] = {
     ".h5": False,
@@ -112,19 +117,20 @@ def _check_warnings(warning_handler: morphio.WarningHandlerCollector) -> None:
 
 
 def load_morphio_morphology(file_path: Path, *, raise_warnings: bool) -> morphio.Morphology:
+    """Load a morphology with morphio.
+
+    Raises:
+        MorphologyFileError: when the file cannot be parsed.
+
+    """
     warning_handler = morphio.WarningHandlerCollector()
     try:
         morphology = morphio.Morphology(file_path, warning_handler=warning_handler)
         if raise_warnings:
             _check_warnings(warning_handler=warning_handler)
     except morphio.MorphioError as e:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Morphology validation failed: {e!s}",
-            },
-        ) from e
+        msg = f"Morphology validation failed: {e!s}"
+        raise MorphologyFileError(msg) from e
     return morphology
 
 
@@ -135,17 +141,18 @@ def _check_soma_radius(radius: float | None, threshold: float) -> None:
 
 
 def validate_soma_diameter(file_path: Path, threshold: float = SOMA_RADIUS_THRESHOLD) -> None:
+    """Check the soma diameter is realistic.
+
+    Raises:
+        MorphologyFileError: when the soma diameter is missing or out of range.
+
+    """
     try:
         m = neurom.load_morphology(file_path)
         _check_soma_radius(m.soma.radius, threshold)
     except (NeuroMError, ValueError) as e:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail={
-                "code": ApiErrorCode.INVALID_REQUEST,
-                "detail": f"Soma diameter validation failed: {e!s}",
-            },
-        ) from e
+        msg = f"Soma diameter validation failed: {e!s}"
+        raise MorphologyFileError(msg) from e
 
 
 def convert_morphology(
@@ -159,8 +166,8 @@ def convert_morphology(
     """Convert a morphology to every target extension.
 
     Raises:
-        HTTPException: 422 when the file itself cannot be converted (bad structure), so callers
-            may treat it the same as a load failure; 500 for system errors such as a full disk.
+        MorphologyFileError: when the file loads but cannot be converted (bad structure).
+        OSError: for server-side failures such as a full disk; propagated unchanged.
 
     """
     file_extension = input_file.suffix
@@ -177,27 +184,17 @@ def convert_morphology(
                 output_file=str(output_file),
                 single_point_soma=single_point_soma,
             )
-        except OSError as e:
-            # Disk full, permissions, etc. - a server problem, not the file's fault.
-            raise HTTPException(
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": ApiErrorCode.INVALID_REQUEST,
-                    "detail": f"Failed to convert the file due to a system error: {e!s}",
-                },
-            ) from e
+        except OSError:
+            # Disk full, permissions, etc. A server problem, not the file's fault and nothing
+            # morphology-specific, so let it propagate for the caller's generic error handling.
+            raise
         except Exception as e:
-            # Not a system error, so the file loaded but could not be converted, e.g. an
-            # unsupported soma type or degenerate geometry from the numeric soma conversion.
-            # morph_tool signals these as MorphToolException/MorphioError; anything else here is
-            # still tied to this input, so attribute it to the file rather than the server.
-            raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": ApiErrorCode.INVALID_REQUEST,
-                    "detail": f"Failed to convert the file: {e!s}",
-                },
-            ) from e
+            # The file loaded but could not be converted, e.g. an unsupported soma type or
+            # degenerate geometry from the numeric soma conversion. morph_tool signals these as
+            # MorphToolException/MorphioError; anything else here is still tied to this input, so
+            # attribute it to the file rather than the server.
+            msg = f"Failed to convert the file: {e!s}"
+            raise MorphologyFileError(msg) from e
         if ext == ".swc":
             output_paths["swc"] = output_file
         elif ext == ".h5":

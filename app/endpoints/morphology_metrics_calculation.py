@@ -30,6 +30,7 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.morphology import (
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+    MorphologyFileError,
     MorphologyFiles,
     convert_morphology,
     load_morphio_morphology,
@@ -60,11 +61,6 @@ ALLOWED_EXTENSIONS: Final[set[str]] = {".swc", ".h5", ".asc"}
 ALLOWED_EXT_STR: Final[str] = ", ".join(ALLOWED_EXTENSIONS)
 
 BRAIN_LOCATION_MIN_DIMENSIONS: Final[int] = 3
-
-# Service contract (see load_morphio_morphology / convert_morphology): this status means the
-# failure is a property of the uploaded file, so it may be stored as disqualified. Any other
-# status is a server or request error and is always propagated.
-FILE_IS_INVALID_STATUS: Final[HTTPStatus] = HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -390,9 +386,6 @@ async def _run_pipeline(
             stack.callback((output_dir / f"{output_stem}{ext}").unlink, missing_ok=True)
 
         try:
-            # Loading and conversion both raise 422 when the failure is a property of the file
-            # (unparseable, or a structure morph_tool cannot convert). System errors such as a
-            # full disk surface as 500 and are re-raised below.
             await run_in_threadpool(
                 load_morphio_morphology,
                 file_path=pathlib.Path(temp_file_path),
@@ -405,17 +398,21 @@ async def _run_pipeline(
                 output_stem=output_stem,
                 single_point_soma_by_ext=single_point_soma_by_ext,
             )
-        except HTTPException as exc:
-            file_is_invalid = exc.status_code == FILE_IS_INVALID_STATUS
-            if not (store_if_invalid and file_is_invalid):
-                raise
-            detail = exc.detail
+        except MorphologyFileError as err:
+            # The file cannot be parsed or converted. With the opt-in, keep it as disqualified;
+            # otherwise reject it as a validation error. Server-side failures (OSError, e.g. a
+            # full disk) are not caught here and fall through to the 500 handler below.
+            if not store_if_invalid:
+                raise HTTPException(
+                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    detail={"code": "INVALID_REQUEST", "detail": str(err)},
+                ) from err
             return _register_disqualified_morphology(
                 client=client,
                 morphology_name=morphology_name,
                 content=content,
                 entity_payload=entity_payload,
-                validation_error=detail["detail"] if isinstance(detail, dict) else str(detail),
+                validation_error=str(err),
             )
 
         analysis_path = _get_h5_analysis_path(
