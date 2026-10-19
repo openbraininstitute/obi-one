@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # ruff: file-ignore[assert]
 import contextlib
-import heapq
 import logging
 import math
 import os
@@ -11,6 +10,7 @@ import tempfile
 import time
 import uuid
 from abc import ABC, abstractmethod
+from collections import deque
 from collections.abc import Callable, Generator
 from datetime import UTC, datetime, timedelta
 from functools import partial, singledispatch
@@ -74,10 +74,6 @@ class Event(BaseModel):
     # function to call at time `at`; parameters are the time being called, and the network
     # returns NetworkOperation
     func: Callable[[float, "Brian2Network"], NetworkOperation]
-
-    def __lt__(self, other: "Event") -> bool:
-        """The time at which the event should fire is used to sort in the heapq."""
-        return self.at < other.at
 
 
 class ReplaySynapses(BaseModel):
@@ -1066,8 +1062,8 @@ def run_sonata_brian2_trial(
 
     L.info("Running simulation")
 
-    queue = list(net.events)
-    heapq.heapify(queue)
+    # A stable sort: events due at the same time keep their config order, as in neurodamus.
+    queue = deque(sorted(net.events, key=lambda event: event.at))
 
     progress = SimulationProgress(simulation.run.tstop, period=PROGRESS_REPORT_PERIOD_SECONDS)
     current_t = 0.0
@@ -1082,7 +1078,7 @@ def run_sonata_brian2_trial(
         current_t = next_t
 
         while queue and queue[0].at <= current_t:
-            event = heapq.heappop(queue)
+            event = queue.popleft()
             ops = event.func(current_t, net)
             if ops.add:
                 network.add(*ops.add)

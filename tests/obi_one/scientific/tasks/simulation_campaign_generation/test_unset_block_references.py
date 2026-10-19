@@ -654,12 +654,17 @@ class TestUnsetTimestampsAndDistributions:
         assert set(result.inputs) == {"Clamp_0"}
 
     @pytest.mark.parametrize(
-        "name", ["ConnectSynapticManipulation", "DisconnectSynapticManipulation"]
+        "name",
+        [
+            "ConnectSynapticManipulation",
+            "DisconnectSynapticManipulation",
+            "ScaleWeightSynapticManipulation",
+        ],
     )
     def test_a_delayed_manipulation_without_timestamps_applies_at_zero(
         self, name, circuit, tmp_path
     ):
-        """These two are the only manipulations carrying a timestamps reference."""
+        """These are the only manipulations carrying a timestamps reference."""
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Manip": _block(name)}
         )
