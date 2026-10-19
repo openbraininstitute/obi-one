@@ -105,8 +105,9 @@ A recording without a neuron set records every neuron in the circuit, so on a wh
 | --- | --- |
 | `ConnectSynapticManipulation` | Restores the circuit's own weight of every synapse between two neuron sets |
 | `DisconnectSynapticManipulation` | Sets that weight to zero |
+| `ScaleWeightSynapticManipulation` | Multiplies that weight by a factor of zero or more |
 
-Both become SONATA `connection_overrides`, applied part-way through the run at the timestamps the
+All three become SONATA `connection_overrides`, applied part-way through the run at the timestamps the
 block references. Brian2 honours a connection override's `weight` and `synapse_delay_override`,
 and raises on `spont_minis`, `synapse_configure`, `modoverride` and the neuromodulation fields —
 so the mechanism-specific manipulations (`SynapticMgManipulation`,
@@ -115,6 +116,8 @@ so the mechanism-specific manipulations (`SynapticMgManipulation`,
 `weight` is a factor on each synapse's weight as the circuit defines it, not on its current value,
 so overrides never compound: a Connect (weight 1) after a Disconnect (weight 0) restores the
 circuit exactly, inhibitory signs included. `synapse_delay_override` replaces the delay outright.
+The factor cannot be negative: the circuits carry inhibition in the sign of each synapse's weight, which a negative factor would flip.
+Overrides due at the same time apply in the order of the blocks, as in neurodamus, so where two select the same synapse the later one sets its weight: scaling every synapse and then disconnecting one pathway leaves that pathway cut.
 Overrides reach replayed spikes too: a spike stimulus delivers them through copies of the circuit's synapses, and an override changes each copy of the edges it selects as it changes the original.
 
 ### Neuron sets and timestamps
