@@ -6,11 +6,19 @@ import pytest
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, Circuit, MEModel
 
-import obi_one as obi
 from app.services.morphology_locations import (
     preview_morphology_locations,
     resolve_morphology,
 )
+from obi_one.scientific.blocks.morphology_locations.clustered import ClusteredMorphologyLocations
+from obi_one.scientific.blocks.morphology_locations.explicit import (
+    ExplicitMorphologyLocations,
+    MorphologyLocationPoint,
+)
+from obi_one.scientific.blocks.morphology_locations.path_distance import (
+    PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.library.morphology_loader import load_morphology_nrn_order
 
 from tests.utils import SINGLE_NEURON_CIRCUIT_DIR
@@ -94,15 +102,13 @@ class TestPreviewMorphologyLocations:
     @pytest.mark.parametrize(
         ("block", "expected_count"),
         [
-            (obi.RandomMorphologyLocations(random_seed=0, number_of_locations=5), 5),
+            (RandomMorphologyLocations(random_seed=0, number_of_locations=5), 5),
             (
-                obi.ClusteredMorphologyLocations(
-                    random_seed=0, number_of_locations=6, n_clusters=2
-                ),
+                ClusteredMorphologyLocations(random_seed=0, number_of_locations=6, n_clusters=2),
                 6,
             ),
             (
-                obi.PathDistanceMorphologyLocations(random_seed=0, number_of_locations=4),
+                PathDistanceMorphologyLocations(random_seed=0, number_of_locations=4),
                 4,
             ),
         ],
@@ -121,10 +127,10 @@ class TestPreviewMorphologyLocations:
             assert 0.0 <= offset <= 1.0
 
     def test_explicit_points_are_returned_as_given(self, morphology):
-        block = obi.ExplicitMorphologyLocations(
+        block = ExplicitMorphologyLocations(
             locations=(
-                obi.MorphologyLocationPoint(section_id=0, offset=0.0),
-                obi.MorphologyLocationPoint(section_id=5, offset=0.5),
+                MorphologyLocationPoint(section_id=0, offset=0.0),
+                MorphologyLocationPoint(section_id=5, offset=0.5),
             )
         )
 
@@ -134,7 +140,7 @@ class TestPreviewMorphologyLocations:
 
     def test_the_same_seed_previews_the_same_locations(self, morphology):
         """The preview is only useful if the run places its points in the same spots."""
-        block = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=5)
+        block = RandomMorphologyLocations(random_seed=0, number_of_locations=5)
 
         first = self._preview(morphology, block.model_copy(deep=True))
         second = self._preview(morphology, block.model_copy(deep=True))
@@ -143,16 +149,16 @@ class TestPreviewMorphologyLocations:
 
     def test_a_different_seed_previews_different_locations(self, morphology):
         first = self._preview(
-            morphology, obi.RandomMorphologyLocations(random_seed=0, number_of_locations=5)
+            morphology, RandomMorphologyLocations(random_seed=0, number_of_locations=5)
         )
         second = self._preview(
-            morphology, obi.RandomMorphologyLocations(random_seed=1, number_of_locations=5)
+            morphology, RandomMorphologyLocations(random_seed=1, number_of_locations=5)
         )
 
         assert first != second
 
     def test_section_types_restrict_where_locations_land(self, morphology):
-        basal_only = obi.RandomMorphologyLocations(
+        basal_only = RandomMorphologyLocations(
             random_seed=0, number_of_locations=8, section_types=(3,)
         )
 
@@ -166,7 +172,7 @@ class TestPreviewMorphologyLocations:
 
     def test_a_parameter_sweep_is_rejected_before_the_morphology_is_resolved(self):
         """Resolution downloads assets, so an unusable request must fail before it."""
-        block = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=[3, 5])
+        block = RandomMorphologyLocations(random_seed=0, number_of_locations=[3, 5])
 
         with (
             patch(f"{SERVICE_MODULE}.resolve_morphology") as mock_resolve,
