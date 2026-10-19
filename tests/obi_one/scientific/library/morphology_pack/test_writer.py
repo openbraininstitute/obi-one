@@ -13,9 +13,9 @@ from obi_one.scientific.library.morphology_pack.codec import (
     take_apart,
 )
 from obi_one.scientific.library.morphology_pack.geometry import FAR, FINEST, LEVELS, simplified
-from obi_one.scientific.library.morphology_pack.parallel import ALONE, Processes
 from obi_one.scientific.library.morphology_pack.reader import read_pack, run_segments
 from obi_one.scientific.library.morphology_pack.writer import PackWriter, placed
+from obi_one.utils.parallel import ALONE, Processes
 
 from tests.obi_one.scientific.library.morphology_pack.utils import (
     AXON,

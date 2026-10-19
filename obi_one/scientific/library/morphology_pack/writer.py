@@ -26,14 +26,17 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     Polylines,
     spans,
 )
-from obi_one.scientific.library.morphology_pack.memory import give_back
-from obi_one.scientific.library.morphology_pack.parallel import ALONE, Processes
+from obi_one.utils.memory import malloc_trim
+from obi_one.utils.parallel import ALONE, Processes
 
 CHUNK_UM = 50.0
 MAX_CHUNKS = 4096
 CHUNKS_A_JOB = 8
+# Chunk boxes of cells, a row a point, gathered before they are made distinct.
+BOX_ROWS_AT_ONCE = 1 << 20
 NONE = np.zeros(0, dtype=np.int64)
 NO_POINTS = np.zeros((0, 4), dtype=np.int32)
+NO_ENDS = np.zeros((0, 3), dtype=np.int32)
 NO_BOXES = np.zeros((0, 3), dtype=np.int64)
 
 
@@ -75,9 +78,11 @@ def distinct_rows(rows: np.ndarray) -> np.ndarray:
 
 @dataclass
 class Placed:
-    """The cells of one level, placed on the grid. Each list has an entry a cell.
+    """The cells of one level, placed on the grid. Each list but `boxes` and `ends` has an entry
+    a cell.
 
-    `boxes` has the chunks of side `chunk_steps` that the cell's segments end in.
+    `boxes` has the chunks of side `chunk_steps` that the cells' segments end in, once for each
+    batch of cells, and `ends` those of the cells since, a row a segment.
     """
 
     chunk_steps: int
@@ -88,6 +93,8 @@ class Placed:
     counts: list[np.ndarray] = field(default_factory=list)
     follows: list[np.ndarray] = field(default_factory=list)
     boxes: list[np.ndarray] = field(default_factory=list)
+    ends: list[np.ndarray] = field(default_factory=list)
+    unboxed: int = 0
 
     def add(
         self,
@@ -102,12 +109,20 @@ class Placed:
         values[:, :3] = on_grid(placed(shape.points, rotation, position))
         values[:, 3] = radius_steps(shape.radii)
         self.values.append(values)
-        self.boxes.append(distinct_rows(values[~shape.opens, :3] // self.chunk_steps))
+        self.ends.append(values[~shape.opens, :3] // self.chunk_steps)
+        self.unboxed += len(self.ends[-1])
+        if self.unboxed >= BOX_ROWS_AT_ONCE:
+            self.boxes.append(distinct_rows(np.concatenate(self.ends)))
+            self.ends, self.unboxed = [], 0
         self.opens.append(shape.opens)
         self.types.append(shape.types)
         self.cell.append(cell)
         self.counts.append(counts)
         self.follows.append(follows)
+
+    def chunk_boxes(self) -> list[np.ndarray]:
+        """The chunks the level's segments end in, once for each batch of cells."""
+        return [*self.boxes, distinct_rows(np.concatenate([NO_ENDS, *self.ends]))]
 
     def joined(self) -> Points:
         if not self.values:
@@ -148,7 +163,7 @@ def boxes_of(levels: Sequence[Placed], chunk_steps: int) -> Boxes:
     there are at most `MAX_CHUNKS`.
     """
     boxes = distinct_rows(
-        np.concatenate([NO_BOXES, *(boxes for level in levels for boxes in level.boxes)])
+        np.concatenate([NO_BOXES, *(boxes for level in levels for boxes in level.chunk_boxes())])
     )
     while len(boxes) > MAX_CHUNKS:
         chunk_steps *= 2
@@ -346,13 +361,11 @@ def chunk_parts(
     made: Cut,
     order: Order,
     boxes: Boxes,
-    reach: np.ndarray,
-) -> Iterator[Chunk]:
-    """Each chunk as it is encoded, its reach set in `reach` on the way."""
+) -> Iterator[tuple[Chunk, int]]:
+    """Each chunk as it is encoded, with its reach."""
     corners = boxes.box(layout.keys) * boxes.chunk_steps
     for c, k in enumerate(layout.coarser):
         segments = Ends.of(points, order.far[order.edges[c] : order.edges[c + 1]])
-        reach[c] = segments.reach(corners[c], boxes.chunk_steps)
         split = order.runs[c] - order.edges[c]
         if k >= 0:
             counts = follow.counts[coarser.edges[k] : coarser.edges[k + 1]]
@@ -360,7 +373,14 @@ def chunk_parts(
         else:
             counts, inner = NONE, NO_POINTS
         lengths = made.length[layout.runs[c] : layout.runs[c + 1]]
-        yield Chunk(counts, inner, runs_in(points, lengths, segments[split:], corners[c]))
+        chunk = Chunk(counts, inner, runs_in(points, lengths, segments[split:], corners[c]))
+        yield chunk, segments.reach(corners[c], boxes.chunk_steps)
+
+
+def encoded(part: tuple[Chunk, int], chunk_steps: int) -> tuple[bytes, int]:
+    """A chunk's block, with its reach as given."""
+    chunk, reach = part
+    return encode_chunk(chunk, chunk_steps), reach
 
 
 @dataclass(frozen=True)
@@ -384,10 +404,11 @@ def packed_level(
     made = own_runs(points, boxes)
     layout = layout_of(follow, coarser, made)
     order = read_order(layout, follow, made)
-    reach = np.zeros(len(layout.keys), dtype=np.int64)
-    parts = chunk_parts(points, layout, coarser, follow, made, order, boxes, reach)
-    encode = partial(encode_chunk, chunk_steps=boxes.chunk_steps)
-    blocks = list(processes.map(encode, parts, per_job=CHUNKS_A_JOB))
+    parts = chunk_parts(points, layout, coarser, follow, made, order, boxes)
+    encode = partial(encoded, chunk_steps=boxes.chunk_steps)
+    done = list(processes.map(encode, parts, per_job=CHUNKS_A_JOB))
+    blocks = [block for block, _ in done]
+    reach = np.array([reach for _, reach in done], dtype=np.int64)
     packed = Packed(layout.keys, blocks, np.diff(order.edges), reach, len(made.run))
     return packed, Read(layout.keys, order.far, order.edges, points.counts)
 
@@ -448,7 +469,7 @@ class PackWriter:
 
         A writer packs once. The coarsest level is packed first; each level's cells are joined
         only when it comes to be packed, and its points let go of once the finer level is
-        packed over it; what each level frees is handed back to the system.
+        packed over it; what each level frees is handed back to the system, where glibc can.
         """
         if not self.placed:
             msg = "A writer packs once"
@@ -457,6 +478,7 @@ class PackWriter:
         boxes = boxes_of(placed, self.chunk_steps)
         made: list[Packed] = []
         coarser = Read(NONE, NONE, np.zeros(1, dtype=np.int64), NONE)
+        trim = malloc_trim()
         while placed:
             points = placed.pop().joined()
             bounds = bounds_of(points.values)
@@ -466,7 +488,8 @@ class PackWriter:
             packed, coarser = packed_level(points, boxes, coarser, follow, processes)
             made.insert(0, packed)
             del points, follow
-            give_back()
+            if trim is not None:
+                trim(0)
         blocks = [encode_somas(self.somas)]
         offset = len(blocks[0])
         entries = []

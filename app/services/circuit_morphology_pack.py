@@ -38,6 +38,7 @@ from obi_one.scientific.library.circuit_metrics import (
     get_names_of_typed_node_populations,
 )
 from obi_one.scientific.library.morphology_pack.circuit import (
+    PRELOAD,
     MorphologyKey,
     Population,
     distinct_morphologies,
@@ -52,11 +53,14 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     Morphology,
     MorphologyLevels,
 )
-from obi_one.scientific.library.morphology_pack.memory import give_back
-from obi_one.scientific.library.morphology_pack.parallel import Processes, available_cpus
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
+from obi_one.utils.memory import malloc_trim
+from obi_one.utils.parallel import Processes, available_cpus
 
 DEFAULT_MAX_SEGMENTS = 2_000_000
+# Processes a build uses unless set: past about eight, what the main process does alone, chunk
+# by chunk, keeps the others waiting, while each holds its own memory.
+DEFAULT_MAX_WORKERS = 8
 FETCHES_AT_ONCE = 8
 # How long a request waits for the build before it.
 PATIENCE_SECONDS = 120
@@ -180,7 +184,7 @@ def read_within_limit(
 
 
 def workers() -> int:
-    return settings.CIRCUIT_MORPHOLOGY_PACK_WORKERS or available_cpus()
+    return settings.CIRCUIT_MORPHOLOGY_PACK_WORKERS or min(available_cpus(), DEFAULT_MAX_WORKERS)
 
 
 def finest_level_within(
@@ -259,7 +263,9 @@ def placed_cells(
         level, shapes = finest_level_within(morphologies, cells, min(max_segments, cap), processes)
         levels = (level,)
     del morphologies
-    give_back()
+    trim = malloc_trim()
+    if trim is not None:
+        trim(0)
     return place_cells(populations, levels, shapes)
 
 
@@ -289,7 +295,7 @@ def build_circuit_morphology_pack(
             Refusal.BUSY, "Another pack is being built; try again", HTTPStatus.SERVICE_UNAVAILABLE
         )
     try:
-        with Processes(workers()) as processes:
+        with Processes(workers(), PRELOAD) as processes:
             return placed_cells(
                 client, circuit_id, asset, directory, max_segments, processes, all_levels=all_levels
             ).pack(processes)

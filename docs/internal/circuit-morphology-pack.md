@@ -32,7 +32,7 @@ A refusal is a 422 whose `detail` holds `code`, `reason` and `detail`. A circuit
 
 A morphology that cannot be read is left out: a file that is not a morphology, or a name its container does not hold. Its cells are in the pack as somas with a radius of zero. So is a cell whose position or rotation is not a finite number.
 
-The morphologies are simplified, and the chunks encoded, over `CIRCUIT_MORPHOLOGY_PACK_WORKERS` processes: by default one for each CPU the service may use, within its container's quota. They are forked from a server process started with the first build, and the pack is the same to the byte on any number of them.
+The morphologies are simplified, and the chunks encoded, over `CIRCUIT_MORPHOLOGY_PACK_WORKERS` processes: by default one for each CPU the service may use, within its container's quota, and at most eight, past which the build's own work in the service's process holds them up. They are forked from a server process started with the first build, and the pack is the same to the byte on any number of them.
 
 Only the node files of the biophysical populations and their morphologies are fetched. A public circuit's files are linked from the mounted store; a private circuit's are downloaded into the request's temporary directory, and deleted as soon as they are read.
 
