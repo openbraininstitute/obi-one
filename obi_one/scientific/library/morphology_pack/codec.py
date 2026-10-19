@@ -130,15 +130,6 @@ class Runs:
     starts: np.ndarray
     steps: np.ndarray
 
-    def part(self, runs: slice, segments: slice) -> "Runs":
-        return Runs(
-            self.cells[runs],
-            self.types[runs],
-            self.lengths[runs],
-            self.starts[runs],
-            self.steps[segments],
-        )
-
 
 def deflate_planes(parts: list[bytes]) -> bytes:
     """One zlib stream, a deflate block a byte plane: each plane gets Huffman tables of its own."""

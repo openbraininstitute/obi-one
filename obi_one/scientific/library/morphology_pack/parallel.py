@@ -8,6 +8,7 @@ from collections import deque
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import Future, ProcessPoolExecutor
 from functools import partial
+from itertools import batched
 from pathlib import Path
 from types import TracebackType
 from typing import Self
@@ -16,7 +17,6 @@ from typing import Self
 AHEAD = 2
 CPU_QUOTA = Path("/sys/fs/cgroup/cpu.max")
 PRELOAD = [
-    "__main__",
     "obi_one.scientific.library.morphology_pack.geometry",
     "obi_one.scientific.library.morphology_pack.writer",
 ]
@@ -35,7 +35,7 @@ def available_cpus() -> int:
         return cpus
 
 
-def each[T, R](function: Callable[[T], R], items: list[T]) -> list[R]:
+def each[T, R](function: Callable[[T], R], items: Iterable[T]) -> list[R]:
     return [function(item) for item in items]
 
 
@@ -47,23 +47,12 @@ def started(pool: ProcessPoolExecutor) -> None:
         return
 
 
-def batches[T](items: Iterable[T], size: int) -> Iterator[list[T]]:
-    batch = []
-    for item in items:
-        batch.append(item)
-        if len(batch) == size:
-            yield batch
-            batch = []
-    if batch:
-        yield batch
-
-
 class Processes:
     """`workers` processes to map work over, or this process alone where `workers` is 1.
 
-    Entered, the processes start at once, in the background. They are forked from a server that
-    has imported the main module, as `__mp_main__`, and the pack's modules, which a process with
-    threads may do safely; a script that uses them keeps its work under
+    Entered, the server the processes are forked from starts in the background, with the pack's
+    modules imported, which a process with threads may do safely. Each process imports the main
+    module as `__mp_main__`, so a script that uses them keeps its work under
     `if __name__ == "__main__"`.
     """
 
@@ -104,7 +93,7 @@ class Processes:
         job = partial(each, function)
         sent: deque[Future[list[R]]] = deque()
         try:
-            for batch in batches(items, per_job):
+            for batch in batched(items, per_job):
                 sent.append(self.pool.submit(job, batch))
                 if len(sent) >= AHEAD * self.workers:
                     yield from sent.popleft().result()

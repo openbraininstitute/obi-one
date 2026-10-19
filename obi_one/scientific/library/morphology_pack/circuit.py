@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
 import libsonata
@@ -10,11 +11,18 @@ import morphio
 import numpy as np
 from bluepysnap.utils import euler2mat, quaternion2mat
 
-from obi_one.scientific.library.morphology_pack.geometry import Level, Morphology, MorphologyLevels
+from obi_one.scientific.library.morphology_pack.geometry import (
+    Level,
+    Morphology,
+    MorphologyLevels,
+    simplified,
+)
+from obi_one.scientific.library.morphology_pack.parallel import Processes
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
 
 L = logging.getLogger(__name__)
 
+MORPHOLOGIES_A_JOB = 4
 QUATERNION = ("orientation_w", "orientation_x", "orientation_y", "orientation_z")
 ANGLES = ("rotation_angle_zaxis", "rotation_angle_yaxis", "rotation_angle_xaxis")
 
@@ -98,6 +106,18 @@ def distinct_morphologies(
 def read_morphology(key: MorphologyKey, collection: morphio.Collection) -> Morphology:
     _, name = key
     return Morphology.from_morphio(collection.load(name))
+
+
+def simplified_all(
+    morphologies: Mapping[MorphologyKey, Morphology],
+    levels: tuple[Level, ...],
+    processes: Processes,
+) -> dict[MorphologyKey, MorphologyLevels]:
+    """Every morphology simplified to `levels`, over `processes`."""
+    each = processes.map(
+        partial(simplified, levels=levels), morphologies.values(), per_job=MORPHOLOGIES_A_JOB
+    )
+    return dict(zip(morphologies, each, strict=True))
 
 
 def place_cells(

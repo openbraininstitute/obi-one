@@ -11,7 +11,6 @@ from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
-from functools import partial
 from http import HTTPStatus
 from itertools import groupby
 from pathlib import Path
@@ -45,13 +44,13 @@ from obi_one.scientific.library.morphology_pack.circuit import (
     place_cells,
     read_morphology,
     read_population,
+    simplified_all,
 )
 from obi_one.scientific.library.morphology_pack.geometry import (
     LEVELS,
     Level,
     Morphology,
     MorphologyLevels,
-    simplified,
 )
 from obi_one.scientific.library.morphology_pack.memory import give_back
 from obi_one.scientific.library.morphology_pack.parallel import Processes, available_cpus
@@ -59,7 +58,6 @@ from obi_one.scientific.library.morphology_pack.writer import PackWriter
 
 DEFAULT_MAX_SEGMENTS = 2_000_000
 FETCHES_AT_ONCE = 8
-MORPHOLOGIES_A_JOB = 4
 # How long a request waits for the build before it.
 PATIENCE_SECONDS = 120
 # What reading a morphology raises for a file that is not one, or a name its container lacks.
@@ -183,17 +181,6 @@ def read_within_limit(
 
 def workers() -> int:
     return settings.CIRCUIT_MORPHOLOGY_PACK_WORKERS or available_cpus()
-
-
-def simplified_all(
-    morphologies: dict[MorphologyKey, Morphology],
-    levels: tuple[Level, ...],
-    processes: Processes,
-) -> dict[MorphologyKey, MorphologyLevels]:
-    each = processes.map(
-        partial(simplified, levels=levels), morphologies.values(), per_job=MORPHOLOGIES_A_JOB
-    )
-    return dict(zip(morphologies, each, strict=True))
 
 
 def finest_level_within(

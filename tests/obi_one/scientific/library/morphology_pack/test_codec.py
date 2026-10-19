@@ -240,12 +240,6 @@ class TestChunk:
         assert data == COUNTS.pack(0, 0, 300, len(runs.steps)) + streams
         assert_same_runs(decode_chunk(encode_chunk(chunk, CHUNK_STEPS)).runs, runs)
 
-    def test_a_part_keeps_its_runs_and_their_segments(self):
-        part = some_runs().part(slice(1, 3), slice(2, 6))
-        np.testing.assert_array_equal(part.cells, [3, 70000])
-        np.testing.assert_array_equal(part.lengths, [1, 3])
-        assert len(part.steps) == 4
-
 
 class TestSomas:
     def test_round_trip(self):

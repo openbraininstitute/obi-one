@@ -1,5 +1,5 @@
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import partial
 
 import numpy as np
@@ -33,7 +33,7 @@ CHUNK_UM = 50.0
 MAX_CHUNKS = 4096
 CHUNKS_A_JOB = 8
 NONE = np.zeros(0, dtype=np.int64)
-NO_POINTS = np.zeros((0, 4), dtype=np.int64)
+NO_POINTS = np.zeros((0, 4), dtype=np.int32)
 NO_BOXES = np.zeros((0, 3), dtype=np.int64)
 
 
@@ -111,19 +111,20 @@ class Placed:
 
     def joined(self) -> Points:
         if not self.values:
-            empty = np.zeros((0, 4), dtype=np.int32)
-            return Points(empty, NONE.astype(bool), NONE, NONE, NONE, NONE)
+            return Points(NO_POINTS, NONE.astype(bool), NONE, NONE, NONE, NONE)
         points = [len(opens) for opens in self.opens]
-        first = np.cumsum(points) - points
+        follows = np.empty(sum(map(len, self.follows)), dtype=np.int32)
+        at = 0
+        for first, cell_follows in zip(np.cumsum(points) - points, self.follows, strict=True):
+            follows[at : at + len(cell_follows)] = cell_follows + first
+            at += len(cell_follows)
         return Points(
             np.concatenate(self.values),
             np.concatenate(self.opens),
             np.concatenate(self.types),
             np.repeat(np.array(self.cell, dtype=np.int32), points),
             np.concatenate(self.counts, dtype=np.int32),
-            np.concatenate(
-                [f + at for f, at in zip(self.follows, first, strict=True)], dtype=np.int32
-            ),
+            follows,
         )
 
 
@@ -146,15 +147,16 @@ def boxes_of(levels: Sequence[Placed], chunk_steps: int) -> Boxes:
     """The chunks every level's segments end in, their side doubled from `chunk_steps` until
     there are at most `MAX_CHUNKS`.
     """
-    boxes = np.unique(
-        np.concatenate([NO_BOXES, *(boxes for level in levels for boxes in level.boxes)]), axis=0
+    boxes = distinct_rows(
+        np.concatenate([NO_BOXES, *(boxes for level in levels for boxes in level.boxes)])
     )
     while len(boxes) > MAX_CHUNKS:
         chunk_steps *= 2
-        boxes = np.unique(boxes >> 1, axis=0)
+        boxes = distinct_rows(boxes >> 1)
     if not len(boxes):
-        return Boxes(chunk_steps, np.zeros(3, dtype=np.int64), np.ones(3, dtype=np.int64))
-    return Boxes(chunk_steps, boxes.min(axis=0), boxes.max(axis=0) - boxes.min(axis=0) + 1)
+        return Boxes(chunk_steps, np.zeros(3, dtype=np.int32), np.ones(3, dtype=np.int64))
+    least = boxes.min(axis=0)
+    return Boxes(chunk_steps, least.astype(np.int32), boxes.max(axis=0) - least + 1)
 
 
 @dataclass(frozen=True)
@@ -186,15 +188,41 @@ def cut(far: np.ndarray, key: np.ndarray, cell: np.ndarray) -> Cut:
     return Cut(far, run[order], length[order], key[run[order]])
 
 
-def runs_in(points: Points, made: Cut, runs: slice, corner: np.ndarray) -> Runs:
-    """The runs `runs` of `made`, all in the chunk whose corner is `corner`."""
-    run, length = made.run[runs], made.length[runs]
-    head = made.far[run]
-    end = made.far[spans(run, length)]
-    starts = points.values[head - 1]
+@dataclass(frozen=True)
+class Ends:
+    """Segments and the points that end them: `at` names each by its far point, and `near` and
+    `far` have the level's rows of its two points.
+    """
+
+    at: np.ndarray
+    near: np.ndarray
+    far: np.ndarray
+
+    @classmethod
+    def of(cls, points: Points, at: np.ndarray) -> "Ends":
+        return cls(at, points.values[at - 1], points.values[at])
+
+    def __getitem__(self, part: slice) -> "Ends":
+        """The segments `part` of these."""
+        return Ends(self.at[part], self.near[part], self.far[part])
+
+    def reach(self, corner: np.ndarray, chunk_steps: int) -> int:
+        """How far, in steps, the points lie outside the cube at `corner` at most."""
+        least = np.minimum(self.near[:, :3].min(axis=0), self.far[:, :3].min(axis=0))
+        most = np.maximum(self.near[:, :3].max(axis=0), self.far[:, :3].max(axis=0))
+        return max(int(np.maximum(corner - least, most - (corner + chunk_steps - 1)).max()), 0)
+
+
+def runs_in(points: Points, lengths: np.ndarray, segments: Ends, corner: np.ndarray) -> Runs:
+    """Runs of `lengths` segments, one after another in `segments`, in the chunk whose corner is
+    `corner`.
+    """
+    first = np.cumsum(lengths) - lengths
+    head = segments.at[first]
+    starts = segments.near[first]
     starts[:, :3] -= corner
-    steps = points.values[end] - points.values[end - 1]
-    return Runs(points.cell[head], points.types[head], length, starts, steps)
+    steps = segments.far - segments.near
+    return Runs(points.cell[head], points.types[head], lengths, starts, steps)
 
 
 @dataclass(frozen=True)
@@ -227,30 +255,32 @@ class Followers:
 
 def followers(points: Points, coarser: Read) -> Followers:
     counts = coarser.counts[coarser.order]
-    first = np.cumsum(coarser.counts) - coarser.counts
-    far = points.follows[spans(first[coarser.order], counts)]
-    return Followers(far, counts, np.concatenate([[0], np.cumsum(counts)])[coarser.edges])
+    first = (np.cumsum(coarser.counts, dtype=np.int32) - coarser.counts)[coarser.order]
+    ends = np.cumsum(counts, dtype=np.int32)
+    # spans in 32 bits, made in place: the finest level's followers are the most held at once
+    at = np.arange(int(counts.sum()), dtype=np.int32)
+    at += np.repeat(first - (ends - counts), counts)
+    far = points.follows[at]
+    return Followers(far, counts, np.concatenate([[0], ends])[coarser.edges])
 
 
-def inner_points(points: Points, far: np.ndarray, counts: np.ndarray) -> np.ndarray:
-    """The inner points of the segments `far`, `counts[i]` of them following coarser segment `i`,
-    each less the chord's guess.
+def inner_points(segments: Ends, counts: np.ndarray) -> np.ndarray:
+    """The inner points of `segments`, `counts[i]` of them following coarser segment `i`, each
+    less the chord's guess.
     """
-    last = np.repeat(np.cumsum(counts) - 1, counts)
-    inner = np.arange(len(far)) < last
     # how many segments are left to the coarser segment's far point, this one's included
-    left = np.repeat(np.cumsum(counts), counts) - np.arange(len(far))
-    at = far[inner]
-    return points.values[at] - towards(
-        points.values[at - 1], points.values[far[last[inner]]], left[inner, None]
-    )
+    left = np.repeat(np.cumsum(counts), counts) - np.arange(len(segments.at))
+    inner = left > 1
+    last = np.flatnonzero(inner) + left[inner] - 1
+    guess = towards(segments.near[inner], segments.far[last], left[inner, None].astype(np.int32))
+    return segments.far[inner] - guess
 
 
 def own_runs(points: Points, boxes: Boxes) -> Cut:
     """The level's segments that follow no coarser segment, cut into runs."""
     claimed = np.zeros(len(points.values), dtype=bool)
     claimed[points.follows] = True
-    own = np.flatnonzero(~points.opens & ~claimed)
+    own = np.flatnonzero(~points.opens & ~claimed).astype(np.int32)
     return cut(own, boxes.key(points.values[own, :3] // boxes.chunk_steps), points.cell)
 
 
@@ -283,21 +313,29 @@ def layout_of(follow: Followers, coarser: Read, made: Cut) -> Layout:
     return Layout(keys, places_in(coarser.keys, keys), edges_of(made.key, keys))
 
 
-def read_order(layout: Layout, follow: Followers, made: Cut) -> tuple[np.ndarray, np.ndarray]:
-    """The level's segments' far points in the order they are read, and where each chunk starts:
-    the followers of a chunk first, then its runs.
+@dataclass(frozen=True)
+class Order:
+    """A level's segments' far points in the order they are read, chunk by chunk: a chunk's
+    followers from `edges[c]`, then its runs from `runs[c]` to `edges[c + 1]`.
     """
+
+    far: np.ndarray
+    edges: np.ndarray
+    runs: np.ndarray
+
+
+def read_order(layout: Layout, follow: Followers, made: Cut) -> Order:
     own = made.read()
     own_edges = np.append(np.cumsum(made.length) - made.length, len(own))[layout.runs]
     following = np.append(np.diff(follow.edges), 0)[layout.coarser]
     edges = np.concatenate([[0], np.cumsum(following + np.diff(own_edges))])
-    order = np.empty(edges[-1], dtype=np.int32)
+    runs = edges[:-1] + following
+    far = np.empty(edges[-1], dtype=np.int32)
     for c, k in enumerate(layout.coarser):
-        at = edges[c] + following[c]
         if k >= 0:
-            order[edges[c] : at] = follow.far[follow.edges[k] : follow.edges[k + 1]]
-        order[at : edges[c + 1]] = own[own_edges[c] : own_edges[c + 1]]
-    return order, edges
+            far[edges[c] : runs[c]] = follow.far[follow.edges[k] : follow.edges[k + 1]]
+        far[runs[c] : edges[c + 1]] = own[own_edges[c] : own_edges[c + 1]]
+    return Order(far, edges, runs)
 
 
 def chunk_parts(
@@ -306,30 +344,23 @@ def chunk_parts(
     coarser: Read,
     follow: Followers,
     made: Cut,
-    corners: np.ndarray,
+    order: Order,
+    boxes: Boxes,
+    reach: np.ndarray,
 ) -> Iterator[Chunk]:
+    """Each chunk as it is encoded, its reach set in `reach` on the way."""
+    corners = boxes.box(layout.keys) * boxes.chunk_steps
     for c, k in enumerate(layout.coarser):
+        segments = Ends.of(points, order.far[order.edges[c] : order.edges[c + 1]])
+        reach[c] = segments.reach(corners[c], boxes.chunk_steps)
+        split = order.runs[c] - order.edges[c]
         if k >= 0:
             counts = follow.counts[coarser.edges[k] : coarser.edges[k + 1]]
-            far = follow.far[follow.edges[k] : follow.edges[k + 1]]
-            inner = inner_points(points, far, counts)
+            inner = inner_points(segments[:split], counts)
         else:
             counts, inner = NONE, NO_POINTS
-        runs = runs_in(points, made, slice(layout.runs[c], layout.runs[c + 1]), corners[c])
-        yield Chunk(counts, inner, runs)
-
-
-def reach_of(
-    points: Points, order: np.ndarray, edges: np.ndarray, corners: np.ndarray, chunk_steps: int
-) -> np.ndarray:
-    """How far, in steps, the ends of each chunk's segments lie outside its cube at most."""
-    reach = np.zeros(len(corners), dtype=np.int64)
-    for c, corner in enumerate(corners):
-        far = order[edges[c] : edges[c + 1]]
-        ends = np.concatenate([points.values[far - 1, :3], points.values[far, :3]])
-        out = np.maximum(corner - ends.min(axis=0), ends.max(axis=0) - (corner + chunk_steps - 1))
-        reach[c] = max(int(out.max()), 0)
-    return reach
+        lengths = made.length[layout.runs[c] : layout.runs[c + 1]]
+        yield Chunk(counts, inner, runs_in(points, lengths, segments[split:], corners[c]))
 
 
 @dataclass(frozen=True)
@@ -344,24 +375,21 @@ class Packed:
 
 
 def packed_level(
-    points: Points, boxes: Boxes, coarser: Read | None, processes: Processes
+    points: Points, boxes: Boxes, coarser: Read, follow: Followers, processes: Processes
 ) -> tuple[Packed, Read]:
-    """A level's chunks: the segments that follow the coarser level's first, in the order the
+    """A level's chunks: its `follow`ers of the coarser level's segments first, in the order the
     coarser level's chunk is read, then the level's own runs, cut as the coarser segments leave
     them. Returns them with the level as the finer level reads over it.
     """
-    coarser = coarser or Read(NONE, NONE, np.zeros(1, dtype=np.int64), NONE)
-    follow = followers(points, coarser)
     made = own_runs(points, boxes)
     layout = layout_of(follow, coarser, made)
-    order, edges = read_order(layout, follow, made)
-    corners = boxes.box(layout.keys) * boxes.chunk_steps
-    parts = chunk_parts(points, layout, coarser, follow, made, corners)
+    order = read_order(layout, follow, made)
+    reach = np.zeros(len(layout.keys), dtype=np.int64)
+    parts = chunk_parts(points, layout, coarser, follow, made, order, boxes, reach)
     encode = partial(encode_chunk, chunk_steps=boxes.chunk_steps)
     blocks = list(processes.map(encode, parts, per_job=CHUNKS_A_JOB))
-    reach = reach_of(points, order, edges, corners, boxes.chunk_steps)
-    packed = Packed(layout.keys, blocks, np.diff(edges), reach, len(made.run))
-    return packed, Read(layout.keys, order, edges, points.counts)
+    packed = Packed(layout.keys, blocks, np.diff(order.edges), reach, len(made.run))
+    return packed, Read(layout.keys, order.far, order.edges, points.counts)
 
 
 def bounds_of(values: np.ndarray) -> np.ndarray:
@@ -405,7 +433,8 @@ class PackWriter:
         if len(nestings) != len(shapes) - 1:
             msg = "A morphology's nestings at odds with its levels"
             raise ValueError(msg)
-        counts = [np.zeros(len(shapes[0].opens), dtype=np.int64), *(n.counts for n in nestings)]
+        none = np.broadcast_to(np.int32(0), len(shapes[0].opens))
+        counts = [none, *(n.counts for n in nestings)]
         follows = [*(n.follows for n in nestings), NONE]
         for placed, shape, count, follow in zip(self.placed, shapes, counts, follows, strict=True):
             placed.add(cell, shape, rotation, position, count, follow)
@@ -427,14 +456,16 @@ class PackWriter:
         placed, self.placed = self.placed, []
         boxes = boxes_of(placed, self.chunk_steps)
         made: list[Packed] = []
-        coarser = None
+        coarser = Read(NONE, NONE, np.zeros(1, dtype=np.int64), NONE)
         while placed:
             points = placed.pop().joined()
-            if not placed:
-                bounds = bounds_of(points.values)
-            packed, coarser = packed_level(points, boxes, coarser, processes)
+            bounds = bounds_of(points.values)
+            follow = followers(points, coarser)
+            # past its followers, only the coarser level's chunks are read
+            coarser = replace(coarser, order=NONE, counts=NONE)
+            packed, coarser = packed_level(points, boxes, coarser, follow, processes)
             made.insert(0, packed)
-            del points
+            del points, follow
             give_back()
         blocks = [encode_somas(self.somas)]
         offset = len(blocks[0])
