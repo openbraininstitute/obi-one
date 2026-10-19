@@ -356,6 +356,54 @@ class TestConvertMorphology:
         _, kwargs = mock_convert.call_args
         assert kwargs["single_point_soma"] is True
 
+    def test_ensure_nrn_area_set_for_swc_to_contour(self, tmp_path):
+        input_file = tmp_path / "neuron.swc"
+        input_file.write_text("dummy")
+
+        with patch(_MORPH_TOOL) as mock_convert:
+            convert_morphology(
+                input_file,
+                output_dir=tmp_path,
+                single_point_soma_by_ext={".asc": False, ".h5": False},
+                target_exts=[".asc", ".h5"],
+            )
+
+        ensure_by_ext = {
+            Path(kwargs["output_file"]).suffix: kwargs["ensure_NRN_area"]
+            for _, kwargs in mock_convert.call_args_list
+        }
+        assert ensure_by_ext == {".asc": True, ".h5": True}
+
+    def test_ensure_nrn_area_not_set_for_non_swc_source(self, tmp_path):
+        input_file = tmp_path / "neuron.h5"
+        input_file.write_text("dummy")
+
+        with patch(_MORPH_TOOL) as mock_convert:
+            convert_morphology(
+                input_file,
+                output_dir=tmp_path,
+                single_point_soma_by_ext={".asc": False},
+                target_exts=[".asc"],
+            )
+
+        _, kwargs = mock_convert.call_args
+        assert kwargs["ensure_NRN_area"] is False
+
+    def test_ensure_nrn_area_not_set_for_swc_to_swc(self, tmp_path):
+        input_file = tmp_path / "neuron.swc"
+        input_file.write_text("dummy")
+
+        with patch(_MORPH_TOOL) as mock_convert:
+            convert_morphology(
+                input_file,
+                output_dir=tmp_path,
+                single_point_soma_by_ext={".swc": True},
+                target_exts=[".swc"],
+            )
+
+        _, kwargs = mock_convert.call_args
+        assert kwargs["ensure_NRN_area"] is False
+
 
 class TestValidateAndConvertMorphology:
     def test_calls_load_then_convert(self, tmp_path):
