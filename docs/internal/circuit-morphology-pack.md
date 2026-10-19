@@ -65,9 +65,25 @@ The index is the `Index` model of `obi_one.scientific.library.morphology_pack.co
       "pruneUm": 0.0,
       "chunkSteps": 2000,
       "segments": 151234,
-      "runs": 9876,
+      "runs": 0,
       "offset": 123,
-      "chunks": { "box": [0, -3, 5, 0, -3, 6], "bytes": [4100, 3900], "segments": [77000, 74234] }
+      "base": 1,
+      "chunks": {
+        "box": [0, -3, 5, 0, -3, 6],
+        "bytes": [4100, 3900],
+        "segments": [77000, 74234],
+        "reach": [12, 0]
+      }
+    },
+    {
+      "toleranceUm": 0.25,
+      "pruneUm": 0.0,
+      "chunkSteps": 2000,
+      "segments": 98000,
+      "runs": 41,
+      "offset": 8123,
+      "base": null,
+      "chunks": { "box": [0, -3, 5, 0, -3, 6], "bytes": [6100, 5900], "segments": [50000, 48000], "reach": [12, 0] }
     }
   ]
 }
@@ -76,24 +92,42 @@ The index is the `Index` model of `obi_one.scientific.library.morphology_pack.co
 - A position is a whole number of steps of `gridUm` micrometres, in the circuit's own frame. `bounds` holds every point of the first level, in steps.
 - A radius is `2 ** (step / radiusSteps)` micrometres.
 - A cell's number counts through `populations` in their order: the cells of the first population, then those of the second.
-- A level drops the end branches shorter than `pruneUm`, then the points within `toleranceUm` of the path and of the diameter.
-- A chunk is a cube of `chunkSteps` steps. `box` has three whole numbers a chunk: its corner is `box * chunkSteps`. `bytes` and `segments` have one number a chunk, and a chunk's block starts where the one before it ends, the first at the level's `offset`.
+- A level drops the end branches shorter than `pruneUm`, then the points within `toleranceUm` of the path and of the diameter. Levels come finest first.
+- `base` is the level this one is read over: the next, coarser one, or `null` for a level read alone, the last.
+- A chunk is a cube of `chunkSteps` steps, the same at every level. `box` has three whole numbers a chunk: its corner is `box * chunkSteps`. `bytes`, `segments` and `reach` have one number a chunk, and a chunk's block starts where the one before it ends, the first at the level's `offset`.
+- `segments` counts the chunk's segments as read, and `runs` the level's runs, those of its own.
+- `reach` is how many steps the chunk's segments lie outside its cube at most, either end and any axis: a reader that culls by chunks grows each cube by it.
 
 ### A chunk
 
-A chunk holds runs. A run is a stretch of segments one after another along one unbranched polyline, all of them ending in the chunk. A segment belongs to the chunk its far point lies in, so a run's first point may lie outside its chunk. Nothing is cut at a chunk's wall.
+A level read over its base holds most of its segments as they follow the base's, and the rest as runs of its own. A segment of the base is followed where the finer level runs from its near point to its far point through points of its own: the inner points. The coarsest level, and any level read alone, holds runs only.
 
-A chunk's block, inflated, starts with the number of runs and the number of segments as two uint32. Eleven streams of whole numbers follow.
+A chunk's segments are, in this order:
+
+1. Those that follow the base's segments in the same box, in the order the base's chunk is read: for each base segment, the segments from its near point through each inner point to its far point, with its cell and type.
+2. Its runs. A run is a stretch of segments one after another along one unbranched polyline, all of them ending in the chunk. A segment belongs to the chunk its far point lies in, so a run's first point may lie outside its chunk.
+
+Nothing is cut at a chunk's wall, and a segment that follows a base segment may lie anywhere along it, outside the chunk: `reach` bounds both.
+
+A chunk's block, inflated, starts with four uint32: the base's segments in the box, the inner points, the runs, and the runs' segments. Streams of whole numbers follow.
 
 | Stream | A number for each | Signed |
 | --- | --- | --- |
+| How many segments follow it: 0, or 1 and more | base segment | no |
+| Inner point: x, y, z and radius step, each against the chord's guess | inner point, four streams | yes |
 | Cell, as the difference from the run before | run | no |
 | Section type, as in SWC: 2 axon, 3 basal dendrite, 4 apical dendrite | run | no |
 | Length in segments | run | no |
-| First point: x, y, z against the chunk's corner, then the radius step | run, four streams | yes |
-| Far point: x, y, z and radius step, each against the segment's near point | segment, four streams | yes |
+| How many runs back a run of its cell ends where it starts, or 0 | run | no |
+| First point: x, y, z against the chunk's corner, then the radius step | run with 0 just before, four streams | yes |
+| First point's radius step against the end of the run it refers to | run with more than 0 just before | yes |
+| Far point: x, y, z and radius step, each against the segment's near point, x, y and z less the guess from the step before | segment, four streams | yes |
 
 A stream is one byte giving the width of its numbers in bytes, 1 to 4, then every number's lowest byte, then every number's next byte, and so on. A signed number is stored zigzag: `(n << 1) ^ (n >> 31)`.
+
+- A base segment followed by `k` segments has `k - 1` inner points, in order from its near point. The chord's guess of an inner point is `p + floor((q - p) / left)`, for each of x, y, z and radius step: `p` is the point before it (the base segment's near point, or the inner point before), `q` the base segment's far point, and `left` how many segments are still to come to `q`, the one it ends included.
+- A run that refers back starts at the x, y and z of the end of the run it refers to. Its radius step is that end's plus its own number.
+- A step's guess, after the first step of a run, is `floor((3 * s + 2) / 4)` of the step before it on x, y and z; the radius step has none.
 
 A block over 1 KB inflated is written as one zlib stream whose deflate blocks end at every byte plane, so each plane gets Huffman tables of its own; any inflater reads it as it reads a block deflated whole.
 
@@ -105,3 +139,4 @@ Runs are ordered by cell within a chunk. A segment's near point is the far point
 - A soma is one sphere of NeuroM's soma radius: that of a single point, the mean distance of a contour's points from their centre, or the radius of the sphere with the area of a stack of cylinders.
 - Simplification is Ramer-Douglas-Peucker on x, y, z and twice the radius, section by section. It is the morphology viewer's measure, so a pack's finest level is what that viewer draws at the same tolerance.
 - The far level joins the sections that pruning leaves end to end before it is simplified.
+- A finer level follows a base segment wherever its own segments run along the base's path between the same two points: always where both levels prune alike, and over the far level wherever no branch along the way starts apart from its fork, in position or width.

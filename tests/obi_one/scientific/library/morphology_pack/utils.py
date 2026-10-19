@@ -1,6 +1,8 @@
+from dataclasses import replace
+
 import morphio
 
-from obi_one.scientific.library.morphology_pack.geometry import Morphology
+from obi_one.scientific.library.morphology_pack.geometry import NO_PARENT, Morphology
 
 # A soma of radius 5 at the origin with two neurites.
 # - A dendrite along +x, 1 um in radius, with two traced points on its way to a fork at x = 20.
@@ -28,3 +30,17 @@ DENDRITE = 3
 
 def load(text: str = SWC) -> Morphology:
     return Morphology.from_morphio(morphio.Morphology(text, "swc"))
+
+
+def load_with_a_branch_apart() -> Morphology:
+    """`load()` with the long branch's first point narrower than the fork it starts at, as a
+    morphology's file may give it: the far level's joined dendrite runs across it."""
+    morphology = load()
+    radii = morphology.radii.copy()
+    branch = next(
+        section
+        for section in range(len(morphology.types))
+        if morphology.parents[section] != NO_PARENT and morphology.lengths()[section] > 10
+    )
+    radii[morphology.offsets[branch]] = 0.75
+    return replace(morphology, radii=radii)

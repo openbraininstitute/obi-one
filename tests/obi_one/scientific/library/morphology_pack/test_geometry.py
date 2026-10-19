@@ -15,7 +15,12 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     simplified,
 )
 
-from tests.obi_one.scientific.library.morphology_pack.utils import AXON, DENDRITE, load
+from tests.obi_one.scientific.library.morphology_pack.utils import (
+    AXON,
+    DENDRITE,
+    load,
+    load_with_a_branch_apart,
+)
 
 NO_SOMA = """\
 1 3 5 0 0 1 -1
@@ -143,6 +148,58 @@ class TestSimplified:
     def test_levels_come_in_the_order_asked(self):
         far, finest = simplified(load(), [FAR, FINEST]).shapes
         assert (far.segments, finest.segments) == (5, 7)
+
+    def test_a_level_alone_follows_none(self):
+        assert simplified(load(), [FINEST]).nestings == ()
+
+    def test_the_finest_follows_the_middle_wholly(self):
+        finest, middle, _ = simplified(load(), LEVELS).shapes
+        nesting = simplified(load(), LEVELS).nestings[0]
+        assert len(nesting.counts) == len(middle.points)
+        assert nesting.counts.sum() == finest.segments
+        np.testing.assert_array_equal(nesting.follows, np.flatnonzero(~finest.opens))
+
+    def test_the_middle_follows_the_far_level_but_for_what_it_prunes(self):
+        levels = simplified(load(), LEVELS)
+        _, middle, far = levels.shapes
+        nesting = levels.nestings[1]
+        # the far level's dendrite runs on through the fork; its axon is the middle's
+        far_ends = [(kind, points) for kind, points, _ in polylines(far)]
+        assert (DENDRITE, [[0, 0, 0], [20, 0, 0], [20, 30, 0]]) in far_ends
+        counts = {
+            tuple(far.points[point].tolist()): int(n) for point, n in enumerate(nesting.counts) if n
+        }
+        assert counts == {
+            (20, 0, 0): 1,
+            (20, 30, 0): 2,
+            (0, -50, 0): 1,
+            (3, -100, 0): 1,
+            (0, -150, 0): 1,
+        }
+        twig = [20 + 2, 0, 0]
+        left = set(np.flatnonzero(~middle.opens)) - set(nesting.follows.tolist())
+        assert [middle.points[point].tolist() for point in left] == [twig]
+
+    def test_followed_segments_rebuild_from_the_coarser(self):
+        levels = simplified(load(), LEVELS)
+        for (finer, coarser), nesting in zip(pairwise(levels.shapes), levels.nestings, strict=True):
+            follows = iter(nesting.follows.tolist())
+            for point in np.flatnonzero(nesting.counts):
+                near = coarser.points[point - 1].tolist()
+                for _ in range(nesting.counts[point]):
+                    end = next(follows)
+                    assert finer.points[end - 1].tolist() == near
+                    near = finer.points[end].tolist()
+                assert near == coarser.points[point].tolist()
+
+    def test_a_branch_apart_from_its_fork_is_not_followed(self):
+        levels = simplified(load_with_a_branch_apart(), LEVELS)
+        far = levels.shapes[2]
+        followed = [
+            far.points[point].tolist() for point in np.flatnonzero(levels.nestings[1].counts)
+        ]
+        assert [20, 30, 0] not in followed
+        assert [20, 0, 0] in followed
 
     def test_the_soma_is_carried(self):
         levels = simplified(load(), [FINEST])

@@ -11,20 +11,26 @@ from obi_one.scientific.library.morphology_pack.codec import (
     PLAIN_DEFLATE_BYTES,
     RADIUS_STEPS,
     VERSION,
+    Chunk,
     Index,
     Runs,
     SomasEntry,
     assemble,
+    back_references,
     decode_chunk,
     decode_somas,
     encode_chunk,
     encode_somas,
+    guessed_step,
     on_grid,
     planes,
     radii_um,
     radius_steps,
     read_planes,
+    read_runs,
+    run_parts,
     take_apart,
+    towards,
     unzigzag,
     zigzag,
 )
@@ -113,36 +119,126 @@ def some_runs():
     )
 
 
+CHUNK_STEPS = 2000
+NO_INNER = np.zeros((0, 4), dtype=np.int64)
+
+
+def assert_same_runs(back, runs):
+    for name in ("cells", "types", "lengths", "starts", "steps"):
+        np.testing.assert_array_equal(getattr(back, name), getattr(runs, name))
+
+
+def runs_that_chain():
+    """Runs of one cell that start where an earlier one ends: on x, y and z, and in radius too."""
+    return Runs(
+        cells=np.array([4, 4, 4, 4, 9]),
+        types=np.array([3, 3, 3, 2, 3], dtype=np.uint8),
+        lengths=np.array([2, 1, 2, 1, 1]),
+        starts=np.array(
+            [[10, 20, 30, 5], [13, 18, 30, 7], [13, 18, 30, 4], [14, 18, 31, 0], [10, 20, 30, 5]]
+        ),
+        steps=np.array(
+            [
+                [1, -1, 0, 1],
+                [2, -1, 0, 1],
+                [1, 0, 1, -4],
+                [-5, 0, 0, 0],
+                [3, 3, 3, 3],
+                [0, 0, 0, 0],
+                [1, 1, 1, 1],
+            ]
+        ),
+    )
+
+
+def random_runs(rng, count):
+    lengths = rng.integers(1, 40, count)
+    return Runs(
+        cells=np.sort(rng.integers(0, 5000, count)),
+        types=rng.integers(2, 5, count).astype(np.uint8),
+        lengths=lengths,
+        starts=rng.integers(-80000, 80000, (count, 4)),
+        steps=rng.integers(-300, 300, (int(lengths.sum()), 4)),
+    )
+
+
+class TestRuns:
+    def test_a_start_where_a_run_of_its_cell_ends_refers_back_to_it(self):
+        refs, radii = back_references(runs_that_chain(), CHUNK_STEPS)
+        # the second starts where the first ends, radius and all; the third and the fourth where
+        # the first and the second end, but for the radius; the last is another cell's
+        np.testing.assert_array_equal(refs, [0, 1, 2, 2, 0])
+        np.testing.assert_array_equal(radii, [0, 0, -3, -3, 0])
+
+    def test_a_start_outside_the_chunk_is_given_whole(self):
+        runs = runs_that_chain()
+        shifted = Runs(
+            runs.cells, runs.types, runs.lengths, runs.starts - [20, 0, 0, 0], runs.steps
+        )
+        refs, _ = back_references(shifted, CHUNK_STEPS)
+        assert not refs.any()
+
+    def test_a_step_is_stored_less_the_guess_from_the_one_before(self):
+        np.testing.assert_array_equal(guessed_step(np.array([4, -4, 1, -1, 0])), [3, -3, 1, -1, 0])
+        runs = runs_that_chain()
+        data = b"".join(run_parts(runs, CHUNK_STEPS))
+        back, after = read_runs(data, 0, 5, 7)
+        assert after == len(data)
+        assert_same_runs(back, runs)
+
+    def test_round_trip_of_many(self):
+        runs = random_runs(np.random.default_rng(3), 400)
+        data = b"".join(run_parts(runs, CHUNK_STEPS))
+        back, _ = read_runs(data, 0, 400, len(runs.steps))
+        assert_same_runs(back, runs)
+
+
+class TestChord:
+    def test_the_guess_is_a_share_of_the_way_rounded_down(self):
+        near, far = np.array([0, 0, 10, -7]), np.array([10, -10, 10, 0])
+        np.testing.assert_array_equal(towards(near, far, 3), [3, -4, 10, -5])
+        np.testing.assert_array_equal(towards(near, far, 1), far)
+
+
 class TestChunk:
     def test_round_trip(self):
-        runs = some_runs()
-        back = decode_chunk(encode_chunk(runs))
-        for name in ("cells", "types", "lengths", "starts", "steps"):
-            np.testing.assert_array_equal(getattr(back, name), getattr(runs, name))
+        chunk = Chunk(
+            counts=np.array([0, 1, 3, 0, 2]),
+            inner=np.array([[1, -2, 3, 0], [-70000, 5, 0, -1], [2**20, -(2**21), 0, 4]]),
+            runs=some_runs(),
+        )
+        back = decode_chunk(encode_chunk(chunk, CHUNK_STEPS))
+        np.testing.assert_array_equal(back.counts, chunk.counts)
+        np.testing.assert_array_equal(back.inner, chunk.inner)
+        assert_same_runs(back.runs, chunk.runs)
+
+    def test_a_chunk_of_runs_alone(self):
+        chunk = Chunk(np.zeros(0, dtype=np.int64), NO_INNER, runs_that_chain())
+        back = decode_chunk(encode_chunk(chunk, CHUNK_STEPS))
+        assert len(back.counts) == 0
+        assert back.inner.shape == (0, 4)
+        assert_same_runs(back.runs, chunk.runs)
+
+    def test_a_chunk_of_additions_alone(self):
+        none = Runs(*(np.zeros(0, dtype=np.int64) for _ in range(3)), NO_INNER, NO_INNER)
+        chunk = Chunk(np.array([2, 0, 1]), np.array([[5, 5, 5, 5]]), none)
+        back = decode_chunk(encode_chunk(chunk, CHUNK_STEPS))
+        np.testing.assert_array_equal(back.counts, [2, 0, 1])
+        assert len(back.runs.cells) == 0
 
     def test_a_block_starts_with_its_counts(self):
-        data = zlib.decompress(encode_chunk(some_runs()))
-        assert int.from_bytes(data[:4], "little") == 3
-        assert int.from_bytes(data[4:8], "little") == 6
+        chunk = Chunk(np.array([0, 2]), np.array([[1, 1, 1, 1]]), some_runs())
+        data = zlib.decompress(encode_chunk(chunk, CHUNK_STEPS))
+        assert COUNTS.unpack_from(data) == (2, 1, 3, 6)
 
     def test_a_large_block_deflated_by_planes_inflates_to_the_same_streams(self):
-        rng = np.random.default_rng(7)
-        lengths = rng.integers(1, 40, 300)
-        runs = Runs(
-            cells=np.sort(rng.integers(0, 5000, 300)),
-            types=rng.integers(2, 5, 300).astype(np.uint8),
-            lengths=lengths,
-            starts=rng.integers(-80000, 80000, (300, 4)),
-            steps=rng.integers(-300, 300, (int(lengths.sum()), 4)),
-        )
-        data = zlib.decompress(encode_chunk(runs))
+        runs = random_runs(np.random.default_rng(7), 300)
+        chunk = Chunk(np.zeros(0, dtype=np.int64), NO_INNER, runs)
+        data = zlib.decompress(encode_chunk(chunk, CHUNK_STEPS))
         assert len(data) > PLAIN_DEFLATE_BYTES
-        streams = [planes(np.diff(runs.cells, prepend=0)), planes(runs.types), planes(runs.lengths)]
-        streams += [planes(zigzag(column)) for column in (*runs.starts.T, *runs.steps.T)]
-        assert data == COUNTS.pack(300, len(runs.steps)) + b"".join(streams)
-        back = decode_chunk(encode_chunk(runs))
-        for name in ("cells", "types", "lengths", "starts", "steps"):
-            np.testing.assert_array_equal(getattr(back, name), getattr(runs, name))
+        streams = planes(np.zeros(0)) * 5 + b"".join(run_parts(runs, CHUNK_STEPS))
+        assert data == COUNTS.pack(0, 0, 300, len(runs.steps)) + streams
+        assert_same_runs(decode_chunk(encode_chunk(chunk, CHUNK_STEPS)).runs, runs)
 
     def test_a_part_keeps_its_runs_and_their_segments(self):
         part = some_runs().part(slice(1, 3), slice(2, 6))

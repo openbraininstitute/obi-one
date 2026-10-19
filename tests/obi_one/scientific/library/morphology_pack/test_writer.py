@@ -13,10 +13,15 @@ from obi_one.scientific.library.morphology_pack.codec import (
     take_apart,
 )
 from obi_one.scientific.library.morphology_pack.geometry import FAR, FINEST, LEVELS, simplified
-from obi_one.scientific.library.morphology_pack.reader import read_pack, segment_ends
+from obi_one.scientific.library.morphology_pack.reader import read_pack, run_segments
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
 
-from tests.obi_one.scientific.library.morphology_pack.utils import AXON, DENDRITE, load
+from tests.obi_one.scientific.library.morphology_pack.utils import (
+    AXON,
+    DENDRITE,
+    load,
+    load_with_a_branch_apart,
+)
 
 QUARTER_TURN = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
 PLACES = [
@@ -46,6 +51,21 @@ def pack_of(morphology, levels, **options):
     return shapes, writer.pack()
 
 
+def chunks_of(data, level):
+    """Each chunk of a level, decoded, with its entry's box."""
+    index, blocks = take_apart(data)
+    entry = index.levels[level]
+    at = entry.offset
+    for box, size in zip(np.reshape(entry.chunks.box, (-1, 3)), entry.chunks.bytes, strict=True):
+        yield box, decode_chunk(bytes(blocks[at : at + size]))
+        at += size
+
+
+def own_segments(data, level):
+    """The segments of a level that follow no coarser segment."""
+    return sum(len(chunk.runs.steps) for _, chunk in chunks_of(data, level))
+
+
 def assert_placed(level, shape):
     """The segments read back for each cell are the shape's, where the cell was placed."""
     for cell, (rotation, position) in enumerate(PLACES):
@@ -57,12 +77,27 @@ def assert_placed(level, shape):
 
 class TestRoundTrip:
     @pytest.mark.parametrize("chunk_um", [50.0, 7.0, 100000.0])
-    def test_every_segment_comes_back_where_it_was_placed(self, chunk_um):
-        shapes, data = pack_of(load(), LEVELS, chunk_um=chunk_um)
+    @pytest.mark.parametrize("morphology", [load, load_with_a_branch_apart])
+    def test_every_segment_comes_back_where_it_was_placed(self, chunk_um, morphology):
+        shapes, data = pack_of(morphology(), LEVELS, chunk_um=chunk_um)
         pack = read_pack(data)
         for shape, level in zip(shapes.shapes, pack.levels, strict=True):
             assert len(level.segments) == shape.segments * len(PLACES)
             assert_placed(level, shape)
+
+    def test_finer_levels_follow_the_coarser(self):
+        _, data = pack_of(load(), LEVELS, chunk_um=7.0)
+        finest, middle, far = take_apart(data)[0].levels
+        assert (finest.base, middle.base, far.base) == (1, 2, None)
+        # the finest follows the middle wholly; of the middle, the twig the far level prunes is left
+        assert own_segments(data, 0) == 0
+        assert own_segments(data, 1) == len(PLACES)
+        assert own_segments(data, 2) == far.segments
+
+    def test_a_branch_that_starts_apart_from_its_fork_is_not_followed(self):
+        _, data = pack_of(load_with_a_branch_apart(), LEVELS)
+        # the twig, and the branch's two segments
+        assert own_segments(data, 1) == 3 * len(PLACES)
 
     def test_segments_keep_their_section_type(self):
         _, data = pack_of(load(), [FINEST])
@@ -132,9 +167,11 @@ class TestIndex:
             "segments",
             "runs",
             "offset",
+            "base",
             "chunks",
         }
-        assert set(level["chunks"]) == {"box", "bytes", "segments"}
+        assert level["base"] is None
+        assert set(level["chunks"]) == {"box", "bytes", "segments", "reach"}
 
     def test_bounds_hold_every_point(self):
         _, data = pack_of(load(), [FINEST])
@@ -146,21 +183,40 @@ class TestIndex:
         np.testing.assert_allclose(low, [0, -2000, 0])
         np.testing.assert_allclose(high, [1150, 30, 3000])
 
-    def test_a_segment_is_in_the_chunk_its_far_end_lies_in(self):
+    def test_a_run_is_in_the_chunk_its_far_ends_lie_in(self):
         _, data = pack_of(load(), [FINEST], chunk_um=7.0)
-        index, blocks = take_apart(data)
-        level = index.levels[0]
+        level = take_apart(data)[0].levels[0]
         boxes = np.array(level.chunks.box).reshape(-1, 3)
         assert len(boxes) > len(PLACES)
         assert len(np.unique(boxes, axis=0)) == len(boxes)
-        at = level.offset
-        for size in level.chunks.bytes:
-            runs = decode_chunk(bytes(blocks[at : at + size]))
-            at += size
-            far = segment_ends(runs, np.zeros(3, dtype=np.int64), index)[:, 4:7]
+        for _, chunk in chunks_of(data, 0):
+            far = run_segments(chunk.runs, np.zeros(3, dtype=np.int64)).far[:, :3]
             assert (far >= 0).all()
-            assert (far < level.chunk_steps * GRID_UM).all()
-            assert (np.diff(runs.cells) >= 0).all()
+            assert (far < level.chunk_steps).all()
+            assert (np.diff(chunk.runs.cells) >= 0).all()
+
+    def test_a_chunk_reaches_as_far_as_its_segments(self):
+        _, data = pack_of(load(), LEVELS, chunk_um=7.0)
+        pack = read_pack(data)
+        reaching = 0
+        for level, entry in enumerate(pack.index.levels):
+            assert entry.chunk_steps == pack.index.levels[0].chunk_steps
+            # the reader's segments come chunk by chunk
+            first = 0
+            for box, segments, reach in zip(
+                np.reshape(entry.chunks.box, (-1, 3)),
+                entry.chunks.segments,
+                entry.chunks.reach,
+                strict=True,
+            ):
+                ends = pack.levels[level].segments[first : first + segments]
+                first += segments
+                points = np.rint(ends.reshape(-1, 4)[:, :3] / GRID_UM)
+                low, high = box * entry.chunk_steps, (box + 1) * entry.chunk_steps - 1
+                outside = np.maximum(low - points, points - high).max(initial=0)
+                assert max(outside, 0) == reach
+                reaching += reach > 0
+        assert reaching
 
     def test_chunks_are_doubled_until_there_are_few_enough(self, monkeypatch):
         morphology = load()
@@ -181,7 +237,7 @@ class TestWriter:
         assert pack.somas.shape == (4, 4)
         assert not pack.somas.any()
         assert len(pack.levels[0].segments) == 0
-        assert pack.index.levels[0].chunks == Chunks(box=[], bytes=[], segments=[])
+        assert pack.index.levels[0].chunks == Chunks(box=[], bytes=[], segments=[], reach=[])
 
     def test_a_cell_must_come_at_every_level(self):
         shapes = simplified(load(), [FINEST])
@@ -192,5 +248,5 @@ class TestWriter:
     def test_a_writer_packs_once(self):
         writer = PackWriter([("only", 1)], [FINEST])
         writer.pack()
-        with pytest.raises(IndexError):
+        with pytest.raises(RuntimeError, match="packs once"):
             writer.pack()

@@ -194,7 +194,7 @@ def finest_level_within(
             )
             if segments <= max_segments:
                 return level, {
-                    key: replace(found, shapes=(found.shapes[place],))
+                    key: replace(found, shapes=(found.shapes[place],), nestings=())
                     for key, found in library.items()
                 }
     refuse(

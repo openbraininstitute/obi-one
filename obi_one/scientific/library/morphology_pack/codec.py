@@ -18,7 +18,8 @@ GRID_UM = 0.025
 RADIUS_STEPS = 16
 SMALLEST_RADIUS_UM = 1 / 1024
 HEADER = struct.Struct("<4sHHI")
-COUNTS = struct.Struct("<II")
+# A chunk's coarser segments, inner points, runs and segments of its runs.
+COUNTS = struct.Struct("<IIII")
 WIDEST = 4
 DEFLATE_LEVEL = 6
 PLAIN_DEFLATE_BYTES = 1024
@@ -46,6 +47,7 @@ class Chunks(Entry):
     box: list[int]
     bytes: list[int]
     segments: list[int]
+    reach: list[int]
 
 
 class LevelEntry(Entry):
@@ -55,6 +57,7 @@ class LevelEntry(Entry):
     segments: int
     runs: int
     offset: int
+    base: int | None
     chunks: Chunks
 
 
@@ -148,30 +151,138 @@ def deflate_planes(parts: list[bytes]) -> bytes:
     return b"".join([*blocks, deflate.compress(parts[-1]), deflate.flush()])
 
 
-def encode_chunk(runs: Runs) -> bytes:
-    columns = [np.diff(runs.cells, prepend=0), runs.types, runs.lengths]
-    columns += [zigzag(column) for column in (*runs.starts.T, *runs.steps.T)]
-    parts = [part for column in columns for part in byte_planes(column)]
-    parts[0] = COUNTS.pack(len(runs.cells), len(runs.steps)) + parts[0]
+@dataclass(frozen=True)
+class Chunk:
+    """A chunk's block: its additions over the coarser level's segments in its box, then its runs.
+
+    `counts` has a number a coarser segment, in the order the coarser level's box is read in: 0
+    where none of this level's segments follow it, else how many do. `inner` has the points
+    between, a row each of x, y, z and radius, each less the chord's guess (`towards`). `runs`
+    holds this level's segments that follow no coarser one.
+    """
+
+    counts: np.ndarray
+    inner: np.ndarray
+    runs: Runs
+
+
+def guessed_step(before: np.ndarray) -> np.ndarray:
+    """A step's x, y and z guessed from the step before it in its run: three quarters of it."""
+    return (3 * before + 2) >> 2
+
+
+def towards(near: np.ndarray, far: np.ndarray, left: np.ndarray) -> np.ndarray:
+    """The chord's guess of the next point: a `left`-th of the way on to `far`, rounded down."""
+    return near + (far - near) // left
+
+
+def back_references(runs: Runs, chunk_steps: int) -> tuple[np.ndarray, np.ndarray]:
+    """For each run, 0 or how many runs back the nearest run of its cell ends where it starts.
+
+    Only a start within the chunk's cube is looked for, on x, y and z, an end with the start's
+    radius as well preferred. Returns the counts and each start's radius less that end's.
+    """
+    count = len(runs.cells)
+    if not count:
+        return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64)
+    first = np.cumsum(runs.lengths) - runs.lengths
+    ends = runs.starts + np.add.reduceat(runs.steps, first, axis=0)
+    inside = np.all((runs.starts[:, :3] >= 0) & (runs.starts[:, :3] < chunk_steps), axis=1)
+    order = np.arange(count, dtype=np.int64)
+    refs = np.zeros(count, dtype=np.int64)
+    for width in (3, 4):
+        rows = np.concatenate(
+            [
+                np.column_stack([runs.cells, ends[:, :width]]),
+                np.column_stack([runs.cells, runs.starts[:, :width]]),
+            ]
+        )
+        _, group = np.unique(rows, axis=0, return_inverse=True)
+        group = group.ravel().astype(np.int64)
+        span = count + 1
+        end_keys = np.sort(group[:count] * span + order)
+        at = np.searchsorted(end_keys, group[count:] * span + order, side="left") - 1
+        nearest = end_keys[np.maximum(at, 0)]
+        found = (at >= 0) & (nearest // span == group[count:]) & inside
+        refs = np.where(found, order - nearest % span, refs)
+    referred = np.where(refs > 0, runs.starts[:, 3] - ends[order - refs, 3], 0)
+    return refs, referred
+
+
+def run_parts(runs: Runs, chunk_steps: int) -> list[bytes]:
+    refs, referred = back_references(runs, chunk_steps)
+    first = np.cumsum(runs.lengths) - runs.lengths
+    steps = runs.steps.copy()
+    later = np.ones(len(steps), dtype=bool)
+    later[first] = False
+    steps[later, :3] -= guessed_step(runs.steps[np.flatnonzero(later) - 1, :3])
+    whole = refs == 0
+    columns = [np.diff(runs.cells, prepend=0), runs.types, runs.lengths, refs]
+    columns += [zigzag(column) for column in runs.starts[whole].T]
+    columns += [zigzag(referred[~whole])]
+    columns += [zigzag(column) for column in steps.T]
+    return [part for column in columns for part in byte_planes(column)]
+
+
+def read_streams(
+    data: bytes, at: int, count: int, streams: int, *, signed: bool = False
+) -> tuple[np.ndarray, int]:
+    """`streams` streams of `count` numbers from `at`, a column each, and where they end."""
+    columns = np.zeros((count, streams), dtype=np.int64)
+    for stream in range(streams):
+        numbers, at = read_planes(data, at, count)
+        columns[:, stream] = unzigzag(numbers) if signed else numbers
+    return columns, at
+
+
+def unguessed(steps: np.ndarray, lengths: np.ndarray) -> np.ndarray:
+    """Steps as stored back to steps: each with its guess from the one before added, in order."""
+    first = np.cumsum(lengths) - lengths
+    for place in range(1, int(lengths.max()) if len(lengths) else 0):
+        rows = first[lengths > place] + place
+        steps[rows, :3] += guessed_step(steps[rows - 1, :3])
+    return steps
+
+
+def read_runs(data: bytes, at: int, count: int, segments: int) -> tuple[Runs, int]:
+    """The `count` runs of `segments` segments laid from `at`, and where they end."""
+    head, at = read_streams(data, at, count, 4)
+    whole = head[:, 3] == 0
+    starts = np.zeros((count, 4), dtype=np.int64)
+    starts[whole], at = read_streams(data, at, int(whole.sum()), 4, signed=True)
+    referred, at = read_streams(data, at, count - int(whole.sum()), 1, signed=True)
+    stored, at = read_streams(data, at, segments, 4, signed=True)
+    lengths = head[:, 2]
+    steps = unguessed(stored, lengths)
+    travel = np.add.reduceat(steps, np.cumsum(lengths) - lengths, axis=0) if count else starts
+    for run, radius in zip(np.flatnonzero(~whole), referred[:, 0], strict=True):
+        back = run - head[run, 3]
+        starts[run] = starts[back] + travel[back]
+        starts[run, 3] += radius
+    return Runs(np.cumsum(head[:, 0]), head[:, 1].astype(np.uint8), lengths, starts, steps), at
+
+
+def encode_chunk(chunk: Chunk, chunk_steps: int) -> bytes:
+    """A chunk's block: `chunk_steps` is the side of its cube, which a run's start is given in."""
+    runs = chunk.runs
+    parts = byte_planes(chunk.counts)
+    parts += [part for column in chunk.inner.T for part in byte_planes(zigzag(column))]
+    parts += run_parts(runs, chunk_steps)
+    header = COUNTS.pack(len(chunk.counts), len(chunk.inner), len(runs.cells), len(runs.steps))
+    parts[0] = header + parts[0]
     return deflate_planes(parts)
 
 
-def decode_chunk(block: bytes) -> Runs:
+def decode_chunk(block: bytes) -> Chunk:
     data = zlib.decompress(block)
-    runs, segments = COUNTS.unpack_from(data)
-    at = COUNTS.size
-    streams = []
-    for count in [runs] * 7 + [segments] * 4:
-        numbers, at = read_planes(data, at, count)
-        streams.append(numbers)
-    signed = [unzigzag(numbers) for numbers in streams[3:]]
-    return Runs(
-        cells=np.cumsum(streams[0].astype(np.int64)),
-        types=streams[1].astype(np.uint8),
-        lengths=streams[2].astype(np.int64),
-        starts=np.column_stack(signed[:4]),
-        steps=np.column_stack(signed[4:]),
-    )
+    coarser, inner, count, segments = COUNTS.unpack_from(data)
+    counts, at = read_streams(data, COUNTS.size, coarser, 1)
+    points, at = read_streams(data, at, inner, 4, signed=True)
+    runs, at = read_runs(data, at, count, segments)
+    if at != len(data):
+        msg = "A chunk's block with bytes left over"
+        raise ValueError(msg)
+    return Chunk(counts[:, 0], points, runs)
 
 
 def encode_somas(somas: np.ndarray) -> bytes:

@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Self
 
 import morphio
@@ -98,10 +99,27 @@ class Polylines:
 
 
 @dataclass(frozen=True)
+class Nesting:
+    """A level's segments as they follow a coarser level's.
+
+    `counts` has a number a point of the coarser level: how many of the finer level's segments
+    run from the coarser segment's near point to the far point it ends, 0 where none do or it
+    opens a polyline. `follows` has the finer level's points that end those segments, a coarser
+    segment's together, in the coarser level's order.
+    """
+
+    counts: np.ndarray
+    follows: np.ndarray
+
+
+@dataclass(frozen=True)
 class MorphologyLevels:
+    """The morphology at each level; `nestings[i]` gives level `i` over level `i + 1`."""
+
     shapes: tuple[Polylines, ...]
     soma_center: np.ndarray
     soma_radius: float
+    nestings: tuple[Nesting, ...] = ()
 
 
 def pruned(morphology: Morphology, prune_um: float) -> np.ndarray:
@@ -177,8 +195,72 @@ def simplification(
     return order, opens, kept_until(weighted, first, last, finest)
 
 
+type Kept = tuple[np.ndarray, np.ndarray, np.ndarray]
+"""A level as a pass keeps it: the pass's order and openings, and which points the level keeps."""
+
+
+def spans(starts: np.ndarray, lengths: np.ndarray) -> np.ndarray:
+    """The numbers from each of `starts` on, `lengths` of them, one span after another."""
+    begin = np.cumsum(lengths) - lengths
+    return np.arange(int(lengths.sum())) + np.repeat(starts - begin, lengths)
+
+
+def finer_along(
+    morphology: Morphology, finer: Kept, path: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Along a coarser level's path: each point's place in the finer level, -1 where it has none,
+    and whether it ends a finer segment that starts at the finer point before it on the path, or
+    at a point of the same position and radius.
+    """
+    order, opens, keep = finer
+    fine = order[keep]
+    place = np.full(len(morphology.points), -1)
+    place[fine] = np.arange(len(fine))
+    along = place[path]
+    there = along >= 0
+    before = np.maximum.accumulate(np.where(there, np.arange(len(path)), -1))
+    before = np.concatenate([[-1], before[:-1]])
+    near = fine[np.maximum(along - 1, 0)]
+    walked = path[np.maximum(before, 0)]
+    same = np.all(morphology.points[near] == morphology.points[walked], axis=1)
+    same &= morphology.radii[near] == morphology.radii[walked]
+    return along, there & ~opens[keep][np.maximum(along, 0)] & (before >= 0) & same
+
+
+def segments_along(level: Kept) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """A level's segments: the place in the level of each one's far point, and the places on the
+    pass's path of its two ends.
+    """
+    _, opens, keep = level
+    kept = np.flatnonzero(keep)
+    joined = np.flatnonzero(~opens[kept[1:]])
+    return joined + 1, kept[joined], kept[joined + 1]
+
+
+def nesting(morphology: Morphology, finer: Kept, coarser: Kept) -> Nesting:
+    """Level `finer` as it follows level `coarser`.
+
+    A coarser segment is followed where both its ends are finer points and every finer point
+    along its path between them ends a finer segment from the finer point before it on the path
+    (`finer_along`): the finer segments rebuild from the coarser one. Two passes walk the same
+    points, so the finer level's are found by index.
+    """
+    along, ends = finer_along(morphology, finer, coarser[0])
+    far, near, at = segments_along(coarser)
+    there = along >= 0
+    broken = np.concatenate([[0], np.cumsum(there & ~ends)])
+    inside = np.concatenate([[0], np.cumsum(there)])
+    followed = there[near] & there[at] & (broken[at + 1] == broken[near + 1])
+    near, at = near[followed], at[followed]
+    counts = np.zeros(int(coarser[2].sum()), dtype=np.int64)
+    counts[far[followed]] = inside[at + 1] - inside[near + 1]
+    on = np.zeros(len(along), dtype=bool)
+    on[spans(near + 1, at - near)] = True
+    return Nesting(counts, along[there & on])
+
+
 def simplified(morphology: Morphology, levels: Sequence[Level]) -> MorphologyLevels:
-    """The morphology at each of `levels`, in their order."""
+    """The morphology at each of `levels`, in their order, each level following the next."""
     section_of = np.repeat(np.arange(len(morphology.types)), np.diff(morphology.offsets))
     passes = {
         prune_um: simplification(
@@ -188,10 +270,12 @@ def simplified(morphology: Morphology, levels: Sequence[Level]) -> MorphologyLev
         )
         for prune_um in {level.prune_um for level in levels}
     }
+    kept = []
     shapes = []
     for level in levels:
         order, opens, until = passes[level.prune_um]
         keep = until > level.tolerance_um
+        kept.append((order, opens, keep))
         index = order[keep]
         shapes.append(
             Polylines(
@@ -201,4 +285,9 @@ def simplified(morphology: Morphology, levels: Sequence[Level]) -> MorphologyLev
                 types=morphology.types[section_of[index]],
             )
         )
-    return MorphologyLevels(tuple(shapes), morphology.soma_center, morphology.soma_radius)
+    return MorphologyLevels(
+        tuple(shapes),
+        morphology.soma_center,
+        morphology.soma_radius,
+        tuple(nesting(morphology, *pair) for pair in pairwise(kept)),
+    )
