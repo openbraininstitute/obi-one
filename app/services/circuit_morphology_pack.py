@@ -10,7 +10,6 @@ import threading
 from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
 from enum import StrEnum
 from http import HTTPStatus
 from itertools import groupby
@@ -193,10 +192,7 @@ def finest_level_within(
                 cells[key] * found.shapes[place].segments for key, found in library.items()
             )
             if segments <= max_segments:
-                return level, {
-                    key: replace(found, shapes=(found.shapes[place],), nestings=())
-                    for key, found in library.items()
-                }
+                return level, {key: found.only(place) for key, found in library.items()}
     refuse(
         Refusal.TOO_MANY_SEGMENTS,
         f"The circuit's coarsest level has {segments} segments, over the {max_segments} the pack"

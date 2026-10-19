@@ -176,6 +176,13 @@ def towards(near: np.ndarray, far: np.ndarray, left: np.ndarray) -> np.ndarray:
     return near + (far - near) // left
 
 
+def travel(steps: np.ndarray, lengths: np.ndarray) -> np.ndarray:
+    """Each run's steps summed: from its first point to its last."""
+    if not len(lengths):
+        return np.zeros((0, steps.shape[1]), dtype=np.int64)
+    return np.add.reduceat(steps, np.cumsum(lengths) - lengths, axis=0)
+
+
 def back_references(runs: Runs, chunk_steps: int) -> tuple[np.ndarray, np.ndarray]:
     """For each run, 0 or how many runs back the nearest run of its cell ends where it starts.
 
@@ -185,8 +192,7 @@ def back_references(runs: Runs, chunk_steps: int) -> tuple[np.ndarray, np.ndarra
     count = len(runs.cells)
     if not count:
         return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64)
-    first = np.cumsum(runs.lengths) - runs.lengths
-    ends = runs.starts + np.add.reduceat(runs.steps, first, axis=0)
+    ends = runs.starts + travel(runs.steps, runs.lengths)
     inside = np.all((runs.starts[:, :3] >= 0) & (runs.starts[:, :3] < chunk_steps), axis=1)
     order = np.arange(count, dtype=np.int64)
     refs = np.zeros(count, dtype=np.int64)
@@ -254,10 +260,10 @@ def read_runs(data: bytes, at: int, count: int, segments: int) -> tuple[Runs, in
     stored, at = read_streams(data, at, segments, 4, signed=True)
     lengths = head[:, 2]
     steps = unguessed(stored, lengths)
-    travel = np.add.reduceat(steps, np.cumsum(lengths) - lengths, axis=0) if count else starts
+    travelled = travel(steps, lengths)
     for run, radius in zip(np.flatnonzero(~whole), referred[:, 0], strict=True):
         back = run - head[run, 3]
-        starts[run] = starts[back] + travel[back]
+        starts[run] = starts[back] + travelled[back]
         starts[run, 3] += radius
     return Runs(np.cumsum(head[:, 0]), head[:, 1].astype(np.uint8), lengths, starts, steps), at
 

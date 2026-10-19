@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import pairwise
 from typing import Self
 
@@ -119,7 +119,11 @@ class MorphologyLevels:
     shapes: tuple[Polylines, ...]
     soma_center: np.ndarray
     soma_radius: float
-    nestings: tuple[Nesting, ...] = ()
+    nestings: tuple[Nesting, ...]
+
+    def only(self, place: int) -> Self:
+        """The morphology at its level `place` alone."""
+        return replace(self, shapes=(self.shapes[place],), nestings=())
 
 
 def pruned(morphology: Morphology, prune_um: float) -> np.ndarray:

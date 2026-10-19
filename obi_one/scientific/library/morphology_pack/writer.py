@@ -57,8 +57,8 @@ class Placed:
     opens: list[np.ndarray] = field(default_factory=list)
     types: list[np.ndarray] = field(default_factory=list)
     cell: list[int] = field(default_factory=list)
-    counts: list[np.ndarray | None] = field(default_factory=list)
-    follows: list[np.ndarray | None] = field(default_factory=list)
+    counts: list[np.ndarray] = field(default_factory=list)
+    follows: list[np.ndarray] = field(default_factory=list)
 
     def add(
         self,
@@ -66,8 +66,8 @@ class Placed:
         shape: Polylines,
         rotation: np.ndarray,
         position: np.ndarray,
-        counts: np.ndarray | None,
-        follows: np.ndarray | None,
+        counts: np.ndarray,
+        follows: np.ndarray,
     ) -> None:
         self.grid.append(on_grid(shape.points @ rotation.T + position))
         self.radius.append(radius_steps(shape.radii))
@@ -85,18 +85,13 @@ class Placed:
         np.concatenate(self.grid, out=values[:, :3])
         np.concatenate(self.radius, out=values[:, 3])
         first = np.cumsum(points) - points
-        counts = [
-            np.zeros(n, dtype=np.int64) if c is None else c
-            for c, n in zip(self.counts, points, strict=True)
-        ]
-        follows = [f + at for f, at in zip(self.follows, first, strict=True) if f is not None]
         return Points(
             values,
             np.concatenate(self.opens),
             np.concatenate(self.types),
             np.repeat(np.array(self.cell, dtype=np.int32), points),
-            np.concatenate(counts),
-            np.concatenate([NONE, *follows]),
+            np.concatenate(self.counts),
+            np.concatenate([f + at for f, at in zip(self.follows, first, strict=True)]),
         )
 
 
@@ -278,14 +273,16 @@ def chunk_blocks(
 
 @dataclass(frozen=True)
 class Packed:
-    """A level's chunks, a row each: key, block, segments and reach; its runs and how it is read."""
+    """A level's chunks, a row each: block and reach; its runs and how it is read."""
 
-    keys: np.ndarray
     blocks: list[bytes]
-    segments: np.ndarray
     reach: np.ndarray
     runs: int
     read: Read
+
+    @property
+    def segments(self) -> np.ndarray:
+        return np.diff(self.read.edges)
 
 
 def packed_level(points: Points, boxes: Boxes, coarser: Read | None) -> Packed:
@@ -300,8 +297,7 @@ def packed_level(points: Points, boxes: Boxes, coarser: Read | None) -> Packed:
     blocks = chunk_blocks(chunks, follow, coarser, own, boxes.chunk_steps)
     corners = boxes.box(chunks) * boxes.chunk_steps
     reach = reach_of(points, order, edges, corners, boxes.chunk_steps)
-    read = Read(chunks, order, edges, points.counts)
-    return Packed(chunks, blocks, np.diff(edges), reach, len(own[0].run), read)
+    return Packed(blocks, reach, len(own[0].run), Read(chunks, order, edges, points.counts))
 
 
 def bounds_of(values: np.ndarray) -> np.ndarray:
@@ -341,14 +337,14 @@ class PackWriter:
         """Place a cell: each point is turned by `rotation`, a 3 by 3 matrix, then moved."""
         self.somas[cell, :3] = morphology.soma_center @ rotation.T + position
         self.somas[cell, 3] = morphology.soma_radius
-        nestings = morphology.nestings
-        if len(nestings) != len(morphology.shapes) - 1:
+        shapes, nestings = morphology.shapes, morphology.nestings
+        if len(nestings) != len(shapes) - 1:
             msg = "A morphology's nestings at odds with its levels"
             raise ValueError(msg)
-        for i, (placed, shape) in enumerate(zip(self.placed, morphology.shapes, strict=True)):
-            counts = nestings[i - 1].counts if i > 0 else None
-            follows = nestings[i].follows if i < len(nestings) else None
-            placed.add(cell, shape, rotation, position, counts, follows)
+        counts = [np.zeros(len(shapes[0].opens), dtype=np.int64), *(n.counts for n in nestings)]
+        follows = [*(n.follows for n in nestings), NONE]
+        for placed, shape, count, follow in zip(self.placed, shapes, counts, follows, strict=True):
+            placed.add(cell, shape, rotation, position, count, follow)
 
     def add_soma(self, cell: int, position: np.ndarray) -> None:
         """Place a cell that has no morphology: its soma alone, with a radius of zero."""
@@ -386,7 +382,7 @@ class PackWriter:
                     offset=offset,
                     base=i + 1 if i + 1 < len(made) else None,
                     chunks=Chunks(
-                        box=boxes.box(packed.keys).ravel().tolist(),
+                        box=boxes.box(packed.read.keys).ravel().tolist(),
                         bytes=[len(block) for block in packed.blocks],
                         segments=packed.segments.tolist(),
                         reach=packed.reach.tolist(),
