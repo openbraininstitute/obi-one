@@ -9,7 +9,8 @@ from entitysdk.types import ID, ValidationStatus
 
 from obi_one.core.task import Task
 from obi_one.scientific.library.memodel_calibration_validation import (
-    compute_calibration_and_validation,
+    compute_calibration_in_subprocess,
+    run_validations_in_subprocess,
 )
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.memodel_build import registration
@@ -47,6 +48,42 @@ def stage_memodel(
     return downloaded.hoc_path, downloaded.morphology_paths[0]
 
 
+def stage_calibrate_and_validate(
+    db_client: entitysdk.Client, memodel_id: ID, coord_root: Path, *, authorized_public: bool
+) -> None:
+    hoc_path, morphology_path = stage_memodel(db_client, memodel_id, coord_root)
+    calibration = compute_calibration_in_subprocess(
+        coord_root,
+        hoc_path,
+        morphology_path,
+        holding_current=INITIAL_HOLDING_CURRENT,
+        threshold_current=INITIAL_THRESHOLD_CURRENT,
+    )
+    # registered before validating, so the ME-model can be simulated while validation runs
+    registration.register_calibration(
+        db_client,
+        memodel_id=memodel_id,
+        calibration=calibration,
+        authorized_public=authorized_public,
+    )
+    validation = run_validations_in_subprocess(
+        coord_root,
+        hoc_path,
+        morphology_path,
+        cell_name=str(memodel_id),
+        holding_current=calibration["holding_current"],
+        threshold_current=calibration["rheobase"],
+        output_dir=coord_root / VALIDATION_FIGURES_DIRNAME,
+        n_processes=VALIDATION_PROCESSES,
+    )
+    registration.register_validation(
+        db_client,
+        memodel_id=memodel_id,
+        validation=validation,
+        authorized_public=authorized_public,
+    )
+
+
 class MEModelBuildTask(Task):
     """See docs/memodel-build.md. A failure after registration sets ``validation_status=error``."""
 
@@ -81,23 +118,11 @@ class MEModelBuildTask(Task):
                 generated=[str(memodel.id)],
             )
             registration.register_creator_and_classifications(self.config, db_client, memodel)
-            hoc_path, morphology_path = stage_memodel(db_client, memodel.id, coord_root)
-            results = compute_calibration_and_validation(
-                coord_root,
-                hoc_path,
-                morphology_path,
-                cell_name=self.config.info.campaign_name,
-                holding_current=INITIAL_HOLDING_CURRENT,
-                threshold_current=INITIAL_THRESHOLD_CURRENT,
-                output_dir=coord_root / VALIDATION_FIGURES_DIRNAME,
-                n_processes=VALIDATION_PROCESSES,
+            stage_calibrate_and_validate(
+                db_client, memodel.id, coord_root, authorized_public=authorized_public
             )
-            registration.register_calibration_and_validation(
-                db_client,
-                memodel_id=memodel.id,
-                calibration=results["calibration"],
-                validation=results["validation"],
-                authorized_public=authorized_public,
+            registration.set_validation_status(
+                db_client, memodel_id=memodel.id, validation_status=ValidationStatus.done
             )
         except Exception:
             try:
@@ -108,8 +133,5 @@ class MEModelBuildTask(Task):
                 L.exception("Could not set validation_status=error on MEModel %s", memodel.id)
             raise
 
-        registration.set_validation_status(
-            db_client, memodel_id=memodel.id, validation_status=ValidationStatus.done
-        )
         L.info("ME-model build completed: %s", memodel.id)
         return str(memodel.id)

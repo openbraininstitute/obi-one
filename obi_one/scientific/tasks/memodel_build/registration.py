@@ -77,13 +77,8 @@ def register_creator_and_classifications(
         register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
 
 
-def register_calibration_and_validation(
-    db_client: entitysdk.Client,
-    *,
-    memodel_id: ID,
-    calibration: dict,
-    validation: dict,
-    authorized_public: bool,
+def register_calibration(
+    db_client: entitysdk.Client, *, memodel_id: ID, calibration: dict, authorized_public: bool
 ) -> None:
     register_memodel_calibration_result(
         client=db_client,
@@ -93,6 +88,11 @@ def register_calibration_and_validation(
         rin=calibration.get("rin"),
         authorized_public=authorized_public,
     )
+
+
+def register_validation(
+    db_client: entitysdk.Client, *, memodel_id: ID, validation: dict, authorized_public: bool
+) -> None:
     register_memodel_validation_results(
         client=db_client,
         memodel_id=memodel_id,

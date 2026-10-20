@@ -86,16 +86,17 @@ class TestConfig:
 def steps(monkeypatch, tmp_path):
     """Replace every step of the task with a mock attached to one parent, to see their order."""
     parent = Mock()
-    parent.register_memodel.return_value = SimpleNamespace(id=MEMODEL_ID, name="L5 TPC")
+    parent.register_memodel.return_value = SimpleNamespace(id=MEMODEL_ID)
     parent.stage_memodel.return_value = (tmp_path / "cell.hoc", tmp_path / "cell.asc")
-    parent.compute.return_value = {"calibration": CALIBRATION, "validation": VALIDATION}
+    parent.calibrate.return_value = CALIBRATION
+    parent.validate.return_value = VALIDATION
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
     monkeypatch.setattr(registration, "register_creator_and_classifications", parent.register_links)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
-    monkeypatch.setattr(task_module, "compute_calibration_and_validation", parent.compute)
-    monkeypatch.setattr(
-        registration, "register_calibration_and_validation", parent.register_results
-    )
+    monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
+    monkeypatch.setattr(task_module, "run_validations_in_subprocess", parent.validate)
+    monkeypatch.setattr(registration, "register_calibration", parent.register_calibration)
+    monkeypatch.setattr(registration, "register_validation", parent.register_validation)
     monkeypatch.setattr(registration, "set_validation_status", parent.set_validation_status)
     monkeypatch.setattr(
         task_module.Task, "_update_execution_activity", parent.update_execution_activity
@@ -115,21 +116,25 @@ class TestExecute:
             "update_execution_activity",
             "register_links",
             "stage_memodel",
-            "compute",
-            "register_results",
+            "calibrate",
+            "register_calibration",
+            "validate",
+            "register_validation",
             "set_validation_status",
         ]
         assert steps.update_execution_activity.call_args.kwargs["generated"] == [str(MEMODEL_ID)]
-        compute_kwargs = steps.compute.call_args.kwargs
-        assert compute_kwargs["holding_current"] == task_module.INITIAL_HOLDING_CURRENT
-        assert compute_kwargs["threshold_current"] == task_module.INITIAL_THRESHOLD_CURRENT
-        assert compute_kwargs["cell_name"] == "L5 TPC"
-        steps.register_results.assert_called_once_with(
-            db_client,
-            memodel_id=MEMODEL_ID,
-            calibration=CALIBRATION,
-            validation=VALIDATION,
-            authorized_public=False,
+        calibrate_kwargs = steps.calibrate.call_args.kwargs
+        assert calibrate_kwargs["holding_current"] == task_module.INITIAL_HOLDING_CURRENT
+        assert calibrate_kwargs["threshold_current"] == task_module.INITIAL_THRESHOLD_CURRENT
+        steps.register_calibration.assert_called_once_with(
+            db_client, memodel_id=MEMODEL_ID, calibration=CALIBRATION, authorized_public=False
+        )
+        validate_kwargs = steps.validate.call_args.kwargs
+        assert validate_kwargs["cell_name"] == str(MEMODEL_ID)
+        assert validate_kwargs["holding_current"] == CALIBRATION["holding_current"]
+        assert validate_kwargs["threshold_current"] == CALIBRATION["rheobase"]
+        steps.register_validation.assert_called_once_with(
+            db_client, memodel_id=MEMODEL_ID, validation=VALIDATION, authorized_public=False
         )
         # done means validation ran, whether or not every test passed
         steps.set_validation_status.assert_called_once_with(
@@ -142,7 +147,8 @@ class TestExecute:
         )
 
         assert steps.register_memodel.call_args.kwargs["authorized_public"] is True
-        assert steps.register_results.call_args.kwargs["authorized_public"] is True
+        assert steps.register_calibration.call_args.kwargs["authorized_public"] is True
+        assert steps.register_validation.call_args.kwargs["authorized_public"] is True
 
     @pytest.mark.parametrize(
         "failing_step",
@@ -150,8 +156,10 @@ class TestExecute:
             "update_execution_activity",
             "register_links",
             "stage_memodel",
-            "compute",
-            "register_results",
+            "calibrate",
+            "register_calibration",
+            "validate",
+            "register_validation",
         ],
     )
     def test_failure_after_registration_sets_error_and_raises(self, tmp_path, steps, failing_step):
@@ -166,8 +174,28 @@ class TestExecute:
             db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.error
         )
 
+    def test_a_failed_done_status_sets_error(self, tmp_path, steps):
+        steps.set_validation_status.side_effect = [ConnectionError("502"), None]
+        db_client = _db_client()
+
+        with pytest.raises(ConnectionError):
+            _task(tmp_path).execute(db_client=db_client, execution_activity_id=ACTIVITY_ID)
+
+        assert steps.set_validation_status.call_args.kwargs["validation_status"] == (
+            ValidationStatus.error
+        )
+
+    def test_a_failed_validation_keeps_the_registered_calibration(self, tmp_path, steps):
+        steps.validate.side_effect = RuntimeError("NEURON crashed")
+
+        with pytest.raises(RuntimeError, match="NEURON crashed"):
+            _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
+
+        steps.register_calibration.assert_called_once()
+        steps.register_validation.assert_not_called()
+
     def test_a_failed_error_status_keeps_the_original_exception(self, tmp_path, steps):
-        steps.compute.side_effect = RuntimeError("NEURON crashed")
+        steps.calibrate.side_effect = RuntimeError("NEURON crashed")
         steps.set_validation_status.side_effect = ConnectionError("502")
 
         with pytest.raises(RuntimeError, match="NEURON crashed"):
@@ -271,12 +299,11 @@ class TestRegistration:
         )
         db_client = Mock()
 
-        registration.register_calibration_and_validation(
-            db_client,
-            memodel_id=MEMODEL_ID,
-            calibration=CALIBRATION,
-            validation=VALIDATION,
-            authorized_public=False,
+        registration.register_calibration(
+            db_client, memodel_id=MEMODEL_ID, calibration=CALIBRATION, authorized_public=False
+        )
+        registration.register_validation(
+            db_client, memodel_id=MEMODEL_ID, validation=VALIDATION, authorized_public=False
         )
 
         register_calibration.assert_called_once_with(

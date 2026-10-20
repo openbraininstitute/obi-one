@@ -16,16 +16,16 @@ The ME-model gets its species, strain and brain region from the morphology, its 
 
 ## Entities
 
-Generation registers a `memodel_build__campaign` TaskConfig and one `memodel_build__config` TaskConfig, linked by a `memodel_build__config_generation` TaskActivity. The build runs as a `memodel_build__execution` TaskActivity. All of them list the morphology and the e-model as inputs.
+Generation registers a `memodel_build__campaign` TaskConfig and one `memodel_build__config` TaskConfig, linked by a `memodel_build__config_generation` TaskActivity. The build runs as a `memodel_build__execution` TaskActivity. Both TaskConfigs list the morphology and the e-model as inputs; the generation activity uses the campaign and the execution activity uses the config.
 
 The task:
 
 1. registers the `MEModel` with `validation_status=created` and writes it to the activity's `generated` straight away, so it can be linked while the rest runs, then registers its creator `Contribution` and its m-type and e-type classifications;
 2. downloads the ME-model's hoc, morphology and mechanisms and compiles the mechanisms;
-3. calibrates it (holding current, rheobase and input resistance, starting from a holding current of 0 nA and a threshold current of 0.1 nA) and runs the bluecellulab validations with the calibrated currents;
-4. registers an `MEModelCalibrationResult` and one `ValidationResult` per validation, then sets `validation_status=done`.
+3. calibrates it (holding current, rheobase and input resistance, starting from a holding current of 0 nA and a threshold current of 0.1 nA) and registers an `MEModelCalibrationResult` straight away, so the ME-model can be simulated while it is validated;
+4. runs the bluecellulab validations with the calibrated currents, registers one `ValidationResult` per validation, then sets `validation_status=done`.
 
-`done` means the validations ran; each `ValidationResult` says whether its test passed. When a step after the registration fails, the ME-model stays with `validation_status=error` and the activity ends in error.
+`done` means the validations ran; each `ValidationResult` says whether its test passed. When a step after the registration fails, the ME-model stays with `validation_status=error` and the activity ends in error. A calibration registered before a failed validation stays.
 
 ## Running
 
