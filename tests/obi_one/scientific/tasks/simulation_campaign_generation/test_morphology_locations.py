@@ -6,11 +6,14 @@ materialises the locations against the circuit's morphologies, writes them to
 name instead of carrying a node set.
 """
 
+from typing import get_args
+
 import pytest
 from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
@@ -40,11 +43,18 @@ from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomat
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 from obi_one.scientific.unions_and_references.morphology_locations import (
     CircuitMorphologyLocationUnion,
     MorphologyLocationsReference,
     MorphologyLocationUnion,
+    SingleMorphologySamplingLocationUnion,
 )
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
@@ -122,6 +132,47 @@ class TestUnionCoverage:
             CircuitMorphologyLocationUnion
         )
         assert "ExplicitMorphologyLocations" in union_member_names(MorphologyLocationUnion)
+
+    def test_every_single_morphology_sampling_block_implements_points_on(self):
+        """Its consumers call `points_on` directly, with no branch for anything else.
+
+        Synaptome placement and the morphology-locations plotting task both evaluate whatever
+        block they are given against one morphology, so a member without `points_on` would fail
+        at runtime rather than being rejected by the schema.
+        """
+        members = get_args(get_args(SingleMorphologySamplingLocationUnion)[0])
+
+        assert members, "the union should not be empty"
+        for block in members:
+            assert issubclass(block, MorphologyLocationsBlock), (
+                f"{block.__name__} is offered where `points_on` is called but does not implement it"
+            )
+
+    def test_per_neuron_locations_are_kept_out_of_the_sampling_union(self):
+        """Their rows already name their neurons, so there is no morphology to sample against."""
+        assert "PerNeuronExplicitMorphologyLocations" not in union_member_names(
+            SingleMorphologySamplingLocationUnion
+        )
+
+    @pytest.mark.parametrize(
+        ("config_class", "offered"),
+        [
+            (CircuitSimulationSingleConfig, True),
+            (MEModelSimulationSingleConfig, False),
+            (MEModelWithSynapsesCircuitSimulationSingleConfig, False),
+        ],
+    )
+    def test_per_neuron_locations_are_only_offered_for_multi_neuron_circuits(
+        self, config_class, offered
+    ):
+        """A node id has nothing to disambiguate when one neuron is simulated.
+
+        In the single-neuron forms the viewer writes the points it picks into
+        ``ExplicitMorphologyLocations``, so offering the per-neuron block there is a dead option.
+        """
+        picker = get_args(config_class.model_fields["morphology_locations"].annotation)[1]
+
+        assert ("PerNeuronExplicitMorphologyLocations" in union_member_names(picker)) is offered
 
 
 class TestPerNeuronExplicitLocations:

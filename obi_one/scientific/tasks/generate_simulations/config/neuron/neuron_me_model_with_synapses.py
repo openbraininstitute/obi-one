@@ -22,7 +22,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
-    MorphologyLocationUnion,
+    SingleMorphologySamplingLocationUnion,
 )
 
 L = logging.getLogger(__name__)
@@ -91,8 +91,9 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     )
 
     # Widened back after the circuit narrowing: this configuration simulates a single neuron, so
-    # hand-picked section/offset points are unambiguous here.
-    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+    # hand-picked section/offset points are unambiguous here. Per-neuron explicit locations stay
+    # out for the same reason -- there is only one neuron for a point to belong to.
+    morphology_locations: dict[str, SingleMorphologySamplingLocationUnion] = Field(
         default_factory=dict,
         title="Morphology Locations",
         description=(

@@ -16,7 +16,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
-    MorphologyLocationUnion,
+    SingleMorphologySamplingLocationUnion,
 )
 from obi_one.scientific.unions_and_references.recordings import (
     RecordingReference,
@@ -47,7 +47,10 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         },
     )
 
-    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+    # Narrowed to the blocks evaluated against one morphology. Per-neuron explicit locations
+    # name a node id per point, which has nothing to disambiguate when a single neuron is
+    # simulated: the viewer picks points straight into `ExplicitMorphologyLocations` there.
+    morphology_locations: dict[str, SingleMorphologySamplingLocationUnion] = Field(
         default_factory=dict,
         title="Morphology Locations",
         description=(
