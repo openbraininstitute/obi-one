@@ -29,6 +29,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     TargetEFeaturesInput,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    bpem_distribution_name,
     to_bpem_custom_distributions,
     to_bpem_distributions,
 )
@@ -47,16 +48,33 @@ class BlockGroup(StrEnum):
     SETTINGS = "Settings"
 
 
-def _used_distribution_names(selection: ParametersSelection) -> set[str]:
+def _used_distribution_names(
+    selection: ParametersSelection,
+    distributions: Mapping[str, DistanceDependentDistributionUnion],
+) -> set[str]:
+    """Collect the names of distributions referenced by parameters, as the resolver sees them.
+
+    Parameters reference a distribution by its ``distance_dependent_distributions`` key, which
+    is also the resolver name for every distribution except runtime-name standards (``step``);
+    those are translated to their canonical name via :func:`bpem_distribution_name`. References
+    that are not keys (e.g. a bare ``uniform``) pass through unchanged.
+    """
+
+    def resolver_name(reference: str) -> str:
+        distribution = distributions.get(reference)
+        if distribution is None:
+            return reference
+        return bpem_distribution_name(reference, distribution)
+
     used_distributions = {"uniform"}
     used_distributions.update(
-        parameter.distribution
+        resolver_name(parameter.distribution)
         for selections in selection.mechanism_regions.values()
         for assignment in selections
         for parameter in assignment.parameters.values()
     )
     used_distributions.update(
-        parameter.distribution
+        resolver_name(parameter.distribution)
         for parameters in selection.base_parameters.values()
         for parameter in parameters.values()
     )
@@ -87,10 +105,10 @@ def _validate_section_list_availability(
 
 def _validate_used_distributions(
     selection: ParametersSelection,
-    custom_distributions: Mapping[str, DistanceDependentDistributionUnion],
+    distributions: Mapping[str, DistanceDependentDistributionUnion],
 ) -> None:
-    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
-    used_distributions = _used_distribution_names(selection)
+    bpem_custom_distributions = to_bpem_custom_distributions(distributions)
+    used_distributions = _used_distribution_names(selection, distributions)
     resolved = {
         name: resolve_distance_dependent_distribution(name, bpem_custom_distributions)
         for name in used_distributions

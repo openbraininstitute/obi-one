@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -37,6 +38,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     EModelOptimisationParameters,
+    ExponentialDistanceDependentDistribution,
     GlobalParameterSelection,
     MechanismRegionSelection,
     MechanismsBySectionList,
@@ -47,6 +49,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     ParameterSelection,
     ParametersSelection,
     PhasePlotSettings,
+    StepDistanceDependentDistribution,
     UniformDistanceDependentDistribution,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
@@ -564,16 +567,27 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
             return path
 
     class FakeMorphology:
-        id_str = "morphology-1"
+        id = "morphology-1"
 
-        def swc_file_content(self, *, db_client):
+        def entity(self, db_client=None):
             del db_client
-            return "1  soma  0 0 0 1 -1\\n"
+            return self
+
+    def fetch_assets(entity, selection, output_path):
+        del entity, selection
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("1  soma  0 0 0 1 -1\\n", encoding="utf-8")
+        result = Mock()
+        result.one.return_value = SimpleNamespace(path=path)
+        return result
 
     config = SimpleNamespace(
         initialize=SimpleNamespace(emodel="test"),
         morphology=SimpleNamespace(cell_morphology=FakeMorphology()),
     )
+    db_client = Mock()
+    db_client.fetch_assets.side_effect = fetch_assets
 
     features_path = staging.download_extraction_features(
         config,
@@ -581,7 +595,7 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
         tmp_path,
         object(),
     )
-    morphology_filename = staging.stage_morphology(config, tmp_path, object())
+    morphology_filename = staging.stage_morphology(config, tmp_path, db_client)
 
     assert features_path == tmp_path / "config" / "features" / "test.json"
     assert features_path.read_text(encoding="utf-8") == '{"features": []}'
@@ -1857,7 +1871,8 @@ def test_distribution_dictionary_accepts_standard_entries_keyed_by_fixed_name():
             }
         )
     )
-    # Standard entries are forwarded under their fixed name; custom ones under their key.
+    # Every entry keeps its dictionary key, except standards BluePyEModel references by their
+    # fixed name: step (runtime placeholders) and uniform (the "no distribution" default).
     bpem = params_definition_input_from_config(config).distance_dependent_distributions
     assert set(bpem) == {"uniform", "step", "decay"}
 
@@ -1878,18 +1893,95 @@ def test_standard_distribution_settings_reach_bluepyemodel():
         )
     )
     bpem = params_definition_input_from_config(config).distance_dependent_distributions
-    assert bpem["exp"].soma_ref_location == pytest.approx(0.0)
+    # Exp keeps its dictionary key; step normalizes to its canonical runtime name.
+    assert bpem["Exp 1"].soma_ref_location == pytest.approx(0.0)
     assert bpem["step"].soma_ref_location == pytest.approx(0.25)
     assert bpem["step"].to_emc_dict()["name"] == "step"
 
 
-def test_distribution_dictionary_rejects_duplicate_names():
-    with pytest.raises(ValueError, match=r"declared more than once: \['exp'\]"):
+def test_distribution_dictionary_allows_same_type_under_distinct_keys():
+    # Two exponentials under distinct keys are distinct distributions: each keeps its key.
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "a": {"type": "ExponentialDistanceDependentDistribution"},
+                "b": {"type": "ExponentialDistanceDependentDistribution"},
+            }
+        )
+    )
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert {"a", "b"} <= set(bpem)
+
+
+def test_distribution_dictionary_rejects_duplicate_runtime_names():
+    # Runtime-name standards (step) normalize to their canonical name, so two of them collide.
+    with pytest.raises(ValueError, match=r"declared more than once: \['step'\]"):
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 distance_dependent_distributions={
-                    "a": {"type": "ExponentialDistanceDependentDistribution"},
-                    "b": {"type": "ExponentialDistanceDependentDistribution"},
+                    "s1": {"type": "StepDistanceDependentDistribution"},
+                    "s2": {"type": "StepDistanceDependentDistribution"},
                 }
             )
         )
+
+
+def test_params_compilation_resolves_keyed_and_runtime_name_distributions():
+    """Compile params.json through BluePyEModel for the full range of distribution kinds.
+
+    This is the launch run's params/recipe stage without entitycore or NEURON. It guards the
+    distribution-naming contract end to end: a standard kept under the user's key (``Exp 0``),
+    standards BluePyEModel references by canonical name (``uniform`` default, ``step`` runtime
+    placeholders), and a custom referenced by key. Every emitted parameter reference must point
+    at a distribution the recipe declares, which is exactly what used to crash the compiler.
+    """
+    selection = ParametersSelection(
+        base_parameters={
+            "all": {
+                "cm": ParameterSelection(value=OptimizationValue(value=1.0), distribution="Exp 0"),
+                "g_pas": ParameterSelection(
+                    value=OptimizationValue(value=1.0), distribution="My Step"
+                ),
+                "e_pas": ParameterSelection(
+                    value=OptimizationValue(value=-70.0), distribution="Decay"
+                ),
+                "Ra": ParameterSelection(value=OptimizationValue(value=100.0)),
+            }
+        },
+        distribution_parameters={"Decay": {"constant": OptimizationValue(value=2.0)}},
+    )
+    config = SimpleNamespace(
+        parameters_selection=selection,
+        distance_dependent_distributions={
+            "Exp 0": ExponentialDistanceDependentDistribution(),
+            "Uniform 1": UniformDistanceDependentDistribution(),
+            "My Step": StepDistanceDependentDistribution(),
+            "Decay": CustomDistanceDependentDistribution(
+                function="math.exp({distance}*{constant})*{value}",
+                parameters=[{"name": "constant", "value": {"value": 2.0}}],
+            ),
+        },
+    )
+
+    params = build_params_definition(params_definition_input_from_config(config), {})
+
+    # The keyed standard keeps its key; runtime-name standards use canonical names; uniform (the
+    # "no distribution" default) is never emitted.
+    assert set(params["distributions"]) == {"Exp 0", "step", "Decay"}
+    assert params["distributions"]["Exp 0"]["fun"] == (
+        "(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}"
+    )
+
+    references = {
+        parameter["name"]: parameter.get("dist")
+        for parameter in _parameter_rows(params)
+        if parameter["location"] == "all"
+    }
+    assert references == {
+        "cm": "Exp 0",
+        "g_pas": "step",
+        "e_pas": "Decay",
+        "Ra": None,  # uniform default: compiled without a dist key
+    }
+    # Every emitted reference resolves to a declared distribution (no dangling references).
+    assert {ref for ref in references.values() if ref} <= set(params["distributions"])

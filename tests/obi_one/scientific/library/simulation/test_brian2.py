@@ -827,6 +827,25 @@ def test_connection_override_weight_scales_circuit_weights(tmp_path):
     npt.assert_allclose(weights[~from_0], 250)
 
 
+def test_connection_overrides_at_the_same_time_apply_in_config_order(tmp_path):
+    # As in neurodamus, the last of the overrides selecting a synapse sets its weight.
+    factors = [2.0, 0.0, 0.5, 1.5]
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "connection_overrides": [
+            {"name": f"Scale{k}", "source": "0", "target": "All", "delay": 0.0, "weight": factor}
+            for k, factor in enumerate(factors)
+        ],
+    }
+    net = _run_simulation(tmp_path, config)[1]
+
+    weights = np.asarray(net.synapses.w[:] / brian2.units.mV)
+    from_0 = np.asarray(net.synapses.i[:]) == 0
+    npt.assert_allclose(weights[from_0], 1.5 * 250)
+
+
 def _replay_input(path, delay):
     return {
         "input_type": "spikes",

@@ -135,6 +135,9 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
 
     _weight: float = PrivateAttr(default=0.0)
 
+    def _get_weight(self) -> float:
+        return self._weight
+
     def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps,
@@ -152,7 +155,7 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
             new_manipulation = manipulation.copy()
             new_manipulation["name"] = f"{name}_{t_ind}" if n_timestamps > 1 else name
             new_manipulation["delay"] = timestamp + self.timestamp_offset
-            new_manipulation["weight"] = self._weight
+            new_manipulation["weight"] = self._get_weight()
             manipulations_list.append(new_manipulation)
 
         return manipulations_list
