@@ -7,6 +7,7 @@ name instead of carrying a node set.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.tuple import NamedTuple
@@ -161,16 +162,14 @@ class TestPerNeuronExplicitLocations:
         """The target neurons are the ones named by the points."""
         assert "neuron_set" not in PerNeuronExplicitMorphologyLocations.model_fields
 
-    def test_an_empty_block_referenced_by_a_stimulus_is_rejected(
-        self, morphology_circuit, tmp_path
-    ):
-        config = _locations_config(morphology_circuit, PerNeuronExplicitMorphologyLocations())
+    def test_locations_are_required(self):
+        """There is no usable empty state, so the block cannot be built without a point."""
+        with pytest.raises(ValidationError, match="locations"):
+            PerNeuronExplicitMorphologyLocations()
 
-        with pytest.raises(
-            ConfigValidationError,
-            match="must contain at least one point before they can be used",
-        ):
-            generate(config, tmp_path)
+    def test_an_empty_list_of_locations_is_rejected(self):
+        with pytest.raises(ValidationError, match="at least 1 item"):
+            PerNeuronExplicitMorphologyLocations(locations=())
 
 
 class TestCompartmentSetGeneration:

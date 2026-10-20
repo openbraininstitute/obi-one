@@ -15,7 +15,9 @@ deliberate selection on the first neuron.
 
 ### Value
 
-The value is a nullable array of location rows, with at least one row when set. Each row has:
+The value is an array of location rows. The field is required and the array must hold at least one
+row (`minItems: 1`), so there is no empty or null state to represent: a block of locations that
+selects nothing has no meaning. Each row has:
 
 - `node_id`: the neuron the point sits on, a SONATA node id (integer, minimum 0).
 - `section_id`: the SONATA global section id, `0` for the soma and neurites following in
@@ -41,10 +43,6 @@ same click, so `node_id` is expected to come from the selection rather than bein
 `section_id` matches the `sonata_section_id` the viewer already receives for each rendered section,
 so a stored row can be mapped back onto the morphology without a further lookup.
 
-The field is nullable and defaults to `null`, meaning nothing has been picked yet. A block whose
-`locations` is still unset is rejected when a stimulus or recording references it, rather than
-silently targeting nothing.
-
 Reference schemas:
 [per_neuron_morphology_location_selection](reference_schemas/per_neuron_morphology_location_selection.json)
 and the row it references,
@@ -53,18 +51,15 @@ and the row it references,
 ### Example Pydantic implementation
 
 ```py
-locations: Annotated[tuple[NeuronMorphologyLocationPoint, ...], Field(min_length=1)] | None = (
-    Field(
-        default=None,
-        title="Explicit locations",
-        description=(
-            "The exact points to target, each on a named neuron. Click anywhere on a neuron in "
-            "the 3D view to add one, or type it in by hand. ..."
-        ),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION,
-        },
-    )
+locations: Annotated[tuple[NeuronMorphologyLocationPoint, ...], Field(min_length=1)] = Field(
+    title="Explicit locations",
+    description=(
+        "The exact points to target, each on a named neuron. Click anywhere on a neuron in "
+        "the 3D view to add one, or type it in by hand. ... At least one point is required."
+    ),
+    json_schema_extra={
+        SchemaKey.UI_ELEMENT: UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION,
+    },
 )
 ```
 

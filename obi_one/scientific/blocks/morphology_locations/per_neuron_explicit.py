@@ -3,7 +3,6 @@ from typing import Annotated, ClassVar
 from pydantic import Field, NonNegativeInt
 
 from obi_one.core.block import Block
-from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.explicit import MorphologyLocationPoint
 from obi_one.scientific.library.entity_property_types import (
@@ -41,32 +40,22 @@ class PerNeuronExplicitMorphologyLocations(Block):
         },
     }
 
-    locations: Annotated[tuple[NeuronMorphologyLocationPoint, ...], Field(min_length=1)] | None = (
-        Field(
-            default=None,
-            title="Explicit locations",
-            description=(
-                "The exact points to target, each on a named neuron. Click anywhere on a neuron in "
-                "the 3D view to add one, or type it in by hand. Each row is a single point: which "
-                "neuron it belongs to, which branch of that neuron it sits on, and how far along "
-                "that branch it is — 0 is the start of the branch, 1 is the end, 0.5 is halfway. "
-                "Branch 0 is always the soma. At least one point is required."
-            ),
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION,
-            },
-        )
+    locations: Annotated[tuple[NeuronMorphologyLocationPoint, ...], Field(min_length=1)] = Field(
+        title="Explicit locations",
+        description=(
+            "The exact points to target, each on a named neuron. Click anywhere on a neuron in "
+            "the 3D view to add one, or type it in by hand. Each row is a single point: which "
+            "neuron it belongs to, which branch of that neuron it sits on, and how far along "
+            "that branch it is — 0 is the start of the branch, 1 is the end, 0.5 is halfway. "
+            "Branch 0 is always the soma. At least one point is required."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION,
+        },
     )
 
     def compartment_rows(self) -> tuple[tuple[int, int, float], ...]:
         """Return the selected points as SONATA `[node_id, section_id, offset]` rows."""
-        if not self.locations:
-            msg = (
-                "Per-neuron explicit morphology locations must contain at least one point "
-                "before they can be used as a stimulus or recording target."
-            )
-            raise ConfigValidationError(msg)
-
         return tuple(
             (location.node_id, location.section_id, location.offset) for location in self.locations
         )
