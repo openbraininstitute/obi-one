@@ -55,10 +55,10 @@ Some tasks depend on private packages from AWS CodeArtifact (currently `ultralis
 
 ## Image overrides
 
-Some executor images ship a build that is not published on any index, such as the NEURON dev build of `python_3_12_openmpi5_neuron9_neurodamus` (`app/types.py`). Putting that version in the `*.in` would make the resolution unsatisfiable, so it goes in a sibling `<name>.override` instead:
+Some executor images ship a build that is not published on any index, such as the NEURON dev build of `python_3_12_openmpi5_neuron9_neurodamus` (`app/types.py`). Putting that version in the `*.in` would make the resolution unsatisfiable, so it goes in a sibling `<name>.override` instead. Tasks that share that image share one requirements set (`neurodamus_image`) and its override:
 
 ```
-# neurodamus_simulation.override
+# neurodamus_image.override
 # Provided by the python_3_12_openmpi5_neuron9_neurodamus launch-system image.
 # Maintained with that image; not edited by task developers.
 neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
