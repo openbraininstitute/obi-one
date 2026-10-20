@@ -13,7 +13,7 @@ from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 from obi_one.core.registry import TaskSpec
 from obi_one.types import TaskType
-from obi_one.utils.lazy_import import class_name
+from obi_one.utils.lazy_import import ClassRef, class_name
 
 # Module paths shared by several specs below, extracted so each class reference fits on
 # one line. ``_GENERATE_SIMULATION_TASK_REF`` is a full reference, reused by every task
@@ -440,3 +440,40 @@ def get_task_spec_for_scan_config(config_cls: type) -> TaskSpec | None:
 def get_task_spec_for_single_config(config_cls: type) -> TaskSpec | None:
     """Return the task spec for a SingleConfig class, or None if it has none."""
     return _lookup_task_spec(_SINGLE_CONFIG_NAME_INDEX, config_cls)
+
+
+_SCAN_CONFIG_EXTRA_REFS: tuple[ClassRef, ...] = (
+    (
+        "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases",
+        "SimulationsForm",
+    ),
+)
+"""ScanConfig classes included in ``ScanConfigsUnion`` but not owned by a single ``TaskType``."""
+
+
+def iter_scan_config_refs() -> tuple[ClassRef, ...]:
+    """Return scan-config class refs for union membership without importing task modules.
+
+    Includes every available ``TaskSpec.scan_config_ref`` plus ``_SCAN_CONFIG_EXTRA_REFS``
+    (for example backward-compatible aliases).
+    """
+    refs: list[ClassRef] = []
+    seen: set[str] = set()
+    for task_type, task_spec in TASK_SPECS.items():
+        scan_config_ref = task_spec.scan_config_ref
+        if scan_config_ref is None:
+            continue
+        if not _is_task_type_available(task_type):
+            continue
+        name = class_name(scan_config_ref)
+        if name in seen:
+            continue
+        seen.add(name)
+        refs.append(scan_config_ref)
+    for extra_ref in _SCAN_CONFIG_EXTRA_REFS:
+        name = class_name(extra_ref)
+        if name in seen:
+            continue
+        seen.add(name)
+        refs.append(extra_ref)
+    return tuple(refs)
