@@ -20,7 +20,7 @@ from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, MEModel
 from entitysdk.staging.memodel import _extract_hoc_template_name  # ruff: ignore[import-private-name]
-from morph_spines import MorphologyWithSpines, load_morphology_with_spines
+from morph_spines import MorphologyWithSpines
 from neurom.core import Morphology as NeuromMorphology
 from voxcell import CellCollection
 
