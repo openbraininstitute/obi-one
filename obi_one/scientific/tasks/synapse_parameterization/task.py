@@ -8,7 +8,7 @@ from pydantic import PrivateAttr
 
 from obi_one.config import settings
 from obi_one.core.task import Task
-from obi_one.db_sdk import db_sdk
+from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.library.circuit import Circuit, ensure_mechanisms_dir
 from obi_one.scientific.tasks.synapse_parameterization.config import (
@@ -119,7 +119,7 @@ class SynapseParameterizationTask(Task):
         # Resolve the circuit (local path or staging from ID), then copy it into the output
         # directory so that its synapse parameters can be modified in place.
         with BenchmarkTracker.section("resolve_circuit"):
-            staged_circuit, self._circuit_entity = db_sdk.resolve_circuit(
+            staged_circuit, self._circuit_entity = circuit_db_sdk.resolve_circuit(
                 self.config.initialize.circuit,
                 db_client=db_client,  # ty:ignore[invalid-argument-type]
                 entity_cache=entity_cache,

@@ -96,9 +96,17 @@ There are two major types of such UI elements:
 
         - [axon_modifier](components/axon_modifier/axon_modifier.md) (one-off)
 
+        - [distance_function_input](components/distance_function_input/distance_function_input.md)
+
+        - [distance_function_input_nullable](components/distance_function_input_nullable/distance_function_input_nullable.md)
+
+        - [distribution_parameter_list](components/distribution_parameter_list/distribution_parameter_list.md)
+
         - [object](components/object/object.md)
 
         - [stochasticity](components/stochasticity/stochasticity.md) (one-off)
+
+        - [ion_channel_model_properties](components/ion_channel_model_properties/ion_channel_model_properties.md) (one-off)
 
         - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 

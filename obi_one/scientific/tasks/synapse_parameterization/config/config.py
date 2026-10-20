@@ -16,7 +16,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPointNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
@@ -240,7 +240,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
         },
     )
 
-    neuron_sets: dict[str, NEURONSynapseParameterizationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSynapseParameterizationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

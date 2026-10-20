@@ -39,7 +39,7 @@ def get_client(
         http_client=request.state.entitysdk_http_client,
         token_manager=token_manager,
         local_store=(
-            entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)  # ty:ignore[invalid-argument-type]
+            entitysdk.LocalAssetStore(prefix=settings.MOUNT_BASE_DIR)
             if settings.MOUNT_BASE_DIR
             else None
         ),

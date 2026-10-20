@@ -6,13 +6,23 @@ generated config stays relocatable.
 """
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 
-import obi_one as obi
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -22,11 +32,15 @@ from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimu
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     MORPHOLOGY_CIRCUIT_PATH,
     MULTI_POPULATION_CIRCUIT_PATH,
+    FakeDBClient,
+    RecordedCall,
     build_config,
     generate,
 )
 
 CIRCUIT_ID = "11111111-2222-3333-4444-555555555555"
+OTHER_CIRCUIT_ID = "66666666-7777-8888-9999-000000000000"
+ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 
 
 @pytest.fixture
@@ -63,7 +77,7 @@ class TestLocalCircuit:
         relative_path = os.path.relpath(MULTI_POPULATION_CIRCUIT_PATH, Path.cwd())
         config = build_config(
             CircuitSimulationSingleConfig,
-            circuit=obi.Circuit(name="relative", path=relative_path),
+            circuit=Circuit(name="relative", path=relative_path),
         )
 
         result = generate(config, tmp_path)
@@ -118,13 +132,15 @@ class TestCircuitFromID:
 
         monkeypatch.setattr(CircuitFromID, "stage_circuit", _stage_circuit)
 
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
                 "Locations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                     neuron_set=locations.ref, amplitude=0.2, duration=50.0
                 ),
             },
@@ -161,6 +177,60 @@ class TestCircuitFromID:
         generate(self._config(), tmp_path, db_client=db_client)
 
         assert staging_recorder[0]["db_client"] is db_client
+
+
+@dataclass
+class _ArrayDBClient(FakeDBClient):
+    """A recorder that also serves the recording array, as built for ``array_circuit_id``."""
+
+    array_circuit_id: str = CIRCUIT_ID
+
+    def get_entity(self, *, entity_id, entity_type):
+        self.calls.append(
+            RecordedCall(
+                method="get_entity", kwargs={"entity_id": entity_id, "entity_type": entity_type}
+            )
+        )
+        entity_uuid = entity_id if isinstance(entity_id, UUID) else UUID(entity_id)
+        return SimpleNamespace(id=entity_uuid, circuit_id=UUID(self.array_circuit_id))
+
+
+@pytest.mark.usefixtures("staging_recorder")
+class TestRecordingArrayCircuit:
+    """An LFP recording's array must have been built for the circuit being simulated."""
+
+    def _config(self):
+        return build_config(
+            CircuitSimulationSingleConfig,
+            circuit=CircuitFromID(id_str=CIRCUIT_ID),
+            blocks={
+                "LFP": ExtracellularElectrodeArrayRecordingBlock(
+                    electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
+                )
+            },
+            initialize={"simulator": "CORENEURON"},
+        )
+
+    def test_an_array_built_for_the_simulated_circuit_is_accepted(self, tmp_path):
+        result = generate(self._config(), tmp_path, db_client=_ArrayDBClient())
+
+        assert result.reports["LFP"]["electrodes_file"] == f"{ARRAY_ID}.h5"
+
+    def test_an_array_built_for_another_circuit_is_refused(self, tmp_path):
+        """The UI only offers the circuit's own arrays, but a config can come from elsewhere."""
+        db_client = _ArrayDBClient(array_circuit_id=OTHER_CIRCUIT_ID)
+
+        with pytest.raises(ConfigValidationError, match=f"built for circuit '{OTHER_CIRCUIT_ID}'"):
+            generate(self._config(), tmp_path, db_client=db_client)
+
+    def test_the_refusal_comes_before_anything_is_written(self, tmp_path):
+        db_client = _ArrayDBClient(array_circuit_id=OTHER_CIRCUIT_ID)
+
+        with pytest.raises(ConfigValidationError):
+            generate(self._config(), tmp_path, db_client=db_client)
+
+        assert db_client.calls_to("update_entity") == []
+        assert db_client.calls_to("upload_file") == []
 
 
 class TestCircuitResolutionErrors:

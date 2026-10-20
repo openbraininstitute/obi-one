@@ -37,7 +37,6 @@ from app.services.morphology import (
 )
 from obi_one.db_sdk.registration.morphology import (
     register_morphometrics,
-    try_generate_and_upload_mesh,
     upload_morphology_content,
     upload_morphology_file,
 )
@@ -69,7 +68,6 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 class MorphologyRegistrationResponse(BaseModel):
     entity_id: str
     measurement_entity_id: str | None
-    mesh_asset_id: str | None
     status: str
     morphology_name: str
     lifecycle_status: str
@@ -279,20 +277,6 @@ def _prepare_entity_payload(
     return entity_payload
 
 
-def _resolve_swc_bytes_for_mesh(
-    _client: Any,
-    converted_files: MorphologyFiles,
-    file_extension: str,
-    content: bytes,
-) -> bytes | None:
-    """Return the SWC bytes to use for mesh generation, or None if not applicable."""
-    if converted_files.swc and converted_files.swc.exists():
-        return converted_files.swc.read_bytes()
-    if file_extension == ".swc":
-        return content
-    return None
-
-
 def _upload_converted_morphology_assets(
     client: Client,
     entity_uuid: UUID,
@@ -317,8 +301,8 @@ def _register_disqualified_morphology(
 ) -> MorphologyRegistrationResponse:
     """Register a morphology that failed validation, keeping the original upload.
 
-    Applies when the file cannot be parsed or cannot be converted. Conversion, morphometrics
-    and meshing are skipped, since none of them can run on a file that could not be processed.
+    Applies when the file cannot be parsed or cannot be converted. Conversion and morphometrics
+    are skipped, since neither can run on a file that could not be processed.
     """
     L.warning(
         "Morphology '%s' failed validation, registering as disqualified: %s",
@@ -352,7 +336,6 @@ def _register_disqualified_morphology(
     return MorphologyRegistrationResponse(
         entity_id=str(entity_uuid),
         measurement_entity_id=None,
-        mesh_asset_id=None,
         status="success",
         morphology_name=morphology_name,
         lifecycle_status=EntityLifecycleStatus.disqualified.value,
@@ -434,18 +417,9 @@ async def _run_pipeline(
         except EntitySDKError as err:
             _raise_entitysdk_failure("registration", err)
 
-        swc_bytes = _resolve_swc_bytes_for_mesh(client, converted_files, file_extension, content)
-        mesh_asset_id: str | None = None
-        if swc_bytes is not None:
-            mesh_asset = await run_in_threadpool(
-                lambda: try_generate_and_upload_mesh(client, entity_uuid, swc_bytes=swc_bytes)
-            )
-            mesh_asset_id = str(mesh_asset.id) if mesh_asset else None
-
         return MorphologyRegistrationResponse(
             entity_id=str(entity_uuid),
             measurement_entity_id=str(measurement_annotation.id),
-            mesh_asset_id=mesh_asset_id,
             status="success",
             morphology_name=morphology_name,
             lifecycle_status=EntityLifecycleStatus.active.value,
@@ -458,7 +432,7 @@ async def _run_pipeline(
     summary="Calculate morphology metrics and register entities.",
     description=(
         "Performs analysis on a neuron file (.swc, .h5, or .asc) and registers the entity, "
-        "asset, measurements, and (when possible) a GLB surface mesh."
+        "assets, and measurements."
     ),
 )
 async def morphology_metrics_calculation(

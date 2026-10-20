@@ -46,6 +46,7 @@ class SimulationResults(BaseModel):
 
     spike_report_file: Path
     voltage_report_files: list[Path]
+    lfp_report_files: list[Path] = Field(default_factory=list)
 
 
 class SimulationMetadata(BaseModel):

@@ -289,7 +289,7 @@ def _extract_channel_suffix(neuron_variable: str, known_suffixes: list[str]) -> 
     # Sort by length descending to match longest suffix first
     for suffix in sorted(known_suffixes, key=len, reverse=True):
         if neuron_variable.endswith(f"_{suffix}"):
-            return suffix  # ty:ignore[invalid-return-type]
+            return suffix
 
     # Fallback: extract the last part after underscore for built-in mechanisms
     # This handles cases like g_pas, e_pas, etc.

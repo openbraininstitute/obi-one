@@ -20,7 +20,6 @@ from app.endpoints.morphology_metrics_calculation import (
     MorphologyMetadata,
     _get_h5_analysis_path,
     _prepare_entity_payload,
-    _resolve_swc_bytes_for_mesh,
     _validate_file_extension,
     register_morphology,
     run_morphology_analysis,
@@ -48,7 +47,7 @@ def _monkeypatch_session():
     m.undo()
 
 
-@pytest.fixture(autouse=True, scope="module")
+@pytest.fixture(autouse=True, scope="module")  # ruff: ignore[pytest-fixture-autouse]
 def mock_heavy_dependencies(_monkeypatch_session):
     mock_neurom = MagicMock()
     mock_neurom.load_morphology.return_value = MagicMock()
@@ -58,7 +57,7 @@ def mock_heavy_dependencies(_monkeypatch_session):
         del sys.modules["neurom"]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def mock_template_and_functions(monkeypatch):
     mock_result = MagicMock()
     mock_result.hdf5 = Path("path0.h5")
@@ -80,7 +79,7 @@ def mock_template_and_functions(monkeypatch):
     )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # ruff: ignore[pytest-fixture-autouse]
 def mock_io_for_test(monkeypatch):
     mock_file_handle = MagicMock()
     mock_file_handle.name = "/mock/temp_uploaded_file.swc"
@@ -247,65 +246,6 @@ def test_morphometrics_registration_failure(client, monkeypatch, mock_entity_pay
 
     assert response.status_code == 500
     assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
-
-
-def test_meshing_failure_is_graceful(client, monkeypatch, mock_entity_payload):
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.try_generate_and_upload_mesh",
-        MagicMock(return_value=None),
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
-    )
-
-    mock_client = MagicMock()
-    mock_client.register_entity.return_value = MagicMock(id=str(uuid.uuid4()))
-    client.app.dependency_overrides[get_client] = lambda: mock_client
-
-    response = client.post(
-        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
-    )
-    assert response.status_code == 200
-    assert response.json()["mesh_asset_id"] is None
-    client.app.dependency_overrides.clear()
-
-
-def test_meshing_api_error_is_graceful(client, monkeypatch, mock_entity_payload):
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.try_generate_and_upload_mesh",
-        MagicMock(return_value=None),
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
-    )
-
-    response = client.post(
-        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
-    )
-    assert response.status_code == 200
-    assert response.json()["mesh_asset_id"] is None
-
-
-def test_meshing_success(client, monkeypatch, mock_entity_payload):
-    mesh_id = str(uuid.uuid4())
-    entity_id = str(uuid.uuid4())
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.try_generate_and_upload_mesh",
-        MagicMock(return_value=MagicMock(id=mesh_id)),
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.run_morphology_analysis", lambda _: []
-    )
-    monkeypatch.setattr(
-        "app.endpoints.morphology_metrics_calculation.register_morphology",
-        lambda _client, _payload: MagicMock(id=entity_id),
-    )
-
-    response = client.post(
-        ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
-    )
-    assert response.status_code == 200
-    assert response.json()["mesh_asset_id"] == mesh_id
 
 
 def test_h5_upload_uses_original_path(client, monkeypatch):
@@ -479,23 +419,6 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
     }
     result = register_morphology(client, payload)
     assert result is not None
-
-
-def test_resolve_swc_bytes_for_mesh_swc_converted_exists(tmp_path):
-    mock_swc = tmp_path / "mock.swc"
-    mock_swc.write_bytes(b"swc data")
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(swc=mock_swc), ".h5", b"original")
-    assert result == b"swc data"
-
-
-def test_resolve_swc_bytes_for_mesh_swc_extension():
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(), ".swc", b"original content")
-    assert result == b"original content"
-
-
-def test_resolve_swc_bytes_for_mesh_non_swc_returns_none():
-    result = _resolve_swc_bytes_for_mesh(None, MorphologyFiles(), ".h5", b"original")
-    assert result is None
 
 
 def test_run_morphology_analysis_success(monkeypatch):
@@ -733,13 +656,11 @@ class TestStoreInvalidMorphology:
         recorded = {
             "register": MagicMock(return_value=MagicMock(id=str(uuid.uuid4()))),
             "metrics": MagicMock(return_value=MagicMock(id=str(uuid.uuid4()))),
-            "mesh": MagicMock(return_value=None),
             "content": MagicMock(return_value=MagicMock()),
         }
         target = "app.endpoints.morphology_metrics_calculation."
         monkeypatch.setattr(target + "register_morphology", recorded["register"])
         monkeypatch.setattr(target + "register_morphometrics", recorded["metrics"])
-        monkeypatch.setattr(target + "try_generate_and_upload_mesh", recorded["mesh"])
         monkeypatch.setattr(target + "upload_morphology_content", recorded["content"])
         monkeypatch.setattr(target + "run_morphology_analysis", lambda _: [])
         return recorded
@@ -768,7 +689,6 @@ class TestStoreInvalidMorphology:
         assert body["lifecycle_status"] == "disqualified"
         assert body["validation_error"] == self.VALIDATION_DETAIL
         assert body["measurement_entity_id"] is None
-        assert body["mesh_asset_id"] is None
 
         # Registered as disqualified, with the metadata the user supplied.
         spies["register"].assert_called_once()
@@ -781,7 +701,6 @@ class TestStoreInvalidMorphology:
         # Original upload is kept, but nothing that needs a parseable file runs.
         spies["content"].assert_called_once()
         spies["metrics"].assert_not_called()
-        spies["mesh"].assert_not_called()
 
     def test_opt_in_does_not_affect_valid_files(self, client, spies):
         """A valid file is unaffected by the flag: no lifecycle_status is forced."""

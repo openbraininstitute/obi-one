@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.ion_channel_model.ion_channel_model import (
@@ -138,7 +139,7 @@ def test_execute_local_does_not_register(
 
     mock_stage_circuit.assert_called_once()
     mock_compile.assert_called_once_with(
-        mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+        mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
         output_dir=staged_circuit.directory.resolve(),
         simulation_backend=SimulationBackend.neurodamus,
     )
@@ -214,29 +215,27 @@ def test_execute_tracked_registers_and_updates_activity(
     )
 
 
-@patch(f"{_ION_CHANNEL}.deserialize_obi_object_from_json_data")
-@patch(f"{_ION_CHANNEL}.db_sdk.select_json_asset_content")
+@patch(f"{_ION_CHANNEL}.IonChannelModelSimulationSingleConfig.model_validate_json")
+@patch(f"{_ION_CHANNEL}.db_sdk.select_asset_content")
 def test_get_generation_single_config(
-    mock_select_json, mock_deserialize, config, generation_config
+    mock_select_content, mock_validate_json, config, generation_config
 ):
-    mock_select_json.return_value = {"type": "ion_channel"}
-    mock_deserialize.return_value = generation_config
+    json_bytes = b'{"type": "IonChannelModelSimulationSingleConfig"}'
+    mock_select_content.return_value = json_bytes
+    mock_validate_json.return_value = generation_config
 
     task = IonChannelModelSimulationExecutionTask(config=config)
     result = task.get_generation_single_config(db_client=MagicMock())
 
     assert result is generation_config
-    mock_select_json.assert_called_once()
+    mock_select_content.assert_called_once()
+    mock_validate_json.assert_called_once_with(json_bytes)
 
 
-@patch(f"{_ION_CHANNEL}.deserialize_obi_object_from_json_data")
-@patch(f"{_ION_CHANNEL}.db_sdk.select_json_asset_content")
-def test_get_generation_single_config_wrong_type(mock_select_json, mock_deserialize, config):
-    mock_select_json.return_value = {"type": "other"}
-    mock_deserialize.return_value = MagicMock()
+@patch(f"{_ION_CHANNEL}.db_sdk.select_asset_content")
+def test_get_generation_single_config_invalid_json(mock_select_content, config):
+    mock_select_content.return_value = b'{"type": "not-an-ion-channel-config"}'
 
     task = IonChannelModelSimulationExecutionTask(config=config)
-    with pytest.raises(
-        test_module.OBIONEError, match="Expected IonChannelModelSimulationSingleConfig"
-    ):
+    with pytest.raises(ValidationError):
         task.get_generation_single_config(db_client=MagicMock())

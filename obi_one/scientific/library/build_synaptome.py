@@ -5,7 +5,7 @@
 import json
 import re
 import shutil
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -60,7 +60,7 @@ class BuildSynaptomeError(ValueError):
 
 
 @contextmanager
-def _preserve_numpy_random_state() -> Iterator[None]:
+def _preserve_numpy_random_state() -> Generator[None, None, None]:
     """Isolate legacy morphology placers that use NumPy's global RNG."""
     state = np.random.get_state()  # ruff: ignore[numpy-legacy-random] - called placer uses the legacy global RNG
     try:

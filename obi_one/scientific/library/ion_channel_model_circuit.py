@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import entitysdk
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
@@ -29,11 +30,11 @@ class CircuitFromIonChannelModels:
 
         if (not entity_cache) | (entity_cache and not dest_dir.exists()):  # ty:ignore[unresolved-attribute]
             # build ion channel model data dict for staging sonata config
-            ion_channel_model_data_dict = {}
+            ion_channel_model_data_dict: dict[str, dict[str, Any]] = {}
             for key, ic_data in self.ion_channel_data.items():
                 # ic_data: IonChannelModel Block
                 # ic_data.ion_channel_model: IonChannelModelFromID  # ruff: ignore[commented-out-code]
-                conductance = {}
+                conductance: dict[str, Any] = {}
                 if hasattr(ic_data, "conductance") and ic_data.ion_channel_model.has_conductance(
                     db_client=db_client
                 ):

@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar
 import numpy as np
 from pydantic import Field, NonNegativeFloat
 
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
@@ -77,7 +77,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
                 f"Poisson input exceeds maximum allowed nunmber of spikes "
                 f"({MAX_POISSON_SPIKE_LIMIT})!"
             )
-            raise OBIONEError(msg)
+            raise ConfigValidationError(msg)
 
         spikes_by_gid: dict[int, list[float]] = defaultdict(list)
         for offset_timestamp in self._offset_timestamps():

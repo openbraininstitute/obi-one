@@ -1,6 +1,6 @@
+import math
 from typing import Annotated, ClassVar, Self
 
-import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -49,7 +49,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
 
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description="Neuron set to which the stimulus is applied.",
@@ -147,7 +147,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
                     "Ey": self.E_y,
                     "Ez": self.E_z,
                     "frequency": self._frequency,
-                    "phase": np.deg2rad(self._phase_degrees),
+                    "phase": math.radians(self._phase_degrees),
                 }
             ],
         }

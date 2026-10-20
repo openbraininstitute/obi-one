@@ -3,7 +3,20 @@
 import pytest
 from pydantic import ValidationError
 
-from app.endpoints.config_validation import _VALIDATION_CONFIG, SharedStatePartial
+from app.endpoints.config_validation import (
+    _VALIDATION_CONFIG,
+    EModelOptimizationScanConfig,
+    SharedStatePartial,
+)
+
+# Task 2 needs the optional `emodel` extra (bluepyemodel). CI installs it; local checkouts
+# often do not, in which case the key is absent by design and these tests skip. The
+# bluepyemodel-absent branch is covered by
+# tests/obi_one/scientific/unions_and_references/test_optional_emodel_optimization.py.
+requires_emodel_extra = pytest.mark.skipif(
+    EModelOptimizationScanConfig is None,
+    reason="requires the optional `emodel` extra (bluepyemodel)",
+)
 
 # Parsed through SharedStatePartial only, which is what the endpoint does first and
 # before db_client is touched — so nothing here reaches entitycore. The recording UUID
@@ -11,36 +24,75 @@ from app.endpoints.config_validation import _VALIDATION_CONFIG, SharedStateParti
 VALID_FITTING_CONFIG = {
     "info": {"campaign_name": "Kv3.1 fit", "campaign_description": "From traces."},
     "initialize": {
-        "recordings": {"id_str": "00000000-0000-0000-0000-000000000000"},
-        "ion_channel_name": "Kv3_1",
+        "recordings": [{"id_str": "00000000-0000-0000-0000-000000000000"}],
+        "model_properties": {"ion_channel_name": "Kv3_1"},
     },
-    "minf_eq": {"type": "SigFitMInf"},
-    "mtau_eq": {"type": "SigFitMTau"},
-    "hinf_eq": {"type": "SigFitHInf"},
-    "htau_eq": {"type": "SigFitHTau"},
-    "gate_exponents": {"m_power": 1, "h_power": 1},
+    "model_type": {
+        "type": "HodgkinHuxleyIonChannelModel",
+        "minf_eq": "sig_fit_minf",
+        "mtau_eq": "sig_fit_mtau",
+        "hinf_eq": "sig_fit_hinf",
+        "htau_eq": "sig_fit_htau",
+        "m_power": 1,
+        "h_power": 1,
+    },
+}
+
+# Minimal valid Task-2 config: only info, initialize, target_efeatures, morphology and
+# emodel_optimisation_parameters are required; morphology_settings / optimization_settings /
+# optimization_params all default.
+# The entity UUIDs are stored, not resolved — resolution happens during generation.
+VALID_OPTIMIZATION_CONFIG = {
+    "info": {
+        "campaign_name": "L5PC optimization",
+        "campaign_description": "Optimize an L5PC e-model.",
+    },
+    "initialize": {
+        "emodel": "L5PC",
+        "etype": {"id_str": "00000000-0000-0000-0000-000000000000"},
+    },
+    "target_efeatures": {"task_result": {"id_str": "11111111-1111-1111-1111-111111111111"}},
+    "morphology": {"cell_morphology": {"id_str": "22222222-2222-2222-2222-222222222222"}},
+    "emodel_optimisation_parameters": {
+        "mechanisms": {
+            "ion_channel_models": [{"id_str": "33333333-3333-3333-3333-333333333333"}],
+            "mechanism_regions": {
+                "somatic": [
+                    {"ion_channel_model": {"id_str": "33333333-3333-3333-3333-333333333333"}}
+                ]
+            },
+        }
+    },
 }
 
 
 def test_valid_fitting_config_parses():
     state = SharedStatePartial(ion_channel_fitting_config=VALID_FITTING_CONFIG)
 
-    assert state.ion_channel_fitting_config.initialize.ion_channel_name == "Kv3_1"
+    assert state.ion_channel_fitting_config.initialize.model_properties.ion_channel_name == "Kv3_1"
 
 
 def test_invalid_fitting_config_is_rejected():
     """Bad input fails at parse time; the endpoint turns this into HTTP 422."""
     # ion_channel_name becomes the NEURON SUFFIX, so it must be a valid identifier.
-    bad = {**VALID_FITTING_CONFIG, "initialize": {**VALID_FITTING_CONFIG["initialize"]}}
-    bad["initialize"]["ion_channel_name"] = "3bad-name"
+    bad = {
+        **VALID_FITTING_CONFIG,
+        "initialize": {
+            **VALID_FITTING_CONFIG["initialize"],
+            "model_properties": {"ion_channel_name": "3bad-name"},
+        },
+    }
 
     with pytest.raises(ValidationError):
         SharedStatePartial(ion_channel_fitting_config=bad)
 
 
 def test_invented_equation_variant_is_rejected():
-    """Guards against the model making up a plausible-sounding equation name."""
-    bad = {**VALID_FITTING_CONFIG, "mtau_eq": {"type": "SigmoidalFitMTau"}}
+    """Guards against the model making up a plausible-sounding equation key."""
+    bad = {
+        **VALID_FITTING_CONFIG,
+        "model_type": {**VALID_FITTING_CONFIG["model_type"], "mtau_eq": "sigmoidal_fit_mtau"},
+    }
 
     with pytest.raises(ValidationError):
         SharedStatePartial(ion_channel_fitting_config=bad)
@@ -58,3 +110,73 @@ def test_validation_config_covers_every_shared_state_field():
 def test_ion_channel_fitting_does_not_execute_the_task():
     """Must stay False: the fitting task downloads NWB assets and runs nrnivmodl."""
     assert _VALIDATION_CONFIG["ion_channel_fitting_config"] is False
+
+
+@requires_emodel_extra
+def test_valid_optimization_config_parses():
+    state = SharedStatePartial(emodel_optimization_config=VALID_OPTIMIZATION_CONFIG)
+
+    assert state.emodel_optimization_config.initialize.emodel == "L5PC"
+
+
+@requires_emodel_extra
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_efeatures", None),
+        ("target_efeatures", {}),
+        ("target_efeatures", {"task_result": "not-an-object"}),
+        ("morphology", None),
+        ("morphology", {}),
+        ("morphology", {"cell_morphology": "not-an-object"}),
+    ],
+)
+def test_optimization_config_rejects_bad_inputs_at_new_path(field, value):
+    """Missing or malformed inputs fail at their top-level field path."""
+    bad = {k: v for k, v in VALID_OPTIMIZATION_CONFIG.items() if k != field}
+    if value is not None:
+        bad[field] = value
+
+    with pytest.raises(ValidationError) as exc_info:
+        SharedStatePartial(emodel_optimization_config=bad)
+    assert any(
+        error["loc"][:2] == ("emodel_optimization_config", field)
+        for error in exc_info.value.errors()
+    )
+
+
+@requires_emodel_extra
+@pytest.mark.parametrize("field", ["target_efeatures", "morphology"])
+def test_optimization_config_rejects_inputs_under_initialize(field):
+    bad = {k: v for k, v in VALID_OPTIMIZATION_CONFIG.items() if k != field}
+    bad["initialize"] = {
+        **VALID_OPTIMIZATION_CONFIG["initialize"],
+        field: VALID_OPTIMIZATION_CONFIG[field],
+    }
+
+    with pytest.raises(ValidationError):
+        SharedStatePartial(emodel_optimization_config=bad)
+
+
+@requires_emodel_extra
+def test_optimization_config_rejects_empty_mechanisms():
+    """`ion_channel_models` and `mechanism_regions` both have min_length=1."""
+    bad = {
+        **VALID_OPTIMIZATION_CONFIG,
+        "emodel_optimisation_parameters": {
+            "mechanisms": {"ion_channel_models": [], "mechanism_regions": {}}
+        },
+    }
+
+    with pytest.raises(ValidationError):
+        SharedStatePartial(emodel_optimization_config=bad)
+
+
+@requires_emodel_extra
+def test_emodel_optimization_does_not_execute_the_task():
+    """Must stay False: the task runs a BluePyEModel/NEURON optimisation.
+
+    Registration also calls `upload_directory`, which the validator's write interception
+    does not cover, so executing it would perform a real write during validation.
+    """
+    assert _VALIDATION_CONFIG["emodel_optimization_config"] is False

@@ -27,7 +27,7 @@ _NEURON_SET_DESCRIPTION = (
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
 
-    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Presynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
@@ -38,7 +38,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         },
     )
 
-    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Postsynaptic Neuron Set",
         description=_NEURON_SET_DESCRIPTION,
@@ -135,6 +135,9 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
 
     _weight: float = PrivateAttr(default=0.0)
 
+    def _get_weight(self) -> float:
+        return self._weight
+
     def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
             self.timestamps,
@@ -152,7 +155,7 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
             new_manipulation = manipulation.copy()
             new_manipulation["name"] = f"{name}_{t_ind}" if n_timestamps > 1 else name
             new_manipulation["delay"] = timestamp + self.timestamp_offset
-            new_manipulation["weight"] = self._weight
+            new_manipulation["weight"] = self._get_weight()
             manipulations_list.append(new_manipulation)
 
         return manipulations_list

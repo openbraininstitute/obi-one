@@ -1,28 +1,22 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import bluepysnap as snap
 import libsonata
-import morphio
 import numpy as np
-from conntility import ConnectivityMatrix
 
 from obi_one.core.base import OBIBaseModel
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
-    ExcitatoryTsodyksMarkramSynapticModel,
-    InhibitoryTsodyksMarkramSynapticModel,
-)
-from obi_one.scientific.library.circuit_metrics import (
+from obi_one.scientific.library.circuit_constants import (
     TYPES_OF_BIOPHYS_NODES,
     TYPES_OF_POINT_NODES,
     TYPES_OF_VIRTUAL_NODES,
 )
-from obi_one.scientific.library.morphology_loader import (
-    load_morphology_nrn_order,
-    load_morphology_nrn_order_from_collection,
-)
+
+if TYPE_CHECKING:
+    from conntility import ConnectivityMatrix
+    from morphio import Morphology
 
 L = logging.getLogger(__name__)
 
@@ -52,6 +46,8 @@ class Circuit(OBIBaseModel):
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
+            from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+
             cmat = ConnectivityMatrix.from_h5(
                 self.matrix_path
             )  # Basic check: Try to load the connectivity matrix w/o error
@@ -74,7 +70,7 @@ class Circuit(OBIBaseModel):
         return snap.Circuit(self.path)
 
     @property
-    def connectivity_matrix(self) -> ConnectivityMatrix:
+    def connectivity_matrix(self) -> "ConnectivityMatrix":
         """Provide access to corresponding ConnectivityMatrix object.
 
         Note: In case of a multi-graph, returns the compressed version.
@@ -82,6 +78,8 @@ class Circuit(OBIBaseModel):
         if self.matrix_path is None:
             msg = "Connectivity matrix has not been found"
             raise FileNotFoundError(msg)
+        from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+
         cmat = ConnectivityMatrix.from_h5(self.matrix_path)
         if cmat.is_multigraph:
             cmat = cmat.compress()
@@ -295,7 +293,7 @@ class Circuit(OBIBaseModel):
         raw_path = alternates.get(key)
         return self._resolve_circuit_path(raw_path) if raw_path else None
 
-    def load_morphology(self, node_id: int, population: str | None = None) -> morphio.Morphology:
+    def load_morphology(self, node_id: int, population: str | None = None) -> "Morphology":
         """Load a node's morphology, preferring h5, then swc, then asc.
 
         A simulation reads the h5 morphology when the circuit carries one - it is the format the
@@ -304,6 +302,13 @@ class Circuit(OBIBaseModel):
         which hold every morphology in a single `.h5` container with no per-node file for
         `get_morphology_path` to resolve.
         """
+        import morphio  # ruff: ignore[import-outside-top-level]
+
+        from obi_one.scientific.library.morphology_loader import (  # ruff: ignore[import-outside-top-level]
+            load_morphology_nrn_order,
+            load_morphology_nrn_order_from_collection,
+        )
+
         morph_name = self.get_morphology_name(node_id, population=population)
         attempted: list[str] = []
 
@@ -415,6 +420,11 @@ def ensure_mechanisms_dir(
         mechanisms_dir = circuit_config_path.parent / CIRCUIT_MOD_DIR
 
     mechanisms_dir.mkdir(parents=True, exist_ok=True)
+
+    from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (  # ruff: ignore[import-outside-top-level]
+        ExcitatoryTsodyksMarkramSynapticModel,
+        InhibitoryTsodyksMarkramSynapticModel,
+    )
 
     ExcitatoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
     InhibitoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)

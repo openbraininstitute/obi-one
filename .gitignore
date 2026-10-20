@@ -3,6 +3,7 @@
 **/build/*
 .DS_Store
 .idea
+.vscode
 **/analysis_output
 venv/
 .venv/

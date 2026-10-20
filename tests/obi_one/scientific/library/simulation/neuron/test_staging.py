@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.simulation.neuron import staging as test_module
 from obi_one.scientific.library.simulation.neuron.schemas import (
@@ -12,11 +13,71 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
 )
 from obi_one.types import SimulationBackend
 
+from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
+
 
 def _touch(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("dummy")
     return path
+
+
+def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set, **kwargs):
+    """Patch staging's libsonata.SimulationConfig and the node-set resolver.
+
+    Returns the fake SimulationConfig so callers can assert on it if needed.
+    """
+    simulation_config, node_sets, circuit_config = make_fake_resolution(
+        per_node_set, node_set=node_set, **kwargs
+    )
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.libsonata.SimulationConfig.from_file",
+        lambda _path: simulation_config,
+    )
+    monkeypatch.setattr(
+        "obi_one.utils.circuit._merged_simulation_node_sets",
+        lambda _sim_cfg: (node_sets, circuit_config),
+    )
+    return simulation_config
+
+
+def test_stage_circuit_raises_when_circuit_name_is_none(tmp_path, monkeypatch):
+    config_path = tmp_path / "circuit_config.json"
+    config_path.write_text("{}")
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.stage_circuit_entity",
+        lambda **_kwargs: config_path,
+    )
+    model = MagicMock()
+    model.name = None
+    model.id = "circuit-uuid"
+    with pytest.raises(OBIONEError, match="has no name"):
+        test_module.stage_circuit(client=MagicMock(), model=model, output_dir=tmp_path)
+
+
+def test_stage_circuit_returns_named_circuit(tmp_path, monkeypatch):
+    config_path = tmp_path / "circuit_config.json"
+    config_path.write_text("{}")
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.stage_circuit_entity",
+        lambda **_kwargs: config_path,
+    )
+    built: dict[str, str] = {}
+
+    def capture_circuit(*, name: str, path: str):
+        built["name"] = name
+        built["path"] = path
+        return MagicMock(name=name, path=path)
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.Circuit",
+        capture_circuit,
+    )
+    model = MagicMock()
+    model.name = "my-circuit"
+    model.id = "circuit-uuid"
+    test_module.stage_circuit(client=MagicMock(), model=model, output_dir=tmp_path)
+    assert built == {"name": "my-circuit", "path": str(config_path)}
 
 
 def test_stage_ion_channel_models_as_circuit(monkeypatch, tmp_path):
@@ -88,10 +149,11 @@ def test_stage_memodel_as_circuit_from_id(monkeypatch, tmp_path):
     expected = MagicMock()
     mock_build_circuit.return_value = expected
 
+    memodel_from_id = MEModelFromID(id_str="00000000-0000-0000-0000-000000000012")
     with patch.object(MEModelFromID, "entity", return_value=mock_memodel_entity):
         circuit = test_module.stage_memodel_as_circuit(
             client=mock_client,
-            circuit=MEModelFromID(id_str="memodel-id"),
+            circuit=memodel_from_id,
             output_dir=mock_output_dir,
         )
 
@@ -158,13 +220,12 @@ def test_get_simulation_parameters_success(
         else neurodamus_mechanism_build
     )
 
-    mock_load_json.side_effect = [
-        {"node_sets_file": "nodes.json", "node_set": "All", "run": {"tstop": 100}},
-        {"All": {"node_id": [1, 2, 3]}},
-    ]
+    mock_load_json.return_value = {"node_set": "All", "run": {"tstop": 100}}
     monkeypatch.setattr(
         "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
     )
+    # Resolve the node set via libsonata (fake) instead of reading node_id lists.
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set="All")
 
     params = test_module.get_simulation_parameters(
         simulation_backend=simulation_backend,
@@ -179,20 +240,87 @@ def test_get_simulation_parameters_success(
     assert params.mechanism_build == mechanism_build
 
 
-def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
-    mock_load_json = MagicMock()
+def test_get_simulation_parameters_symbolic_node_set(monkeypatch, tmp_path):
+    """A symbolic node set (no explicit node_id list) must still be counted."""
     simulation_config_file = tmp_path / "config.json"
     mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
 
-    mock_load_json.side_effect = [
-        {"node_sets_file": "nodes.json", "node_set": "Foo", "run": {"tstop": 100}},
-        {"All": {"node_id": [1, 2, 3]}},
-    ]
     monkeypatch.setattr(
-        "obi_one.scientific.library.simulation.neuron.staging.load_json", mock_load_json
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"node_set": "Excitatory", "run": {"tstop": 50}}),
+    )
+    # "Excitatory" resolves across two populations, 5 cells total.
+    _patch_node_set_resolution(
+        monkeypatch,
+        {"Excitatory": {"popA": [1, 2, 3], "popB": [10, 20]}},
+        node_set="Excitatory",
     )
 
+    params = test_module.get_simulation_parameters(
+        simulation_backend=SimulationBackend.bluecellulab,
+        simulation_config_file=simulation_config_file,
+        mechanism_build=mechanism_build,
+    )
+
+    assert params.number_of_cells == 5
+
+
+def test_get_simulation_parameters_simulation_only_node_set(monkeypatch, tmp_path):
+    """A node set defined only in the simulation node_sets_file (not the circuit)."""
+    simulation_config_file = tmp_path / "config.json"
+    mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"node_set": "MySimOnlySet", "run": {"tstop": 50}}),
+    )
+    # "MySimOnlySet" only resolves in popA; popB has it absent (does not apply there).
+    _patch_node_set_resolution(
+        monkeypatch,
+        {"MySimOnlySet": {"popA": [7, 8]}},
+        node_set="MySimOnlySet",
+        extra_populations=["popB"],
+    )
+
+    params = test_module.get_simulation_parameters(
+        simulation_backend=SimulationBackend.bluecellulab,
+        simulation_config_file=simulation_config_file,
+        mechanism_build=mechanism_build,
+    )
+
+    assert params.number_of_cells == 2
+
+
+def test_get_simulation_parameters_missing_node_set(monkeypatch, tmp_path):
+    simulation_config_file = tmp_path / "config.json"
+    mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"node_set": "Foo", "run": {"tstop": 100}}),
+    )
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set="Foo")
+
     with pytest.raises(KeyError, match="Node set 'Foo' not found"):
+        test_module.get_simulation_parameters(
+            simulation_backend=SimulationBackend.bluecellulab,
+            simulation_config_file=simulation_config_file,
+            mechanism_build=mechanism_build,
+        )
+
+
+def test_get_simulation_parameters_no_node_set(monkeypatch, tmp_path):
+    """No node set defined in the simulation config must raise an error."""
+    simulation_config_file = tmp_path / "config.json"
+    mechanism_build = NeuronMechanismBuild(libnrnmech_path=_touch(tmp_path / "libnrnmech.so"))
+
+    monkeypatch.setattr(
+        "obi_one.scientific.library.simulation.neuron.staging.load_json",
+        MagicMock(return_value={"run": {"tstop": 100}}),
+    )
+    _patch_node_set_resolution(monkeypatch, {"All": {"popA": [1, 2, 3]}}, node_set=None)
+
+    with pytest.raises(ValueError, match="No node set defined"):
         test_module.get_simulation_parameters(
             simulation_backend=SimulationBackend.bluecellulab,
             simulation_config_file=simulation_config_file,

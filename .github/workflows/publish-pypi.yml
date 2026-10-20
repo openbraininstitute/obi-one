@@ -1,9 +1,9 @@
 name: PyPI
 
+# Dispatched by release-pin.yml on the release tag, once the tag points at the
+# commit that pins obi-one for launch jobs. Can also be run manually on a release tag.
 on:
-  release:
-    types:
-      - published
+  workflow_dispatch:
 
 jobs:
 
@@ -14,6 +14,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+
+      - name: Check the release tag pins obi-one
+        run: |
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "::error::Run this workflow on a release tag, not '$GITHUB_REF_NAME'"
+            exit 1
+          fi
+          python3 launch_scripts/tools/launch_deps_pin.py --check --version "$GITHUB_REF_NAME"
 
       - name: Build sdist and wheel
         run: pipx run build
@@ -33,7 +41,6 @@ jobs:
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
-    if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
       - uses: actions/download-artifact@v8

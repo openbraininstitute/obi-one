@@ -1,9 +1,7 @@
 from pathlib import Path
-from typing import ClassVar
 
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
@@ -15,9 +13,8 @@ from obi_one.scientific.library.circuit_staging import (
 from obi_one.scientific.library.memodel_circuit import MEModelWithSynapsesCircuit
 
 
-class CircuitFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[models.Entity]] = models.Circuit
-    _entity: models.Circuit | None = PrivateAttr(default=None)
+class CircuitFromID(EntityFromID[models.Circuit]):
+    _entitysdk_type: type[models.Circuit] = models.Circuit
 
     def stage_circuit(
         self,
@@ -61,7 +58,7 @@ class CircuitFromID(EntityFromID):
                     else:
                         stage_circuit(
                             client=db_client,
-                            model=entity,  # ty:ignore[invalid-argument-type]
+                            model=entity,
                             output_dir=dest_dir,
                             max_concurrent=4,
                         )
@@ -76,16 +73,15 @@ class CircuitFromID(EntityFromID):
         raise OBIONEError(msg)
 
 
-class MEModelWithSynapsesCircuitFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[models.Entity]] = models.Circuit
-    _entity: models.Circuit | None = PrivateAttr(default=None)
+class MEModelWithSynapsesCircuitFromID(EntityFromID[models.Circuit]):
+    _entitysdk_type: type[models.Circuit] = models.Circuit
 
     def entity(self, db_client: Client) -> models.Circuit:
         entity = super().entity(db_client=db_client)
-        if entity.scale != "single":  # ty:ignore[unresolved-attribute]
+        if entity.scale != "single":
             msg = "Entity must be a circuit of scale 'single'."
             raise OBIONEError(msg)
-        return entity  # ty:ignore[invalid-return-type]
+        return entity
 
     def stage_circuit(
         self,

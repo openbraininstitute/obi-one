@@ -18,7 +18,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 
 SectionType = Literal[3, 4]
-SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]] | None
+SectionTypes = tuple[SectionType, ...] | list[tuple[SectionType, ...]]
 MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS = 20_000
 
 
@@ -64,7 +64,7 @@ class MorphologyLocationsBlock(Block, abc.ABC):
 class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
     """Base class for locations sampled across the morphologies of the targeted neurons."""
 
-    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
         title="Neuron Set",
         description=(
@@ -87,12 +87,8 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
     )
 
     section_types: SectionTypes = Field(
-        default=(3, 4),
         title="Section Types",
-        description=(
-            "Neurite section types where locations may be generated. Defaults to basal and "
-            "apical dendrites."
-        ),
+        description="Neurite section types where locations may be generated.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.MORPHOLOGY,

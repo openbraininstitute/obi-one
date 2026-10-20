@@ -2,7 +2,7 @@
 
 import os
 import shutil
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -22,7 +22,7 @@ def filter_extension(file_list: list, extension: str) -> list:
 
 
 @contextmanager
-def chdir(path: Path) -> Iterator[None]:
+def chdir(path: Path) -> Generator[None, None, None]:
     """Temporarily change the working directory to ``path``."""
     previous = Path.cwd()
     os.chdir(path)

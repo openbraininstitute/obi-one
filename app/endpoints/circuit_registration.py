@@ -5,6 +5,7 @@ import logging
 import tarfile
 import tempfile
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
@@ -63,12 +64,14 @@ def _parse_experiment_date(value: str | None) -> datetime | None:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
 
-def _parse_optional_enum[T](value: str | None, enum_cls: type[T], field_name: str) -> T | None:
+def _parse_optional_enum[T: Enum](
+    value: str | None, enum_cls: type[T], field_name: str
+) -> T | None:
     """Parse an optional string form field into an enum member."""
     if value is None:
         return None
     try:
-        return enum_cls(value)  # type: ignore[call-arg]
+        return enum_cls(value)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Invalid {field_name} '{value}'") from e
 
@@ -173,11 +176,14 @@ def _register_draft_from_uploads(  # ruff: ignore[too-many-arguments]
             authorized_public=authorized_public,
             skip_validation=True,
             lifecycle_status="draft",
-            include_visualization=not dry_run,
             overview_image_path=overview_image_path,
             sim_designer_image_path=sim_designer_image_path,
             dry_run=dry_run,
-            skip_additional_assets=dry_run,
+            # Draft carries no generated assets: compressed circuit, connectivity matrices/plots,
+            # and overview/sim-designer images are produced by the post-validation asset job, so a
+            # circuit disqualified in validation never ends up with them. A user-uploaded image is
+            # the exception and is attached synchronously by register_circuit.
+            skip_additional_assets=True,
         )
     except (OSError, tarfile.TarError) as e:
         raise HTTPException(
@@ -383,9 +389,9 @@ def generate_assets_endpoint(
 ) -> dict:
     """Trigger asset generation for an active circuit.
 
-    Re-launchable: generates compressed circuit and connectivity matrices.
-    Visualization assets are created at register/customize time and are not
-    regenerated here. Does not affect readiness_status.
+    Re-launchable: generates the compressed circuit, connectivity matrices and plots,
+    and the overview / sim-designer images (skipping any image the user uploaded, which
+    is attached at registration time). Does not affect readiness_status.
 
     Returns ``job_id`` so clients can follow progress and logs via
     ``GET /declared/task/{job_id}`` and ``GET /declared/task/{job_id}/stream``.

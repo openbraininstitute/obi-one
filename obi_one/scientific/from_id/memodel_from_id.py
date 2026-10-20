@@ -1,28 +1,24 @@
 from pathlib import Path
-from typing import ClassVar, cast
 
 import morphio
 from entitysdk.client import Client
 from entitysdk.models import MEModel
-from entitysdk.models.entity import Entity
 from entitysdk.staging.memodel import stage_sonata_from_memodel
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
 
-class MEModelFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = MEModel
-    _entity: MEModel | None = PrivateAttr(default=None)
+class MEModelFromID(EntityFromID[MEModel]):
+    _entitysdk_type: type[MEModel] = MEModel
 
     def morphio_morphology(
         self,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
     ) -> morphio.Morphology:
         """Load this ME-model's morphology through its CellMorphology entity."""
-        memodel = cast("MEModel", self.entity(db_client))
+        memodel = self.entity(db_client)
         morphology = CellMorphologyFromID(id_str=str(memodel.morphology.id))
         return morphology.morphio_morphology(db_client)
 
@@ -40,7 +36,7 @@ class MEModelFromID(EntityFromID):
         if (not entity_cache) | (entity_cache and not dest_dir.exists()):  # ty:ignore[unresolved-attribute]
             circuit_config_path = stage_sonata_from_memodel(
                 client=db_client,
-                memodel=self.entity(db_client),  # ty:ignore[invalid-argument-type]
+                memodel=self.entity(db_client),
                 output_dir=dest_dir,  # ty:ignore[invalid-argument-type]
             )
         else:
