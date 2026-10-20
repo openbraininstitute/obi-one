@@ -6,6 +6,7 @@ Resolves a neuron reference (CellMorphologyFromID or MEModelFromID) into:
 - ME model properties (if applicable)
 """
 
+import hashlib
 import logging
 import os
 import re
@@ -107,6 +108,14 @@ def resolve_provenance(
     return pt_root_id, source_mesh_entity, source_dataset
 
 
+def _file_hash(file_path: Path) -> str:
+    hasher = hashlib.sha256()
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
 def ensure_mechanisms_placed(path_in: Path, path_out: Path) -> None:
     if not path_in.exists():
         err_str = f"Mechanisms directory {path_in} does not exist!"
@@ -114,6 +123,17 @@ def ensure_mechanisms_placed(path_in: Path, path_out: Path) -> None:
     path_out.mkdir(exist_ok=True)
 
     for mod_file in path_in.glob("*.mod"):
+        dest_file = path_out / mod_file.name
+        if dest_file.exists():
+            same_size = dest_file.stat().st_size == mod_file.stat().st_size
+            if same_size and _file_hash(dest_file) == _file_hash(mod_file):
+                # Identical file already placed; nothing to do.
+                continue
+            err_str = (
+                f"Destination file {dest_file} already exists but differs from source "
+                f"{mod_file} (different size or hash)!"
+            )
+            raise Exception(err_str)  # ruff: ignore[raise-vanilla-class]
         shutil.copy(mod_file, path_out)
 
 

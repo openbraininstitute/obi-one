@@ -15,6 +15,7 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
     ResolvedEMDataset,
     ResolvedNeuron,
+    ensure_mechanisms_placed,
     place_morphologies_and_mechanisms,
     replace_hoc_template_name,
     resolve_list_neurons,
@@ -471,3 +472,65 @@ class TestReplaceHocTemplateName:
         assert f"endtemplate {new_name}" in output
         assert f"begintemplate {old_name}" not in output
         assert f"endtemplate {old_name}" not in output
+
+
+class TestEnsureMechanismsPlaced:
+    """Copying of ``*.mod`` mechanism files with duplicate detection."""
+
+    def test_raises_when_source_missing(self, tmp_path):
+        missing = tmp_path / "does_not_exist"
+        with pytest.raises(ValueError, match="does not exist"):
+            ensure_mechanisms_placed(missing, tmp_path / "out")
+
+    def test_copies_mod_files(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        (path_in / "a.mod").write_text("alpha", encoding="UTF-8")
+        (path_in / "b.mod").write_text("beta", encoding="UTF-8")
+        # A non-.mod file must be ignored.
+        (path_in / "readme.txt").write_text("ignore me", encoding="UTF-8")
+
+        ensure_mechanisms_placed(path_in, path_out)
+
+        assert (path_out / "a.mod").read_text(encoding="UTF-8") == "alpha"
+        assert (path_out / "b.mod").read_text(encoding="UTF-8") == "beta"
+        assert not (path_out / "readme.txt").exists()
+
+    def test_identical_existing_file_is_skipped(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        path_out.mkdir()
+        (path_in / "a.mod").write_text("same content", encoding="UTF-8")
+        (path_out / "a.mod").write_text("same content", encoding="UTF-8")
+
+        # shutil.copy must not be called when the destination already matches.
+        with patch(f"{_MODULE}.shutil.copy") as mock_copy:
+            ensure_mechanisms_placed(path_in, path_out)
+            mock_copy.assert_not_called()
+
+        assert (path_out / "a.mod").read_text(encoding="UTF-8") == "same content"
+
+    def test_differing_size_raises(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        path_out.mkdir()
+        (path_in / "a.mod").write_text("new content", encoding="UTF-8")
+        (path_out / "a.mod").write_text("old content that is longer", encoding="UTF-8")
+
+        with pytest.raises(Exception, match="already exists but differs"):
+            ensure_mechanisms_placed(path_in, path_out)
+
+    def test_same_size_different_hash_raises(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        path_out.mkdir()
+        # Same length, different bytes -> same size, different hash.
+        (path_in / "a.mod").write_text("AAAA", encoding="UTF-8")
+        (path_out / "a.mod").write_text("BBBB", encoding="UTF-8")
+
+        with pytest.raises(Exception, match="already exists but differs"):
+            ensure_mechanisms_placed(path_in, path_out)
