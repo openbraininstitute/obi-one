@@ -222,7 +222,9 @@ class TestStepOrdering:
 
     def test_locations_are_materialised_before_inputs_are_built(self, morphology_circuit, tmp_path):
         """The stimulus only knows its compartment set because materialisation ran first."""
-        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,

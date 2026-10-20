@@ -132,7 +132,9 @@ class TestCircuitFromID:
 
         monkeypatch.setattr(CircuitFromID, "stage_circuit", _stage_circuit)
 
-        locations = RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),

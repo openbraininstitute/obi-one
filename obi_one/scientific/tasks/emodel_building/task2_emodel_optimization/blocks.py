@@ -492,6 +492,23 @@ class DistanceDependentDistribution(Block):
         """Names of user-declared placeholders; fixed-formula distributions declare none."""
         return ()
 
+    @property
+    def requires_runtime_name(self) -> bool:
+        """Whether BluePyEModel resolves this distribution by its canonical name at runtime.
+
+        BluePyEModel references two standard distributions by their fixed name rather than any
+        user label, so these must use their ``default_name`` instead of the dictionary key:
+
+        - ``step`` has runtime placeholders: ``define_distributions()`` matches ``name == "step"``
+          to fill ``{step_begin}``/``{step_end}`` from the morphology.
+        - ``uniform`` has no function: the params compiler treats the literal name ``uniform`` as
+          the "no distribution" default and never emits it as a distribution row.
+
+        Every other distribution (custom formulas and self-contained standards such as ``exp``)
+        carries its own function and is identified by its dictionary key.
+        """
+        return bool(self._runtime_placeholders) or self.function is None
+
     @model_validator(mode="after")
     def validate_function(self) -> "DistanceDependentDistribution":
         """Require functions to expose implicit and declared inputs, and be safe.

@@ -131,21 +131,20 @@ class TestPlaceMorphologiesAndMechanisms:
     ):
         morph_from_id = Mock(spec=CellMorphologyFromID)
         morph_from_id.entity.return_value = morph_entity
-        morph_from_id.write_spiny_neuron_h5 = Mock()
         morph_from_id.neurom_morphology.return_value = _mock_morphio_chain()
+        morph_from_id.spiny_morphology.return_value = _spiny_morph()
 
-        with patch(f"{_MODULE}.load_morphology_with_spines", return_value=_spiny_morph()):
-            result, mechanisms_placed = place_morphologies_and_mechanisms(
-                morph_from_id=morph_from_id,
-                me_model_entity=None,
-                source_mesh_entity=source_mesh,
-                source_dataset=source_dataset,
-                pt_root_id=42,
-                xyz=np.zeros(3),
-                db_client=mock_db_client,
-                out_root=tmp_path,
-                spiny_morph_out_root=tmp_path,
-            )
+        result, mechanisms_placed = place_morphologies_and_mechanisms(
+            morph_from_id=morph_from_id,
+            me_model_entity=None,
+            source_mesh_entity=source_mesh,
+            source_dataset=source_dataset,
+            pt_root_id=42,
+            xyz=np.zeros(3),
+            db_client=mock_db_client,
+            out_root=tmp_path,
+            spiny_morph_out_root=tmp_path,
+        )
 
         assert result.pt_root_id == 42
         assert result.morph_entity is morph_entity
@@ -168,8 +167,8 @@ class TestPlaceMorphologiesAndMechanisms:
 
         morph_from_id = Mock(spec=CellMorphologyFromID)
         morph_from_id.entity.return_value = morph_entity
-        morph_from_id.write_spiny_neuron_h5 = Mock()
         morph_from_id.neurom_morphology.return_value = _mock_morphio_chain()
+        morph_from_id.spiny_morphology.return_value = _spiny_morph()
 
         mock_memodel_paths = SimpleNamespace(
             mechanisms_dir=tmp_path / "mechs",
@@ -180,7 +179,6 @@ class TestPlaceMorphologiesAndMechanisms:
         shutil.copy(_EXAMPLE_HOC, tmp_path / "model.hoc")
 
         with (
-            patch(f"{_MODULE}.load_morphology_with_spines", return_value=_spiny_morph()),
             patch(f"{_MODULE}.download_memodel", return_value=mock_memodel_paths),
             patch("shutil.move"),
             patch("shutil.rmtree"),
@@ -255,8 +253,8 @@ class TestResolveListNeurons:
         memodel_ref.entity.return_value = me_model_entity
         morph_from_id = Mock(spec=CellMorphologyFromID)
         morph_from_id.entity.return_value = morph_entity
-        morph_from_id.write_spiny_neuron_h5 = Mock()
         morph_from_id.neurom_morphology.return_value = _mock_morphio_chain()
+        morph_from_id.spiny_morphology.return_value = _spiny_morph()
 
         mock_memodel_paths = SimpleNamespace(
             mechanisms_dir=tmp_path / "mechs",
@@ -279,7 +277,6 @@ class TestResolveListNeurons:
                 return_value=(SimpleNamespace(properties={}, positions=np.zeros((1, 3))), []),
             ),
             patch(f"{_MODULE}.CellMorphologyFromID", return_value=morph_from_id),
-            patch(f"{_MODULE}.load_morphology_with_spines", return_value=_spiny_morph()),
             patch(f"{_MODULE}.download_memodel", return_value=mock_memodel_paths),
             patch("shutil.move"),
             patch("shutil.rmtree"),

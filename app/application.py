@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -47,6 +48,11 @@ from app.endpoints.scan_config import activate_scan_config_endpoints
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
+
+# Configure logging here (not only in app/__main__) so the level applies in the uvicorn worker
+# process too: under --reload the app runs in a spawned worker where __main__'s basicConfig never
+# executed, leaving the root logger at WARNING and dropping DEBUG logs.
+logging.basicConfig(level=settings.LOG_LEVEL, force=True)
 
 
 @asynccontextmanager

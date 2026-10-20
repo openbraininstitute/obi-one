@@ -319,8 +319,9 @@ def place_morphologies_and_mechanisms(
     smooth_morph = morph_from_id.neurom_morphology(db_client)
     write_morphology_with_offset(smooth_morph, -xyz, out_root / fn_morphology_out_swc)
     # For now: Spiny morphology not translated!
-    morph_from_id.write_spiny_neuron_h5(spiny_morph_out_root / fn_spiny_morph, db_client=db_client)
-    spiny_morph = load_morphology_with_spines(str(spiny_morph_out_root / fn_spiny_morph))
+    spiny_morph = morph_from_id.spiny_morphology(
+        db_client=db_client, path=spiny_morph_out_root / fn_spiny_morph
+    )
     write_morphology_with_offset(spiny_morph.morphology, -xyz, out_root / fn_morphology_out_h5)
 
     phys_node_props = {}

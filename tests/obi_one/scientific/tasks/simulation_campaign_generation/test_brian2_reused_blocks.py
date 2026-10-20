@@ -11,6 +11,9 @@ import json
 from pathlib import Path
 from typing import get_args
 
+import brian2.units
+import numpy as np
+import numpy.testing as npt
 import pytest
 
 import obi_one.scientific.library.simulation.brian2.simulate_brian2 as brian2_runner
@@ -37,6 +40,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
 )
 from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
     DisconnectSynapticManipulation,
+    ScaleWeightSynapticManipulation,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -105,6 +109,11 @@ def _generate(tmp_path: Path) -> dict:
         name="VoltageWindow",
     )
 
+    # Added first, so the Disconnect after it wins on the synapses both select.
+    sim_conf.add(
+        ScaleWeightSynapticManipulation(timestamps=timestamps.ref, weight_scaling=0.5),
+        name="Scale",
+    )
     sim_conf.add(
         DisconnectSynapticManipulation(
             presynaptic_neuron_set=neuron_set.ref,
@@ -187,18 +196,21 @@ class TestGeneratedConfig:
     def test_time_window_recording_keeps_its_window(self, sonata_config):
         assert sonata_config["reports"]["VoltageWindow"]["end_time"] == SIMULATION_LENGTH
 
-    def test_manipulation_becomes_a_supported_connection_override(self, sonata_config):
-        (override,) = sonata_config["connection_overrides"]
-        assert override["name"] == "Disconnect"
-        assert override["weight"] == pytest.approx(0.0)
-        for unsupported in (
-            "spont_minis",
-            "synapse_configure",
-            "modoverride",
-            "neuromodulation_dtc",
-            "neuromodulation_strength",
-        ):
-            assert unsupported not in override
+    def test_manipulations_become_supported_connection_overrides(self, sonata_config):
+        overrides = sonata_config["connection_overrides"]
+        assert [(override["name"], override["weight"]) for override in overrides] == [
+            ("Scale", 0.5),
+            ("Disconnect", 0.0),
+        ]
+        for override in overrides:
+            for unsupported in (
+                "spont_minis",
+                "synapse_configure",
+                "modoverride",
+                "neuromodulation_dtc",
+                "neuromodulation_strength",
+            ):
+                assert unsupported not in override
 
 
 class TestSpikeReplay:
@@ -340,3 +352,9 @@ class TestRunsInBrian2:
         # ...and the soma voltage report was recorded over the two of them.
         assert net.state_monitor is not None
         assert net.state_monitor.v.shape[0] == 2
+
+        # The overrides apply in block order: every synapse is halved, then sugar -> sugar is cut.
+        weights = np.asarray(net.synapses.w[:] / brian2.units.mV)
+        sugar = np.isin(net.synapses.i[:], [0, 1]) & np.isin(net.synapses.j[:], [0, 1])
+        npt.assert_allclose(weights[sugar], 0.0)
+        npt.assert_allclose(weights[~sugar], 125.0)
