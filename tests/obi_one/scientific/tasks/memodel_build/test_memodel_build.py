@@ -12,13 +12,12 @@ from obi_one.scientific.from_id.emodel_from_id import EModelFromID
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_scan_config,
 )
-from obi_one.scientific.tasks.memodel_build import (
+from obi_one.scientific.tasks.memodel_build import registration, task as task_module
+from obi_one.scientific.tasks.memodel_build.config import (
     MEModelBuildScanConfig,
     MEModelBuildSingleConfig,
-    MEModelBuildTask,
-    registration,
-    task as task_module,
 )
+from obi_one.scientific.tasks.memodel_build.task import MEModelBuildTask
 
 MORPHOLOGY_ID = str(uuid4())
 EMODEL_ID = str(uuid4())

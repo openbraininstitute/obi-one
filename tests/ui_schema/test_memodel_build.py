@@ -1,4 +1,4 @@
-from obi_one.scientific.tasks.memodel_build import MEModelBuildScanConfig
+from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 
 
 def test_inputs_are_single_entity_selectors():
