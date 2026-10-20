@@ -443,8 +443,12 @@ class TestTimeWindowRecording:
         assert recording.end_time == end_time
 
     def test_locations_are_still_required(self):
-        with pytest.raises(ValueError, match="require morphology locations"):
+        """The windowed variant inherits the target, so it is required there too."""
+        with pytest.raises(ValidationError, match="morphology_locations"):
             TimeWindowMorphologyLocationVoltageRecording(morphology_locations=None)
+
+        with pytest.raises(ValidationError, match="morphology_locations"):
+            TimeWindowMorphologyLocationVoltageRecording()
 
 
 class TestLocationTargeting:

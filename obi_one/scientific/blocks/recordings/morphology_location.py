@@ -19,7 +19,7 @@ class MorphologyLocationVoltageRecording(Block):
 
     title: ClassVar[str] = "Morphology Location Voltage Recording (Full Experiment)"
 
-    morphology_locations: MorphologyLocationsReference | None = Field(
+    morphology_locations: MorphologyLocationsReference = Field(
         title="Morphology Locations",
         description="Morphology-location rule to record from.",
         json_schema_extra={
@@ -44,13 +44,6 @@ class MorphologyLocationVoltageRecording(Block):
     _start_time: NonNegativeFloat = 0.0
     _end_time: PositiveFloat = 100.0
     _materialized_compartment_set_name: str | None = PrivateAttr(default=None)
-
-    @model_validator(mode="after")
-    def validate_morphology_locations(self) -> "MorphologyLocationVoltageRecording":
-        if self.morphology_locations is None:
-            msg = "Morphology-location voltage recordings require morphology locations."
-            raise ValueError(msg)
-        return self
 
     def set_materialized_compartment_set_target(self, name: str) -> None:
         self._materialized_compartment_set_name = name
