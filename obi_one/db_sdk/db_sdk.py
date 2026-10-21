@@ -11,7 +11,14 @@ from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    ContentType,
+    ExecutorType,
+    FetchFileStrategy,
+    TaskActivityType,
+)
 from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.exception import OBIONEError
@@ -76,6 +83,7 @@ def fetch_asset_by_label(
     entity: Entity,
     asset_label: AssetLabel,
     output_path: Path,
+    strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
 ) -> Path:
     """Fetch a single asset matching the given label to output_path.
 
@@ -87,6 +95,7 @@ def fetch_asset_by_label(
         entity,
         selection={"label": asset_label},
         output_path=output_dir,
+        strategy=strategy,
     ).one()
     return asset.path
 
