@@ -76,6 +76,7 @@ def fetch_asset_by_label(
     entity: Entity,
     asset_label: AssetLabel,
     output_path: Path,
+    strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
 ) -> Path:
     """Fetch a single asset matching the given label to output_path.
 
@@ -87,6 +88,7 @@ def fetch_asset_by_label(
         entity,
         selection={"label": asset_label},
         output_path=output_dir,
+        strategy=strategy,
     ).one()
     return asset.path
 
