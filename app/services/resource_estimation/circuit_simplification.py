@@ -4,10 +4,10 @@ Estimates cores, memory, and time limit based on the input circuit's
 biophysical node count and edge count, plus the selected algorithm type.
 
 ``single_compartment`` performs expensive per-cell filter computation
-(Rossert kernels) and ``neuron_reduce`` performs per-ME-model NEURON
-reduction and re-measurement. Point-neuron algorithms (lif, adex,
-izhikevich, glif, gif) skip filter computation entirely and are much
-cheaper.
+(Rossert kernels); ``neuron_reduce`` and ``neat_reduction`` reduce every
+cell's morphology in NEURON and re-measure its dynamics. Point-neuron
+algorithms (lif, adex, izhikevich, glif, gif) skip filter computation
+entirely and are much cheaper.
 
 Constants below are conservative placeholders pending empirical
 calibration on a real circuit. TODO: calibrate WORK_UNITS_PER_CORE,
@@ -55,13 +55,60 @@ BASE_MEMORY_GB = 2.0
 FILTER_WORK_UNITS_PER_CORE_HOUR = 100_000
 POINT_NEURON_WORK_UNITS_PER_CORE_HOUR = 500_000
 
+# Morphological-reduction work units (cells) per core. neuron_reduce and
+# neat_reduction reduce every biophysical cell in NEURON (subprocess per cell,
+# mechanism compilation, impedance fits, re-measurement of holding/threshold),
+# which is far more expensive per cell than point-neuron calibration.
+REDUCTION_WORK_UNITS_PER_CORE = 2_000
+REDUCTION_WORK_UNITS_PER_CORE_HOUR = 1_000
+
 # Default max_filter_locations (matches the pipeline default).
 DEFAULT_MAX_FILTER_LOCATIONS = 100
 
-# Algorithms sized on the expensive tier: single_compartment does per-cell
-# filter computation; neuron_reduce runs NEURON reduction + dynamics
-# re-measurement per unique ME-model (spawned workers, same order of cost).
-FILTER_ALGORITHMS = {"single_compartment", "neuron_reduce"}
+# Algorithms that compute Rössert synaptic correction filters per cell.
+FILTER_ALGORITHMS = {"single_compartment"}
+
+# Algorithms that reduce the detailed morphology to a few compartments.
+REDUCTION_ALGORITHMS = {"neuron_reduce", "neat_reduction"}
+
+
+def _algorithm_workload(algorithm_name: str, nbio: int) -> tuple[int, int, int]:
+    """Returns (work_units, work_per_core, work_per_core_hour) for one algorithm."""
+    if algorithm_name in FILTER_ALGORITHMS:
+        return (
+            nbio * DEFAULT_MAX_FILTER_LOCATIONS,
+            FILTER_WORK_UNITS_PER_CORE,
+            FILTER_WORK_UNITS_PER_CORE_HOUR,
+        )
+    if algorithm_name in REDUCTION_ALGORITHMS:
+        return nbio, REDUCTION_WORK_UNITS_PER_CORE, REDUCTION_WORK_UNITS_PER_CORE_HOUR
+    return nbio, POINT_NEURON_WORK_UNITS_PER_CORE, POINT_NEURON_WORK_UNITS_PER_CORE_HOUR
+
+
+def estimate_resources_for_algorithms(
+    algorithm_names: list[str], nbio: int
+) -> tuple[int, int, int]:
+    """Returns (cores, memory_gb, timelimit_hours) for running the algorithms in sequence.
+
+    Cores are sized for the most demanding algorithm; the time limit is the sum of the
+    per-algorithm times because the task runs the selected algorithms one after another.
+    """
+    workloads = [_algorithm_workload(name, nbio) for name in algorithm_names]
+
+    # Inverted sizing: cores from workload first, capped at the launch-system max.
+    ncpu_required = max(
+        max(1, int(np.ceil(work_units / work_per_core)))
+        for work_units, work_per_core, _ in workloads
+    )
+    ncpu_required = min(ncpu_required, 16)
+
+    mem_gb_required = BASE_MEMORY_GB + ncpu_required * PER_WORKER_GB
+    ncpu, mem_gb = _get_required_cpu_memory_combo(ncpu_required, mem_gb_required)
+
+    time_h = sum(
+        work_units / (ncpu * work_per_core_hour) for work_units, _, work_per_core_hour in workloads
+    )
+    return ncpu, mem_gb, max(1, int(np.ceil(time_h)))
 
 
 def _get_required_cpu_memory_combo(min_cores: int, mem_gb_required: float) -> tuple[int, int]:
@@ -174,41 +221,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
     )
 
-    # Determine algorithm type from the selected algorithm blocks. The block's
-    # algorithm_name is the OBI-One compound name (for example, "adex_nest").
+    # The block's algorithm_name is the OBI-One compound name (for example, "adex_nest").
     algorithm_names = [algorithm.algorithm_name for algorithm in single_config.algorithms.values()]
-    base_algorithms = [
-        name.removesuffix("_nest").removesuffix("_brian2") for name in algorithm_names
-    ]
-    has_filter_algo = any(a in FILTER_ALGORITHMS for a in base_algorithms)
-
-    # Estimate work units based on algorithm type
-    if has_filter_algo:
-        # Expensive tier: work is n_bio x max_filter_locations for filters;
-        # for neuron_reduce the true work scales with unique ME-models, so
-        # this conservatively overestimates until calibrated empirically.
-        max_locations = DEFAULT_MAX_FILTER_LOCATIONS
-        work_units = nbio * max_locations
-        work_per_core = FILTER_WORK_UNITS_PER_CORE
-        work_per_core_hour = FILTER_WORK_UNITS_PER_CORE_HOUR
-    else:
-        # Point-neuron: no filter computation, much cheaper per cell
-        work_units = nbio
-        work_per_core = POINT_NEURON_WORK_UNITS_PER_CORE
-        work_per_core_hour = POINT_NEURON_WORK_UNITS_PER_CORE_HOUR
-
-    # Inverted sizing: cores from workload first
-    ncpu_required = max(1, int(np.ceil(work_units / work_per_core)))
-    ncpu_required = min(ncpu_required, 16)  # cap at 16 cores (launch-system max)
-
-    # Memory: base + cores x per_worker
-    mem_gb_required = BASE_MEMORY_GB + ncpu_required * PER_WORKER_GB
-
-    # Find a preset that satisfies BOTH core and memory requirements
-    ncpu, mem_gb = _get_required_cpu_memory_combo(ncpu_required, mem_gb_required)
-
-    # Time limit: work_units / (cores x work_per_core_hour)
-    time_h = max(1, int(np.ceil(work_units / (ncpu * work_per_core_hour))))
+    ncpu, mem_gb, time_h = estimate_resources_for_algorithms(algorithm_names, nbio)
 
     return task_definition.resources.model_copy(
         update={
