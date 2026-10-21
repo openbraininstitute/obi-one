@@ -24,10 +24,9 @@ The available algorithm blocks map to a base algorithm in sonata-simplify plus a
 - `single_compartment` — reduces each biophysical cell to a single compartment with Rössert synaptic correction filters; output stays NEURON-compatible. Options: `filter_poles` (1-4, scannable; 1 and 2 use dedicated ProbFilt mods, 3-4 the zero-padded 5-pole mods), `filter_method` (`timedomain` or the faster passive `impedance` approximation) and `strict_filters` (default on, so failed filter fits fail the task instead of falling back to pass-through filters).
 - `lif_nest`, `adex_nest`, `adex_brian2`, `izhikevich_nest`, `glif_nest`, `gif_nest` — convert cells to point-neuron models and export the circuit to NEST or Brian2 SONATA format.
 - `neuron_reduce` — impedance-based morphology reduction to reduced multi-compartment ME-models (Amsalem et al. 2020); NEURON output.
-- `neat_reduction` (experimental) — NEAT compartment reduction preserving transfer impedance at selected fit locations; NEURON output.
 
-`neuron_reduce` and `neat_reduction` need the `reduction` extra of sonata-simplify, which is installed in the launch environment (`circuit_simplification.in`) but not in the default local install.
+`neuron_reduce` needs the `reduction` extra of sonata-simplify, which is installed in the launch environment (`circuit_simplification.in`) but not in the default local install.
 
 Each output circuit is smoke-checked for BluePySnap loadability before registration. The simulator-specific output (`target_simulator` in the exported `circuit_config.json`, defaulting to NEURON) determines the registered entity's target simulator. For provenance, the versions of `obi-one`, `sonata-simplify` and `bluecellulab` are appended to the registered circuit's description and written, together with the algorithm parameters, to `simplification_provenance.json` next to the output `circuit_config.json`.
 
-Resource estimation (`app/services/resource_estimation/circuit_simplification.py`) sizes filter (`single_compartment`), morphological-reduction (`neuron_reduce`, `neat_reduction`) and point-neuron algorithms on separate tiers; cores follow the most demanding selected algorithm and the time limit adds up over algorithms, since they run sequentially.
+Resource estimation (`app/services/resource_estimation/circuit_simplification.py`) sizes filter (`single_compartment`), morphological-reduction (`neuron_reduce`) and point-neuron algorithms on separate tiers; cores follow the most demanding selected algorithm and the time limit adds up over algorithms, since they run sequentially.

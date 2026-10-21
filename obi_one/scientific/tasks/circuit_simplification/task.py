@@ -3,7 +3,7 @@
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron, single-compartment or reduced multi-compartment circuits while
 preserving network connectivity. Each selected algorithm registers exactly one circuit in
-its target simulator format: single_compartment, neuron_reduce and neat_reduction as
+its target simulator format: single_compartment and neuron_reduce as
 NEURON, point-neuron NEST variants as NEST, and adex_brian2 as Brian2.
 """
 
@@ -88,9 +88,9 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
         " network connectivity. Supports multiple target models (single-compartment,"
-        " LIF, AdEx, Izhikevich, GLIF, GIF, Neuron_Reduce, NEAT). Point-neuron models are"
-        " exported to NEST (or Brian2 for AdEx); single-compartment, Neuron_Reduce and"
-        " NEAT produce NEURON circuits."
+        " LIF, AdEx, Izhikevich, GLIF, GIF, Neuron_Reduce). Point-neuron models are"
+        " exported to NEST (or Brian2 for AdEx); single-compartment and Neuron_Reduce"
+        " produce NEURON circuits."
     )
 
     default_target_neuron_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
