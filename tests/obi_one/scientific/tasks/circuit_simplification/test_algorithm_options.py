@@ -20,6 +20,7 @@ from obi_one.scientific.blocks.simplification_algorithms import (
     NeuronReduceAlgorithm,
     SingleCompartmentAlgorithm,
     algorithm_supports_node_selection,
+    metadata,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.task import (
@@ -203,3 +204,14 @@ class TestResourceEstimation:
 
     def test_small_circuit_uses_minimum_preset(self):
         assert estimate_resources_for_algorithms(["adex_brian2"], nbio=10) == (1, 4, 1)
+
+
+def test_metadata_matches_sonata_simplify():
+    """The static algorithm metadata matches the installed sonata-simplify."""
+    algorithms = pytest.importorskip("sonata_simplify.algorithms")
+
+    for base in {base for base, _ in metadata.ALGORITHM_EXPORT_MAP.values()}:
+        assert metadata.BASE_ALGORITHM_TITLES[base] == algorithms.ALGORITHM_TITLES[base]
+        assert metadata.BASE_ALGORITHM_DESCRIPTIONS[base] == algorithms.ALGORITHM_DESCRIPTIONS[base]
+        supports = algorithms.get_algorithm_spec(base).capabilities.supports_node_selection
+        assert (base in metadata.NODE_SELECTION_ALGORITHMS) == supports

@@ -57,7 +57,6 @@ dependencies = [
     "obp-accounting-sdk>=0.6.8",
     "numpy",
     "scipy",
-    "sonata-simplify[simulation]>=0.2.5",
 ]
 
 [project.optional-dependencies]
@@ -69,6 +68,9 @@ connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 
 # MESHING - optional, private dependency needed for skeletonization and mesh LOD generation
 meshing = ["ultraliser>=2.1.9"]
+
+# SIMPLIFICATION - optional, private dependency needed to run circuit simplification
+simplification = ["sonata-simplify[simulation]>=0.2.5"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [

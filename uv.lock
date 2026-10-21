@@ -2411,7 +2411,6 @@ dependencies = [
     { name = "pylmesh" },
     { name = "python-multipart" },
     { name = "scipy" },
-    { name = "sonata-simplify", extra = ["simulation"] },
 ]
 
 [package.optional-dependencies]
@@ -2470,6 +2469,9 @@ service = [
     { name = "sentry-sdk" },
     { name = "starlette" },
     { name = "uvicorn" },
+]
+simplification = [
+    { name = "sonata-simplify", extra = ["simulation"] },
 ]
 
 [package.dev-dependencies]
@@ -2534,12 +2536,12 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
-    { name = "sonata-simplify", extras = ["simulation"], specifier = ">=0.2.5", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
+    { name = "sonata-simplify", extras = ["simulation"], marker = "extra == 'simplification'", specifier = ">=0.2.5", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["emodel", "connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
