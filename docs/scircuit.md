@@ -149,6 +149,7 @@ Optional modifications to synaptic properties:
 
 - **SynapticMgManipulation**: Modify magnesium block of NMDA receptors
 - **ScaleAcetylcholineUSESynapticManipulation**: Scale acetylcholine effects
+- **ScaleWeightSynapticManipulation**: Scale the weight (conductance) of every synapse between two neuron sets
 
 Manipulations are applied as `connection_overrides` in the SONATA config.
 

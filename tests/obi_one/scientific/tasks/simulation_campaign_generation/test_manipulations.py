@@ -7,6 +7,7 @@ responsibility rather than the blocks'.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
@@ -19,6 +20,7 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
 from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
     ConnectSynapticManipulation,
     DisconnectSynapticManipulation,
+    ScaleWeightSynapticManipulation,
 )
 from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
@@ -51,6 +53,7 @@ SYNAPTIC_MANIPULATIONS = {
     ),
     "ConnectSynapticManipulation": ConnectSynapticManipulation(),
     "DisconnectSynapticManipulation": DisconnectSynapticManipulation(),
+    "ScaleWeightSynapticManipulation": ScaleWeightSynapticManipulation(weight_scaling=0.5),
 }
 
 
@@ -73,6 +76,7 @@ class TestUnionCoverage:
         assert union_member_names(Brian2SynapticManipulationsUnion) == {
             "ConnectSynapticManipulation",
             "DisconnectSynapticManipulation",
+            "ScaleWeightSynapticManipulation",
         }
 
 
@@ -135,6 +139,30 @@ class TestSynapticManipulations:
         weights = {override["name"]: override.get("weight") for override in overrides}
         assert weights["Disconnect"] == pytest.approx(0.0)
         assert weights["Connect"] == pytest.approx(1.0)
+
+    def test_scale_weight_emits_its_factor(self, circuit, tmp_path):
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Scale": ScaleWeightSynapticManipulation(weight_scaling=1.5)},
+        )
+
+        result = generate(config, tmp_path)
+
+        assert result.sonata_config["connection_overrides"] == [
+            {
+                "name": "Scale",
+                "source": DEFAULT_BIOPHYSICAL_NODE_SET,
+                "target": DEFAULT_BIOPHYSICAL_NODE_SET,
+                "delay": 0.0,
+                "weight": 1.5,
+            }
+        ]
+
+    @pytest.mark.parametrize("weight_scaling", [-0.5, [1.0, -0.5]])
+    def test_scale_weight_refuses_a_negative_factor(self, weight_scaling):
+        with pytest.raises(ValidationError):
+            ScaleWeightSynapticManipulation(weight_scaling=weight_scaling)
 
     def test_pre_and_post_synaptic_targets_are_honoured(self, circuit, tmp_path):
         presynaptic = BiophysicalPopulationIDNeuronSet(

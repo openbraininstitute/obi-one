@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -566,16 +567,27 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
             return path
 
     class FakeMorphology:
-        id_str = "morphology-1"
+        id = "morphology-1"
 
-        def swc_file_content(self, *, db_client):
+        def entity(self, db_client=None):
             del db_client
-            return "1  soma  0 0 0 1 -1\\n"
+            return self
+
+    def fetch_assets(entity, selection, output_path):
+        del entity, selection
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("1  soma  0 0 0 1 -1\\n", encoding="utf-8")
+        result = Mock()
+        result.one.return_value = SimpleNamespace(path=path)
+        return result
 
     config = SimpleNamespace(
         initialize=SimpleNamespace(emodel="test"),
         morphology=SimpleNamespace(cell_morphology=FakeMorphology()),
     )
+    db_client = Mock()
+    db_client.fetch_assets.side_effect = fetch_assets
 
     features_path = staging.download_extraction_features(
         config,
@@ -583,7 +595,7 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
         tmp_path,
         object(),
     )
-    morphology_filename = staging.stage_morphology(config, tmp_path, object())
+    morphology_filename = staging.stage_morphology(config, tmp_path, db_client)
 
     assert features_path == tmp_path / "config" / "features" / "test.json"
     assert features_path.read_text(encoding="utf-8") == '{"features": []}'
