@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import threading
@@ -130,6 +131,18 @@ class TestPack:
             [NODES, *(Path("morphologies/swc") / f"{name}.swc" for name in names)]
         )
         assert set(pack.levels[0].cells) == set(range(nodes.size))
+
+    def test_each_stage_is_logged(self, directory, caplog):
+        with caplog.at_level(logging.INFO, logger="obi-one"):
+            build(LocalCircuit(CONTAINER_CIRCUIT), directory)
+        stages = [
+            record.getMessage()
+            for record in caplog.records
+            if record.getMessage().startswith("Pack of circuit")
+        ]
+        ends = ["was free", "staged", "read", "simplified", "placed", "packed"]
+        assert len(stages) == len(ends)
+        assert all(f"{end} in " in stage for end, stage in zip(ends, stages, strict=True))
 
     def test_what_was_staged_is_let_go_of_once_read(self, directory):
         build(LocalCircuit(CONTAINER_CIRCUIT), directory)

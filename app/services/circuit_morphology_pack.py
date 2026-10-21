@@ -8,6 +8,7 @@ request, and refuses the others as early as it can tell.
 import os
 import shutil
 import threading
+import time
 from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
@@ -83,6 +84,22 @@ class Refusal(StrEnum):
     TOO_MANY_SEGMENTS = "too_many_segments"
     NO_MORPHOLOGIES = "no_morphologies"
     BUSY = "busy"
+
+
+class Stages:
+    """Logs each stage of a circuit's build as it ends, with the seconds it took."""
+
+    def __init__(self, circuit_id: UUID) -> None:
+        """Time from now on."""
+        self.circuit_id = circuit_id
+        self.began = time.perf_counter()
+
+    def done(self, what: str, *args: object) -> None:
+        now = time.perf_counter()
+        L.info(
+            "Pack of circuit %s: " + what + " in %.1f s", self.circuit_id, *args, now - self.began
+        )
+        self.began = now
 
 
 def refuse(
@@ -245,6 +262,7 @@ def placed_cells(
     directory: Path,
     max_segments: int,
     processes: Processes,
+    stages: Stages,
     *,
     all_levels: bool,
 ) -> PackWriter:
@@ -254,9 +272,12 @@ def placed_cells(
     it packs.
     """
     config = download_circuit_config(client, circuit_id, asset.id, directory)
-    populations = stage_populations(config, Staging(client, circuit_id, asset, directory))
+    staging = Staging(client, circuit_id, asset, directory)
+    populations = stage_populations(config, staging)
+    stages.done("%d bytes of nodes and morphologies staged", staging.staged)
     cells = Counter(key for population in populations for key in population.morphology_keys())
     morphologies = read_within_limit(populations, cells)
+    stages.done("%d morphologies read", len(morphologies))
     # a private circuit's files were downloaded, in production into memory
     shutil.rmtree(directory)
     if not morphologies:
@@ -267,11 +288,14 @@ def placed_cells(
     else:
         level, shapes = finest_level_within(morphologies, cells, min(max_segments, cap), processes)
         levels = (level,)
+    stages.done("%d levels simplified", len(levels))
     del morphologies
     trim = malloc_trim()
     if trim is not None:
         trim(0)
-    return place_cells(populations, levels, shapes)
+    writer = place_cells(populations, levels, shapes)
+    stages.done("%d cells placed", sum(cells.values()))
+    return writer
 
 
 def kept_path(asset: Asset) -> Path | None:
@@ -325,26 +349,41 @@ def build_circuit_morphology_pack(
         )
     asset = sonata_circuit_asset(client, circuit)
     path = kept_path(asset) if all_levels else None
+    stages = Stages(circuit_id)
     if path is not None and (pack := kept(path)) is not None:
+        stages.done("%d bytes kept read", len(pack))
         return pack
     if not BUILDING.acquire(timeout=PATIENCE_SECONDS):
         refuse(
             Refusal.BUSY, "Another pack is being built; try again", HTTPStatus.SERVICE_UNAVAILABLE
         )
     try:
+        stages.done("the way was free")
         # the build waited for may have been this one's
         if path is not None and (pack := kept(path)) is not None:
+            stages.done("%d bytes kept read", len(pack))
             return pack
         with Processes(workers(), PRELOAD) as processes:
-            pack = placed_cells(
-                client, circuit_id, asset, directory, max_segments, processes, all_levels=all_levels
-            ).pack(processes)
+            writer = placed_cells(
+                client,
+                circuit_id,
+                asset,
+                directory,
+                max_segments,
+                processes,
+                stages,
+                all_levels=all_levels,
+            )
+            pack = writer.pack(processes)
+        stages.done("%d bytes packed", len(pack))
         # under the lock, so that a request waiting for it finds the pack kept
         if path is not None and len(pack) <= settings.CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES:
             try:
                 keep(path, pack)
             except OSError:
                 L.warning("The pack %s could not be kept", path.name, exc_info=True)
+            else:
+                stages.done("kept")
         return pack
     finally:
         BUILDING.release()
