@@ -106,6 +106,7 @@ def steps(monkeypatch, tmp_path):
         task_module, "register_memodel_validation_results", parent.register_validation
     )
     monkeypatch.setattr(registration, "set_validation_status", parent.set_validation_status)
+    monkeypatch.delenv("JOB_CPUS", raising=False)
     monkeypatch.setattr(
         task_module.Task, "_update_execution_activity", parent.update_execution_activity
     )
@@ -156,6 +157,7 @@ class TestExecute:
         assert validate_kwargs["cell_name"] == str(MEMODEL_ID)
         assert validate_kwargs["holding_current"] == CALIBRATION["holding_current"]
         assert validate_kwargs["threshold_current"] == CALIBRATION["rheobase"]
+        assert validate_kwargs["n_processes"] == task_module.DEFAULT_VALIDATION_PROCESSES
         steps.register_validation.assert_called_once_with(
             client=db_client,
             memodel_id=MEMODEL_ID,
@@ -166,6 +168,13 @@ class TestExecute:
         steps.set_validation_status.assert_called_once_with(
             db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.done
         )
+
+    def test_validates_on_the_launch_system_job_cpus(self, tmp_path, steps, monkeypatch):
+        monkeypatch.setenv("JOB_CPUS", "2")
+
+        _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
+
+        assert steps.validate.call_args.kwargs["n_processes"] == 2
 
     def test_follows_the_activity_visibility(self, tmp_path, steps):
         _task(tmp_path).execute(

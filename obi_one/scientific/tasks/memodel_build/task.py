@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import ClassVar
 
@@ -26,8 +27,9 @@ L = logging.getLogger(__name__)
 INITIAL_HOLDING_CURRENT = 0.0
 INITIAL_THRESHOLD_CURRENT = 0.1
 DOWNLOAD_CONCURRENCY = 8
-# Matches the 4 cores of the launch definition and the former Bluenaas validation job.
-VALIDATION_PROCESSES = 4
+# Launch-system jobs validate on the CPUs they were given (JOB_CPUS); other runs, such as
+# Bluenaas, on as many as the former Bluenaas validation job.
+DEFAULT_VALIDATION_PROCESSES = 4
 VALIDATION_FIGURES_DIRNAME = "validation_figures"
 
 
@@ -77,7 +79,7 @@ def calibrate_and_validate(
         holding_current=calibration["holding_current"],
         threshold_current=calibration["rheobase"],
         output_dir=coord_root / VALIDATION_FIGURES_DIRNAME,
-        n_processes=VALIDATION_PROCESSES,
+        n_processes=int(os.environ.get("JOB_CPUS") or DEFAULT_VALIDATION_PROCESSES),
     )
     register_memodel_validation_results(
         client=db_client,
