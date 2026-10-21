@@ -102,13 +102,22 @@ class TestPreviewMorphologyLocations:
     @pytest.mark.parametrize(
         ("block", "expected_count"),
         [
-            (RandomMorphologyLocations(random_seed=0, number_of_locations=5), 5),
             (
-                ClusteredMorphologyLocations(random_seed=0, number_of_locations=6, n_clusters=2),
+                RandomMorphologyLocations(
+                    random_seed=0, number_of_locations=5, section_types=(3, 4)
+                ),
+                5,
+            ),
+            (
+                ClusteredMorphologyLocations(
+                    random_seed=0, number_of_locations=6, n_clusters=2, section_types=(3, 4)
+                ),
                 6,
             ),
             (
-                PathDistanceMorphologyLocations(random_seed=0, number_of_locations=4),
+                PathDistanceMorphologyLocations(
+                    random_seed=0, number_of_locations=4, section_types=(3, 4)
+                ),
                 4,
             ),
         ],
@@ -140,7 +149,9 @@ class TestPreviewMorphologyLocations:
 
     def test_the_same_seed_previews_the_same_locations(self, morphology):
         """The preview is only useful if the run places its points in the same spots."""
-        block = RandomMorphologyLocations(random_seed=0, number_of_locations=5)
+        block = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=5, section_types=(3, 4)
+        )
 
         first = self._preview(morphology, block.model_copy(deep=True))
         second = self._preview(morphology, block.model_copy(deep=True))
@@ -149,10 +160,12 @@ class TestPreviewMorphologyLocations:
 
     def test_a_different_seed_previews_different_locations(self, morphology):
         first = self._preview(
-            morphology, RandomMorphologyLocations(random_seed=0, number_of_locations=5)
+            morphology,
+            RandomMorphologyLocations(random_seed=0, number_of_locations=5, section_types=(3, 4)),
         )
         second = self._preview(
-            morphology, RandomMorphologyLocations(random_seed=1, number_of_locations=5)
+            morphology,
+            RandomMorphologyLocations(random_seed=1, number_of_locations=5, section_types=(3, 4)),
         )
 
         assert first != second
@@ -172,7 +185,9 @@ class TestPreviewMorphologyLocations:
 
     def test_a_parameter_sweep_is_rejected_before_the_morphology_is_resolved(self):
         """Resolution downloads assets, so an unusable request must fail before it."""
-        block = RandomMorphologyLocations(random_seed=0, number_of_locations=[3, 5])
+        block = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=[3, 5], section_types=(3, 4)
+        )
 
         with (
             patch(f"{SERVICE_MODULE}.resolve_morphology") as mock_resolve,
