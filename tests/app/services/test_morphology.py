@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import morph_tool.exceptions
 import morphio
 import pytest
 from neurom.exceptions import NeuroMError
@@ -13,7 +14,6 @@ from app.services.morphology import (
     convert_morphology,
     load_morphio_morphology,
     run_quality_checks,
-    validate_and_convert_morphology,
     validate_soma_diameter,
 )
 
@@ -22,8 +22,6 @@ _MORPHOLOGY = "app.services.morphology.morphio.Morphology"
 _CHECK_WARNINGS = "app.services.morphology._check_warnings"
 _LOAD_MORPHOLOGY = "app.services.morphology.neurom.load_morphology"
 _MORPH_TOOL = "app.services.morphology.morph_tool.convert"
-_LOAD_MORPHIO = "app.services.morphology.load_morphio_morphology"
-_CONVERT = "app.services.morphology.convert_morphology"
 
 
 class TestMorphologyFiles:
@@ -319,7 +317,26 @@ class TestConvertMorphology:
 
         with (
             pytest.raises(MorphologyFileError, match="Failed to convert the file"),
-            patch(_MORPH_TOOL, side_effect=Exception("conversion failed")),
+            patch(
+                _MORPH_TOOL,
+                side_effect=morph_tool.exceptions.MorphToolException("conversion failed"),
+            ),
+        ):
+            convert_morphology(
+                input_file,
+                output_dir=tmp_path,
+                single_point_soma_by_ext={".h5": False},
+                target_exts=[".h5"],
+            )
+
+    def test_unexpected_conversion_error_propagates(self, tmp_path):
+        """An error we do not attribute to the file (nor to the server) propagates unchanged."""
+        input_file = tmp_path / "neuron.swc"
+        input_file.write_text("dummy")
+
+        with (
+            pytest.raises(RuntimeError, match="unexpected"),
+            patch(_MORPH_TOOL, side_effect=RuntimeError("unexpected")),
         ):
             convert_morphology(
                 input_file,
@@ -358,66 +375,3 @@ class TestConvertMorphology:
 
         _, kwargs = mock_convert.call_args
         assert kwargs["single_point_soma"] is True
-
-
-class TestValidateAndConvertMorphology:
-    def test_calls_load_then_convert(self, tmp_path):
-        input_file = tmp_path / "neuron.swc"
-        input_file.write_text("dummy")
-        expected = MorphologyFiles(hdf5=tmp_path / "neuron.h5")
-
-        with (
-            patch(_LOAD_MORPHIO) as mock_load,
-            patch(_CONVERT, return_value=expected) as mock_convert,
-        ):
-            result = validate_and_convert_morphology(
-                input_file,
-                output_dir=tmp_path,
-                single_point_soma_by_ext={".h5": False},
-                target_exts=[".h5"],
-            )
-
-        mock_load.assert_called_once_with(input_file, raise_warnings=False)
-        mock_convert.assert_called_once()
-        assert result is expected
-
-    def test_load_failure_prevents_conversion(self, tmp_path):
-        input_file = tmp_path / "bad.swc"
-        input_file.write_text("invalid")
-
-        with (
-            patch(_CONVERT) as mock_convert,
-            patch(
-                _LOAD_MORPHIO,
-                side_effect=MorphologyFileError("bad"),
-            ),
-            pytest.raises(MorphologyFileError),
-        ):
-            validate_and_convert_morphology(
-                input_file,
-                output_dir=tmp_path,
-                single_point_soma_by_ext={".h5": False},
-            )
-
-        mock_convert.assert_not_called()
-
-    def test_passes_through_optional_params(self, tmp_path):
-        input_file = tmp_path / "neuron.swc"
-        input_file.write_text("dummy")
-        expected = MorphologyFiles()
-
-        with (
-            patch(_LOAD_MORPHIO),
-            patch(_CONVERT, return_value=expected) as mock_convert,
-        ):
-            validate_and_convert_morphology(
-                input_file,
-                output_dir=tmp_path,
-                single_point_soma_by_ext={".h5": False},
-                target_exts=[".h5"],
-                output_stem="my_stem",
-            )
-
-        _, kwargs = mock_convert.call_args
-        assert kwargs["output_stem"] == "my_stem"
-        assert kwargs["target_exts"] == [".h5"]

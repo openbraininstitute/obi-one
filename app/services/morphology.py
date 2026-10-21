@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import morph_tool
+import morph_tool.exceptions
 import morphio
 import neurom
 import neurom.check.morphology_checks as morph_checks
@@ -188,11 +189,12 @@ def convert_morphology(
             # Disk full, permissions, etc. A server problem, not the file's fault and nothing
             # morphology-specific, so let it propagate for the caller's generic error handling.
             raise
-        except Exception as e:
+        except (morph_tool.exceptions.MorphToolException, morphio.MorphioError, ValueError) as e:
             # The file loaded but could not be converted, e.g. an unsupported soma type or
-            # degenerate geometry from the numeric soma conversion. morph_tool signals these as
-            # MorphToolException/MorphioError; anything else here is still tied to this input, so
-            # attribute it to the file rather than the server.
+            # degenerate geometry from the numeric soma conversion. morph_tool and morphio signal
+            # these as MorphToolException/MorphioError, and the numeric soma fit can raise
+            # ValueError; all are tied to this input, so attribute them to the file rather than the
+            # server. Any other exception is unexpected and propagates unchanged.
             msg = f"Failed to convert the file: {e!s}"
             raise MorphologyFileError(msg) from e
         if ext == ".swc":
@@ -203,21 +205,3 @@ def convert_morphology(
             output_paths["asc"] = output_file
 
     return MorphologyFiles(**output_paths)
-
-
-def validate_and_convert_morphology(
-    input_file: Path,
-    *,
-    output_dir: Path,
-    single_point_soma_by_ext: dict[str, bool],
-    target_exts: Iterable[str] | None = None,
-    output_stem: str | None = None,
-) -> MorphologyFiles:
-    load_morphio_morphology(input_file, raise_warnings=False)
-    return convert_morphology(
-        input_file,
-        output_dir=output_dir,
-        single_point_soma_by_ext=single_point_soma_by_ext,
-        target_exts=target_exts,
-        output_stem=output_stem,
-    )

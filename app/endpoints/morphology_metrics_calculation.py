@@ -68,9 +68,8 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 class MorphologyRegistrationResponse(BaseModel):
     entity_id: str
     measurement_entity_id: str | None
-    status: str
     morphology_name: str
-    lifecycle_status: str
+    lifecycle_status: EntityLifecycleStatus
     validation_error: str | None
 
 
@@ -336,9 +335,8 @@ def _register_disqualified_morphology(
     return MorphologyRegistrationResponse(
         entity_id=str(entity_uuid),
         measurement_entity_id=None,
-        status="success",
         morphology_name=morphology_name,
-        lifecycle_status=EntityLifecycleStatus.disqualified.value,
+        lifecycle_status=EntityLifecycleStatus.disqualified,
         validation_error=validation_error,
     )
 
@@ -420,9 +418,8 @@ async def _run_pipeline(
         return MorphologyRegistrationResponse(
             entity_id=str(entity_uuid),
             measurement_entity_id=str(measurement_annotation.id),
-            status="success",
             morphology_name=morphology_name,
-            lifecycle_status=EntityLifecycleStatus.active.value,
+            lifecycle_status=EntityLifecycleStatus.active,
             validation_error=None,
         )
 
