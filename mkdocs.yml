@@ -18,6 +18,7 @@ nav:
   - Small Circuit Simulations: scircuit.md
   - Brian2 Point Neuron Simulations: brian2.md
   - Ion Channel Model Fitting: ion-channel-fitting.md
+  - ME-model Build: memodel-build.md
 
 # Plugins
 plugins:
@@ -28,6 +29,7 @@ plugins:
         - launch-notebook
         - contribute-and-fix-data
         - build-ion-channel-model
+        - build-single-neuron-model
         - single-cell-simulation
         - paired-neuron-simulation
         - circuit-simulation
