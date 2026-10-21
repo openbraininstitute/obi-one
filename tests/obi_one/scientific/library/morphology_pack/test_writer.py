@@ -145,6 +145,15 @@ class TestIndex:
         assert level.offset == index.somas.bytes
         assert level.offset + sum(level.chunks.bytes) == len(blocks)
 
+    def test_lays_the_levels_out_coarsest_first(self):
+        _, data = pack_of(load(), LEVELS, chunk_um=7.0)
+        index, blocks = take_apart(data)
+        at = index.somas.bytes
+        for level in reversed(index.levels):
+            assert level.offset == at
+            at += sum(level.chunks.bytes)
+        assert at == len(blocks)
+
     def test_is_spelled_as_the_format_says(self):
         _, data = pack_of(load(), [FINEST])
         *_, length = HEADER.unpack_from(data)

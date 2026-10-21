@@ -467,9 +467,10 @@ class PackWriter:
     def pack(self, processes: Processes = ALONE) -> bytes:
         """The pack of the cells added, its chunks encoded over `processes`.
 
-        A writer packs once. The coarsest level is packed first; each level's cells are joined
-        only when it comes to be packed, and its points let go of once the finer level is
-        packed over it; what each level frees is handed back to the system, where glibc can.
+        A writer packs once. The coarsest level is packed first, and written first after the
+        somas, so that a reader streaming the pack has the base early; each level's cells are
+        joined only when it comes to be packed, and its points let go of once the finer level
+        is packed over it; what each level frees is handed back to the system, where glibc can.
         """
         if not self.placed:
             msg = "A writer packs once"
@@ -486,14 +487,19 @@ class PackWriter:
             # past its followers, only the coarser level's chunks are read
             coarser = replace(coarser, order=NONE, counts=NONE)
             packed, coarser = packed_level(points, boxes, coarser, follow, processes)
-            made.insert(0, packed)
+            made.append(packed)
             del points, follow
             if trim is not None:
                 trim(0)
         blocks = [encode_somas(self.somas)]
-        offset = len(blocks[0])
+        offsets = []
+        for packed in made:
+            offsets.append(sum(map(len, blocks)))
+            blocks += packed.blocks
+        made.reverse()
+        offsets.reverse()
         entries = []
-        for i, (level, packed) in enumerate(zip(self.levels, made, strict=True)):
+        for i, (level, packed, offset) in enumerate(zip(self.levels, made, offsets, strict=True)):
             entries.append(
                 LevelEntry(
                     tolerance_um=level.tolerance_um,
@@ -511,8 +517,6 @@ class PackWriter:
                     ),
                 )
             )
-            offset += sum(map(len, packed.blocks))
-            blocks += packed.blocks
         index = Index(
             bounds=bounds.tolist(),
             populations=[

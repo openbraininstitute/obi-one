@@ -45,9 +45,9 @@ A pack is a header, an index and blocks, back to back. Numbers are little-endian
 | Header, 12 bytes | `MPCK`, the format's version as uint16 (1), two spare bytes, the index's length in bytes as uint32 |
 | Index | JSON, deflated (zlib) |
 | Somas | x, y, z and radius of every cell as float32, in micrometres, deflated |
-| Chunks | A deflated block for every chunk of every level, in the index's order |
+| Chunks | A deflated block for every chunk of every level: the levels coarsest first, each level's chunks in the index's order |
 
-Offsets in the index count from the first byte after the index.
+Offsets in the index count from the first byte after the index. A reader that streams the pack has the somas and the coarsest level, every other level's base, before any finer level; a reader finds each block by its offset, so it need not rely on the order.
 
 ### The index
 
@@ -68,7 +68,7 @@ The index is the `Index` model of `obi_one.scientific.library.morphology_pack.co
       "chunkSteps": 2000,
       "segments": 151234,
       "runs": 0,
-      "offset": 123,
+      "offset": 12123,
       "base": 1,
       "chunks": {
         "box": [0, -3, 5, 0, -3, 6],
@@ -83,7 +83,7 @@ The index is the `Index` model of `obi_one.scientific.library.morphology_pack.co
       "chunkSteps": 2000,
       "segments": 98000,
       "runs": 41,
-      "offset": 8123,
+      "offset": 123,
       "base": null,
       "chunks": { "box": [0, -3, 5, 0, -3, 6], "bytes": [6100, 5900], "segments": [50000, 48000], "reach": [12, 0] }
     }
