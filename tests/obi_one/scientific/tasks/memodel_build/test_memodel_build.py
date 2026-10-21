@@ -86,16 +86,25 @@ def steps(monkeypatch, tmp_path):
     """Replace every step of the task with a mock attached to one parent, to see their order."""
     parent = Mock()
     parent.register_memodel.return_value = SimpleNamespace(id=MEMODEL_ID)
-    parent.stage_memodel.return_value = (tmp_path / "cell.hoc", tmp_path / "cell.asc")
+    parent.stage_memodel.return_value = SimpleNamespace(
+        hoc_path=tmp_path / "cell.hoc",
+        mechanisms_dir=tmp_path / "mechanisms",
+        morphology_paths=[tmp_path / "cell.asc", tmp_path / "cell.swc"],
+    )
     parent.calibrate.return_value = CALIBRATION
     parent.validate.return_value = VALIDATION
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
     monkeypatch.setattr(registration, "register_creator_and_classifications", parent.register_links)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
+    monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
     monkeypatch.setattr(task_module, "run_validations_in_subprocess", parent.validate)
-    monkeypatch.setattr(registration, "register_calibration", parent.register_calibration)
-    monkeypatch.setattr(registration, "register_validation", parent.register_validation)
+    monkeypatch.setattr(
+        task_module, "register_memodel_calibration_result", parent.register_calibration
+    )
+    monkeypatch.setattr(
+        task_module, "register_memodel_validation_results", parent.register_validation
+    )
     monkeypatch.setattr(registration, "set_validation_status", parent.set_validation_status)
     monkeypatch.setattr(
         task_module.Task, "_update_execution_activity", parent.update_execution_activity
@@ -115,6 +124,7 @@ class TestExecute:
             "update_execution_activity",
             "register_links",
             "stage_memodel",
+            "compile",
             "calibrate",
             "register_calibration",
             "validate",
@@ -122,18 +132,35 @@ class TestExecute:
             "set_validation_status",
         ]
         assert steps.update_execution_activity.call_args.kwargs["generated"] == [str(MEMODEL_ID)]
+        steps.stage_memodel.assert_called_once_with(db_client, MEMODEL_ID, tmp_path)
+        compile_kwargs = steps.compile.call_args.kwargs
+        assert compile_kwargs["output_dir"] == tmp_path
+        assert compile_kwargs["mechanisms_dirs"] == [tmp_path / "mechanisms"]
+        assert steps.calibrate.call_args.args == (
+            tmp_path,
+            tmp_path / "cell.hoc",
+            tmp_path / "cell.asc",
+        )
         calibrate_kwargs = steps.calibrate.call_args.kwargs
         assert calibrate_kwargs["holding_current"] == task_module.INITIAL_HOLDING_CURRENT
         assert calibrate_kwargs["threshold_current"] == task_module.INITIAL_THRESHOLD_CURRENT
         steps.register_calibration.assert_called_once_with(
-            db_client, memodel_id=MEMODEL_ID, calibration=CALIBRATION, authorized_public=False
+            client=db_client,
+            calibrated_entity_id=MEMODEL_ID,
+            holding_current=-0.05,
+            threshold_current=0.2,
+            rin=120.0,
+            authorized_public=False,
         )
         validate_kwargs = steps.validate.call_args.kwargs
         assert validate_kwargs["cell_name"] == str(MEMODEL_ID)
         assert validate_kwargs["holding_current"] == CALIBRATION["holding_current"]
         assert validate_kwargs["threshold_current"] == CALIBRATION["rheobase"]
         steps.register_validation.assert_called_once_with(
-            db_client, memodel_id=MEMODEL_ID, validation=VALIDATION, authorized_public=False
+            client=db_client,
+            memodel_id=MEMODEL_ID,
+            validation_dict=VALIDATION,
+            authorized_public=False,
         )
         # done means validation ran, whether or not every test passed
         steps.set_validation_status.assert_called_once_with(
@@ -155,6 +182,7 @@ class TestExecute:
             "update_execution_activity",
             "register_links",
             "stage_memodel",
+            "compile",
             "calibrate",
             "register_calibration",
             "validate",
@@ -287,39 +315,6 @@ class TestRegistration:
             client=db_client, entity=memodel, etype_class=inputs.emodel.etypes[0]
         )
 
-    def test_register_calibration_and_validation(self, monkeypatch):
-        register_calibration = Mock()
-        register_validation = Mock()
-        monkeypatch.setattr(
-            registration, "register_memodel_calibration_result", register_calibration
-        )
-        monkeypatch.setattr(
-            registration, "register_memodel_validation_results", register_validation
-        )
-        db_client = Mock()
-
-        registration.register_calibration(
-            db_client, memodel_id=MEMODEL_ID, calibration=CALIBRATION, authorized_public=False
-        )
-        registration.register_validation(
-            db_client, memodel_id=MEMODEL_ID, validation=VALIDATION, authorized_public=False
-        )
-
-        register_calibration.assert_called_once_with(
-            client=db_client,
-            calibrated_entity_id=MEMODEL_ID,
-            holding_current=-0.05,
-            threshold_current=0.2,
-            rin=120.0,
-            authorized_public=False,
-        )
-        register_validation.assert_called_once_with(
-            client=db_client,
-            memodel_id=MEMODEL_ID,
-            validation_dict=VALIDATION,
-            authorized_public=False,
-        )
-
     def test_set_validation_status(self):
         db_client = Mock()
 
@@ -334,23 +329,14 @@ class TestRegistration:
         )
 
 
-def test_stage_memodel_compiles_into_the_coordinate_root(tmp_path, monkeypatch):
-    downloaded = SimpleNamespace(
-        hoc_path=tmp_path / "hoc" / "cell.hoc",
-        mechanisms_dir=tmp_path / "mechanisms",
-        morphology_paths=[tmp_path / "morphology" / "asc" / "cell.asc"],
-    )
-    download = Mock(return_value=downloaded)
-    compile_mechanisms = Mock()
+def test_stage_memodel_downloads_into_the_coordinate_root(tmp_path, monkeypatch):
+    download = Mock()
     monkeypatch.setattr(task_module, "download_memodel", download)
-    monkeypatch.setattr(task_module, "compile_mechanisms", compile_mechanisms)
     db_client = Mock()
 
     staged = task_module.stage_memodel(db_client, MEMODEL_ID, tmp_path)
 
-    assert staged == (downloaded.hoc_path, downloaded.morphology_paths[0])
+    assert staged is download.return_value
     db_client.get_entity.assert_called_once_with(entity_id=MEMODEL_ID, entity_type=MEModel)
     assert download.call_args.kwargs["memodel"] is db_client.get_entity.return_value
     assert download.call_args.kwargs["output_dir"] == tmp_path
-    assert compile_mechanisms.call_args.kwargs["output_dir"] == tmp_path
-    assert compile_mechanisms.call_args.kwargs["mechanisms_dirs"] == [downloaded.mechanisms_dir]

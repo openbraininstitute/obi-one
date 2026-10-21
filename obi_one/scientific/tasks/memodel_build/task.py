@@ -4,7 +4,10 @@ from typing import ClassVar
 
 import entitysdk
 from entitysdk.downloaders.memodel import download_memodel
-from entitysdk.models import MEModel
+from entitysdk.models import MEModel, TaskActivity
+from entitysdk.registration.memodel import register_memodel_calibration_result
+from entitysdk.registration.validation_result import register_memodel_validation_results
+from entitysdk.schemas.memodel import DownloadedMEModel
 from entitysdk.types import ID, ValidationStatus
 
 from obi_one.core.task import Task
@@ -30,28 +33,26 @@ VALIDATION_FIGURES_DIRNAME = "validation_figures"
 
 def stage_memodel(
     db_client: entitysdk.Client, memodel_id: ID, coord_root: Path
-) -> tuple[Path, Path]:
-    """Download the ME-model's hoc, morphology and mechanisms and compile the mechanisms.
+) -> DownloadedMEModel:
+    """Download the ME-model's hoc, morphology and mechanisms.
 
-    Returns:
-        The hoc path and the morphology path, preferring asc over swc over h5.
+    The first morphology path is the one to use: asc over swc over h5.
     """
     memodel = db_client.get_entity(entity_id=memodel_id, entity_type=MEModel)
-    downloaded = download_memodel(
+    return download_memodel(
         db_client, memodel=memodel, output_dir=coord_root, max_concurrent=DOWNLOAD_CONCURRENCY
     )
-    compile_mechanisms(
-        output_dir=coord_root,
-        mechanisms_dirs=[downloaded.mechanisms_dir],
-        simulation_backend=SimulationBackend.bluecellulab,
-    )
-    return downloaded.hoc_path, downloaded.morphology_paths[0]
 
 
-def stage_calibrate_and_validate(
-    db_client: entitysdk.Client, memodel_id: ID, coord_root: Path, *, authorized_public: bool
+def calibrate_and_validate(
+    db_client: entitysdk.Client,
+    memodel_id: ID,
+    coord_root: Path,
+    staged: DownloadedMEModel,
+    *,
+    authorized_public: bool,
 ) -> None:
-    hoc_path, morphology_path = stage_memodel(db_client, memodel_id, coord_root)
+    hoc_path, morphology_path = staged.hoc_path, staged.morphology_paths[0]
     calibration = compute_calibration_in_subprocess(
         coord_root,
         hoc_path,
@@ -60,10 +61,12 @@ def stage_calibrate_and_validate(
         threshold_current=INITIAL_THRESHOLD_CURRENT,
     )
     # registered before validating, so the ME-model can be simulated while validation runs
-    registration.register_calibration(
-        db_client,
-        memodel_id=memodel_id,
-        calibration=calibration,
+    register_memodel_calibration_result(
+        client=db_client,
+        calibrated_entity_id=memodel_id,
+        holding_current=calibration["holding_current"],
+        threshold_current=calibration["rheobase"],
+        rin=calibration.get("rin"),
         authorized_public=authorized_public,
     )
     validation = run_validations_in_subprocess(
@@ -76,10 +79,10 @@ def stage_calibrate_and_validate(
         output_dir=coord_root / VALIDATION_FIGURES_DIRNAME,
         n_processes=VALIDATION_PROCESSES,
     )
-    registration.register_validation(
-        db_client,
+    register_memodel_validation_results(
+        client=db_client,
         memodel_id=memodel_id,
-        validation=validation,
+        validation_dict=validation,
         authorized_public=authorized_public,
     )
 
@@ -112,17 +115,12 @@ class MEModelBuildTask(Task):
         )
 
         try:
-            self._update_execution_activity(
-                db_client=db_client,
-                execution_activity=execution_activity,
-                generated=[str(memodel.id)],
-            )
-            registration.register_creator_and_classifications(self.config, db_client, memodel)
-            stage_calibrate_and_validate(
-                db_client, memodel.id, coord_root, authorized_public=authorized_public
-            )
-            registration.set_validation_status(
-                db_client, memodel_id=memodel.id, validation_status=ValidationStatus.done
+            self._build(
+                db_client,
+                memodel,
+                execution_activity,
+                coord_root,
+                authorized_public=authorized_public,
             )
         except Exception:
             try:
@@ -135,3 +133,31 @@ class MEModelBuildTask(Task):
 
         L.info("ME-model build completed: %s", memodel.id)
         return str(memodel.id)
+
+    def _build(
+        self,
+        db_client: entitysdk.Client,
+        memodel: MEModel,
+        execution_activity: TaskActivity | None,
+        coord_root: Path,
+        *,
+        authorized_public: bool,
+    ) -> None:
+        self._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            generated=[str(memodel.id)],
+        )
+        registration.register_creator_and_classifications(self.config, db_client, memodel)
+        staged = stage_memodel(db_client, memodel.id, coord_root)
+        compile_mechanisms(
+            output_dir=coord_root,
+            mechanisms_dirs=[staged.mechanisms_dir],
+            simulation_backend=SimulationBackend.bluecellulab,
+        )
+        calibrate_and_validate(
+            db_client, memodel.id, coord_root, staged, authorized_public=authorized_public
+        )
+        registration.set_validation_status(
+            db_client, memodel_id=memodel.id, validation_status=ValidationStatus.done
+        )
