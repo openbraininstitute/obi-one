@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -14,7 +15,9 @@ from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.tasks.em_synapse_mapping.resolve_neuron import (
     ResolvedEMDataset,
     ResolvedNeuron,
+    ensure_mechanisms_placed,
     place_morphologies_and_mechanisms,
+    replace_hoc_template_name,
     resolve_list_neurons,
     write_morphology_with_offset,
 )
@@ -29,6 +32,17 @@ _EXAMPLE_MORPHOLOGY = (
     / "morphologies"
     / "L5_TPC:A_MusMusculus_PrimarySomatosensory_C060114A5"
     / "C060114A5.swc"
+)
+
+# Example .hoc emodel template shipped with the repo, used for the template-rename test.
+_EXAMPLE_HOC = (
+    Path(__file__).parents[5]
+    / "examples"
+    / "data"
+    / "single_neuron_circuits"
+    / "SingleNeuronCircuit__top_nodes_dim6__IDX0"
+    / "emodels_hoc"
+    / "cADpyr_L6BPC.hoc"
 )
 
 
@@ -146,6 +160,7 @@ class TestPlaceMorphologiesAndMechanisms:
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
     ):
         me_model_entity = SimpleNamespace(
+            id=uuid4(),
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
         )
@@ -160,7 +175,8 @@ class TestPlaceMorphologiesAndMechanisms:
             hoc_path=tmp_path / "model.hoc",
         )
         (tmp_path / "mechs").mkdir()
-        (tmp_path / "model.hoc").touch()
+        # Copy a real .hoc file so the template-name extraction/rename step succeeds.
+        shutil.copy(_EXAMPLE_HOC, tmp_path / "model.hoc")
 
         with (
             patch(f"{_MODULE}.download_memodel", return_value=mock_memodel_paths),
@@ -229,6 +245,7 @@ class TestResolveListNeurons:
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
     ):
         me_model_entity = SimpleNamespace(
+            id=uuid4(),
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
         )
@@ -244,7 +261,8 @@ class TestResolveListNeurons:
             hoc_path=tmp_path / "model.hoc",
         )
         (tmp_path / "mechs").mkdir()
-        (tmp_path / "model.hoc").touch()
+        # Copy a real .hoc file so the template-name extraction/rename step succeeds.
+        shutil.copy(_EXAMPLE_HOC, tmp_path / "model.hoc")
 
         with (
             patch.dict(os.environ, {"CAVECLIENT_MICRONS_API_KEY": "fake-key"}),
@@ -418,3 +436,98 @@ class TestWriteMorphologyWithOffset:
             np.testing.assert_allclose(
                 res_sec.points, orig_sec.points + offset, rtol=1e-4, atol=1e-3
             )
+
+
+class TestReplaceHocTemplateName:
+    def test_replaces_template_name(self, tmp_path):
+        """Rename the template in a real .hoc file and verify the round trip.
+
+        The original template name must be returned, and the output file must use the
+        replacement name in both the ``begintemplate``/``endtemplate`` statements while
+        no longer referencing the old name as a template identifier.
+        """
+        assert _EXAMPLE_HOC.exists(), f"Missing test .hoc file: {_EXAMPLE_HOC}"
+
+        new_name = "replacement_test"
+        out_path = tmp_path / "renamed.hoc"
+
+        old_name = replace_hoc_template_name(
+            hoc_file_in=_EXAMPLE_HOC,
+            hoc_file_out=out_path,
+            new_name=new_name,
+        )
+
+        # The previous template name is returned.
+        assert old_name == "cADpyr_L6BPC"
+
+        # The input file is left untouched.
+        assert f"begintemplate {old_name}" in _EXAMPLE_HOC.read_text(encoding="UTF-8")
+
+        # The replacement succeeded in the output file.
+        output = out_path.read_text(encoding="UTF-8")
+        assert f"begintemplate {new_name}" in output
+        assert f"endtemplate {new_name}" in output
+        assert f"begintemplate {old_name}" not in output
+        assert f"endtemplate {old_name}" not in output
+
+
+class TestEnsureMechanismsPlaced:
+    """Copying of ``*.mod`` mechanism files with duplicate detection."""
+
+    def test_raises_when_source_missing(self, tmp_path):
+        missing = tmp_path / "does_not_exist"
+        with pytest.raises(ValueError, match="does not exist"):
+            ensure_mechanisms_placed(missing, tmp_path / "out")
+
+    def test_copies_mod_files(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        (path_in / "a.mod").write_text("alpha", encoding="UTF-8")
+        (path_in / "b.mod").write_text("beta", encoding="UTF-8")
+        # A non-.mod file must be ignored.
+        (path_in / "readme.txt").write_text("ignore me", encoding="UTF-8")
+
+        ensure_mechanisms_placed(path_in, path_out)
+
+        assert (path_out / "a.mod").read_text(encoding="UTF-8") == "alpha"
+        assert (path_out / "b.mod").read_text(encoding="UTF-8") == "beta"
+        assert not (path_out / "readme.txt").exists()
+
+    def test_identical_existing_file_is_skipped(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        path_out.mkdir()
+        (path_in / "a.mod").write_text("same content", encoding="UTF-8")
+        (path_out / "a.mod").write_text("same content", encoding="UTF-8")
+
+        # shutil.copy must not be called when the destination already matches.
+        with patch(f"{_MODULE}.shutil.copy") as mock_copy:
+            ensure_mechanisms_placed(path_in, path_out)
+            mock_copy.assert_not_called()
+
+        assert (path_out / "a.mod").read_text(encoding="UTF-8") == "same content"
+
+    def test_differing_size_raises(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        path_out.mkdir()
+        (path_in / "a.mod").write_text("new content", encoding="UTF-8")
+        (path_out / "a.mod").write_text("old content that is longer", encoding="UTF-8")
+
+        with pytest.raises(Exception, match="already exists but differs"):
+            ensure_mechanisms_placed(path_in, path_out)
+
+    def test_same_size_different_hash_raises(self, tmp_path):
+        path_in = tmp_path / "in"
+        path_out = tmp_path / "out"
+        path_in.mkdir()
+        path_out.mkdir()
+        # Same length, different bytes -> same size, different hash.
+        (path_in / "a.mod").write_text("AAAA", encoding="UTF-8")
+        (path_out / "a.mod").write_text("BBBB", encoding="UTF-8")
+
+        with pytest.raises(Exception, match="already exists but differs"):
+            ensure_mechanisms_placed(path_in, path_out)

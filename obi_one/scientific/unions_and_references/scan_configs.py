@@ -4,92 +4,12 @@ from typing import Annotated
 
 from pydantic import Discriminator
 
-from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
-from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
-from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
-from obi_one.scientific.tasks.connectivity_matrix_extraction import (
-    ConnectivityMatrixExtractionScanConfig,
-)
-from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
-    CreateExtracellularRecordingArrayScanConfig,
-)
-from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
-from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
-    EModelEFeatureExtractionScanConfig,
-)
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    EModelOptimizationScanConfig,
-)
-from obi_one.scientific.tasks.ephys_extraction import ElectrophysiologyMetricsScanConfig
-from obi_one.scientific.tasks.folder_compression import FolderCompressionScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
-    Brian2CircuitSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
-    LearningEngineCircuitSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.aliases import SimulationsForm
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
-    IonChannelModelSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
-    MEModelSimulationScanConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
-    MEModelWithSynapsesCircuitSimulationScanConfig,
-)
-from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
-from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
-from obi_one.scientific.tasks.morphology_containerization import (
-    MorphologyContainerizationScanConfig,
-)
-from obi_one.scientific.tasks.morphology_decontainerization import (
-    MorphologyDecontainerizationScanConfig,
-)
-from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsScanConfig
-from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsScanConfig
-from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
-from obi_one.scientific.tasks.synapse_parameterization.config import (
-    SynapseParameterizationScanConfig,
-)
+from obi_one.scientific.mappings_and_registry.config_task_map import iter_scan_config_refs
+from obi_one.utils.lazy_import import import_class
 
-_SCAN_CONFIG_MEMBERS: tuple[type, ...] = (
-    CircuitSimulationScanConfig,
-    SimulationsForm,  # Alias for backward compatibility
-    CircuitExtractionScanConfig,
-    EMSynapseMappingScanConfig,
-    EModelEFeatureExtractionScanConfig,
-    BasicConnectivityPlotsScanConfig,
-    ConnectivityMatrixExtractionScanConfig,
-    FolderCompressionScanConfig,
-    MEModelSimulationScanConfig,
-    MorphologyContainerizationScanConfig,
-    ElectrophysiologyMetricsScanConfig,
-    MorphologyDecontainerizationScanConfig,
-    MorphologyMetricsScanConfig,
-    MorphologyLocationsScanConfig,
-    IonChannelFittingScanConfig,
-    MEModelBuildScanConfig,
-    SkeletonizationScanConfig,
-    MEModelWithSynapsesCircuitSimulationScanConfig,
-    Brian2CircuitSimulationScanConfig,
-    CreateExtracellularRecordingArrayScanConfig,
-    IonChannelModelSimulationScanConfig,
-    LearningEngineCircuitSimulationScanConfig,
-    SynapseParameterizationScanConfig,
-    MEModelSynapticModelPlacementScanConfig,
+_SCAN_CONFIG_MEMBERS: tuple[type, ...] = tuple(
+    import_class(class_ref) for class_ref in iter_scan_config_refs()
 )
-if EModelOptimizationScanConfig is not None:
-    _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelOptimizationScanConfig)
-if EModelOptimizationScanConfig is not None:
-    from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config import (
-        EModelValidationScanConfig,
-    )
-
-    _SCAN_CONFIG_MEMBERS = (*_SCAN_CONFIG_MEMBERS, EModelValidationScanConfig)
 
 ScanConfigsUnion = Annotated[
     reduce(or_, _SCAN_CONFIG_MEMBERS),  # ty: ignore[invalid-type-form]
