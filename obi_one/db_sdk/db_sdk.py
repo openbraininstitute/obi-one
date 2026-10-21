@@ -11,7 +11,14 @@ from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    ContentType,
+    ExecutorType,
+    FetchFileStrategy,
+    TaskActivityType,
+)
 from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.exception import OBIONEError
