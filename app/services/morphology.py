@@ -21,6 +21,9 @@ DEFAULT_SINGLE_POINT_SOMA_BY_EXT: dict[str, bool] = {
     ".asc": False,
 }
 ALLOWED_EXTENSIONS = set(DEFAULT_SINGLE_POINT_SOMA_BY_EXT)
+# Preserve the NEURON soma area when converting a single-point SWC soma to a contour
+# representation (.asc/.h5); the flag is a no-op for other conversions.
+CONTOUR_EXTENSIONS = frozenset({".asc", ".h5"})
 SOMA_RADIUS_THRESHOLD = 100.0
 
 L = logging.getLogger(__name__)
@@ -164,11 +167,13 @@ def convert_morphology(
     for ext in target_exts:
         output_file = output_dir / f"{output_stem}{ext}"
         single_point_soma = single_point_soma_by_ext.get(ext, False)
+        ensure_nrn_area = file_extension == ".swc" and ext in CONTOUR_EXTENSIONS
         try:
             morph_tool.convert(
                 input_file=str(input_file),
                 output_file=str(output_file),
                 single_point_soma=single_point_soma,
+                ensure_NRN_area=ensure_nrn_area,
             )
         except Exception as e:
             raise HTTPException(
