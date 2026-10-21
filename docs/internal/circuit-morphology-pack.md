@@ -8,7 +8,7 @@ A pack holds the morphologies of a circuit's biophysical neurons in one binary f
 
 The endpoint is temporary. Circuit registration is to build the pack and store it on the circuit, and the circuits already registered are to get theirs in a backfill. The endpoint is removed once both are done, because it builds the pack while the viewer waits, in the service's own processes.
 
-The pack it builds holds one level of detail: the finest that comes to at most `max_segments` segments. The viewer says how many segments it can draw. With `all_levels=true` the pack holds every level instead, finest first, as a pack stored on the circuit is to, and `max_segments` is not used.
+The pack it builds holds one level of detail: the finest that comes to at most `max_segments` segments. The viewer says how many segments it can draw. With `all_levels=true` the pack holds every level instead, as a pack stored on the circuit is to, and `max_segments` is not used.
 
 It checks a circuit in this order, and refuses as early as it can:
 
@@ -47,7 +47,7 @@ A pack is a header, an index and blocks, back to back. Numbers are little-endian
 | Somas | x, y, z and radius of every cell as float32, in micrometres, deflated |
 | Chunks | A deflated block for every chunk of every level: the levels coarsest first, each level's chunks in the index's order |
 
-Offsets in the index count from the first byte after the index. A reader that streams the pack has the somas and the coarsest level, every other level's base, before any finer level; a reader finds each block by its offset, so it need not rely on the order.
+Offsets in the index count from the first byte after the index. Laid out coarsest first, a pack streamed in has the somas and every level's bases before the level itself. A reader finds each block by its offset only, so a pack laid out in another order reads alike.
 
 ### The index
 

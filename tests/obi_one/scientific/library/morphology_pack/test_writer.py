@@ -9,6 +9,7 @@ from obi_one.scientific.library.morphology_pack.codec import (
     GRID_UM,
     HEADER,
     Chunks,
+    assemble,
     decode_chunk,
     take_apart,
 )
@@ -121,6 +122,22 @@ class TestRoundTrip:
         np.testing.assert_allclose(somas[1], [1000, -2000, 3000, 5])
         np.testing.assert_allclose(somas[2], [40, 0, 0, 5])
 
+    def test_levels_laid_out_in_another_order_read_alike(self):
+        _, data = pack_of(load(), LEVELS, chunk_um=7.0)
+        index, blocks = take_apart(data)
+        somas = bytes(blocks[: index.somas.bytes])
+        laid, levels = [somas], []
+        for level in index.levels:
+            size = sum(level.chunks.bytes)
+            levels.append(level.model_copy(update={"offset": sum(map(len, laid))}))
+            laid.append(bytes(blocks[level.offset : level.offset + size]))
+        relaid = assemble(index.model_copy(update={"levels": levels}), laid)
+        assert relaid != data
+        for read, expected in zip(read_pack(relaid).levels, read_pack(data).levels, strict=True):
+            np.testing.assert_array_equal(read.segments, expected.segments)
+            np.testing.assert_array_equal(read.cells, expected.cells)
+            np.testing.assert_array_equal(read.types, expected.types)
+
     def test_cells_may_be_added_in_any_order(self):
         shapes = simplified(load(), [FINEST])
         writer = PackWriter([("only", 3)], [FINEST], chunk_um=100000.0)
@@ -132,7 +149,7 @@ class TestRoundTrip:
 class TestIndex:
     def test_names_what_a_reader_needs(self):
         shapes, data = pack_of(load(), [FINEST])
-        index, blocks = take_apart(data)
+        index, _ = take_apart(data)
         assert index.layout == "space"
         assert index.grid_um == GRID_UM
         assert [(entry.name, entry.cells) for entry in index.populations] == [
@@ -142,11 +159,10 @@ class TestIndex:
         level = index.levels[0]
         assert level.segments == shapes.shapes[0].segments * len(PLACES)
         assert sum(level.chunks.segments) == level.segments
-        assert level.offset == index.somas.bytes
-        assert level.offset + sum(level.chunks.bytes) == len(blocks)
 
-    def test_lays_the_levels_out_coarsest_first(self):
-        _, data = pack_of(load(), LEVELS, chunk_um=7.0)
+    @pytest.mark.parametrize("levels", [[FINEST], LEVELS])
+    def test_lays_the_levels_out_coarsest_first(self, levels):
+        _, data = pack_of(load(), levels, chunk_um=7.0)
         index, blocks = take_apart(data)
         at = index.somas.bytes
         for level in reversed(index.levels):

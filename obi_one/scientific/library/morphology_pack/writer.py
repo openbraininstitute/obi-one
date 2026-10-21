@@ -477,30 +477,23 @@ class PackWriter:
             raise RuntimeError(msg)
         placed, self.placed = self.placed, []
         boxes = boxes_of(placed, self.chunk_steps)
-        made: list[Packed] = []
+        blocks = [encode_somas(self.somas)]
+        offset = len(blocks[0])
+        entries: list[LevelEntry] = []
         coarser = Read(NONE, NONE, np.zeros(1, dtype=np.int64), NONE)
         trim = malloc_trim()
         while placed:
             points = placed.pop().joined()
+            i = len(placed)
             bounds = bounds_of(points.values)
             follow = followers(points, coarser)
             # past its followers, only the coarser level's chunks are read
             coarser = replace(coarser, order=NONE, counts=NONE)
             packed, coarser = packed_level(points, boxes, coarser, follow, processes)
-            made.append(packed)
             del points, follow
-            if trim is not None:
-                trim(0)
-        blocks = [encode_somas(self.somas)]
-        offsets = []
-        for packed in made:
-            offsets.append(sum(map(len, blocks)))
-            blocks += packed.blocks
-        made.reverse()
-        offsets.reverse()
-        entries = []
-        for i, (level, packed, offset) in enumerate(zip(self.levels, made, offsets, strict=True)):
-            entries.append(
+            level = self.levels[i]
+            entries.insert(
+                0,
                 LevelEntry(
                     tolerance_um=level.tolerance_um,
                     prune_um=level.prune_um,
@@ -508,15 +501,20 @@ class PackWriter:
                     segments=int(packed.segments.sum()),
                     runs=packed.runs,
                     offset=offset,
-                    base=i + 1 if i + 1 < len(made) else None,
+                    base=i + 1 if i + 1 < len(self.levels) else None,
                     chunks=Chunks(
                         box=boxes.box(packed.keys).ravel().tolist(),
                         bytes=[len(block) for block in packed.blocks],
                         segments=packed.segments.tolist(),
                         reach=packed.reach.tolist(),
                     ),
-                )
+                ),
             )
+            offset += sum(map(len, packed.blocks))
+            blocks += packed.blocks
+            del packed
+            if trim is not None:
+                trim(0)
         index = Index(
             bounds=bounds.tolist(),
             populations=[
