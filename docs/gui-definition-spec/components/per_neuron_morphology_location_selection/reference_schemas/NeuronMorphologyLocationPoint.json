@@ -28,5 +28,5 @@
     "node_id"
   ],
   "title": "NeuronMorphologyLocationPoint",
-  "description": "One location, on one named neuron: exactly a SONATA compartment-set row."
+  "description": "A neuron ID, SONATA global section ID and normalized offset defining one location."
 }

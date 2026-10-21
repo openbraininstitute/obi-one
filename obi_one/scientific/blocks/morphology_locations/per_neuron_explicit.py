@@ -12,7 +12,7 @@ from obi_one.scientific.library.entity_property_types import (
 
 
 class NeuronMorphologyLocationPoint(MorphologyLocationPoint):
-    """One location, on one named neuron: exactly a SONATA compartment-set row."""
+    """A neuron ID, SONATA global section ID and normalized offset defining one location."""
 
     node_id: NonNegativeInt = Field(
         title="Node ID",
@@ -21,11 +21,10 @@ class NeuronMorphologyLocationPoint(MorphologyLocationPoint):
 
 
 class PerNeuronExplicitMorphologyLocations(Block):
-    """Exact points chosen on exact neurons.
+    """Manually chosen locations, each on a specific neuron.
 
-    Each point names its own neuron, so selecting several points across several neurons stays a
-    single block. Unlike `ExplicitMorphologyLocations`, the points are not repeated across a
-    neuron set, so nothing is targeted that was not picked.
+    Click on a neuron in the 3D viewer to select where stimuli or recordings are placed. Different
+    neurons can be given different locations.
     """
 
     title: ClassVar[str] = "Per Neuron Explicit Morphology Locations"

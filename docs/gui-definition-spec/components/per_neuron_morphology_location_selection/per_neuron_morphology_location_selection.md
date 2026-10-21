@@ -67,7 +67,7 @@ where a row extends the single-neuron point with the neuron it belongs to:
 
 ```py
 class NeuronMorphologyLocationPoint(MorphologyLocationPoint):
-    """One location, on one named neuron: exactly a SONATA compartment-set row."""
+    """A neuron ID, SONATA global section ID and normalized offset defining one location."""
 
     node_id: NonNegativeInt = Field(
         title="Node ID",
