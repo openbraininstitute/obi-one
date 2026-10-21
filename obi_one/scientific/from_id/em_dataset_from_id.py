@@ -13,7 +13,7 @@ from obi_one.config import settings
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
 
-_C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
+C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
 _NM_to_UM = 1e-3
 
 
@@ -92,7 +92,7 @@ class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
 
         syn_locs = syns[col_location].apply(
             lambda _x: pandas.Series(
-                _NM_to_UM * _x * self.viewer_resolution(db_client=db_client), index=_C_P_LOCS
+                _NM_to_UM * _x * self.viewer_resolution(db_client=db_client), index=C_P_LOCS
             )
         )
         syns = pandas.concat([syns, syn_locs], axis=1).reset_index(drop=True)

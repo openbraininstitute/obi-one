@@ -6,11 +6,14 @@ serialized JSON without importing all scientific modules eagerly.
 Task config classes are not listed here: they are derived from the ``TaskSpec`` references
 in ``config_task_map``, so registering a task type also makes its configs deserializable.
 Only framework classes and ``__init__``/alias re-exports, which no task spec declares,
-are listed explicitly.
+are listed explicitly. ``SimulationsForm`` comes from ``SCAN_CONFIG_EXTRA_REFS``.
 """
 
 from obi_one.core.registry import TaskSpec
-from obi_one.scientific.mappings_and_registry.config_task_map import TASK_SPECS
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    SCAN_CONFIG_EXTRA_REFS,
+    TASK_SPECS,
+)
 from obi_one.types import TaskType
 from obi_one.utils.lazy_import import ClassRef, class_name, import_class
 
@@ -31,7 +34,7 @@ _ALIAS_TYPE_REFS: tuple[ClassRef, ...] = (
     ("obi_one.core.scan", "CoupledScan"),
     ("obi_one.core.scan", "GridScan"),
     (_SIMULATION_ALIASES, "Simulation"),
-    (_SIMULATION_ALIASES, "SimulationsForm"),
+    *SCAN_CONFIG_EXTRA_REFS,
 )
 
 
