@@ -6,8 +6,10 @@ Resolves a neuron reference (CellMorphologyFromID or MEModelFromID) into:
 - ME model properties (if applicable)
 """
 
+import hashlib
 import logging
 import os
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +19,7 @@ import pandas  # ruff: ignore[unconventional-import-alias]
 from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import EMCellMesh, EMDenseReconstructionDataset, MEModel
+from entitysdk.staging.memodel import _extract_hoc_template_name  # ruff: ignore[import-private-name]
 from morph_spines import MorphologyWithSpines
 from neurom.core import Morphology as NeuromMorphology
 from voxcell import CellCollection
@@ -105,6 +108,14 @@ def resolve_provenance(
     return pt_root_id, source_mesh_entity, source_dataset
 
 
+def _file_hash(file_path: Path) -> str:
+    hasher = hashlib.sha256()
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
 def ensure_mechanisms_placed(path_in: Path, path_out: Path) -> None:
     if not path_in.exists():
         err_str = f"Mechanisms directory {path_in} does not exist!"
@@ -112,7 +123,38 @@ def ensure_mechanisms_placed(path_in: Path, path_out: Path) -> None:
     path_out.mkdir(exist_ok=True)
 
     for mod_file in path_in.glob("*.mod"):
+        dest_file = path_out / mod_file.name
+        if dest_file.exists():
+            same_size = dest_file.stat().st_size == mod_file.stat().st_size
+            if same_size and _file_hash(dest_file) == _file_hash(mod_file):
+                # Identical file already placed; nothing to do.
+                continue
+            err_str = (
+                f"Destination file {dest_file} already exists but differs from source "
+                f"{mod_file} (different size or hash)!"
+            )
+            raise Exception(err_str)  # ruff: ignore[raise-vanilla-class]
         shutil.copy(mod_file, path_out)
+
+
+def replace_hoc_template_name(hoc_file_in: Path, hoc_file_out: Path, new_name: str) -> str:
+    original_content = hoc_file_in.read_text(encoding="UTF-8")
+
+    # Locate the real template name using the same comment-aware parsing as the extractor
+    old_name = _extract_hoc_template_name(hoc_file_in)
+
+    def _rename(statement: str, content: str) -> str:
+        # Match the keyword followed by the exact old name as a whole word, preserving the
+        # surrounding whitespace so only the identifier is swapped.
+        pattern = rf"(\b{statement}\s+){re.escape(old_name)}\b"
+        return re.sub(pattern, rf"\g<1>{new_name}", content)
+
+    new_content = _rename("begintemplate", original_content)
+    new_content = _rename("endtemplate", new_content)
+
+    hoc_file_out.write_text(new_content, encoding="UTF-8")
+
+    return old_name
 
 
 def resolve_list_neurons(  # ruff: ignore[too-many-locals]
@@ -290,10 +332,15 @@ def place_morphologies_and_mechanisms(
         mechanisms_placed = "mod"
         ensure_mechanisms_placed(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
-        hoc_dir.mkdir(parents=True)
-        shutil.move(memdl_paths.hoc_path, hoc_dir)
+        hoc_dir.mkdir(parents=True, exist_ok=True)
+        name_hoc_model = "mdl_" + str(me_model_entity.id).replace("-", "_")
+        replace_hoc_template_name(
+            hoc_file_in=memdl_paths.hoc_path,
+            hoc_file_out=hoc_dir / (name_hoc_model + ".hoc"),
+            new_name=name_hoc_model,
+        )
         shutil.rmtree(tmp_staging)
-        phys_node_props["model_template"] = numpy.array([f"hoc:{memdl_paths.hoc_path.stem}"])
+        phys_node_props["model_template"] = numpy.array(["hoc:" + name_hoc_model])
         phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
         phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
         if me_model_entity.calibration_result is not None:

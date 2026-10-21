@@ -30,6 +30,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,
@@ -59,6 +60,7 @@ class _SharedStatePartialBase(BaseModel):
     # Build > Ion Channel. Distinct from ion_channel_model_simulation_config above, which
     # simulates an existing model; this one fits a new model from experimental traces.
     ion_channel_fitting_config: IonChannelFittingScanConfig | None = None
+    memodel_build_config: MEModelBuildScanConfig | None = None
     me_model_synaptic_model_placement_config: MEModelSynapticModelPlacementScanConfig | None = None
     create_extracellular_recording_array_config: (
         CreateExtracellularRecordingArrayScanConfig | None
@@ -91,8 +93,9 @@ _VALIDATION_CONFIG: dict[str, bool] = {
     # against the database; only the fitting task itself (NWB download, nrnivmodl) is skipped.
     "ion_channel_fitting_config": False,
     # Same reasoning as ion_channel_fitting_config above: these all do real I/O/compute
-    # (circuit registration, mod-file writes/compilation, electrode-weight computation)
-    # that generation already skips validity on; structural validation only.
+    # (ME-model and circuit registration, mod-file writes/compilation, electrode-weight
+    # computation) that generation already skips validity on; structural validation only.
+    "memodel_build_config": False,
     "me_model_synaptic_model_placement_config": False,
     "create_extracellular_recording_array_config": False,
     "synapse_parameterization_config": False,
