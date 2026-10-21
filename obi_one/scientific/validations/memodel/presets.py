@@ -123,7 +123,7 @@ def rebound_burst_preset(
         phases=phases,
         pre_delay=0.0,
         post_delay=0.0,
-        absolute_amplitudes=True,
+        amplitude_mode="amplitude",
         measurement_phase=2,
         add_hypamp=False,
     )
@@ -199,7 +199,7 @@ def tonic_firing_preset(
         phases=phases,
         pre_delay=0.0,
         post_delay=250.0,
-        absolute_amplitudes=True,
+        amplitude_mode="amplitude",
         measurement_phase=1,  # Count spikes during the step
         add_hypamp=add_hypamp,
     )
