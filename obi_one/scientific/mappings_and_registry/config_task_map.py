@@ -7,13 +7,14 @@ its task, SingleConfig and ScanConfig classes; ``core.deserializable_types`` der
 the deserialization type map from it.
 """
 
+from collections.abc import Iterator
 from importlib.util import find_spec
 
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 from obi_one.core.registry import TaskSpec
 from obi_one.types import TaskType
-from obi_one.utils.lazy_import import class_name
+from obi_one.utils.lazy_import import ClassRef, class_name
 
 # Module paths shared by several specs below, extracted so each class reference fits on
 # one line. ``_GENERATE_SIMULATION_TASK_REF`` is a full reference, reused by every task
@@ -29,9 +30,9 @@ _GENERATE_SIMULATION_TASK_REF = (
 
 TASK_SPECS: dict[TaskType, TaskSpec] = {
     TaskType.circuit_extraction: TaskSpec(
-        task_ref=(f"{_TASKS}.circuit_extraction", "CircuitExtractionTask"),
-        single_config_ref=(f"{_TASKS}.circuit_extraction", "CircuitExtractionSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.circuit_extraction", "CircuitExtractionScanConfig"),
+        task_ref=(f"{_TASKS}.circuit_extraction.task", "CircuitExtractionTask"),
+        single_config_ref=(f"{_TASKS}.circuit_extraction.config", "CircuitExtractionSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.circuit_extraction.config", "CircuitExtractionScanConfig"),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.circuit_extraction__campaign,
         campaign_generation_task_activity_type=(
@@ -125,34 +126,28 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
     ),
     TaskType.ion_channel_model_simulation_execution: TaskSpec(
-        task_ref=(
-            f"{_SIMULATION_EXECUTION}.ion_channel_simulation_execution",
-            "IonChannelModelSimulationExecutionTask",
-        ),
+        task_ref=(f"{_SIMULATION_EXECUTION}.task", "IonChannelModelSimulationExecutionTask"),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.ion_channel_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "IonChannelModelSimulationExecutionSingleConfig",
         ),
         asset_label=None,
     ),
     TaskType.single_neuron_simulation_execution: TaskSpec(
-        task_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_simulation_execution",
-            "SingleNeuronSimulationExecutionTask",
-        ),
+        task_ref=(f"{_SIMULATION_EXECUTION}.task", "SingleNeuronSimulationExecutionTask"),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "SingleNeuronSimulationExecutionSingleConfig",
         ),
         asset_label=None,
     ),
     TaskType.single_neuron_synaptome_simulation_execution: TaskSpec(
         task_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_synaptome_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.task",
             "SingleNeuronSynaptomeSimulationExecutionTask",
         ),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_synaptome_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "SingleNeuronSynaptomeSimulationExecutionSingleConfig",
         ),
         asset_label=None,
@@ -165,9 +160,9 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_activity_type=TaskActivityType.mesh_lod_generation__execution,
     ),
     TaskType.morphology_skeletonization: TaskSpec(
-        task_ref=(f"{_TASKS}.skeletonization", "SkeletonizationTask"),
-        single_config_ref=(f"{_TASKS}.skeletonization", "SkeletonizationSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.skeletonization", "SkeletonizationScanConfig"),
+        task_ref=(f"{_TASKS}.skeletonization.task", "SkeletonizationTask"),
+        single_config_ref=(f"{_TASKS}.skeletonization.config", "SkeletonizationSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.skeletonization.config", "SkeletonizationScanConfig"),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.skeletonization__campaign,
         campaign_generation_task_activity_type=(
@@ -230,6 +225,16 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         campaign_generation_task_activity_type=TaskActivityType.ion_channel_modeling__config_generation,
         single_task_config_type=TaskConfigType.ion_channel_modeling__config,
         single_task_activity_type=TaskActivityType.ion_channel_modeling__execution,
+    ),
+    TaskType.memodel_build: TaskSpec(
+        task_ref=(f"{_TASKS}.memodel_build.task", "MEModelBuildTask"),
+        single_config_ref=(f"{_TASKS}.memodel_build.config", "MEModelBuildSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.memodel_build.config", "MEModelBuildScanConfig"),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.memodel_build__campaign,
+        campaign_generation_task_activity_type=TaskActivityType.memodel_build__config_generation,
+        single_task_config_type=TaskConfigType.memodel_build__config,
+        single_task_activity_type=TaskActivityType.memodel_build__execution,
     ),
     TaskType.ion_channel_model_simulation: TaskSpec(
         task_ref=_GENERATE_SIMULATION_TASK_REF,
@@ -328,12 +333,9 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_activity_type=TaskActivityType.circuit_simplification__execution,
     ),
     TaskType.circuit_simulation_neurodamus_machine: TaskSpec(
-        task_ref=(
-            f"{_SIMULATION_EXECUTION}.circuit_simulation_execution",
-            "CircuitSimulationExecutionTask",
-        ),
+        task_ref=(f"{_SIMULATION_EXECUTION}.task", "CircuitSimulationExecutionTask"),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.circuit_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "CircuitSimulationExecutionSingleConfig",
         ),
         asset_label=None,
@@ -467,3 +469,38 @@ def get_task_spec_for_scan_config(config_cls: type) -> TaskSpec | None:
 def get_task_spec_for_single_config(config_cls: type) -> TaskSpec | None:
     """Return the task spec for a SingleConfig class, or None if it has none."""
     return _lookup_task_spec(_SINGLE_CONFIG_NAME_INDEX, config_cls)
+
+
+_SCAN_CONFIG_EXTRA_REFS: tuple[ClassRef, ...] = (
+    (
+        "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases",
+        "SimulationsForm",
+    ),
+)
+"""ScanConfig classes included in ``ScanConfigsUnion`` but not owned by a single ``TaskType``."""
+
+
+def iter_scan_config_refs() -> Iterator[ClassRef]:
+    """Yield scan-config class refs for union membership without importing task modules.
+
+    Includes every available ``TaskSpec.scan_config_ref`` plus ``_SCAN_CONFIG_EXTRA_REFS``
+    (for example backward-compatible aliases).
+    """
+    seen: set[str] = set()
+    for task_type, task_spec in TASK_SPECS.items():
+        scan_config_ref = task_spec.scan_config_ref
+        if scan_config_ref is None:
+            continue
+        if not _is_task_type_available(task_type):
+            continue
+        name = class_name(scan_config_ref)
+        if name in seen:
+            continue
+        seen.add(name)
+        yield scan_config_ref
+    for extra_ref in _SCAN_CONFIG_EXTRA_REFS:
+        name = class_name(extra_ref)
+        if name in seen:
+            continue
+        seen.add(name)
+        yield extra_ref

@@ -6,11 +6,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from obi_one.core import run_tasks as test_module
-from obi_one.scientific.tasks.circuit_extraction import (
-    CircuitExtractionSingleConfig,
-    CircuitExtractionTask,
-)
-from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
+from obi_one.scientific.tasks.circuit_extraction.config import CircuitExtractionSingleConfig
+from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionTask
+from obi_one.scientific.tasks.simulation_execution.neuron.task import (
     CircuitSimulationExecutionTask,
 )
 from obi_one.types import TaskType

@@ -30,6 +30,7 @@ class TaskType(StrEnum):
     emodel_validation = auto()
     extracellular_recording_weights_calculation = auto()
     ion_channel_fitting = auto()
+    memodel_build = auto()
     ion_channel_model_simulation_execution = auto()
     single_neuron_simulation_execution = auto()
     single_neuron_synaptome_simulation_execution = auto()

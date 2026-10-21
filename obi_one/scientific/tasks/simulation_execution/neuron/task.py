@@ -1,22 +1,40 @@
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast, override
 from uuid import UUID
 
 import entitysdk
 from entitysdk import models
 from entitysdk.models.activity import Activity
 from entitysdk.staging.simulation import stage_simulation
+from entitysdk.types import AssetLabel
 
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import db_sdk
 from obi_one.db_sdk.registration.simulation_result import register_simulation_results
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms, run_simulation
 from obi_one.scientific.library.simulation.neuron.schemas import SimulationMetadata
-from obi_one.scientific.library.simulation.neuron.staging import get_simulation_parameters
+from obi_one.scientific.library.simulation.neuron.staging import (
+    get_simulation_parameters,
+    stage_circuit,
+    stage_ion_channel_models_as_circuit,
+    stage_memodel_as_circuit,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
+    IonChannelModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.simulation_execution.neuron.config import (
+    CircuitSimulationExecutionSingleConfig,
+    IonChannelModelSimulationExecutionSingleConfig,
+    SimulationExecutionSingleConfig,
+    SingleNeuronSimulationExecutionSingleConfig,
+    SingleNeuronSynaptomeSimulationExecutionSingleConfig,
+)
 from obi_one.types import SimulationBackend
 from obi_one.utils.benchmark import log_timing
 from obi_one.utils.filesystem import create_dir
@@ -24,11 +42,9 @@ from obi_one.utils.filesystem import create_dir
 if TYPE_CHECKING:
     from entitysdk.models import Simulation
 
+    from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+
 L = logging.getLogger(__name__)
-
-
-class SimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
-    pass
 
 
 class SimulationExecutionTask(Task):
@@ -141,3 +157,103 @@ class SimulationExecutionTask(Task):
             L.info("Updated %s(id=%s)", type(execution_activity), execution_activity.id)
 
         L.info("Simulation completed.")
+
+
+class CircuitSimulationExecutionTask(SimulationExecutionTask):
+    config: CircuitSimulationExecutionSingleConfig
+
+    @override
+    def _get_simulation_entity(self, db_client: entitysdk.client.Client) -> models.Simulation:
+        simulation_entity = db_sdk.get_identifiable(
+            client=db_client,
+            identifiable_id=self.config.single_entity.id,
+            identifiable_type=models.Simulation,
+        )
+        L.info("Fetched simulation config %s", simulation_entity.id)
+        return simulation_entity
+
+    @override
+    def _stage_circuit(
+        self,
+        *,
+        db_client: entitysdk.client.Client,
+        data_dir: Path,
+        simulation_entity: models.Simulation,
+    ) -> Circuit:
+        circuit_entity = db_client.get_entity(
+            entity_id=simulation_entity.entity_id,
+            entity_type=models.Circuit,
+        )
+        L.info("Fetched circuit %s", circuit_entity.id)
+
+        staged_circuit = stage_circuit(
+            client=db_client,
+            model=circuit_entity,
+            output_dir=create_dir(data_dir / "circuit"),
+            max_concurrent=8,
+        )
+        L.info("Staged circuit %s config at %s", circuit_entity.id, staged_circuit.path)
+        return staged_circuit
+
+
+class IonChannelModelSimulationExecutionTask(SimulationExecutionTask):
+    config: IonChannelModelSimulationExecutionSingleConfig
+
+    def get_generation_single_config(
+        self, db_client: entitysdk.client.Client
+    ) -> IonChannelModelSimulationSingleConfig:
+        json_bytes = db_sdk.select_asset_content(
+            client=db_client,
+            entity=self.config.single_entity,
+            selection={"label": AssetLabel.simulation_generation_config},
+        )
+        return IonChannelModelSimulationSingleConfig.model_validate_json(json_bytes)
+
+    @override
+    def _stage_circuit(
+        self,
+        *,
+        db_client: entitysdk.client.Client,
+        data_dir: Path,
+        simulation_entity: models.Simulation,
+    ) -> Circuit:
+        generation_single_config = self.get_generation_single_config(db_client)
+        return stage_ion_channel_models_as_circuit(
+            client=db_client,
+            ion_channel_models=generation_single_config.ion_channel_models,
+            output_dir=create_dir(data_dir / "circuit"),
+        )
+
+
+class SingleNeuronSimulationExecutionTask(SimulationExecutionTask):
+    config: SingleNeuronSimulationExecutionSingleConfig
+
+    def get_generation_single_config(
+        self, db_client: entitysdk.client.Client
+    ) -> MEModelSimulationSingleConfig:
+        json_bytes = db_sdk.select_asset_content(
+            client=db_client,
+            entity=self.config.single_entity,
+            selection={"label": AssetLabel.simulation_generation_config},
+        )
+        return MEModelSimulationSingleConfig.model_validate_json(json_bytes)
+
+    @override
+    def _stage_circuit(
+        self,
+        *,
+        db_client: entitysdk.client.Client,
+        data_dir: Path,
+        simulation_entity: models.Simulation,
+    ) -> Circuit:
+        generation_single_config = self.get_generation_single_config(db_client)
+        return stage_memodel_as_circuit(
+            client=db_client,
+            circuit=cast("MEModelCircuit", generation_single_config.initialize.circuit),
+            output_dir=create_dir(data_dir / "circuit"),
+            max_concurrent=8,
+        )
+
+
+class SingleNeuronSynaptomeSimulationExecutionTask(CircuitSimulationExecutionTask):
+    config: SingleNeuronSynaptomeSimulationExecutionSingleConfig

@@ -31,13 +31,12 @@ from obi_one.scientific.library.morphology_locations import (
 )
 
 
-def test_random_morphology_locations_defaults_to_dendrite_section_types():
-    locations = RandomMorphologyLocations(
-        random_seed=0,
-        number_of_locations=2,
-    )
-
-    assert locations.section_types == (3, 4)
+def test_random_morphology_locations_requires_section_types():
+    with pytest.raises(ValidationError):
+        RandomMorphologyLocations(
+            random_seed=0,
+            number_of_locations=2,
+        )
 
 
 def test_random_morphology_locations_accepts_tuple_section_types():
@@ -61,13 +60,13 @@ def test_random_morphology_locations_accepts_list_of_tuple_section_types_for_sca
 
 
 def test_generated_morphology_locations_report_configured_output_count():
-    locations = RandomMorphologyLocations(number_of_locations=3)
+    locations = RandomMorphologyLocations(number_of_locations=3, section_types=(3, 4))
 
     assert locations.output_location_count() == 3
 
 
 def test_generated_morphology_locations_report_no_count_for_parameter_sweeps():
-    locations = RandomMorphologyLocations(number_of_locations=[2, 3])
+    locations = RandomMorphologyLocations(number_of_locations=[2, 3], section_types=(3, 4))
 
     assert locations.output_location_count() is None
 
@@ -164,7 +163,7 @@ def test_morphology_locations_reject_invalid_numeric_parameters(block_type, kwar
 )
 def test_clustered_morphology_locations_require_at_least_one_location_per_cluster(block_type):
     with pytest.raises(ValidationError, match="Number of locations"):
-        block_type(number_of_locations=2, n_clusters=3)
+        block_type(number_of_locations=2, n_clusters=3, section_types=(3, 4))
 
 
 def test_normalized_section_offset_includes_segment_offset():
