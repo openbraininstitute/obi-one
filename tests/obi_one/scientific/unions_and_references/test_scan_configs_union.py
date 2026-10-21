@@ -33,11 +33,11 @@ def test_iter_scan_config_refs_deduplicates_scan_config_names_across_task_specs(
         patch.object(config_task_map, "_is_task_type_available", return_value=True),
         patch.object(config_task_map, "_SCAN_CONFIG_EXTRA_REFS", ()),
     ):
-        assert config_task_map.iter_scan_config_refs() == (shared_ref,)
+        assert tuple(config_task_map.iter_scan_config_refs()) == (shared_ref,)
 
 
 def test_iter_scan_config_refs_skips_extra_ref_when_name_already_listed():
     scan_ref = TASK_SPECS[TaskType.circuit_extraction].scan_config_ref
     with patch.object(config_task_map, "_SCAN_CONFIG_EXTRA_REFS", (scan_ref,)):
-        refs = config_task_map.iter_scan_config_refs()
+        refs = tuple(config_task_map.iter_scan_config_refs())
         assert refs.count(scan_ref) == 1

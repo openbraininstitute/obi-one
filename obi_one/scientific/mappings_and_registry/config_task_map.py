@@ -7,6 +7,7 @@ its task, SingleConfig and ScanConfig classes; ``core.deserializable_types`` der
 the deserialization type map from it.
 """
 
+from collections.abc import Iterator
 from importlib.util import find_spec
 
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
@@ -451,13 +452,12 @@ _SCAN_CONFIG_EXTRA_REFS: tuple[ClassRef, ...] = (
 """ScanConfig classes included in ``ScanConfigsUnion`` but not owned by a single ``TaskType``."""
 
 
-def iter_scan_config_refs() -> tuple[ClassRef, ...]:
-    """Return scan-config class refs for union membership without importing task modules.
+def iter_scan_config_refs() -> Iterator[ClassRef]:
+    """Yield scan-config class refs for union membership without importing task modules.
 
     Includes every available ``TaskSpec.scan_config_ref`` plus ``_SCAN_CONFIG_EXTRA_REFS``
     (for example backward-compatible aliases).
     """
-    refs: list[ClassRef] = []
     seen: set[str] = set()
     for task_type, task_spec in TASK_SPECS.items():
         scan_config_ref = task_spec.scan_config_ref
@@ -469,11 +469,10 @@ def iter_scan_config_refs() -> tuple[ClassRef, ...]:
         if name in seen:
             continue
         seen.add(name)
-        refs.append(scan_config_ref)
+        yield scan_config_ref
     for extra_ref in _SCAN_CONFIG_EXTRA_REFS:
         name = class_name(extra_ref)
         if name in seen:
             continue
         seen.add(name)
-        refs.append(extra_ref)
-    return tuple(refs)
+        yield extra_ref
