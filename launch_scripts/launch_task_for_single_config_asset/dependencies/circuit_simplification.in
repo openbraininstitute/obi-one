@@ -1,2 +1,3 @@
 obi-one
-sonata-simplify[simulation]
+sonata-simplify[simulation]>=0.2.5
+bluecellulab>=2.6.108

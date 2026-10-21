@@ -57,7 +57,7 @@ dependencies = [
     "obp-accounting-sdk>=0.6.8",
     "numpy",
     "scipy",
-    "sonata-simplify[simulation]>=0.2.4",
+    "sonata-simplify[simulation]>=0.2.5",
 ]
 
 [project.optional-dependencies]
