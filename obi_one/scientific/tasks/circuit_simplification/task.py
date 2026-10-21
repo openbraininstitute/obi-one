@@ -1,10 +1,10 @@
 """Circuit simplification task: reduces detailed SONATA circuits to simplified representations.
 
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
-simplified point-neuron or single-compartment circuits while preserving network
-connectivity. Each selected algorithm registers exactly one circuit in its target
-simulator format: single_compartment as NEURON, point-neuron NEST variants as NEST,
-and adex_brian2 as Brian2.
+simplified point-neuron, single-compartment or reduced multi-compartment circuits while
+preserving network connectivity. Each selected algorithm registers exactly one circuit in
+its target simulator format: single_compartment, neuron_reduce and neat_reduction as
+NEURON, point-neuron NEST variants as NEST, and adex_brian2 as Brian2.
 """
 
 import json
@@ -12,13 +12,14 @@ import logging
 import shutil
 import tempfile
 from enum import StrEnum
+from importlib.metadata import version
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Self
 
 import bluepysnap as snap
 from entitysdk import Client, models, types
 from entitysdk.types import DerivationType
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.info import Info
@@ -31,6 +32,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.blocks.simplification_algorithms import (
     ALGORITHM_EXPORT_MAP,
     SimplificationAlgorithmUnion,
+    algorithm_supports_node_selection,
     default_simplification_algorithms,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -46,6 +48,8 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+    AtomicBiophysicalNeuronSetUnion,
     BiophysicalNeuronSetReference,
 )
 from obi_one.scientific.unions_and_references.simplification_algorithms import (
@@ -55,11 +59,20 @@ from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
 
+PROVENANCE_PACKAGES = ("obi-one", "sonata-simplify", "bluecellulab")
+PROVENANCE_FILE_NAME = "simplification_provenance.json"
+
+
+def simplification_package_versions() -> dict[str, str]:
+    """Installed versions of the packages that determine the simplification result."""
+    return {package: version(package) for package in PROVENANCE_PACKAGES}
+
 
 class BlockGroup(StrEnum):
     """Block groups for the simplification form."""
 
     SETUP = "Setup"
+    CIRCUIT_COMPONENTS = "Circuit Components"
     SIMPLIFICATION = "Simplification"
 
 
@@ -75,9 +88,9 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
         " network connectivity. Supports multiple target models (single-compartment,"
-        " LIF, AdEx, Izhikevich, GLIF, GIF, Neuron_Reduce). Point-neuron models are"
-        " automatically exported to NEST format; single-compartment and"
-        " Neuron_Reduce produce NEURON circuits."
+        " LIF, AdEx, Izhikevich, GLIF, GIF, Neuron_Reduce, NEAT). Point-neuron models are"
+        " exported to NEST (or Brian2 for AdEx); single-compartment, Neuron_Reduce and"
+        " NEAT produce NEURON circuits."
     )
 
     default_target_neuron_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
@@ -97,12 +110,35 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP,
+            BlockGroup.CIRCUIT_COMPONENTS,
             BlockGroup.SIMPLIFICATION,
         ],
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
         },
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
+            BiophysicalNeuronSetReference.__name__: default_target_neuron_set_name,
+        },
     }
+
+    @model_validator(mode="after")
+    def check_neuron_set_supported(self) -> Self:
+        """A target neuron set is only accepted when every selected algorithm supports it."""
+        if self.initialize.target_neuron_set is None:
+            return self
+        unsupported = sorted(
+            block.algorithm_name
+            for block in self.algorithms.values()
+            if not algorithm_supports_node_selection(block.algorithm_name)
+        )
+        if unsupported:
+            msg = (
+                "A target neuron set is only supported by algorithms that allow partial"
+                f" simplification; not supported by: {', '.join(unsupported)}."
+                " Remove the target neuron set to simplify all biophysical neurons."
+            )
+            raise ValueError(msg)
+        return self
 
     def input_entities(self, db_client: Client) -> list[models.Entity]:
         input_entities = []
@@ -123,18 +159,17 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        target_neuron_set: BiophysicalNeuronSetReference | None = Field(  # ty:ignore[no-matching-overload]
+        target_neuron_set: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
             title="Target Neuron Set",
             description=(
-                "Neuron set to simplify. If None, defaults to all biophysical neurons."
-                " Currently hidden from the UI — always uses the default."
+                "Neuron set to simplify (e.g. by e-type or m-type). If empty, all biophysical"
+                " neurons are simplified. Only supported by the single-compartment algorithm."
             ),
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPES: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
-                SchemaKey.UI_HIDDEN: True,
             },
         )
         n_processes: int | None = Field(
@@ -185,6 +220,18 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
+    neuron_sets: dict[str, AtomicBiophysicalNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        default_factory=dict,
+        title="Neuron Sets",
+        description="Neuron sets that can be selected as the target of the simplification.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.SINGULAR_NAME: "Neuron Set",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_COMPONENTS,
+            SchemaKey.GROUP_ORDER: 0,
+        },
+    )
 
 
 class CircuitSimplificationSingleConfig(CircuitSimplificationScanConfig, SingleConfigMixin):
@@ -232,8 +279,13 @@ class CircuitSimplificationTask(Task):
 
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
         circuit_name = f"{parent.name}__{campaign_str}__{algorithm_name}{export_suffix}"  # ty:ignore[unresolved-attribute]
+        versions = ", ".join(
+            f"{package} {package_version}"
+            for package, package_version in simplification_package_versions().items()
+        )
         circuit_descr = (
             f"{self.config.info.campaign_description} - Simplified using '{algorithm_name}'"
+            f" ({versions})"
         )
 
         return circuit_registration.register_circuit(
@@ -365,6 +417,40 @@ class CircuitSimplificationTask(Task):
             L.error(msg)
             raise RuntimeError(msg) from e
 
+    def _build_algorithm_simulation_config(
+        self, input_circuit_path: Path, output_dir: Path
+    ) -> Path:
+        """Build the pipeline simulation config, targeting the configured neuron set if any.
+
+        Without a target neuron set every biophysical neuron is simplified. The config
+        validator guarantees that a target set is only combined with algorithms that
+        support node selection.
+        """
+        target_neuron_set_name = None
+        node_sets_file = None
+        if self.config.initialize.target_neuron_set is not None:
+            target_neuron_set_name = self._resolve_target_neuron_set(output_dir)
+            node_sets_file = str(output_dir / "node_sets.json")
+        return CircuitSimplificationTask._build_simulation_config(
+            str(input_circuit_path),
+            output_dir,
+            target_neuron_set_name=target_neuron_set_name,
+            node_sets_file=node_sets_file,
+        )
+
+    @staticmethod
+    def _write_provenance(circuit_dir: Path, algorithm_block: SimplificationAlgorithmUnion) -> Path:
+        """Write package versions and algorithm settings next to the output circuit config."""
+        provenance = {
+            "algorithm": algorithm_block.algorithm_name,
+            "algorithm_parameters": algorithm_block.model_dump(exclude={"type"}),
+            "package_versions": simplification_package_versions(),
+        }
+        provenance_path = circuit_dir / PROVENANCE_FILE_NAME
+        with provenance_path.open("w", encoding="utf-8") as f:
+            json.dump(provenance, f, indent=2)
+        return provenance_path
+
     @staticmethod
     def _read_target_simulator(circuit_config_path: Path) -> types.TargetSimulator:
         """Read target_simulator from a circuit_config.json.
@@ -422,10 +508,6 @@ class CircuitSimplificationTask(Task):
             algorithm_blocks = self.config.algorithms
             algorithm_names = [block.algorithm_name for block in algorithm_blocks.values()]
 
-            # All algorithms currently simplify all biophysical populations.
-            # Target neuron-set selection is intentionally disabled for now and
-            # will be enabled later for every algorithm consistently.
-
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithm_names:
                 mechanisms_dirs = sorted(set(process.get_mechanisms_dirs(input_circuit_path)))
@@ -458,12 +540,8 @@ class CircuitSimplificationTask(Task):
                 output_dir = (self.config.coordinate_output_root / algorithm_name).absolute()
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                # All algorithms currently simplify all biophysical populations.
-                # Do not pass node_set/node_sets_file until selective neuron-set
-                # support is added for every algorithm.
-                sim_config_path = CircuitSimplificationTask._build_simulation_config(
-                    str(input_circuit_path),
-                    output_dir,
+                sim_config_path = self._build_algorithm_simulation_config(
+                    input_circuit_path, output_dir
                 )
 
                 # Initialize the pipeline with the BASE algorithm name
@@ -472,6 +550,7 @@ class CircuitSimplificationTask(Task):
                     simulation_config=str(sim_config_path),
                     simplification_mode=base_algorithm,
                     n_processes=self.config.initialize.n_processes,
+                    **algorithm_block.pipeline_kwargs(),
                 )
 
                 # Run the pipeline with a recipe that includes the exporter
@@ -515,6 +594,7 @@ class CircuitSimplificationTask(Task):
                 # prevents an intermediate generic point-neuron output from
                 # being treated as the NEST or Brian2 circuit.
                 self._smoke_check_loadability(registration_path, algorithm_name)
+                self._write_provenance(registration_path.parent, algorithm_block)
 
                 if db_client and self._circuit_entity:
                     registered_entity = self._register_output(

@@ -3,6 +3,7 @@ from obi_one.scientific.blocks.simplification_algorithms.metadata import (
     ALGORITHM_EXPORT_DESCRIPTIONS,
     ALGORITHM_EXPORT_MAP,
     ALGORITHM_EXPORT_TITLES,
+    algorithm_supports_node_selection,
 )
 from obi_one.scientific.blocks.simplification_algorithms.models import (
     ALGORITHM_BLOCK_CLASSES,
@@ -12,6 +13,7 @@ from obi_one.scientific.blocks.simplification_algorithms.models import (
     GlifNestAlgorithm,
     IzhikevichNestAlgorithm,
     LifNestAlgorithm,
+    NeatReductionAlgorithm,
     NeuronReduceAlgorithm,
     SimplificationAlgorithmUnion,
     SingleCompartmentAlgorithm,
@@ -29,9 +31,11 @@ __all__ = [
     "GlifNestAlgorithm",
     "IzhikevichNestAlgorithm",
     "LifNestAlgorithm",
+    "NeatReductionAlgorithm",
     "NeuronReduceAlgorithm",
     "SimplificationAlgorithm",
     "SimplificationAlgorithmUnion",
     "SingleCompartmentAlgorithm",
+    "algorithm_supports_node_selection",
     "default_simplification_algorithms",
 ]

@@ -1,12 +1,19 @@
-from typing import Annotated, ClassVar
+import sys
+from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import ConfigDict, Discriminator
+from pydantic import ConfigDict, Discriminator, Field
 
+from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.simplification_algorithms.base import SimplificationAlgorithm
 from obi_one.scientific.blocks.simplification_algorithms.metadata import (
     ALGORITHM_EXPORT_DESCRIPTIONS,
     ALGORITHM_EXPORT_TITLES,
 )
+
+# sonata_simplify fits 1-4 poles; 1 and 2 map to dedicated ProbFilt mods, 3-4 use the
+# zero-padded ProbFilt5 mods.
+MAX_FILTER_POLES = 4
+FilterPoles = Annotated[int, Field(ge=1, le=MAX_FILTER_POLES)]
 
 
 class SingleCompartmentAlgorithm(SimplificationAlgorithm):
@@ -15,6 +22,43 @@ class SingleCompartmentAlgorithm(SimplificationAlgorithm):
     model_config = ConfigDict(
         json_schema_extra={"description": ALGORITHM_EXPORT_DESCRIPTIONS["single_compartment"]}
     )
+
+    filter_poles: FilterPoles | list[FilterPoles] = Field(
+        default=1,
+        title="Filter Poles",
+        description=(
+            "Number of exponential poles of the Rössert synaptic correction filter fit"
+            f" (1-{MAX_FILTER_POLES}). More poles capture several dendritic time constants."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    filter_method: Literal["timedomain", "impedance"] = Field(
+        default="timedomain",
+        title="Filter Method",
+        description=(
+            "How dendritic filters are computed: 'timedomain' runs NEURON simulations of"
+            " the detailed cell; 'impedance' uses a much faster passive frequency-domain"
+            " approximation."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    strict_filters: bool = Field(
+        default=True,
+        title="Strict Filters",
+        description=(
+            "Fail the task when filter computation errors instead of silently using"
+            " pass-through filters (no dendritic correction)."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+
+    def pipeline_kwargs(self) -> dict[str, Any]:
+        """Filter settings forwarded to ``SimplificationPipeline``."""
+        return {
+            "filter_poles": self.filter_poles,
+            "filter_method": self.filter_method,
+            "strict_filters": self.strict_filters,
+        }
 
 
 class LifNestAlgorithm(SimplificationAlgorithm):
@@ -73,7 +117,19 @@ class NeuronReduceAlgorithm(SimplificationAlgorithm):
     )
 
 
-_SIMPLIFICATION_ALGORITHM_BLOCKS = (
+class NeatReductionAlgorithm(SimplificationAlgorithm):
+    title: ClassVar[str] = ALGORITHM_EXPORT_TITLES["neat_reduction"]
+    algorithm_name: ClassVar[str] = "neat_reduction"
+    model_config = ConfigDict(
+        json_schema_extra={"description": ALGORITHM_EXPORT_DESCRIPTIONS["neat_reduction"]}
+    )
+
+    def pipeline_kwargs(self) -> dict[str, Any]:  # ruff: ignore[no-self-use]
+        """Run the NEAT subprocess with the task's interpreter (default is ``python3``)."""
+        return {"neat_config": {"python_executable": sys.executable}}
+
+
+SIMPLIFICATION_ALGORITHM_BLOCKS = (
     SingleCompartmentAlgorithm
     | LifNestAlgorithm
     | AdexNestAlgorithm
@@ -82,9 +138,11 @@ _SIMPLIFICATION_ALGORITHM_BLOCKS = (
     | GlifNestAlgorithm
     | GifNestAlgorithm
     | NeuronReduceAlgorithm
+    | NeatReductionAlgorithm
 )
+
 SimplificationAlgorithmUnion = Annotated[
-    _SIMPLIFICATION_ALGORITHM_BLOCKS,
+    SIMPLIFICATION_ALGORITHM_BLOCKS,
     Discriminator("type"),
 ]
 
@@ -99,6 +157,7 @@ ALGORITHM_BLOCK_CLASSES: dict[str, type[SimplificationAlgorithm]] = {
         GlifNestAlgorithm,
         GifNestAlgorithm,
         NeuronReduceAlgorithm,
+        NeatReductionAlgorithm,
     )
 }
 
