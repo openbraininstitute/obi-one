@@ -29,6 +29,7 @@ def _random_locations(**overrides):
         "type": "RandomMorphologyLocations",
         "random_seed": 0,
         "number_of_locations": 3,
+        "section_types": [3, 4],
         **overrides,
     }
 
