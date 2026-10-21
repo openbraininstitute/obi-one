@@ -48,7 +48,6 @@ The value supports both a single selection and parameter scans:
 
 - `[2, 3, 4]`: one selection containing three section types.
 - `[[2], [3, 4]]`: a scan with two selections.
-- `null`: no section-type filter.
 
 Reference schema:
 [morphology_section_type_selection](reference_schemas/morphology_section_type_selection.json)
@@ -56,8 +55,7 @@ Reference schema:
 ### Example Pydantic implementation
 
 ```py
-section_types: tuple[Literal[2, 3, 4], ...] | list[tuple[Literal[2, 3, 4], ...]] | None = Field(
-    default=(2, 3, 4),
+section_types: tuple[Literal[2, 3, 4], ...] | list[tuple[Literal[2, 3, 4], ...]] = Field(
     title="Section types",
     description="Types of sections to generate locations on.",
     json_schema_extra={

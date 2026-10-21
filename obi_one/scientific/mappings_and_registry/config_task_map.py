@@ -29,9 +29,9 @@ _GENERATE_SIMULATION_TASK_REF = (
 
 TASK_SPECS: dict[TaskType, TaskSpec] = {
     TaskType.circuit_extraction: TaskSpec(
-        task_ref=(f"{_TASKS}.circuit_extraction", "CircuitExtractionTask"),
-        single_config_ref=(f"{_TASKS}.circuit_extraction", "CircuitExtractionSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.circuit_extraction", "CircuitExtractionScanConfig"),
+        task_ref=(f"{_TASKS}.circuit_extraction.task", "CircuitExtractionTask"),
+        single_config_ref=(f"{_TASKS}.circuit_extraction.config", "CircuitExtractionSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.circuit_extraction.config", "CircuitExtractionScanConfig"),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.circuit_extraction__campaign,
         campaign_generation_task_activity_type=(
@@ -125,34 +125,28 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
     ),
     TaskType.ion_channel_model_simulation_execution: TaskSpec(
-        task_ref=(
-            f"{_SIMULATION_EXECUTION}.ion_channel_simulation_execution",
-            "IonChannelModelSimulationExecutionTask",
-        ),
+        task_ref=(f"{_SIMULATION_EXECUTION}.task", "IonChannelModelSimulationExecutionTask"),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.ion_channel_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "IonChannelModelSimulationExecutionSingleConfig",
         ),
         asset_label=None,
     ),
     TaskType.single_neuron_simulation_execution: TaskSpec(
-        task_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_simulation_execution",
-            "SingleNeuronSimulationExecutionTask",
-        ),
+        task_ref=(f"{_SIMULATION_EXECUTION}.task", "SingleNeuronSimulationExecutionTask"),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "SingleNeuronSimulationExecutionSingleConfig",
         ),
         asset_label=None,
     ),
     TaskType.single_neuron_synaptome_simulation_execution: TaskSpec(
         task_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_synaptome_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.task",
             "SingleNeuronSynaptomeSimulationExecutionTask",
         ),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.single_neuron_synaptome_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "SingleNeuronSynaptomeSimulationExecutionSingleConfig",
         ),
         asset_label=None,
@@ -165,9 +159,9 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_activity_type=TaskActivityType.mesh_lod_generation__execution,
     ),
     TaskType.morphology_skeletonization: TaskSpec(
-        task_ref=(f"{_TASKS}.skeletonization", "SkeletonizationTask"),
-        single_config_ref=(f"{_TASKS}.skeletonization", "SkeletonizationSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.skeletonization", "SkeletonizationScanConfig"),
+        task_ref=(f"{_TASKS}.skeletonization.task", "SkeletonizationTask"),
+        single_config_ref=(f"{_TASKS}.skeletonization.config", "SkeletonizationSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.skeletonization.config", "SkeletonizationScanConfig"),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.skeletonization__campaign,
         campaign_generation_task_activity_type=(
@@ -310,12 +304,9 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.circuit_simulation_neurodamus_machine: TaskSpec(
-        task_ref=(
-            f"{_SIMULATION_EXECUTION}.circuit_simulation_execution",
-            "CircuitSimulationExecutionTask",
-        ),
+        task_ref=(f"{_SIMULATION_EXECUTION}.task", "CircuitSimulationExecutionTask"),
         single_config_ref=(
-            f"{_SIMULATION_EXECUTION}.circuit_simulation_execution",
+            f"{_SIMULATION_EXECUTION}.config",
             "CircuitSimulationExecutionSingleConfig",
         ),
         asset_label=None,
