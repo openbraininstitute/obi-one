@@ -35,7 +35,6 @@ The flag is a request control only; it is not stored on the entity.
 | `lifecycle_status` | `active` when validation passed, `disqualified` when it did not |
 | `validation_error` | The reason validation failed; `null` on success |
 | `measurement_entity_id` | `null` for disqualified morphologies (no morphometrics) |
-| `mesh_asset_id` | `null` for disqualified morphologies, and whenever meshing is unavailable |
 
 Note that with the opt-in a failed morphology returns **200**, not 422. Callers must read
 `lifecycle_status` rather than treating any 2xx as a valid morphology.
