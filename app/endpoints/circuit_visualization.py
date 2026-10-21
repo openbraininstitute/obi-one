@@ -86,9 +86,9 @@ def circuit_morphology(
         "simplified, placed in the circuit and cut into chunks of space. The format is specified "
         "in `docs/internal/circuit-morphology-pack.md`. The pack holds one level of detail, the "
         "finest that comes to at most `max_segments` segments, or with `all_levels` every level, "
-        "as a pack stored on the circuit is to. It is built in the request, so a circuit too "
-        "large for that is refused, with a `reason`. Temporary: to be removed once circuit "
-        "registration stores the pack on the circuit."
+        "as a pack stored on the circuit is to. It is built in the request, unless kept from an "
+        "earlier one, so a circuit too large for that is refused, with a `reason`. Temporary: to "
+        "be removed once circuit registration stores the pack on the circuit."
     ),
     response_class=Response,
     responses={

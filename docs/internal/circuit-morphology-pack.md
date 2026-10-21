@@ -30,6 +30,8 @@ A pack of one level is also held to `max_segments`, so its coarsest level is ref
 
 A refusal is a 422 whose `detail` holds `code`, `reason` and `detail`. A circuit with no biophysical population, or none of whose morphologies can be read, is refused with `no_morphologies`. One pack is built at a time: a request that has waited two minutes for another build gets a 503 with the reason `busy`.
 
+Where the service is given a directory of their own (`CIRCUIT_MORPHOLOGY_PACK_CACHE_DIR`, unset by default, one for each process), the packs of every level it builds are kept there by the circuit's asset and the service's commit, so that a circuit's is built once, and a request that waited for its build is given it when that ends. Room for a new pack is made first, within `CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES` (2 GiB), by letting go of the packs used longest ago; a pack that cannot be kept is still sent. A request reads the circuit with its own token before it is given a kept pack, so only whoever may see the circuit gets one. A pack stays until it is let go of, also after its circuit is deleted.
+
 A morphology that cannot be read is left out: a file that is not a morphology, or a name its container does not hold. Its cells are in the pack as somas with a radius of zero. So is a cell whose position or rotation is not a finite number.
 
 The morphologies are simplified, and the chunks encoded, over `CIRCUIT_MORPHOLOGY_PACK_WORKERS` processes: by default one for each CPU the service may use, within its container's quota, and at most eight, past which the build's own work in the service's process holds them up. They are forked from a server process started with the first build, and the pack is the same to the byte on any number of them.

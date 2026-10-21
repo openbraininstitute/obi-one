@@ -5,11 +5,13 @@ already registered have theirs. Until then it serves the circuits small enough t
 request, and refuses the others as early as it can tell.
 """
 
+import os
 import shutil
 import threading
 from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from enum import StrEnum
 from http import HTTPStatus
 from itertools import groupby
@@ -54,6 +56,7 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     MorphologyLevels,
 )
 from obi_one.scientific.library.morphology_pack.writer import PackWriter
+from obi_one.utils.filesystem import remove_oldest_past, write_whole
 from obi_one.utils.memory import malloc_trim
 from obi_one.utils.parallel import Processes, available_cpus
 
@@ -66,6 +69,8 @@ FETCHES_AT_ONCE = 8
 PATIENCE_SECONDS = 120
 # What reading a morphology raises for a file that is not one, or a name its container lacks.
 UNREADABLE = (morphio.MorphioError, OSError, RuntimeError)
+
+KEPT_SUFFIX = ".mpack"
 
 # One build at a time: two would hold twice the memory.
 BUILDING = threading.Lock()
@@ -269,6 +274,35 @@ def placed_cells(
     return place_cells(populations, levels, shapes)
 
 
+def kept_path(asset: Asset) -> Path | None:
+    """Where the pack of every level of the circuit's `asset` is kept, or None where none are."""
+    directory = settings.CIRCUIT_MORPHOLOGY_PACK_CACHE_DIR
+    if directory is None:
+        return None
+    return directory / f"{asset.id}.{settings.COMMIT_SHA or 'local'}{KEPT_SUFFIX}"
+
+
+def kept(path: Path) -> bytes | None:
+    """The pack kept at `path`, marked as used, if it is there."""
+    try:
+        pack = path.read_bytes()
+    except FileNotFoundError:
+        return None
+    with suppress(FileNotFoundError):
+        os.utime(path)
+    return pack
+
+
+def keep(path: Path, pack: bytes) -> None:
+    """Keep `pack` at `path`, first letting go of the packs used longest ago to make room."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    remove_oldest_past(
+        path.parent.glob(f"*{KEPT_SUFFIX}*"),
+        settings.CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES - len(pack),
+    )
+    write_whole(path, pack)
+
+
 def build_circuit_morphology_pack(
     client: Client,
     circuit_id: UUID,
@@ -277,7 +311,7 @@ def build_circuit_morphology_pack(
     *,
     all_levels: bool = False,
 ) -> bytes:
-    """Build the pack of a circuit, or refuse one too large for a request.
+    """Build the pack of a circuit, or refuse one too large for a request, unless it is kept.
 
     With `all_levels`, the pack holds every level and `max_segments` is not used.
     """
@@ -290,14 +324,27 @@ def build_circuit_morphology_pack(
             " request may hold",
         )
     asset = sonata_circuit_asset(client, circuit)
+    path = kept_path(asset) if all_levels else None
+    if path is not None and (pack := kept(path)) is not None:
+        return pack
     if not BUILDING.acquire(timeout=PATIENCE_SECONDS):
         refuse(
             Refusal.BUSY, "Another pack is being built; try again", HTTPStatus.SERVICE_UNAVAILABLE
         )
     try:
+        # the build waited for may have been this one's
+        if path is not None and (pack := kept(path)) is not None:
+            return pack
         with Processes(workers(), PRELOAD) as processes:
-            return placed_cells(
+            pack = placed_cells(
                 client, circuit_id, asset, directory, max_segments, processes, all_levels=all_levels
             ).pack(processes)
+        # under the lock, so that a request waiting for it finds the pack kept
+        if path is not None and len(pack) <= settings.CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES:
+            try:
+                keep(path, pack)
+            except OSError:
+                L.warning("The pack %s could not be kept", path.name, exc_info=True)
+        return pack
     finally:
         BUILDING.release()

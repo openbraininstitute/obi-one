@@ -1,12 +1,15 @@
+import os
 import shutil
+import threading
 from http import HTTPStatus
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import h5py
 import libsonata
 import pytest
+from entitysdk.exception import EntitySDKError
 from fastapi import HTTPException
 
 from app.config import settings
@@ -32,10 +35,17 @@ CONTAINER = Path("morphologies/merged-morphologies.h5")
 class LocalCircuit:
     """Stands in for the database client: a circuit's files come from a directory on disk."""
 
-    def __init__(self, source: Path, number_neurons: int = 10, replaced: dict | None = None):
+    def __init__(
+        self,
+        source: Path,
+        number_neurons: int = 10,
+        replaced: dict | None = None,
+        asset_id: UUID | None = None,
+    ):
         self.source = source
         self.number_neurons = number_neurons
         self.replaced = replaced or {}
+        self.asset_id = asset_id or uuid4()
         self.listed = 0
         self.fetched = []
 
@@ -43,7 +53,7 @@ class LocalCircuit:
         return SimpleNamespace(id=entity_id, number_neurons=self.number_neurons)
 
     def select_assets(self, circuit, selection):  # ruff: ignore[unused-method-argument]
-        return SimpleNamespace(one=lambda: SimpleNamespace(id=uuid4()))
+        return SimpleNamespace(one=lambda: SimpleNamespace(id=self.asset_id))
 
     def list_directory(self, **_):
         self.listed += 1
@@ -277,3 +287,131 @@ class TestOneAtATime:
         with pytest.raises(HTTPException):
             build(LocalCircuit(CONTAINER_CIRCUIT), directory, 10)
         assert not BUILDING.locked()
+
+
+@pytest.fixture
+def kept_dir(tmp_path_factory, monkeypatch):
+    path = tmp_path_factory.mktemp("kept").resolve()
+    monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_CACHE_DIR", path)
+    return path
+
+
+def pack_of(client, circuit_id, tmp_path_factory, *, all_levels=True) -> bytes:
+    return build_circuit_morphology_pack(
+        client,
+        circuit_id,
+        tmp_path_factory.mktemp("staged").resolve(),
+        DEFAULT_MAX_SEGMENTS,
+        all_levels=all_levels,
+    )
+
+
+def asset(asset_id=None):
+    return SimpleNamespace(id=asset_id or uuid4())
+
+
+class TestKept:
+    def test_a_kept_pack_is_not_built_again(self, kept_dir, tmp_path_factory):
+        circuit_id, asset_id = uuid4(), uuid4()
+        built = pack_of(
+            LocalCircuit(CONTAINER_CIRCUIT, asset_id=asset_id), circuit_id, tmp_path_factory
+        )
+        again = LocalCircuit(CONTAINER_CIRCUIT, asset_id=asset_id)
+        assert pack_of(again, circuit_id, tmp_path_factory) == built
+        assert again.listed == 0
+        assert again.fetched == []
+        assert list(kept_dir.iterdir()) == [service.kept_path(asset(asset_id))]
+
+    def test_a_pack_of_one_level_is_not_kept(self, kept_dir, tmp_path_factory):
+        pack_of(LocalCircuit(CONTAINER_CIRCUIT), uuid4(), tmp_path_factory, all_levels=False)
+        assert not any(kept_dir.iterdir())
+
+    def test_nothing_is_kept_unless_a_directory_is_given(self):
+        assert service.kept_path(asset()) is None
+
+    @pytest.mark.usefixtures("kept_dir")
+    def test_each_asset_is_kept_apart(self):
+        assert service.kept_path(asset()) != service.kept_path(asset())
+
+    def test_the_packs_used_longest_ago_go(self, kept_dir, monkeypatch):
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES", 20)
+        first, second, third = (service.kept_path(asset()) for _ in range(3))
+        service.keep(first, b"x" * 10)
+        service.keep(second, b"x" * 10)
+        os.utime(first, ns=(0, 0))
+        os.utime(second, ns=(1, 1))
+        assert service.kept(first) is not None
+        service.keep(third, b"x" * 10)
+        assert sorted(kept_dir.iterdir()) == sorted([first, third])
+
+    def test_only_packs_are_let_go_of(self, kept_dir, monkeypatch):
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES", 10)
+        other = kept_dir / "other"
+        other.write_bytes(b"x" * 10)
+        os.utime(other, ns=(0, 0))
+        first, second = (service.kept_path(asset()) for _ in range(2))
+        service.keep(first, b"x" * 10)
+        service.keep(second, b"x" * 10)
+        assert sorted(kept_dir.iterdir()) == sorted([other, second])
+
+    def test_a_pack_over_the_bytes_allowed_is_not_kept(
+        self, kept_dir, tmp_path_factory, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES", 1000)
+        pack_of(LocalCircuit(CONTAINER_CIRCUIT), uuid4(), tmp_path_factory)
+        assert not any(kept_dir.iterdir())
+
+    def test_a_pack_that_cannot_be_kept_is_still_given(self, kept_dir, tmp_path_factory):
+        kept_dir.chmod(0o500)
+        try:
+            pack = read_pack(pack_of(LocalCircuit(CONTAINER_CIRCUIT), uuid4(), tmp_path_factory))
+        finally:
+            kept_dir.chmod(0o700)
+        assert len(pack.levels) == len(LEVELS)
+        assert not any(kept_dir.iterdir())
+        assert not BUILDING.locked()
+
+    def test_a_kept_pack_is_given_only_to_who_may_see_the_circuit(
+        self, kept_dir, tmp_path_factory, monkeypatch
+    ):
+        asset_id = uuid4()
+        service.kept_path(asset(asset_id)).write_bytes(b"kept")
+        stranger = LocalCircuit(CONTAINER_CIRCUIT, asset_id=asset_id)
+
+        def forbidden(**_):
+            raise EntitySDKError
+
+        monkeypatch.setattr(stranger, "get_entity", forbidden)
+        with pytest.raises(HTTPException) as error:
+            pack_of(stranger, uuid4(), tmp_path_factory)
+        assert error.value.status_code == HTTPStatus.BAD_REQUEST
+        assert any(kept_dir.iterdir())
+
+    @pytest.mark.usefixtures("kept_dir")
+    def test_a_request_that_waited_is_given_the_pack_built_meanwhile(
+        self, tmp_path_factory, monkeypatch
+    ):
+        monkeypatch.setattr(service, "PATIENCE_SECONDS", 10)
+        circuit_id, asset_id = uuid4(), uuid4()
+        looked = threading.Event()
+        kept = service.kept
+
+        def watched(where):
+            found = kept(where)
+            looked.set()
+            return found
+
+        monkeypatch.setattr(service, "kept", watched)
+        waiting = LocalCircuit(CONTAINER_CIRCUIT, asset_id=asset_id)
+        given = []
+        with BUILDING:
+            thread = threading.Thread(
+                target=lambda: given.append(pack_of(waiting, circuit_id, tmp_path_factory))
+            )
+            thread.start()
+            assert looked.wait(10)
+            service.kept_path(asset(asset_id)).write_bytes(b"built meanwhile")
+        thread.join(10)
+        assert not thread.is_alive()
+        assert given == [b"built meanwhile"]
+        assert waiting.listed == 0

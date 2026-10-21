@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     # Processes that simplify the morphologies and encode the chunks; unset, one a CPU the
     # process may use, up to eight.
     CIRCUIT_MORPHOLOGY_PACK_WORKERS: int | None = None
+    # A directory of their own, for one process, where packs of every level are kept once built;
+    # unset, none are. Not the temporary directory where that is memory.
+    CIRCUIT_MORPHOLOGY_PACK_CACHE_DIR: Path | None = None
+    # Past this, the packs used longest ago go.
+    CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES: int = 2 * 1024 * 1024 * 1024
 
     def get_virtual_lab_url(self, virtual_lab_id: str) -> str:
         """Return the virtual-lab-api URL for the given virtual lab."""
