@@ -523,10 +523,10 @@ class CircuitSimplificationTask(Task):
                 )
 
             # Import sonata_simplify lazily (heavy dependencies)
-            from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level]
+            from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level] # ty: ignore[unresolved-import]
                 SimplificationPipeline,
             )
-            from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level]
+            from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level] # ty: ignore[unresolved-import]
 
             for algorithm_block in algorithm_blocks.values():
                 algorithm_name = algorithm_block.algorithm_name
