@@ -5,12 +5,18 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
+from typing import Literal
 
 import libsonata
 import morphio
 import numpy as np
 from bluepysnap.utils import euler2mat, quaternion2mat
 
+from obi_one.scientific.library.circuit import ALTERNATE_MORPHOLOGY_FORMATS
+from obi_one.scientific.library.circuit_metrics import (
+    TYPES_OF_BIOPHYS_NODES,
+    get_names_of_typed_node_populations,
+)
 from obi_one.scientific.library.morphology_pack.geometry import (
     Level,
     Morphology,
@@ -56,6 +62,34 @@ class Population:
         """Which cells have a position and a rotation of finite numbers."""
         placed = np.column_stack([self.positions, self.rotations.reshape(-1, 9)])
         return np.all(np.isfinite(placed), axis=1)
+
+
+def biophysical_populations(config: libsonata.CircuitConfig) -> list[str]:
+    return sorted(get_names_of_typed_node_populations(config, TYPES_OF_BIOPHYS_NODES))
+
+
+def morphologies_source(
+    config: libsonata.CircuitConfig, name: str
+) -> tuple[Path, Literal["swc", "asc", "h5"]]:
+    """Where a population's morphologies are read from and their format: the first declared of
+    'swc', then 'asc', then 'h5'.
+    """
+    properties = config.node_population_properties(name)
+    if properties.morphologies_dir:
+        return Path(properties.morphologies_dir), "swc"
+    alternates = properties.alternate_morphology_formats
+    for key, morphology_format in ALTERNATE_MORPHOLOGY_FORMATS.items():
+        if key in alternates:
+            return Path(alternates[key]), morphology_format
+    msg = "No morphologies found"
+    raise ValueError(msg)
+
+
+def morphology_files(path: Path, morphology_format: str, names: Iterable[str]) -> list[Path]:
+    """The container at `path`, or else the file in the folder at `path` of each of `names`."""
+    if morphology_format == "h5" and path.suffix == ".h5":
+        return [path]
+    return [path / f"{name}.{morphology_format}" for name in sorted(set(names))]
 
 
 def rotation_matrices(population: libsonata.NodePopulation) -> np.ndarray:
@@ -114,12 +148,12 @@ def simplified_all(
     morphologies: Mapping[MorphologyKey, Morphology],
     levels: tuple[Level, ...],
     processes: Processes,
-) -> dict[MorphologyKey, MorphologyLevels]:
-    """Every morphology simplified to `levels`, over `processes`."""
+) -> Iterator[tuple[MorphologyKey, MorphologyLevels]]:
+    """Every morphology simplified to `levels`, over `processes`, in order, as each is done."""
     each = processes.map(
         partial(simplified, levels=levels), morphologies.values(), per_job=MORPHOLOGIES_A_JOB
     )
-    return dict(zip(morphologies, each, strict=True))
+    return zip(morphologies, each, strict=True)
 
 
 def place_cells(

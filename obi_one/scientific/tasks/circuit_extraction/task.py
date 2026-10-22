@@ -334,6 +334,9 @@ class CircuitExtractionTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=types.DerivationType.circuit_extraction,
+            # the task's machine is sized for the extraction; the asset job its launch calls back
+            # on success builds the pack
+            include_morphology_pack=False,
         )
 
     def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]

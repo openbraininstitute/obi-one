@@ -1,4 +1,5 @@
 import json
+from functools import partial
 from http import HTTPStatus
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from entitysdk.types import (
     AssetLabel,
     CircuitScale,
     ContentType,
+    EntityType,
     ExecutorType,
     TargetSimulator,
 )
@@ -29,6 +31,7 @@ from app.schemas.task import (
     LaunchableTaskDefinition,
     MachineResources,
     Resources,
+    TaskDefinition,
     TaskDefinitionLegacy,
     TaskLaunchInfo,
     TaskLaunchSubmit,
@@ -84,13 +87,21 @@ def submit_task_job(
             activity_type=task_definition.activity_type,
         ).id
 
-    failure_callback = _generate_failure_callback(
-        activity_id=activity_id,
-        task_type=task_definition.task_type,
+    task_callback = partial(
+        _task_callback,
         callback_url=callback_url,
+        task_type=task_definition.task_type,
+        activity_id=activity_id,
         project_context=project_context,
     )
-    all_callbacks = [failure_callback, *callbacks]
+    all_callbacks = [
+        task_callback(event_type=CallBackEvent.job_on_failure, path="failure"),
+        *callbacks,
+    ]
+    if isinstance(task_definition, TaskDefinition) and task_definition.circuit_assets_on_success:
+        all_callbacks.append(
+            task_callback(event_type=CallBackEvent.job_on_success, path="circuit-assets")
+        )
 
     match task_definition.task_type:
         case TaskType.circuit_simulation_brian2_machine:
@@ -315,16 +326,20 @@ def _generic_job_data(
     }
 
 
-def _generate_failure_callback(
+def _task_callback(
     *,
+    event_type: CallBackEvent,
+    path: str,
     callback_url: str,
     task_type: TaskType,
     activity_id: UUID,
     project_context: ProjectContext,
 ) -> CallBack:
-    """Builds the callback URL for task failure notifications."""
+    """Builds the callback that POSTs the task's activity to `{callback_url}/{path}` on
+    `event_type`.
+    """
     config = HttpRequestCallBackConfig(
-        url=f"{callback_url}/failure",
+        url=f"{callback_url}/{path}",
         method="POST",
         params={
             "task_type": task_type,
@@ -336,10 +351,17 @@ def _generate_failure_callback(
         },
     )
     return CallBack(
-        event_type=CallBackEvent.job_on_failure,
+        event_type=event_type,
         action_type=CallBackAction.http_request_with_token,
         config=config,
     )
+
+
+def _activity_type(task_definition: AnyTaskDefinition) -> type[models.Activity]:
+    # TODO: Remove once simulations are migrated to generic configs
+    if isinstance(task_definition, TaskDefinitionLegacy):
+        return task_definition.activity_type
+    return models.TaskActivity
 
 
 def handle_task_failure_callback(
@@ -348,11 +370,7 @@ def handle_task_failure_callback(
     db_client: entitysdk.Client,
     task_definition: AnyTaskDefinition,
 ) -> None:
-    # TODO: Remove once simulations are migrated to generic configs
-    if isinstance(task_definition, TaskDefinitionLegacy):
-        task_activity_type = task_definition.activity_type
-    else:
-        task_activity_type = models.TaskActivity
+    task_activity_type = _activity_type(task_definition)
 
     current_status = db_client.get_entity(
         entity_id=activity_id, entity_type=task_activity_type
@@ -365,6 +383,23 @@ def handle_task_failure_callback(
             activity_type=task_activity_type,
             status=ActivityStatus.error,
         )
+
+
+def generated_circuits(
+    *,
+    activity_id: UUID,
+    db_client: entitysdk.Client,
+    task_definition: AnyTaskDefinition,
+) -> list[models.Circuit]:
+    """The circuits the task's activity generated."""
+    activity = db_client.get_entity(
+        entity_id=activity_id, entity_type=_activity_type(task_definition)
+    )
+    return [
+        db_client.get_entity(entity_id=entity.id, entity_type=models.Circuit)
+        for entity in activity.generated or []
+        if entity.type == EntityType.circuit
+    ]
 
 
 def estimate_task_resources(

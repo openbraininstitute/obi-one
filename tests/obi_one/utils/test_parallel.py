@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from obi_one.utils import parallel
+from obi_one.utils import memory, parallel
 from obi_one.utils.parallel import Processes, available_cpus, each
 
 
@@ -43,6 +43,6 @@ class TestProcesses:
 
     def test_a_job_hands_back_what_it_freed(self, monkeypatch):
         calls = []
-        monkeypatch.setattr(parallel, "malloc_trim", lambda: calls.append)
+        monkeypatch.setattr(memory, "malloc_trim", lambda: calls.append)
         assert each(abs, [-1, -2]) == [1, 2]
         assert calls == [0]

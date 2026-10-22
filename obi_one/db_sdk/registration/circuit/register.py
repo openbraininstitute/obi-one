@@ -175,6 +175,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     skip_validation: bool = False,
     include_compressed: bool = True,
     include_overview_images: bool = True,
+    include_morphology_pack: bool = True,
     lifecycle_status: types.EntityLifecycleStatus | str | None = None,
     overview_image_path: str | Path | None = None,
     sim_designer_image_path: str | Path | None = None,
@@ -246,6 +247,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         include_overview_images: When generating additional assets, also produce plots
             and overview / sim-designer images. Set False for post-validation jobs that
             only need compressed + connectivity matrices.
+        include_morphology_pack: When generating additional assets, also build the morphology
+            pack (past single scale). Set False where the machine is too small for it and the
+            asset job builds it instead.
         lifecycle_status: Optional lifecycle status (e.g. ``"draft"`` for async
             validation). When omitted, entitycore's default applies.
         overview_image_path: Path to a pre-existing overview image file (.png or .webp).
@@ -456,6 +460,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             circuit_entity=registered_circuit,
             include_compressed=include_compressed,
             include_overview_images=include_overview_images,
+            include_morphology_pack=include_morphology_pack,
         )
     elif not dry_run and (overview_image_path is not None or sim_designer_image_path is not None):
         # Generated assets are deferred to the post-validation job, but a user-uploaded image is

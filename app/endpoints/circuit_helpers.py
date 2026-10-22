@@ -4,6 +4,7 @@ import logging
 from uuid import UUID
 
 import httpx
+from entitysdk.types import CircuitScale
 
 from app.config import settings
 from obi_one.db_sdk.registration.circuit.launch_jobs import (
@@ -57,6 +58,7 @@ def trigger_asset_generation_task(
     *,
     ls_client: httpx.Client,
     circuit_id: UUID,
+    scale: CircuitScale | None,
     project_id: UUID,
     virtual_lab_id: UUID,
     compute_cell: str,
@@ -67,6 +69,7 @@ def trigger_asset_generation_task(
     Args:
         ls_client: Launch-system HTTP client.
         circuit_id: Circuit entity ID to generate assets for.
+        scale: The circuit's scale, which sizes the job's machine.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
         compute_cell: Compute cell for the launch-system job (from the vlab).
@@ -78,6 +81,7 @@ def trigger_asset_generation_task(
     return submit_circuit_asset_generation_job(
         ls_client=ls_client,
         circuit_id=circuit_id,
+        scale=scale,
         project_id=project_id,
         virtual_lab_id=virtual_lab_id,
         compute_cell=compute_cell,

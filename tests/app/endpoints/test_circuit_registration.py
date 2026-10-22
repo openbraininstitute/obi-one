@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk.types import CircuitScale
 from fastapi import HTTPException
 
 from app.endpoints.circuit_helpers import (
@@ -288,6 +289,7 @@ class TestTriggerAssetGenerationTask:
             trigger_asset_generation_task(
                 ls_client=ls_client,
                 circuit_id=circuit_id,
+                scale=CircuitScale.microcircuit,
                 project_id=project_id,
                 virtual_lab_id=virtual_lab_id,
                 compute_cell="cell_a",
@@ -300,6 +302,7 @@ class TestTriggerAssetGenerationTask:
         job_data = call_kwargs["json"]
         assert "tag:1.2.3" in job_data["code"]["ref"]
         assert job_data["resources"]["compute_cell"] == "cell_a"
+        assert (job_data["resources"]["cores"], job_data["resources"]["memory"]) == (2, 16)
         assert f"--circuit_id {circuit_id}" in job_data["inputs"]
         assert "--force false" in job_data["inputs"]
 
@@ -319,6 +322,7 @@ class TestTriggerAssetGenerationTask:
             trigger_asset_generation_task(
                 ls_client=ls_client,
                 circuit_id=uuid4(),
+                scale=CircuitScale.microcircuit,
                 project_id=uuid4(),
                 virtual_lab_id=uuid4(),
                 compute_cell="cell_b",
@@ -347,6 +351,7 @@ class TestTriggerAssetGenerationTask:
             trigger_asset_generation_task(
                 ls_client=ls_client,
                 circuit_id=uuid4(),
+                scale=CircuitScale.microcircuit,
                 project_id=uuid4(),
                 virtual_lab_id=uuid4(),
                 compute_cell="cell_a",
@@ -373,6 +378,7 @@ class TestTriggerAssetGenerationTask:
             trigger_asset_generation_task(
                 ls_client=ls_client,
                 circuit_id=uuid4(),
+                scale=CircuitScale.microcircuit,
                 project_id=uuid4(),
                 virtual_lab_id=uuid4(),
                 compute_cell="cell_a",
@@ -423,19 +429,28 @@ class TestGenerateAssetsEndpoint:
                 app.dependency_overrides.pop(get_client, None)
                 app.dependency_overrides.pop(get_compute_cell, None)
 
-    def test_returns_already_exists(self, client):
+    @pytest.mark.parametrize(
+        ("scale", "labels"),
+        [
+            (
+                "small",
+                [
+                    "compressed_sonata_circuit",
+                    "circuit_connectivity_matrices",
+                    "circuit_morphology_pack",
+                ],
+            ),
+            ("single", ["compressed_sonata_circuit", "circuit_connectivity_matrices"]),
+        ],
+    )
+    def test_returns_already_exists(self, client, scale, labels):
         """If assets already exist and not force, returns message."""
 
         circuit_id = uuid4()
         mock_circuit = MagicMock()
         mock_circuit.lifecycle_status = "active"
-
-        # Fake assets with the required labels
-        asset1 = MagicMock()
-        asset1.label = "compressed_sonata_circuit"
-        asset2 = MagicMock()
-        asset2.label = "circuit_connectivity_matrices"
-        mock_circuit.assets = [asset1, asset2]
+        mock_circuit.scale = scale
+        mock_circuit.assets = [MagicMock(label=label) for label in labels]
 
         from app.application import app  # ruff: ignore[import-outside-top-level]
         from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
@@ -488,6 +503,38 @@ class TestGenerateAssetsEndpoint:
             assert body["job_id"] == str(job_id)
             mock_trigger.assert_called_once()
             assert mock_trigger.call_args.kwargs["force"] is False
+        finally:
+            app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
+
+    @patch("app.endpoints.circuit_registration.trigger_asset_generation_task")
+    def test_triggers_generation_for_a_missing_morphology_pack(self, mock_trigger, client):
+        mock_trigger.return_value = uuid4()
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "active"
+        mock_circuit.scale = "small"
+        mock_circuit.assets = [
+            MagicMock(label="compressed_sonata_circuit"),
+            MagicMock(label="circuit_connectivity_matrices"),
+        ]
+
+        from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
+        from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_circuit
+        app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+
+        try:
+            resp = client.post(f"/declared/circuit/{uuid4()}/generate-assets")
+            assert resp.status_code == 200
+            assert resp.json()["status"] == "generation_triggered"
+            mock_trigger.assert_called_once()
+            assert mock_trigger.call_args.kwargs["scale"] == "small"
         finally:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)

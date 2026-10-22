@@ -9,7 +9,6 @@ import numpy as np
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, Circuit, MEModel
-from entitysdk.models.asset import Asset
 from entitysdk.types import AssetLabel, CircuitScale, ContentType
 from fastapi import HTTPException
 
@@ -23,12 +22,12 @@ from app.schemas.circuit_visualization import (
     SectionDict,
     SynapseGroup,
 )
-from obi_one.scientific.library.circuit import ALTERNATE_MORPHOLOGY_FORMATS
+from obi_one.scientific.library.morphology_pack.circuit import morphologies_source
 
 
-def get_circuit(client: Client, circuit_id: UUID) -> Circuit:
+def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
     try:
-        return client.get_entity(entity_id=circuit_id, entity_type=Circuit)
+        circuit = client.get_entity(entity_id=circuit_id, entity_type=Circuit)
     except EntitySDKError as e:
         L.exception(e)
         raise HTTPException(
@@ -39,10 +38,6 @@ def get_circuit(client: Client, circuit_id: UUID) -> Circuit:
             },
         ) from e
 
-
-def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
-    circuit = get_circuit(client, circuit_id)
-
     if circuit.scale not in {CircuitScale.single, CircuitScale.pair, CircuitScale.small}:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
@@ -52,15 +47,11 @@ def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:
             },
         )
 
-    return sonata_circuit_asset(client, circuit).id
-
-
-def sonata_circuit_asset(client: Client, circuit: Circuit) -> Asset:
     try:
-        return client.select_assets(
+        asset = client.select_assets(
             circuit,
             selection={
-                "label": AssetLabel.sonata_circuit,
+                "label": "sonata_circuit",
             },
         ).one()
 
@@ -72,6 +63,8 @@ def sonata_circuit_asset(client: Client, circuit: Circuit) -> Asset:
                 "detail": "Circuit is missing a sonata_circuit asset",
             },
         ) from e
+
+    return asset.id
 
 
 def get_population_nodes(  # ruff: ignore[too-many-locals]
@@ -157,17 +150,8 @@ def resolve_morph_path(
 
     Only declared formats are considered, in priority order: 'swc', then 'asc', then 'h5'.
     """
-    pop_properties = config.node_population_properties(population_name)
-    if pop_properties.morphologies_dir:
-        return MorphPath(path=Path(pop_properties.morphologies_dir), format="swc")
-
-    alternate_morphologies: dict = pop_properties.alternate_morphology_formats
-    for sonata_key, format_ in ALTERNATE_MORPHOLOGY_FORMATS.items():
-        if sonata_key in alternate_morphologies:
-            return MorphPath(path=Path(alternate_morphologies[sonata_key]), format=format_)
-
-    m = "No morphologies found"
-    raise ValueError(m)
+    path, format_ = morphologies_source(config, population_name)
+    return MorphPath(path=path, format=format_)
 
 
 def get_nodes(

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import h5py
 import libsonata
@@ -10,6 +11,7 @@ from scipy.spatial.transform import Rotation
 from obi_one.scientific.library.morphology_pack.circuit import (
     Population,
     distinct_morphologies,
+    morphology_files,
     place_cells,
     read_morphology,
     read_population,
@@ -146,6 +148,19 @@ class TestMorphologies:
     def test_a_name_the_container_does_not_hold_raises(self):
         with pytest.raises(RuntimeError, match="absent"):
             read_alone("absent", CONTAINER, "h5")
+
+    @pytest.mark.parametrize(
+        ("path", "morphology_format", "files"),
+        [
+            ("morphologies/merged.h5", "h5", ["morphologies/merged.h5"]),
+            ("morphologies/h5.v1", "h5", ["morphologies/h5.v1/a.h5", "morphologies/h5.v1/b.h5"]),
+            ("morphologies.v2", "swc", ["morphologies.v2/a.swc", "morphologies.v2/b.swc"]),
+        ],
+    )
+    def test_the_files_of_a_container_or_a_folder(self, path, morphology_format, files):
+        assert morphology_files(Path(path), morphology_format, ["b", "a", "b"]) == [
+            Path(file) for file in files
+        ]
 
 
 def population_with(tmp_path, attributes):

@@ -8,8 +8,10 @@ from obi_one.db_sdk.registration.circuit.generate import (
     generate_compressed_circuit_asset,
     generate_connectivity_matrix_asset,
     generate_connectivity_plot_assets,
+    generate_morphology_pack_asset,
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
+    missing_assets,
 )
 from obi_one.db_sdk.registration.circuit.launch_jobs import (
     submit_circuit_asset_generation_job,
@@ -54,6 +56,7 @@ __all__ = [
     "generate_compressed_circuit_asset",
     "generate_connectivity_matrix_asset",
     "generate_connectivity_plot_assets",
+    "generate_morphology_pack_asset",
     "generate_overview_image_asset",
     "generate_sim_designer_image_asset",
     "get_brain_region",
@@ -67,6 +70,7 @@ __all__ = [
     "get_root_circuit",
     "get_subject",
     "is_validation_allowed",
+    "missing_assets",
     "register_circuit",
     "register_circuit_from_metadata",
     "register_contributions",

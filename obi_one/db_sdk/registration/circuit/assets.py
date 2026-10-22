@@ -165,6 +165,23 @@ def add_compressed_circuit_asset(
     return compressed_asset
 
 
+def add_morphology_pack_asset(
+    client: Client, pack_file: Path, registered_circuit: models.Circuit
+) -> models.Asset:
+    """Upload a circuit morphology pack asset to a registered circuit entity."""
+    asset_label = AssetLabel.circuit_morphology_pack
+    pack_asset = _upload_or_replace_file(
+        client,
+        registered_circuit,
+        asset_label=asset_label,
+        file_path=pack_file,
+        file_content_type="application/octet-stream",
+        transfer_config=MultipartUploadTransferConfig(),
+    )
+    L.info(f"'{asset_label.value}' asset uploaded under asset ID {pack_asset.id}")
+    return pack_asset
+
+
 def add_connectivity_matrix_asset(
     client: Client, matrix_dir: Path, registered_circuit: models.Circuit
 ) -> models.Asset:

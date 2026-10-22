@@ -4,6 +4,7 @@ import logging
 from uuid import UUID
 
 import httpx
+from entitysdk.types import CircuitScale
 
 from obi_one.utils.versions import release_tag_ref
 
@@ -13,6 +14,21 @@ DEFAULT_OBI_ONE_REPO = "https://github.com/openbraininstitute/obi-one.git"
 VALIDATION_LAUNCH_PATH = "launch_scripts/launch_circuit_validation"
 ASSET_GENERATION_LAUNCH_PATH = "launch_scripts/launch_circuit_asset_generation"
 VALIDATION_IMAGE_TYPE = "python_3_12_openmpi5_neuron9_neurodamus"
+# The asset job's placement for each compute cell, as the tasks' (app/mappings.py): on cell A,
+# Fargate, whose executors mount the public data the job's client reads in place.
+ASSET_GENERATION_PLACEMENTS = {"cell_a": "fargate", "cell_b": "azure_container_apps"}
+# The asset job's cores and memory (GB) for each circuit scale, among the launch-system's
+# combinations. Past a microcircuit the morphology pack decides the memory: about 100 bytes a
+# segment, so 30 GB holds FlyWire's whole brain (about 255M segments).
+ASSET_GENERATION_RESOURCES = {
+    CircuitScale.single: (1, 4),
+    CircuitScale.pair: (1, 4),
+    CircuitScale.small: (1, 4),
+    CircuitScale.microcircuit: (2, 16),
+    CircuitScale.region: (4, 30),
+    CircuitScale.system: (4, 30),
+    CircuitScale.whole_brain: (4, 30),
+}
 
 
 def submit_circuit_validation_job(
@@ -111,6 +127,7 @@ def submit_circuit_asset_generation_job(
     *,
     ls_client: httpx.Client,
     circuit_id: UUID,
+    scale: CircuitScale | None,
     project_id: UUID,
     virtual_lab_id: UUID,
     compute_cell: str,
@@ -121,12 +138,14 @@ def submit_circuit_asset_generation_job(
     """Submit a circuit asset-generation job to the launch-system.
 
     Stages the circuit and generates the compressed SONATA circuit, connectivity
-    matrices and plots, and the overview / sim-designer images (skipping any image the
-    user already uploaded at registration time).
+    matrices and plots, the overview / sim-designer images (skipping any image the
+    user already uploaded at registration time) and the morphology pack, on a
+    machine sized for the circuit's scale.
 
     Args:
         ls_client: Launch-system HTTP client (authenticated).
         circuit_id: Circuit entity ID to generate assets for.
+        scale: The circuit's scale, which sizes the machine; a microcircuit's where None.
         project_id: Project ID for the job.
         virtual_lab_id: Virtual lab ID for the job.
         compute_cell: Compute cell for the launch-system job (from the vlab).
@@ -139,6 +158,7 @@ def submit_circuit_asset_generation_job(
         The job ID can be used with ``GET /declared/task/{job_id}`` and
         ``GET /declared/task/{job_id}/stream`` to inspect status and logs.
     """
+    cores, memory = ASSET_GENERATION_RESOURCES[scale or CircuitScale.microcircuit]
     job_data = {
         "code": {
             "type": "python_repository",
@@ -149,11 +169,11 @@ def submit_circuit_asset_generation_job(
         },
         "resources": {
             "type": "machine",
-            # Launch-system valid combo for 16GB is 2 cores (1 core allows only ≤8GB).
-            "cores": 2,
-            "memory": 16,
+            "cores": cores,
+            "memory": memory,
             "timelimit": "01:00",
             "compute_cell": compute_cell,
+            "placement_type": ASSET_GENERATION_PLACEMENTS.get(compute_cell),
         },
         "inputs": [
             f"--circuit_id {circuit_id}",

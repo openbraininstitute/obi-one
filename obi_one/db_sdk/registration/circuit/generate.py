@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 from entitysdk import Client, models
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, AssetStatus, CircuitScale
 
 from obi_one.db_sdk.registration.circuit.assets import (
     OVERVIEW_IMAGE_NAME,
@@ -13,9 +13,12 @@ from obi_one.db_sdk.registration.circuit.assets import (
     add_compressed_circuit_asset,
     add_connectivity_matrix_asset,
     add_image_assets,
+    add_morphology_pack_asset,
 )
 
 L = logging.getLogger(__name__)
+
+MORPHOLOGY_PACK_FILENAME = "circuit.mpack"
 
 
 def generate_compressed_circuit_asset(
@@ -191,14 +194,71 @@ def generate_sim_designer_image_asset(
         )
 
 
+def generate_morphology_pack_asset(
+    circuit_path: Path,
+    output_dir: Path,
+    client: Client | None = None,
+    circuit_entity: models.Circuit | None = None,
+) -> Path | None:
+    """Build the circuit's morphology pack and optionally register it as an asset.
+
+    Returns the pack's path, or None where the circuit can have none (no biophysical population,
+    no morphology that can be read, or more segments than the pack may hold here), which is
+    logged.
+    """
+    from obi_one.scientific.library.morphology_pack.build import (  # ruff: ignore[import-outside-top-level]
+        NoPackError,
+        build_morphology_pack,
+        segment_cap,
+    )
+
+    try:
+        pack = build_morphology_pack(circuit_path, segment_cap())
+    except NoPackError as e:
+        L.info("No morphology pack for circuit %s: %s", getattr(circuit_entity, "id", None), e)
+        return None
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pack_file = output_dir / MORPHOLOGY_PACK_FILENAME
+    pack_file.write_bytes(pack)
+    del pack
+    if client and circuit_entity:
+        add_morphology_pack_asset(
+            client=client, pack_file=pack_file, registered_circuit=circuit_entity
+        )
+    return pack_file
+
+
 def _entity_has_asset(circuit_entity: models.Circuit | None, asset_label: AssetLabel) -> bool:
-    """Return True if circuit_entity already has an asset with the given label."""
+    """Return True if circuit_entity already has an asset with the given label, its upload
+    finished: one still uploading may be left from a job that failed, and is replaced.
+    """
     if circuit_entity is None:
         return False
     existing = {
-        getattr(asset.label, "value", asset.label) for asset in (circuit_entity.assets or [])
+        getattr(asset.label, "value", asset.label)
+        for asset in (circuit_entity.assets or [])
+        if getattr(asset, "status", None) != AssetStatus.uploading
     }
     return asset_label.value in existing
+
+
+def expects_morphology_pack(circuit_entity: models.Circuit | None) -> bool:
+    """Whether the circuit gets a morphology pack: any but a single neuron, which the viewer draws
+    from its morphology.
+    """
+    return getattr(circuit_entity, "scale", None) != CircuitScale.single
+
+
+def missing_assets(circuit_entity: models.Circuit) -> set[AssetLabel]:
+    """Which of the assets the asset job is launched for the circuit lacks: the compressed
+    circuit, the connectivity matrices and, past single scale, the morphology pack.
+
+    The images and plots are not among them: a circuit may never have them.
+    """
+    expected = {AssetLabel.compressed_sonata_circuit, AssetLabel.circuit_connectivity_matrices}
+    if expects_morphology_pack(circuit_entity):
+        expected.add(AssetLabel.circuit_morphology_pack)
+    return {label for label in expected if not _entity_has_asset(circuit_entity, label)}
 
 
 def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
@@ -213,6 +273,7 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     force: bool = False,
     include_compressed: bool = True,
     include_overview_images: bool = True,
+    include_morphology_pack: bool = True,
 ) -> None:
     """Generate and register additional circuit assets.
 
@@ -249,6 +310,9 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
             sim-designer images (skipping any already present as an asset). Set False to
             produce only compressed + connectivity matrices + connectivity plots. Note this
             does NOT gate the connectivity plots, which are always regenerated with the matrix.
+        include_morphology_pack: If True (default), also build the morphology pack, last, unless
+            the circuit is a single neuron. Set False where the machine is too small for it and
+            the asset job builds it instead (circuit extraction).
     """
     output_root = circuit_path.parents[1]
     circuit_name = circuit_path.parent.name
@@ -258,6 +322,7 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     matrix_dir = output_root / (circuit_name + "__CONN_MATRIX__")
     plot_dir = output_root / (circuit_name + "__BASIC_PLOTS__")
     viz_dir = output_root / (circuit_name + "__CIRCUIT_VIZ__")
+    pack_dir = output_root / (circuit_name + "__MORPHOLOGY_PACK__")
 
     # Clean up existing output directories for idempotent reruns
     # plot_dir is cleaned with matrix_dir: connectivity plots are coupled to the matrix. viz_dir
@@ -267,6 +332,8 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
         dirs_to_clean.append(compressed_dir)
     if include_overview_images:
         dirs_to_clean.append(viz_dir)
+    if include_morphology_pack:
+        dirs_to_clean.append(pack_dir)
     for d in dirs_to_clean:
         if d.exists():
             shutil.rmtree(d)
@@ -333,9 +400,55 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     # Only the auto-generated overview / sim-designer images are gated by this flag. They are
     # skipped when already present (e.g. a user-uploaded image attached at registration time),
     # so the async job never overwrites an image the user supplied.
-    if not include_overview_images:
-        return
+    if include_overview_images:
+        _generate_overview_images(
+            plot_dir=plot_dir,
+            viz_dir=viz_dir,
+            overview_image_path=overview_image_path,
+            sim_designer_image_path=sim_designer_image_path,
+            client=client,
+            circuit_entity=circuit_entity,
+            force=force,
+        )
 
+    # Last, so that the assets above are in when a job's time runs out while it builds.
+    if not include_morphology_pack:
+        L.info(
+            "Morphology pack not requested for circuit %s — skipping circuit_morphology_pack",
+            getattr(circuit_entity, "id", None),
+        )
+    elif not expects_morphology_pack(circuit_entity):
+        L.info(
+            "Circuit %s is a single neuron — skipping circuit_morphology_pack",
+            getattr(circuit_entity, "id", None),
+        )
+    elif not force and _entity_has_asset(circuit_entity, AssetLabel.circuit_morphology_pack):
+        L.info(
+            "circuit_morphology_pack already present on circuit %s — skipping",
+            getattr(circuit_entity, "id", None),
+        )
+    else:
+        try:
+            generate_morphology_pack_asset(
+                circuit_path=circuit_path,
+                output_dir=pack_dir,
+                client=client,
+                circuit_entity=circuit_entity,
+            )
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.warning(f"Morphology pack asset generation/registration failed: {e}")
+
+
+def _generate_overview_images(
+    *,
+    plot_dir: Path,
+    viz_dir: Path,
+    overview_image_path: Path | None,
+    sim_designer_image_path: Path | None,
+    client: Client | None,
+    circuit_entity: models.Circuit | None,
+    force: bool,
+) -> None:
     if force or not _entity_has_asset(circuit_entity, AssetLabel.circuit_visualization):
         try:
             generate_overview_image_asset(

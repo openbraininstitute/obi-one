@@ -128,6 +128,9 @@ class TaskDefinition(Schema):
     activity_type: TaskActivityType
     code: Code
     resources: Resources
+    # Launch the circuit asset job for each circuit the task generated, once it succeeds: for a
+    # task whose machine is too small to build every asset itself.
+    circuit_assets_on_success: bool = False
 
     @property
     def config_type_name(self) -> str:

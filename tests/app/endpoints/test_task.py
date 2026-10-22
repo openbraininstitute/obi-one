@@ -826,6 +826,64 @@ def test_task_failure_endpoint(client, task_type):
         ).raise_for_status()
 
 
+@pytest.fixture
+def cell_a():
+    app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+    yield
+    app.dependency_overrides.pop(get_compute_cell, None)
+
+
+@pytest.mark.usefixtures("cell_a")
+def test_task_circuit_assets_endpoint(client):
+    activity_id = uuid4()
+    built = [
+        SimpleNamespace(label=label)
+        for label in ("compressed_sonata_circuit", "circuit_connectivity_matrices")
+    ]
+    circuits = [
+        SimpleNamespace(id=uuid4(), scale=CircuitScale.small, assets=built),
+        SimpleNamespace(id=uuid4(), scale=CircuitScale.single, assets=built),
+        SimpleNamespace(id=uuid4(), scale=CircuitScale.whole_brain, assets=[]),
+    ]
+
+    with (
+        patch("app.services.task.generated_circuits", return_value=circuits) as generated,
+        patch("app.endpoints.task.trigger_asset_generation_task", return_value=uuid4()) as trigger,
+    ):
+        response = client.post(
+            url="/declared/task/callback/circuit-assets",
+            params={"task_type": TaskType.circuit_extraction, "activity_id": str(activity_id)},
+        )
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    assert generated.call_args.kwargs["activity_id"] == activity_id
+    assert [
+        (call.kwargs["circuit_id"], call.kwargs["scale"]) for call in trigger.call_args_list
+    ] == [(circuit.id, circuit.scale) for circuit in (circuits[0], circuits[2])]
+    assert {call.kwargs["compute_cell"] for call in trigger.call_args_list} == {"cell_a"}
+    assert {str(call.kwargs["project_id"]) for call in trigger.call_args_list} == {PROJECT_ID}
+
+
+@pytest.mark.usefixtures("cell_a")
+def test_task_circuit_assets_endpoint_when_a_job_is_refused(client):
+    circuits = [SimpleNamespace(id=uuid4(), scale=CircuitScale.small, assets=[]) for _ in range(3)]
+    with (
+        patch("app.services.task.generated_circuits", return_value=circuits),
+        patch(
+            "app.endpoints.task.trigger_asset_generation_task",
+            side_effect=[uuid4(), None, uuid4()],
+        ) as trigger,
+    ):
+        response = client.post(
+            url="/declared/task/callback/circuit-assets",
+            params={"task_type": TaskType.circuit_extraction, "activity_id": str(uuid4())},
+        )
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert str(circuits[1].id) in response.text
+    assert trigger.call_count == len(circuits)
+
+
 @pytest.mark.parametrize("task_type", TASK_DEFINITIONS.keys())
 def test_task_success_endpoint(client, task_type):
     job_id = uuid4()

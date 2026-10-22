@@ -1,42 +1,24 @@
 # Circuit morphology pack
 
-A pack holds the morphologies of a circuit's biophysical neurons in one binary file, ready for a viewer to draw: simplified, placed in the circuit and cut into chunks of space. It is written by `obi_one.scientific.library.morphology_pack`, whose `circuit` module takes a SONATA circuit's populations to a pack, and served by `GET /circuit/viz/{circuit_id}/morphology-pack`.
+A pack holds the morphologies of a circuit's biophysical neurons in one binary file, ready for a viewer to draw: simplified, placed in the circuit and cut into chunks of space. It is written by `obi_one.scientific.library.morphology_pack`, whose `build` module takes a SONATA circuit on disk to a pack, and stored on the circuit as its `circuit_morphology_pack` asset, `circuit.mpack`, as `application/octet-stream`.
 
-## The endpoint
+## Where a pack is built
 
-`GET /circuit/viz/{circuit_id}/morphology-pack?max_segments=2000000` answers with the pack as `application/octet-stream`.
+A pack is one of a circuit's assets, built with the others by `generate_additional_circuit_assets`, last, so that the others are in when a job's time runs out while it builds. It is built when the circuit has none (one still uploading counts as none), or with `force`, and holds every level. A single-neuron circuit gets none: the viewer draws it from its morphology.
 
-The endpoint is temporary. Circuit registration is to build the pack and store it on the circuit, and the circuits already registered are to get theirs in a backfill. The endpoint is removed once both are done, because it builds the pack while the viewer waits, in the service's own processes.
+- **The circuit asset job**, which registration and customization launch once the circuit is validated, and `POST /declared/circuit/{circuit_id}/generate-assets` launches again. The endpoint launches nothing when the circuit has its compressed circuit, its connectivity matrices and, past single scale, its pack. Where the pack is the only asset missing, the job fetches only the circuit's config, its biophysical populations' nodes and their morphologies, with the node sets and the other populations' nodes.
+- **In the task that registers the circuit**, where its machine is enough: synapse parameterization, launched for at most 20 neurons; building a synaptome and EM synapse mapping, whose circuits are a single neuron, so no pack.
+- **Circuit extraction** registers its circuit on a machine sized for the extraction, so its launch adds a callback on the job's success, `POST /declared/task/callback/circuit-assets`, which launches the asset job for each circuit the task's activity generated that lacks one of the assets `generate-assets` checks for.
 
-The pack it builds holds one level of detail: the finest that comes to at most `max_segments` segments. The viewer says how many segments it can draw. With `all_levels=true` the pack holds every level instead, as a pack stored on the circuit is to, and `max_segments` is not used.
+The job reads a circuit's files through the client's local store where it holds them, the public data mounted on the job's Fargate executors, and downloads the others.
 
-It checks a circuit in this order, and refuses as early as it can:
+The job's machine follows the circuit's scale (`ASSET_GENERATION_RESOURCES`): 1 core and 4 GB up to a small circuit, 2 cores and 16 GB for a microcircuit, and 4 cores and 30 GB past it, each for an hour, enough for the whole FlyWire brain's pack. Registration computes the scale up to microcircuit from the neuron count, so a larger circuit gets the large machine only where it was registered with a larger `scale_override`.
 
-1. The circuit's `number_neurons`, from its entity. Nothing of the circuit is read.
-2. The sizes of its node files and morphology files, from the listing of its `sonata_circuit` asset, before each is fetched.
-3. The points of its morphologies, counted as they are read.
-4. The segments of each level, once the morphologies are simplified.
-
-The limits are settings, so that a service run locally can take larger circuits. Each defaults to the value below.
-
-| Limit | Setting | Default | Refusal |
-| --- | --- | --- | --- |
-| Neurons | `CIRCUIT_MORPHOLOGY_PACK_MAX_NEURONS` | 5,000 | `too_many_neurons` |
-| Bytes of node and morphology files | `CIRCUIT_MORPHOLOGY_PACK_MAX_STAGED_BYTES` | 256 MiB | `files_too_large` |
-| Points of every cell's morphology | `CIRCUIT_MORPHOLOGY_PACK_MAX_POINTS` | 5,000,000 | `too_many_points` |
-| Segments of the pack, over every level it holds | `CIRCUIT_MORPHOLOGY_PACK_MAX_SEGMENTS` | 5,000,000 | `too_many_segments` |
-
-A pack of one level is also held to `max_segments`, so its coarsest level is refused when it comes to more than the lesser of the two.
-
-A refusal is a 422 whose `detail` holds `code`, `reason` and `detail`. A circuit with no biophysical population, or none of whose morphologies can be read, is refused with `no_morphologies`. One pack is built at a time: a request that has waited two minutes for another build gets a 503 with the reason `busy`.
-
-Where the service is given a directory of their own (`CIRCUIT_MORPHOLOGY_PACK_CACHE_DIR`, unset by default, one for each process), the packs of every level it builds are kept there by the circuit's asset and the service's commit, so that a circuit's is built once, and a request that waited for its build is given it when that ends. Room for a new pack is made first, within `CIRCUIT_MORPHOLOGY_PACK_CACHE_MAX_BYTES` (2 GiB), by letting go of the packs used longest ago; a pack that cannot be kept is still sent. A request reads the circuit with its own token before it is given a kept pack, so only whoever may see the circuit gets one. A pack stays until it is let go of, also after its circuit is deleted.
+A circuit without a biophysical population, or none of whose morphologies can be read, gets no pack, which is logged. So does a circuit whose levels come to more segments together than a pack may hold where it is built: the lesser of `MAX_SEGMENTS`, whatever the machine, and the memory the container leaves the build, its cgroup's limit (or the machine's memory) less what the process holds, at `BYTES_A_SEGMENT` a segment. The log says which of the two decided.
 
 A morphology that cannot be read is left out: a file that is not a morphology, or a name its container does not hold. Its cells are in the pack as somas with a radius of zero. So is a cell whose position or rotation is not a finite number.
 
-The morphologies are simplified, and the chunks encoded, over `CIRCUIT_MORPHOLOGY_PACK_WORKERS` processes: by default one for each CPU the service may use, within its container's quota, and at most eight, past which the build's own work in the service's process holds them up. They are forked from a server process started with the first build, and the pack is the same to the byte on any number of them.
-
-Only the node files of the biophysical populations and their morphologies are fetched. A public circuit's files are linked from the mounted store; a private circuit's are downloaded into the request's temporary directory, and deleted as soon as they are read.
+The morphologies are simplified, and the chunks encoded, over processes: one for each CPU the build may use, within its container's quota, and at most eight, past which the build's own work in the main process holds them up. The pack is the same to the byte on any number of them.
 
 ## The format
 

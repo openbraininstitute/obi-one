@@ -576,6 +576,8 @@ def _stage_and_register(
             skip_validation=True,
             lifecycle_status="draft",
             include_compressed=False,
+            # not in the service's process: the asset job validation calls on builds it
+            include_morphology_pack=False,
         )
     except (OSError, ValueError, RuntimeError) as e:
         raise HTTPException(

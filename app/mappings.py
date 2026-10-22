@@ -76,6 +76,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
+        circuit_assets_on_success=True,
     ),
     TaskDefinition(
         task_type=TaskType.circuit_single_build,

@@ -28,6 +28,7 @@ from obi_one.db_sdk.registration.circuit import (
     get_exp_date,
     get_publications,
     is_validation_allowed,
+    missing_assets,
     register_circuit,
     validation_blocked_detail,
 )
@@ -390,8 +391,10 @@ def generate_assets_endpoint(
     """Trigger asset generation for an active circuit.
 
     Re-launchable: generates the compressed circuit, connectivity matrices and plots,
-    and the overview / sim-designer images (skipping any image the user uploaded, which
-    is attached at registration time). Does not affect readiness_status.
+    the overview / sim-designer images (skipping any image the user uploaded, which
+    is attached at registration time) and, past single scale, the morphology pack.
+    Launches nothing when the compressed circuit, the matrices and the pack it expects are
+    all there. Does not affect readiness_status.
 
     Returns ``job_id`` so clients can follow progress and logs via
     ``GET /declared/task/{job_id}`` and ``GET /declared/task/{job_id}/stream``.
@@ -408,19 +411,17 @@ def generate_assets_endpoint(
         )
 
     # Check if assets already exist (unless force)
-    if not force:
-        existing_labels = {a.label for a in (circuit.assets or [])}
-        needed = {"compressed_sonata_circuit", "circuit_connectivity_matrices"}
-        if needed.issubset(existing_labels):
-            return {
-                "circuit_id": str(circuit_id),
-                "message": "all assets already exist",
-                "job_id": None,
-            }
+    if not force and not missing_assets(circuit):
+        return {
+            "circuit_id": str(circuit_id),
+            "message": "all assets already exist",
+            "job_id": None,
+        }
 
     job_id = trigger_asset_generation_task(
         ls_client=ls_client,
         circuit_id=circuit_id,
+        scale=circuit.scale,
         project_id=db_client.project_context.project_id,  # ty:ignore[unresolved-attribute]
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
         compute_cell=compute_cell,

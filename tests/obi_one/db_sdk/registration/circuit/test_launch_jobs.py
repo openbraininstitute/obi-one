@@ -4,9 +4,11 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from entitysdk.types import EntityLifecycleStatus
+from entitysdk.types import CircuitScale, EntityLifecycleStatus
 
+from app.services.resource_estimation.circuit_extraction import CPU_MEMORY_COMBINATIONS
 from obi_one.db_sdk.registration.circuit.launch_jobs import (
+    ASSET_GENERATION_RESOURCES,
     submit_circuit_asset_generation_job,
     submit_circuit_validation_job,
 )
@@ -146,6 +148,7 @@ class TestSubmitCircuitJobs:
             submit_circuit_asset_generation_job(
                 ls_client=ls_client,
                 circuit_id=circuit_id,
+                scale=None,
                 project_id=project_id,
                 virtual_lab_id=virtual_lab_id,
                 compute_cell="cell_b",
@@ -172,6 +175,55 @@ class TestSubmitCircuitJobs:
         assert "image_type" not in job["resources"]
 
     @pytest.mark.parametrize(
+        ("scale", "cores", "memory"),
+        [
+            (CircuitScale.pair, 1, 4),
+            (CircuitScale.small, 1, 4),
+            (CircuitScale.microcircuit, 2, 16),
+            (CircuitScale.whole_brain, 4, 30),
+            (None, 2, 16),
+        ],
+    )
+    def test_asset_generation_job_resources(self, scale, cores, memory):
+        ls_client = MagicMock()
+        ls_client.post.return_value = MagicMock(
+            is_success=True, json=MagicMock(return_value={"id": str(uuid4())})
+        )
+        submit_circuit_asset_generation_job(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            scale=scale,
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+            compute_cell="cell_a",
+        )
+        resources = ls_client.post.call_args[1]["json"]["resources"]
+        assert (resources["cores"], resources["memory"]) == (cores, memory)
+
+    def test_asset_generation_resources_are_launch_system_combinations(self):
+        for cores, memory in ASSET_GENERATION_RESOURCES.values():
+            assert memory in CPU_MEMORY_COMBINATIONS[cores]
+
+    @pytest.mark.parametrize(
+        ("compute_cell", "placement"),
+        [("cell_a", "fargate"), ("cell_b", "azure_container_apps"), ("local", None)],
+    )
+    def test_asset_generation_job_placement(self, compute_cell, placement):
+        ls_client = MagicMock()
+        ls_client.post.return_value = MagicMock(
+            is_success=True, json=MagicMock(return_value={"id": str(uuid4())})
+        )
+        submit_circuit_asset_generation_job(
+            ls_client=ls_client,
+            circuit_id=uuid4(),
+            scale=None,
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+            compute_cell=compute_cell,
+        )
+        assert ls_client.post.call_args[1]["json"]["resources"]["placement_type"] == placement
+
+    @pytest.mark.parametrize(
         ("app_version", "expected_ref"),
         [
             (None, "tag:0.0.0"),
@@ -189,6 +241,7 @@ class TestSubmitCircuitJobs:
         submit_circuit_asset_generation_job(
             ls_client=ls_client,
             circuit_id=uuid4(),
+            scale=None,
             project_id=uuid4(),
             virtual_lab_id=uuid4(),
             compute_cell="cell_b",

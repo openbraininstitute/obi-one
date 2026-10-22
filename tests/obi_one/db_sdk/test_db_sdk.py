@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import entitysdk
@@ -37,8 +37,8 @@ def client():
 
 @pytest.fixture
 def mock_entity():
-    """Mock Entity object."""
-    return MagicMock(spec=Entity, id=uuid4())
+    """An Entity with an id alone: its model's own serializer, which a mock of it lacks."""
+    return Entity.model_construct(id=uuid4())
 
 
 @pytest.fixture

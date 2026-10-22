@@ -14,7 +14,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Self
 
-from obi_one.utils.memory import malloc_trim
+from obi_one.utils.memory import hand_back_freed
 
 # Jobs sent ahead for each process, so that it never waits for the next while few are held.
 AHEAD = 2
@@ -51,9 +51,7 @@ def available_cpus() -> int:
 def each[T, R](function: Callable[[T], R], items: Iterable[T]) -> list[R]:
     """`function` of each of `items`, then what it freed handed back to the system."""
     results = [function(item) for item in items]
-    trim = malloc_trim()
-    if trim is not None:
-        trim(0)
+    hand_back_freed()
     return results
 
 

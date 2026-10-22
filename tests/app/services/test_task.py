@@ -10,7 +10,7 @@ import httpx
 import libsonata
 import pytest
 from entitysdk.common import ProjectContext
-from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
+from entitysdk.types import AssetLabel, EntityType, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
@@ -70,6 +70,11 @@ MACHINE_PAYLOAD_FIELDS = {
     "placement_type",
     "ephemeral_storage",
 }
+
+
+# The tasks that register a circuit on a machine sized for themselves, and leave its pack to the
+# asset job their success calls back.
+CIRCUIT_ASSETS_ON_SUCCESS = {TaskType.circuit_extraction}
 
 
 @pytest.fixture
@@ -191,6 +196,11 @@ def test_submit_task_job__success(
     config_id = uuid4()
     activity_id = uuid4()
     callback_url = "http://my-callback-url"
+    submitted = []
+
+    def submit(request):
+        submitted.append(json.loads(request.content))
+        return httpx.Response(status_code=200, json=submitted[-1] | {"id": str(job_id)})
 
     httpx_mock.add_response(
         url=f"http://my-url/{config_route}/{config_id}",
@@ -205,14 +215,7 @@ def test_submit_task_job__success(
         url=f"http://my-url/{activity_route}",
         method="POST",
     )
-    httpx_mock.add_callback(
-        lambda request: httpx.Response(
-            status_code=200,
-            json=json.loads(request.content) | {"id": str(job_id)},
-        ),
-        url="http://my-launch-system-url/job",
-        method="POST",
-    )
+    httpx_mock.add_callback(submit, url="http://my-launch-system-url/job", method="POST")
     httpx_mock.add_callback(
         lambda request: httpx.Response(
             status_code=200,
@@ -240,6 +243,14 @@ def test_submit_task_job__success(
     assert res.config_id == config_id
     assert res.activity_id == activity_id
     assert res.job_id == job_id
+    on_success = [
+        callback["config"]["url"]
+        for callback in submitted[0]["callbacks"]
+        if callback["event_type"] == CallBackEvent.job_on_success
+    ]
+    assert on_success == (
+        [f"{callback_url}/circuit-assets"] if task_type in CIRCUIT_ASSETS_ON_SUCCESS else []
+    )
 
 
 @pytest.mark.parametrize(
@@ -631,19 +642,75 @@ def test_generic_job_data_legacy(config_id, activity_id, callbacks):
     assert f"--execution_activity_id {activity_id}" in res["inputs"]
 
 
-def test_generate_failure_callback(project_context, activity_id):
-    res = test_module._generate_failure_callback(
+@pytest.mark.parametrize(
+    ("event_type", "path"),
+    [(CallBackEvent.job_on_failure, "failure"), (CallBackEvent.job_on_success, "circuit-assets")],
+)
+def test_task_callback(project_context, activity_id, event_type, path):
+    res = test_module._task_callback(
+        event_type=event_type,
+        path=path,
         callback_url="my-callback-url",
         task_type="circuit_extraction",
         activity_id=activity_id,
         project_context=project_context,
     )
 
-    assert res.event_type == CallBackEvent.job_on_failure
+    assert res.event_type == event_type
     assert res.action_type == CallBackAction.http_request_with_token
-    assert res.config.url == "my-callback-url/failure"
+    assert res.config.url == f"my-callback-url/{path}"
     assert res.config.method == "POST"
     assert res.config.params == {"task_type": "circuit_extraction", "activity_id": str(activity_id)}
+    assert res.config.headers == {
+        "virtual-lab-id": str(project_context.virtual_lab_id),
+        "project-id": str(project_context.project_id),
+    }
+
+
+def test_circuit_assets_on_success_for_the_tasks_that_defer_the_pack():
+    assert {
+        task_type
+        for task_type, definition in TASK_DEFINITIONS.items()
+        if getattr(definition, "circuit_assets_on_success", False)
+    } == CIRCUIT_ASSETS_ON_SUCCESS
+
+
+def test_generated_circuits(activity_id):
+    ids = [uuid4(), uuid4()]
+    activity = SimpleNamespace(
+        generated=[
+            SimpleNamespace(id=ids[0], type=EntityType.circuit),
+            SimpleNamespace(id=uuid4(), type=EntityType.simulation),
+            SimpleNamespace(id=ids[1], type=EntityType.circuit),
+        ]
+    )
+    circuits = {circuit_id: SimpleNamespace(id=circuit_id) for circuit_id in ids}
+
+    def get_entity(entity_id, entity_type):
+        return activity if entity_type is entitysdk.models.TaskActivity else circuits[entity_id]
+
+    db_client = Mock(get_entity=Mock(side_effect=get_entity))
+    assert test_module.generated_circuits(
+        activity_id=activity_id,
+        db_client=db_client,
+        task_definition=TASK_DEFINITIONS[TaskType.circuit_extraction],
+    ) == [circuits[circuit_id] for circuit_id in ids]
+    assert [call.kwargs for call in db_client.get_entity.call_args_list] == [
+        {"entity_id": activity_id, "entity_type": entitysdk.models.TaskActivity},
+        *({"entity_id": circuit_id, "entity_type": entitysdk.models.Circuit} for circuit_id in ids),
+    ]
+
+
+def test_generated_circuits_of_an_activity_that_generated_nothing(activity_id):
+    db_client = Mock(get_entity=Mock(return_value=SimpleNamespace(generated=None)))
+    assert (
+        test_module.generated_circuits(
+            activity_id=activity_id,
+            db_client=db_client,
+            task_definition=TASK_DEFINITIONS[TaskType.circuit_extraction],
+        )
+        == []
+    )
 
 
 @pytest.mark.parametrize(

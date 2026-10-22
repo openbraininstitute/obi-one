@@ -972,16 +972,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.30"
+version = "0.19.34"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/53/1b/957d95ac16957b856e11fd8584bc6534d92016953bc44fb5d6c76e758895/entitysdk-0.19.30.tar.gz", hash = "sha256:7d78167aee091e2ea9ded3e1e5e2164dcd88f4cb21f8b0d6bf742a24b39f9945", size = 81620, upload-time = "2026-10-06T14:02:03.177Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/fa/4581b9092ef1981561d0e074059d8f1800dc01e273ae6e5f9eb396e27666/entitysdk-0.19.34.tar.gz", hash = "sha256:5db6b0cd7fa360d5dae0e13ad97b1cde2c2da3fe558ad8e35320709561ab5202", size = 82191, upload-time = "2026-10-22T13:16:22.794Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/f5/0d64e8294017f79b59d83c65d9d1dadd11c8af143d0bc6d2b95e3a415a9e/entitysdk-0.19.30-py3-none-any.whl", hash = "sha256:6999ef9e8df039ed9a3de67d9e091691f9826a15d5b810dc572bec297f2c85a8", size = 115899, upload-time = "2026-10-06T14:02:01.79Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/32/5a7935fea3efa35539fdd3578ec2466f781d25e626e6a177181e1ee3795c/entitysdk-0.19.34-py3-none-any.whl", hash = "sha256:6f456f64275a753acd777cc41b40f2a58f41f3d5f4fa0d748d7434c25b4f22d0", size = 116535, upload-time = "2026-10-22T13:16:21.213Z" },
 ]
 
 [[package]]
@@ -2503,7 +2503,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.12" },
-    { name = "entitysdk", specifier = ">=0.19.29" },
+    { name = "entitysdk", specifier = ">=0.19.34" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },

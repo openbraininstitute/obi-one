@@ -1,10 +1,11 @@
 """Launch script for circuit asset generation task.
 
 Runs on ECS. Stages the circuit and generates the compressed circuit, connectivity
-matrices, connectivity plots, and the overview / sim-designer images. Any image the
-user uploaded at registration time is already attached and is left untouched (skipped
-rather than overwritten). Best-effort: failures are logged but do not affect circuit
-status.
+matrices, connectivity plots, the overview / sim-designer images and, past single scale,
+the morphology pack. Any image the user uploaded at registration time is already attached
+and is left untouched (skipped rather than overwritten). Where the morphology pack is the
+only asset missing, only the files it reads are staged. Best-effort: failures are logged
+but do not affect circuit status.
 
 Environment Variables Required:
     PERSISTENT_TOKEN_ID: Persistent authentication token.
@@ -24,11 +25,17 @@ from uuid import UUID
 from entitysdk import Client, LocalAssetStore, ProjectContext, models
 from entitysdk.staging.circuit import stage_circuit
 from entitysdk.token_manager import TokenFromFunction
+from entitysdk.types import AssetLabel
 from obi_auth import get_token
 from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
-from obi_one.db_sdk.registration.circuit.generate import generate_additional_circuit_assets
+from obi_one.db_sdk.registration.circuit.generate import (
+    generate_additional_circuit_assets,
+    generate_morphology_pack_asset,
+    missing_assets,
+)
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.library.morphology_pack.staging import stage_morphology_pack_inputs
 
 L = logging.getLogger(__name__)
 
@@ -78,22 +85,36 @@ def main() -> int:
         with tempfile.TemporaryDirectory() as tmp_dir:
             staged_dir = Path(tmp_dir) / "circuit"
             staged_dir.mkdir()
-            circuit_config_path = stage_circuit(db_client, model=circuit, output_dir=staged_dir)
 
-            # Determine edge population for matrix extraction
-            c = OBICircuit(name=str(circuit.name), path=str(circuit_config_path))
-            edge_pop = (
-                c.default_edge_population_name if c.sonata_circuit.edges.population_names else None
-            )
+            # The pack reads the config, the nodes and the morphologies alone, so the edges,
+            # downloaded for a private circuit, are left out when it is all that is missing.
+            if not args.force and missing_assets(circuit) == {AssetLabel.circuit_morphology_pack}:
+                circuit_config_path = stage_morphology_pack_inputs(db_client, circuit, staged_dir)
+                generate_morphology_pack_asset(
+                    circuit_path=circuit_config_path,
+                    output_dir=Path(tmp_dir) / "morphology_pack",
+                    client=db_client,
+                    circuit_entity=circuit,
+                )
+            else:
+                circuit_config_path = stage_circuit(db_client, model=circuit, output_dir=staged_dir)
 
-            generate_additional_circuit_assets(
-                circuit_path=circuit_config_path,
-                edge_population=edge_pop,
-                client=db_client,
-                circuit_entity=circuit,
-                force=args.force,
-                include_overview_images=True,
-            )
+                # Determine edge population for matrix extraction
+                c = OBICircuit(name=str(circuit.name), path=str(circuit_config_path))
+                edge_pop = (
+                    c.default_edge_population_name
+                    if c.sonata_circuit.edges.population_names
+                    else None
+                )
+
+                generate_additional_circuit_assets(
+                    circuit_path=circuit_config_path,
+                    edge_population=edge_pop,
+                    client=db_client,
+                    circuit_entity=circuit,
+                    force=args.force,
+                    include_overview_images=True,
+                )
 
         L.info("Asset generation complete for circuit %s", UUID(args.circuit_id))
 

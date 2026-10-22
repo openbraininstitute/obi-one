@@ -1,10 +1,16 @@
-"""Memory a process has freed, handed back to the system."""
+"""Memory a process may hold, and what it has freed handed back to the system."""
 
 import ctypes
 import ctypes.util
 import sys
 from collections.abc import Callable
 from functools import cache
+from pathlib import Path
+
+import psutil
+
+MEMORY_LIMIT = Path("/sys/fs/cgroup/memory.max")
+MEMORY_LIMIT_V1 = Path("/sys/fs/cgroup/memory/memory.limit_in_bytes")
 
 
 @cache
@@ -23,3 +29,27 @@ def malloc_trim() -> Callable[[int], int] | None:
     except OSError:
         return None
     return getattr(libc, "malloc_trim", None)
+
+
+def hand_back_freed() -> None:
+    """What the process freed handed back to the system, where the C library can."""
+    trim = malloc_trim()
+    if trim is not None:
+        trim(0)
+
+
+def memory_limit() -> int:
+    """The bytes the container's cgroup, v2 or v1, lets this process hold, or the machine's where
+    those are fewer or it sets no limit.
+    """
+    machine = psutil.virtual_memory().total
+    for path in (MEMORY_LIMIT, MEMORY_LIMIT_V1):
+        if path.exists():
+            limit = path.read_text(encoding="ascii").strip()
+            return machine if limit == "max" else min(machine, int(limit))
+    return machine
+
+
+def memory_left() -> int:
+    """The bytes this process may hold beyond what it holds now."""
+    return max(0, memory_limit() - psutil.Process().memory_info().rss)
