@@ -32,8 +32,13 @@ class Entry(BaseModel):
 
 
 class PopulationEntry(Entry):
+    """A population's cells, and the box of their points at the first level of each section type
+    they have; `boxes` is None in a pack written before populations had them.
+    """
+
     name: str
     cells: int
+    boxes: dict[int, list[list[int]]] | None = None
 
 
 class SomasEntry(Entry):

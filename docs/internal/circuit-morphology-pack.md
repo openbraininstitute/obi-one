@@ -51,6 +51,16 @@ A pack is a header, an index and blocks, back to back. Numbers are little-endian
 
 Offsets in the index count from the first byte after the index. Laid out coarsest first, a pack streamed in has the somas and every level's bases before the level itself. A reader finds each block by its offset only, so a pack laid out in another order reads alike.
 
+### Growing the format
+
+So that packs already written keep being read, and readers already deployed keep reading new packs:
+
+- Something new about a pack is an optional field of the index, its absence meaning it is not known: a reader does without it, as it did before the field was added.
+- A reader ignores the fields of the index it does not know.
+- Something too large for the index is a block of its own, which a field of the index finds by its offset and length, as `somas` finds the somas.
+- A field keeps its meaning; another meaning is another field.
+- The version goes up only for a change a reader of the version before would misread, such as a chunk's encoding or a unit; a reader refuses a version it does not know.
+
 ### The index
 
 The index is the `Index` model of `obi_one.scientific.library.morphology_pack.codec`, with its fields spelled in camelCase.
@@ -61,7 +71,16 @@ The index is the `Index` model of `obi_one.scientific.library.morphology_pack.co
   "gridUm": 0.025,
   "radiusSteps": 16,
   "bounds": [[0, -80000, 0], [46000, 1200, 120000]],
-  "populations": [{ "name": "S1nonbarrel_neurons", "cells": 10 }],
+  "populations": [
+    {
+      "name": "S1nonbarrel_neurons",
+      "cells": 10,
+      "boxes": {
+        "2": [[0, -80000, 0], [46000, -1000, 120000]],
+        "3": [[1000, -2000, 3000], [30000, 1200, 90000]]
+      }
+    }
+  ],
   "somas": { "offset": 0, "bytes": 123 },
   "levels": [
     {
@@ -96,6 +115,7 @@ The index is the `Index` model of `obi_one.scientific.library.morphology_pack.co
 - A position is a whole number of steps of `gridUm` micrometres, in the circuit's own frame. `bounds` holds every point of the first level, in steps.
 - A radius is `2 ** (step / radiusSteps)` micrometres.
 - A cell's number counts through `populations` in their order: the cells of the first population, then those of the second.
+- A population's `boxes` holds, for each section type its cells have (2 axon, 3 basal dendrite, 4 apical dendrite, as the morphologies give them), the box of its points of that type at the first level, in steps. A type it has no points of has no box. A viewer frames the cells it shows by the boxes of their populations and of the types it draws; a pack without `boxes` leaves it the whole pack's `bounds`.
 - A level drops the end branches shorter than `pruneUm`, then the points within `toleranceUm` of the path and of the diameter. Levels come finest first.
 - `base` is the level this one is read over: the next, coarser one, or `null` for a level read alone, the last.
 - A chunk is a cube of `chunkSteps` steps, the same at every level. `box` has three whole numbers a chunk: its corner is `box * chunkSteps`. `bytes`, `segments` and `reach` have one number a chunk, and a chunk's block starts where the one before it ends, the first at the level's `offset`.

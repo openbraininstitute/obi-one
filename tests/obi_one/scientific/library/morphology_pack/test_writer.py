@@ -183,7 +183,8 @@ class TestIndex:
             "somas",
             "levels",
         }
-        assert index["populations"][0] == {"name": "first", "cells": 2}
+        assert set(index["populations"][0]) == {"name", "cells", "boxes"}
+        assert set(index["populations"][0]["boxes"]) == {str(AXON), str(DENDRITE)}
         assert set(index["somas"]) == {"offset", "bytes"}
         level = index["levels"][0]
         assert set(level) == {
@@ -208,6 +209,43 @@ class TestIndex:
         assert (ends <= high + 1e-9).all()
         np.testing.assert_allclose(low, [0, -2000, 0])
         np.testing.assert_allclose(high, [1150, 30, 3000])
+
+    def test_each_population_has_a_box_of_its_points_a_section_type(self):
+        _, data = pack_of(load(), LEVELS)
+        pack = read_pack(data)
+        finest = pack.levels[0]
+        # the first population has cells 0 and 1, the second cell 2
+        population = (finest.cells >= 2).astype(int)
+        ends = finest.segments.reshape(-1, 2, 4)[:, :, :3]
+        for at, entry in enumerate(pack.index.populations):
+            assert set(entry.boxes) == {AXON, DENDRITE}
+            for kind, box in entry.boxes.items():
+                points = ends[(population == at) & (finest.types == kind)].reshape(-1, 3)
+                np.testing.assert_allclose(
+                    np.array(box) * GRID_UM,
+                    [points.min(axis=0), points.max(axis=0)],
+                    atol=GRID_UM / 2 + 1e-9,
+                )
+
+    def test_a_population_of_somas_alone_has_no_boxes(self):
+        writer = PackWriter([("only", 1)], [FINEST])
+        writer.add_soma(0, np.array([1.0, 2.0, 3.0]))
+        (entry,) = take_apart(writer.pack())[0].populations
+        assert entry.boxes == {}
+
+    def test_reads_an_index_without_boxes_and_with_fields_it_does_not_know(self):
+        _, data = pack_of(load(), [FINEST])
+        *head, length = HEADER.unpack_from(data)
+        index = json.loads(zlib.decompress(data[HEADER.size : HEADER.size + length]))
+        for population in index["populations"]:
+            del population["boxes"]
+            population["later"] = 1
+        index["later"] = {"any": "thing"}
+        packed = zlib.compress(json.dumps(index).encode())
+        relaid = HEADER.pack(*head, len(packed)) + packed + data[HEADER.size + length :]
+        pack = read_pack(relaid)
+        assert [entry.boxes for entry in pack.index.populations] == [None, None]
+        np.testing.assert_array_equal(pack.levels[0].segments, read_pack(data).levels[0].segments)
 
     def test_a_run_is_in_the_chunk_its_far_ends_lie_in(self):
         _, data = pack_of(load(), [FINEST], chunk_um=7.0)

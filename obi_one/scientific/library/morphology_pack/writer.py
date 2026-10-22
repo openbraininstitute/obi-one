@@ -38,6 +38,8 @@ NONE = np.zeros(0, dtype=np.int64)
 NO_POINTS = np.zeros((0, 4), dtype=np.int32)
 NO_ENDS = np.zeros((0, 3), dtype=np.int32)
 NO_BOXES = np.zeros((0, 3), dtype=np.int64)
+# Section types fit a byte.
+TYPES = 256
 
 
 @dataclass(frozen=True)
@@ -413,11 +415,36 @@ def packed_level(
     return packed, Read(layout.keys, order.far, order.edges, points.counts)
 
 
-def bounds_of(values: np.ndarray) -> np.ndarray:
-    """The box of the points on the grid; the origin alone where there are none."""
-    if not len(values):
-        return np.zeros((2, 3), dtype=np.int64)
-    return np.array([values[:, :3].min(axis=0), values[:, :3].max(axis=0)])
+def bounds_of(boxes: Sequence[dict[int, list[list[int]]]]) -> list[list[int]]:
+    """The box of every population's boxes; the origin alone where there are none."""
+    every = np.array([box for own in boxes for box in own.values()], dtype=np.int64)
+    if not len(every):
+        return [[0, 0, 0], [0, 0, 0]]
+    return [every[:, 0].min(axis=0).tolist(), every[:, 1].max(axis=0).tolist()]
+
+
+def population_boxes(points: Points, counts: Sequence[int]) -> list[dict[int, list[list[int]]]]:
+    """For each population of `counts` cells, the box of its points of each section type."""
+    boxes: list[dict[int, list[list[int]]]] = [{} for _ in counts]
+    starts = np.flatnonzero(points.opens)
+    if not len(starts):
+        return boxes
+    # A polyline is of one cell and one type: the boxes of the polylines, then of their groups.
+    least = np.minimum.reduceat(points.values[:, :3], starts)
+    most = np.maximum.reduceat(points.values[:, :3], starts)
+    population = np.searchsorted(np.cumsum(counts), points.cell[starts], side="right")
+    keys = population * TYPES + points.types[starts]
+    order = np.argsort(keys, kind="stable")
+    keys = keys[order]
+    firsts = np.flatnonzero(np.diff(keys, prepend=-1))
+    for key, low, high in zip(
+        keys[firsts].tolist(),
+        np.minimum.reduceat(least[order], firsts).tolist(),
+        np.maximum.reduceat(most[order], firsts).tolist(),
+        strict=True,
+    ):
+        boxes[key // TYPES][key % TYPES] = [low, high]
+    return boxes
 
 
 class PackWriter:
@@ -485,7 +512,7 @@ class PackWriter:
         while placed:
             points = placed.pop().joined()
             i = len(placed)
-            bounds = bounds_of(points.values)
+            typed = population_boxes(points, [count for _, count in self.populations])
             follow = followers(points, coarser)
             # past its followers, only the coarser level's chunks are read
             coarser = replace(coarser, order=NONE, counts=NONE)
@@ -516,9 +543,10 @@ class PackWriter:
             if trim is not None:
                 trim(0)
         index = Index(
-            bounds=bounds.tolist(),
+            bounds=bounds_of(typed),
             populations=[
-                PopulationEntry(name=name, cells=count) for name, count in self.populations
+                PopulationEntry(name=name, cells=count, boxes=own)
+                for (name, count), own in zip(self.populations, typed, strict=True)
             ],
             somas=SomasEntry(offset=0, bytes=len(blocks[0])),
             levels=entries,
