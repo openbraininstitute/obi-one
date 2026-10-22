@@ -63,6 +63,21 @@ def chunks_of(data, level):
         at += size
 
 
+def raw_index(data):
+    """The index as written, its fields as the format spells them."""
+    *_, length = HEADER.unpack_from(data)
+    return json.loads(zlib.decompress(data[HEADER.size : HEADER.size + length]))
+
+
+def with_index(data, change):
+    """The pack with its index changed in place by `change`."""
+    *head, length = HEADER.unpack_from(data)
+    index = raw_index(data)
+    change(index)
+    packed = zlib.compress(json.dumps(index).encode())
+    return HEADER.pack(*head, len(packed)) + packed + data[HEADER.size + length :]
+
+
 def own_segments(data, level):
     """The segments of a level that follow no coarser segment."""
     return sum(len(chunk.runs.steps) for _, chunk in chunks_of(data, level))
@@ -172,8 +187,7 @@ class TestIndex:
 
     def test_is_spelled_as_the_format_says(self):
         _, data = pack_of(load(), [FINEST])
-        *_, length = HEADER.unpack_from(data)
-        index = json.loads(zlib.decompress(data[HEADER.size : HEADER.size + length]))
+        index = raw_index(data)
         assert set(index) == {
             "layout",
             "gridUm",
@@ -235,15 +249,14 @@ class TestIndex:
 
     def test_reads_an_index_without_boxes_and_with_fields_it_does_not_know(self):
         _, data = pack_of(load(), [FINEST])
-        *head, length = HEADER.unpack_from(data)
-        index = json.loads(zlib.decompress(data[HEADER.size : HEADER.size + length]))
-        for population in index["populations"]:
-            del population["boxes"]
-            population["later"] = 1
-        index["later"] = {"any": "thing"}
-        packed = zlib.compress(json.dumps(index).encode())
-        relaid = HEADER.pack(*head, len(packed)) + packed + data[HEADER.size + length :]
-        pack = read_pack(relaid)
+
+        def older(index):
+            for population in index["populations"]:
+                del population["boxes"]
+                population["later"] = 1
+            index["later"] = {"any": "thing"}
+
+        pack = read_pack(with_index(data, older))
         assert [entry.boxes for entry in pack.index.populations] == [None, None]
         np.testing.assert_array_equal(pack.levels[0].segments, read_pack(data).levels[0].segments)
 

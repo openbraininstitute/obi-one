@@ -427,23 +427,19 @@ def population_boxes(points: Points, counts: Sequence[int]) -> list[dict[int, li
     """For each population of `counts` cells, the box of its points of each section type."""
     boxes: list[dict[int, list[list[int]]]] = [{} for _ in counts]
     starts = np.flatnonzero(points.opens)
-    if not len(starts):
-        return boxes
     # A polyline is of one cell and one type: the boxes of the polylines, then of their groups.
     least = np.minimum.reduceat(points.values[:, :3], starts)
     most = np.maximum.reduceat(points.values[:, :3], starts)
-    population = np.searchsorted(np.cumsum(counts), points.cell[starts], side="right")
-    keys = population * TYPES + points.types[starts]
-    order = np.argsort(keys, kind="stable")
-    keys = keys[order]
-    firsts = np.flatnonzero(np.diff(keys, prepend=-1))
-    for key, low, high in zip(
-        keys[firsts].tolist(),
-        np.minimum.reduceat(least[order], firsts).tolist(),
-        np.maximum.reduceat(most[order], firsts).tolist(),
-        strict=True,
-    ):
-        boxes[key // TYPES][key % TYPES] = [low, high]
+    keys = np.searchsorted(np.cumsum(counts), points.cell[starts], side="right") * TYPES
+    keys += points.types[starts]
+    groups = len(counts) * TYPES
+    limits = np.iinfo(least.dtype)
+    low = np.full((groups, 3), limits.max, dtype=least.dtype)
+    high = np.full((groups, 3), limits.min, dtype=least.dtype)
+    np.minimum.at(low, keys, least)
+    np.maximum.at(high, keys, most)
+    for key in np.flatnonzero(np.bincount(keys, minlength=groups)).tolist():
+        boxes[key // TYPES][key % TYPES] = [low[key].tolist(), high[key].tolist()]
     return boxes
 
 
@@ -512,7 +508,8 @@ class PackWriter:
         while placed:
             points = placed.pop().joined()
             i = len(placed)
-            typed = population_boxes(points, [count for _, count in self.populations])
+            if i == 0:
+                typed = population_boxes(points, [count for _, count in self.populations])
             follow = followers(points, coarser)
             # past its followers, only the coarser level's chunks are read
             coarser = replace(coarser, order=NONE, counts=NONE)
