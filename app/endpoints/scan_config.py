@@ -1,5 +1,6 @@
 import re
 import tempfile
+from collections.abc import Callable
 from typing import Annotated
 
 import entitysdk.client
@@ -9,10 +10,11 @@ from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import internal_error, invalid_config_error
 from app.logger import L
+from app.services.resource_estimation import extracellular_weights
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.scan_generation import GridScanGenerationTask, ScanGenerationTask
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
@@ -55,6 +57,13 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
 )
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
+
+# Run before generating, so a scan with a coordinate the launch would refuse registers nothing.
+RESOURCE_CHECKS: dict[
+    type[ScanConfig], Callable[[ScanGenerationTask, entitysdk.client.Client], None]
+] = {
+    CreateExtracellularRecordingArrayScanConfig: extracellular_weights.check_scan_resources,
+}
 
 
 def _error_detail(exc: Exception) -> str:
@@ -116,7 +125,9 @@ def create_endpoint_for_scan_config(
                 output_root=tdir,
                 coordinate_directory_option="ZERO_INDEX",
             )
-            try:
+            try:  # ruff: ignore[too-many-statements-in-try-clause]
+                if model in RESOURCE_CHECKS:
+                    RESOURCE_CHECKS[model](grid_scan, db_client)
                 grid_scan.execute(db_client=db_client)
                 campaign = grid_scan.form.campaign
                 if execute_single_config_task:

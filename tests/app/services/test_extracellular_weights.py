@@ -11,6 +11,16 @@ from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
 from app.schemas.task import TaskLaunchSubmit, TaskType
 from app.services.resource_estimation import extracellular_weights as test_module
+from obi_one.core.exception import ConfigValidationError
+from obi_one.core.info import Info
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
+    LinearExtracellularLocations,
+)
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 
 
 @pytest.fixture
@@ -238,3 +248,76 @@ def test_missing_input_circuit_is_rejected(json_model, task_definition):
 
     assert exc_info.value.error_code == ApiErrorCode.INVALID_REQUEST
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def _circuit(n_cells, *, name="test circuit", scale=CircuitScale.microcircuit):
+    return SimpleNamespace(id=uuid4(), name=name, scale=scale, number_neurons=n_cells)
+
+
+def _db_client(*circuits):
+    by_id = {circuit.id: circuit for circuit in circuits}
+    db_client = Mock()
+    db_client.get_entity.side_effect = lambda entity_id, **_: by_id[entity_id]
+    return db_client
+
+
+def _scan(circuits, n_electrodes):
+    """A grid scan of a linear probe of n_electrodes (a value or a list) on each circuit."""
+    from_ids = [CircuitFromID(id_str=str(circuit.id)) for circuit in circuits]
+    return GridScanGenerationTask(
+        form=CreateExtracellularRecordingArrayScanConfig(
+            info=Info(campaign_name="test", campaign_description="test"),
+            initialize=CreateExtracellularRecordingArrayScanConfig.Initialize(
+                circuit=from_ids if len(from_ids) > 1 else from_ids[0],
+                calculation_method="LineSource",
+            ),
+            electrode_locations={
+                "Probe": LinearExtracellularLocations(n_electrodes=n_electrodes, spacing=20.0)
+            },
+        )
+    )
+
+
+def test_scan_that_fits_reads_each_circuit_once():
+    # 10000 cells fit with up to 2300 electrodes, as in the largest_weights case above
+    circuit = _circuit(10_000)
+    db_client = _db_client(circuit)
+
+    test_module.check_scan_resources(_scan([circuit], [16, 256, 2300]), db_client)
+
+    db_client.get_entity.assert_called_once()
+
+
+def test_scan_is_refused_at_its_first_coordinate_no_task_can_run():
+    # 10000 * 3000 * 8e-6 = 240 GB, more than a task's disk
+    circuit = _circuit(10_000)
+
+    with pytest.raises(ConfigValidationError) as exc_info:
+        test_module.check_scan_resources(_scan([circuit], [16, 3000, 30_000]), _db_client(circuit))
+
+    assert str(exc_info.value) == (
+        "Calculating extracellular recording weights for 'test circuit' (10,000 cells, 3,000"
+        " electrodes) writes a weights file of up to 240 GB, more than the 200 GB of storage a"
+        " task can have. Use fewer electrodes or a smaller circuit."
+    )
+
+
+def test_scan_over_circuits_checks_each_circuit():
+    # 500000 * 2.5e-4 + 16 * 1.0 = 141 GB, more than the largest machine
+    small, large = _circuit(1_000, name="small"), _circuit(500_000, name="large")
+
+    with pytest.raises(ConfigValidationError) as exc_info:
+        test_module.check_scan_resources(_scan([small, large], 16), _db_client(small, large))
+
+    assert str(exc_info.value) == (
+        "Calculating extracellular recording weights for 'large' (500,000 cells, 16 electrodes)"
+        " needs about 141 GB of memory, more than the largest machine has (120 GB). Use a"
+        " smaller circuit."
+    )
+
+
+def test_scan_of_a_larger_scale_is_refused():
+    circuit = _circuit(100, scale=CircuitScale.region)
+
+    with pytest.raises(ConfigValidationError, match="not supported for circuits of scale 'region'"):
+        test_module.check_scan_resources(_scan([circuit], 16), _db_client(circuit))

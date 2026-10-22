@@ -15,7 +15,11 @@ from app.services.resource_estimation.circuit_extraction import (
     get_required_cpu_memory_combo,
     get_required_extra_storage_space,
 )
+from obi_one.core.base import OBIBaseModel
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
+from obi_one.core.exception import ConfigValidationError
+from obi_one.core.scan_generation import ScanGenerationTask
+from obi_one.core.single import SingleConfigMixin
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_task_type,
@@ -49,12 +53,12 @@ SECONDS_PER_WEIGHTS_GB = 30  # writing, checksumming and uploading the weights f
 OVERHEAD_SECONDS = 900  # staging the circuit and compiling its mechanisms
 
 
-def _count_electrodes(
+def _download_single_config(
     json_model: TaskLaunchSubmit,
     config: models.TaskConfig,
     db_client: entitysdk.Client,
     task_definition: LaunchableTaskDefinition,
-) -> int:
+) -> OBIBaseModel:
     config_asset_id = db_sdk.get_entity_asset_by_label(
         client=db_client,
         config=config,
@@ -65,8 +69,10 @@ def _count_electrodes(
         entity_type=models.TaskConfig,
         asset_id=config_asset_id,
     ).decode(encoding="utf-8")
-    single_config = deserialize_obi_object_from_json_data(json.loads(json_str))
+    return deserialize_obi_object_from_json_data(json.loads(json_str))
 
+
+def _count_electrodes(single_config: OBIBaseModel | SingleConfigMixin) -> int:
     return sum(
         len(block.get_global_electrode_xyz_locations())
         for block in single_config.electrode_locations.values()  # ty:ignore[unresolved-attribute]
@@ -142,6 +148,42 @@ def _weights_gb_and_storage(
         ) from e
 
 
+def _size_task(circuit: models.Circuit, n_electrodes: int) -> tuple[int, int, float, int | None]:
+    """CPUs, memory, weights file size and extra disk, refusing what no task can run."""
+    if circuit.scale not in SUPPORTED_CIRCUIT_SCALES:
+        supported = ", ".join(
+            f"'{scale.value}'" for scale in CircuitScale if scale in SUPPORTED_CIRCUIT_SCALES
+        )
+        msg = (
+            f"Extracellular recording weights are not supported for circuits of scale"
+            f" '{circuit.scale}'. Supported scales: {supported}."
+        )
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+
+    n_cells = circuit.number_neurons
+    n_processes = get_number_of_mpi_processes(n_cells)
+    cores, memory_gb = _cpus_and_memory(circuit, n_cells, n_electrodes, min_cpus=n_processes)
+    weights_gb, storage_gb = _weights_gb_and_storage(circuit, n_cells, n_electrodes)
+    return cores, memory_gb, weights_gb, storage_gb
+
+
+def check_scan_resources(grid_scan: ScanGenerationTask, db_client: entitysdk.Client) -> None:
+    """Refuse a scan with a coordinate the launch would refuse, before anything is registered."""
+    circuits: dict[str, models.Circuit] = {}
+    for single_config in grid_scan.create_single_configs():
+        circuit_from_id = single_config.initialize.circuit  # ty:ignore[unresolved-attribute]
+        if circuit_from_id.id_str not in circuits:
+            circuits[circuit_from_id.id_str] = circuit_from_id.entity(db_client=db_client)
+        try:
+            _size_task(circuits[circuit_from_id.id_str], _count_electrodes(single_config))
+        except ApiError as e:
+            raise ConfigValidationError(e.message) from e
+
+
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
@@ -171,29 +213,12 @@ def estimate_task_resources(
         )
     circuit = db_client.get_entity(entity_id=config.inputs[0].id, entity_type=models.Circuit)
 
-    if circuit.scale not in SUPPORTED_CIRCUIT_SCALES:
-        supported = ", ".join(
-            f"'{scale.value}'" for scale in CircuitScale if scale in SUPPORTED_CIRCUIT_SCALES
-        )
-        msg = (
-            f"Extracellular recording weights are not supported for circuits of scale"
-            f" '{circuit.scale}'. Supported scales: {supported}."
-        )
-        raise ApiError(
-            message=msg,
-            error_code=ApiErrorCode.INVALID_REQUEST,
-            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-        )
-
     n_cells = circuit.number_neurons
-    n_electrodes = _count_electrodes(json_model, config, db_client, task_definition)
-    n_processes = get_number_of_mpi_processes(n_cells)
+    single_config = _download_single_config(json_model, config, db_client, task_definition)
+    cores, memory_gb, weights_gb, storage_gb = _size_task(circuit, _count_electrodes(single_config))
     defaults = task_definition.resources
-
-    cores, memory_gb = _cpus_and_memory(circuit, n_cells, n_electrodes, min_cpus=n_processes)
     # Small circuits keep the default memory, which also covers compiling the mechanisms.
     memory_gb = max(memory_gb, defaults.memory)  # ty:ignore[unresolved-attribute]
-    weights_gb, storage_gb = _weights_gb_and_storage(circuit, n_cells, n_electrodes)
 
     default_hours = int(defaults.timelimit.split(":")[0])  # ty:ignore[unresolved-attribute]
     seconds = (
