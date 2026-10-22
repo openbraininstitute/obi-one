@@ -272,8 +272,8 @@ class HodgkinHuxleyIonChannelModel(Block):
         title="m exponent in channel equation",
         default=1,
         description=(
-            r"Exponent \(p\) of \(m\) in the channel equation: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            r"Exponent $p$ of $m$ in the channel equation: "
+            r"$g = \bar{g} \cdot m^p \cdot h^q$"
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -281,8 +281,8 @@ class HodgkinHuxleyIonChannelModel(Block):
         title="h exponent in channel equation",
         default=1,
         description=(
-            r"Exponent \(q\) of \(h\) in the channel equation: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            r"Exponent $q$ of $h$ in the channel equation: "
+            r"$g = \bar{g} \cdot m^p \cdot h^q$"
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -290,9 +290,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
         title="m∞ equation",
         description=(
-            r"Steady state activation parameter \( m_{\infty} \) equation. "
+            r"Steady state activation parameter $m_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
         ),
         default=EquationKey.SIG_FIT_MINF,
         json_schema_extra=equation_schema_extra,
@@ -306,9 +306,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     ] = Field(
         title="m time constant equation",
         description=(
-            r"Activation time constant \(\tau_m\) equation. "
+            r"Activation time constant $\tau_m$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
         ),
         default=EquationKey.SIG_FIT_MTAU,
         json_schema_extra=equation_schema_extra,
@@ -317,9 +317,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     hinf_eq: Literal[EquationKey.SIG_FIT_HINF] = Field(
         title="h∞ equation",
         description=(
-            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
+            r"Steady state inactivation parameter $h_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+            r"$\frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}}$"
         ),
         default=EquationKey.SIG_FIT_HINF,
         json_schema_extra=equation_schema_extra,
@@ -328,9 +328,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     htau_eq: Literal[EquationKey.SIG_FIT_HTAU] = Field(
         title="h time constant equation",
         description=(
-            r"Inactivation time constant \(\tau_h\) equation. "
+            r"Inactivation time constant $\tau_h$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+            r"$\frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}}$"
         ),
         default=EquationKey.SIG_FIT_HTAU,
         json_schema_extra=equation_schema_extra,
@@ -360,10 +360,11 @@ class IonChannelFittingScanConfig(InfoScanConfig):
         recordings: tuple[IonChannelRecordingFromID, ...] = Field(
             title="Ion channel recordings",
             description=(
-                "The recordings to fit the channel model to. Several are fitted jointly into "
-                "one model, not one model each."
+                "The recordings to fit the channel model to, up to 3. Several are fitted "
+                "jointly into one model, not one model each."
             ),
             min_length=1,
+            max_length=3,
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
         )
 
