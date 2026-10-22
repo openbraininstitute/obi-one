@@ -16,6 +16,7 @@ from entitysdk.types import (
     CellMorphologyProtocolDesign,
     ContentType,
     EntityType,
+    FetchFileStrategy,
 )
 
 from obi_one.scientific.from_id.cell_morphology_from_id import (
@@ -223,6 +224,7 @@ def test_write_spiny_neuron_h5_fetches_spiny_asset(tmp_path):
             "label": AssetLabel.morphology_with_spines,
         },
         output_path=output_path,
+        strategy=FetchFileStrategy.copy_or_download,
     )
 
 
@@ -254,6 +256,7 @@ def test_spiny_morphology_fetches_spiny_asset(tmp_path):
             "label": AssetLabel.morphology_with_spines,
         },
         output_path=output_path,
+        strategy=FetchFileStrategy.copy_or_download,
     )
     load.assert_called_once_with(str(output_path))
 
