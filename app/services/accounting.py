@@ -181,6 +181,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 count=1,
                 service_subtype=ServiceSubtype.ION_CHANNEL_BUILD,
             )
+        case TaskType.memodel_build:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SINGLE_CELL_BUILD,
+            )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1
             service_subtype = ServiceSubtype.ION_CHANNEL_SIM
