@@ -203,6 +203,29 @@ def test_neurom_morphology_loads_swc_via_select_asset_content():
     load.assert_called_once_with("swc-bytes", reader="swc")
 
 
+def test_write_spiny_neuron_h5_fetches_spiny_asset(tmp_path):
+    morphology_from_id = CellMorphologyFromID(id_str="00000000-0000-0000-0000-000000000011")
+    entity = SimpleNamespace(
+        id="00000000-0000-0000-0000-000000000011",
+        name="cell",
+    )
+    db_client = Mock()
+    db_client.fetch_assets.return_value.one.return_value = Mock()
+    output_path = tmp_path / "spiny.h5"
+
+    with patch.object(CellMorphologyFromID, "entity", return_value=entity):
+        morphology_from_id.write_spiny_neuron_h5(output_path, db_client)
+
+    db_client.fetch_assets.assert_called_once_with(
+        entity,
+        selection={
+            "content_type": ContentType.application_x_hdf5,
+            "label": AssetLabel.morphology_with_spines,
+        },
+        output_path=output_path,
+    )
+
+
 def test_spiny_morphology_fetches_spiny_asset(tmp_path):
     morphology_from_id = CellMorphologyFromID(id_str="00000000-0000-0000-0000-000000000011")
     entity = SimpleNamespace(
