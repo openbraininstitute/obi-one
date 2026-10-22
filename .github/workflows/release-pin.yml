@@ -199,5 +199,4 @@ jobs:
           gh api --method POST repos/openbraininstitute/launch-system/dispatches \
             -H "Authorization: bearer ${LAUNCH_SYSTEM_DISPATCH_TOKEN}" \
             -f event_type=neurodamus-executor-publish \
-            -f "client_payload[released_repo]=obi-one" \
             -f "client_payload[tag]=${RELEASE_TAG}"

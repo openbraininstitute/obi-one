@@ -1,8 +1,9 @@
 # Trigger launch-system neurodamus executor publish
 
 After a successful obi-one release pin and build, `release-pin.yml` dispatches
-`neurodamus-executor-publish` to the private **launch-system** repo so the neurodamus
-executor image is built with `{latest launch-system release}-{obi-one release}`.
+`neurodamus-executor-publish` to **launch-system** with `client_payload.tag` set to the obi-one
+calver. Launch-system resolves its own release via `releases/latest` and builds
+`{launch-system}-{obi-one}`.
 
 ## Secret (obi-one repository)
 
