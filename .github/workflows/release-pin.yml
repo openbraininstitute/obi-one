@@ -188,15 +188,22 @@ jobs:
             exit 1
           fi
 
+      - name: Create launch-system dispatch token
+        if: vars.OBI_REPO_DISPATCHER_CLIENT_ID != ''
+        id: launch-system-dispatch
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.OBI_REPO_DISPATCHER_CLIENT_ID }}
+          private-key: ${{ secrets.OBI_REPO_DISPATCHER_PRIVATE_KEY }}
+          owner: openbraininstitute
+          repositories: launch-system
+          permission-actions: write
+
       - name: Trigger launch-system neurodamus executor publish
+        if: vars.OBI_REPO_DISPATCHER_CLIENT_ID != ''
         env:
-          LAUNCH_SYSTEM_DISPATCH_TOKEN: ${{ secrets.LAUNCH_SYSTEM_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.launch-system-dispatch.outputs.token }}
         run: |
-          if [ -z "${LAUNCH_SYSTEM_DISPATCH_TOKEN}" ]; then
-            echo "::warning::LAUNCH_SYSTEM_DISPATCH_TOKEN not set; skipping launch-system dispatch"
-            exit 0
-          fi
           gh api --method POST repos/openbraininstitute/launch-system/dispatches \
-            -H "Authorization: bearer ${LAUNCH_SYSTEM_DISPATCH_TOKEN}" \
             -f event_type=neurodamus-executor-publish \
             -f "client_payload[tag]=${RELEASE_TAG}"

@@ -5,13 +5,21 @@ After a successful obi-one release pin and build, `release-pin.yml` dispatches
 calver. Launch-system resolves its own release via `releases/latest` and builds
 `{launch-system}-{obi-one}`.
 
-## Secret (obi-one repository)
+## GitHub App (obi-one repository)
 
-Create **`LAUNCH_SYSTEM_DISPATCH_TOKEN`**: a fine-grained PAT or classic PAT that can
-**trigger workflows** on `openbraininstitute/launch-system` (Actions: write; Contents: read
-is enough for `repository_dispatch`).
+The **obi repo dispatcher** GitHub App must be **installed on `openbraininstitute/launch-system`**
+with permission to run workflows (`Actions: Read and write` is enough for `repository_dispatch`).
 
-The default `GITHUB_TOKEN` in obi-one **cannot** dispatch into a private launch-system repo.
+Configure in obi-one:
 
-Until the secret is configured, the release-pin step logs a warning and skips dispatch;
-launch-system can still be triggered from its own release or via manual workflow dispatch.
+| Setting | Name |
+|---------|------|
+| Repository variable | `OBI_REPO_DISPATCHER_CLIENT_ID` |
+| Repository secret | `OBI_REPO_DISPATCHER_PRIVATE_KEY` |
+
+`release-pin.yml` mints a short-lived installation token via `actions/create-github-app-token` and
+calls `repos/openbraininstitute/launch-system/dispatches`. The default obi-one `GITHUB_TOKEN`
+cannot dispatch into private launch-system.
+
+If `OBI_REPO_DISPATCHER_CLIENT_ID` is unset, the step logs a warning and skips dispatch;
+launch-system can still publish the neurodamus executor on its own release.
