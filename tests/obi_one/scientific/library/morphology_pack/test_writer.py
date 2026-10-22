@@ -92,6 +92,19 @@ def assert_placed(level, shape):
         assert np.abs(np.log2(read[:, RADII] / expected[:, RADII])).max() <= 1 / 32 + 1e-9
 
 
+def assert_middle_out(data):
+    """Each level's chunks come no nearer the middle of the placed somas' box as they go."""
+    index, _ = take_apart(data)
+    somas = read_pack(data).somas[:, :3].astype(np.float64)
+    somas = somas[np.isfinite(somas).all(axis=1)]
+    middle = (somas.min(axis=0) + somas.max(axis=0)) / 2
+    for level in index.levels:
+        centres = (np.reshape(level.chunks.box, (-1, 3)) + 0.5) * level.chunk_steps * GRID_UM
+        away = np.linalg.norm(centres - middle, axis=1)
+        assert len(away) > 1
+        assert (np.diff(away) >= -1e-6).all()
+
+
 class TestRoundTrip:
     @pytest.mark.parametrize("chunk_um", [50.0, 7.0, 100000.0])
     @pytest.mark.parametrize("morphology", [load, load_with_a_branch_apart])
@@ -184,6 +197,18 @@ class TestIndex:
             assert level.offset == at
             at += sum(level.chunks.bytes)
         assert at == len(blocks)
+
+    def test_lays_each_level_out_from_the_somas_middle_out(self):
+        _, data = pack_of(load(), LEVELS, chunk_um=7.0)
+        assert_middle_out(data)
+
+    def test_a_soma_with_no_position_is_not_in_the_middle(self):
+        shapes = simplified(load(), [FINEST])
+        writer = PackWriter([("first", 2), ("second", 2)], [FINEST], chunk_um=7.0)
+        for cell, (rotation, position) in enumerate(PLACES):
+            writer.add_cell(cell, shapes, rotation, position)
+        writer.add_soma(len(PLACES), np.full(3, np.nan))
+        assert_middle_out(writer.pack())
 
     def test_is_spelled_as_the_format_says(self):
         _, data = pack_of(load(), [FINEST])
@@ -305,6 +330,7 @@ class TestIndex:
         assert len(level.chunks.bytes) <= chunks // 3
         assert level.chunk_steps > round(7.0 / GRID_UM)
         assert len(read_pack(data).levels[0].segments) == level.segments
+        assert_middle_out(data)
 
 
 class TestWriter:

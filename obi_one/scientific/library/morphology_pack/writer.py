@@ -147,22 +147,32 @@ class Placed:
 
 @dataclass(frozen=True)
 class Boxes:
-    """The chunks of the pack: numbered in the order of their boxes, x first."""
+    """The chunks of the pack, numbered by their boxes: the nearest the middle first, so that a
+    reader streaming a level has it from the middle out.
+
+    `places` has the boxes' places, x first, in the grid of `span` boxes from `least`, sorted,
+    and `numbers` the number of each.
+    """
 
     chunk_steps: int
     least: np.ndarray
     span: np.ndarray
+    places: np.ndarray
+    numbers: np.ndarray
 
     def key(self, box: np.ndarray) -> np.ndarray:
-        return np.ravel_multi_index(tuple((box - self.least).T), tuple(self.span))
+        place = np.ravel_multi_index(tuple((box - self.least).T), tuple(self.span))
+        return self.numbers[np.searchsorted(self.places, place)]
 
     def box(self, key: np.ndarray) -> np.ndarray:
-        return np.column_stack(np.unravel_index(key, tuple(self.span))) + self.least
+        place = self.places[np.argsort(self.numbers)][key]
+        return np.column_stack(np.unravel_index(place, tuple(self.span))) + self.least
 
 
-def boxes_of(levels: Sequence[Placed], chunk_steps: int) -> Boxes:
+def boxes_of(levels: Sequence[Placed], chunk_steps: int, somas: np.ndarray) -> Boxes:
     """The chunks every level's segments end in, their side doubled from `chunk_steps` until
-    there are at most `MAX_CHUNKS`.
+    there are at most `MAX_CHUNKS`; numbered by distance from the middle of the box of the
+    `somas` that have a position.
     """
     boxes = distinct_rows(
         np.concatenate([NO_BOXES, *(boxes for level in levels for boxes in level.chunk_boxes())])
@@ -171,9 +181,27 @@ def boxes_of(levels: Sequence[Placed], chunk_steps: int) -> Boxes:
         chunk_steps *= 2
         boxes = distinct_rows(boxes >> 1)
     if not len(boxes):
-        return Boxes(chunk_steps, np.zeros(3, dtype=np.int32), np.ones(3, dtype=np.int64))
+        return Boxes(
+            chunk_steps, np.zeros(3, dtype=np.int32), np.ones(3, dtype=np.int64), NONE, NONE
+        )
     least = boxes.min(axis=0)
-    return Boxes(chunk_steps, least.astype(np.int32), boxes.max(axis=0) - least + 1)
+    span = boxes.max(axis=0) - least + 1
+    places = np.ravel_multi_index(tuple((boxes - least).T), tuple(span))
+    by_place = np.argsort(places)
+    centres = (boxes[by_place] + 0.5) * chunk_steps
+    away = ((centres - middle_of(somas)) ** 2).sum(axis=1)
+    # ties broken by place, so that a pack is written alike every time
+    numbers = np.empty(len(boxes), dtype=np.int64)
+    numbers[np.argsort(away, kind="stable")] = np.arange(len(boxes))
+    return Boxes(chunk_steps, least.astype(np.int32), span, places[by_place], numbers)
+
+
+def middle_of(somas: np.ndarray) -> np.ndarray:
+    """The middle of the box of the somas that have a position, in grid steps."""
+    placed = somas[np.isfinite(somas[:, :3]).all(axis=1), :3]
+    least = placed.min(axis=0).astype(np.float64)
+    most = placed.max(axis=0).astype(np.float64)
+    return (least + most) / 2 / GRID_UM
 
 
 @dataclass(frozen=True)
@@ -499,7 +527,7 @@ class PackWriter:
             msg = "A writer packs once"
             raise RuntimeError(msg)
         placed, self.placed = self.placed, []
-        boxes = boxes_of(placed, self.chunk_steps)
+        boxes = boxes_of(placed, self.chunk_steps, self.somas)
         blocks = [encode_somas(self.somas)]
         offset = len(blocks[0])
         entries: list[LevelEntry] = []
