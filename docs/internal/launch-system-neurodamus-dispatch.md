@@ -21,5 +21,3 @@ Configure in obi-one:
 calls `repos/openbraininstitute/launch-system/dispatches`. The default obi-one `GITHUB_TOKEN`
 cannot dispatch into private launch-system.
 
-If `OBI_REPO_DISPATCHER_CLIENT_ID` is unset, the step logs a warning and skips dispatch;
-launch-system can still publish the neurodamus executor on its own release.
