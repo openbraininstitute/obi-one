@@ -198,6 +198,7 @@ jobs:
           repositories: launch-system
           permission-actions: write
 
+      # launch-system: publish-neurodamus-runtime.yml (repository_dispatch neurodamus-executor-publish)
       - name: Trigger launch-system neurodamus executor publish
         env:
           GH_TOKEN: ${{ steps.launch-system-dispatch.outputs.token }}
