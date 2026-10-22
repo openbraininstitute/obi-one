@@ -116,12 +116,14 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
     ) -> "MorphologyWithSpines":
         from morph_spines import load_morphology_with_spines  # ruff: ignore[import-outside-top-level]
 
+        entity = self.entity(db_client=db_client)
+
         if path is None:
             path = Path.cwd()
         if not isinstance(path, Path):
             path = Path(path)
         if path.is_dir():
-            path /= f"{self.entity(db_client=db_client).name}.h5"
+            path /= f"{entity.name}.h5"
 
         self.write_spiny_neuron_h5(path, db_client)
         return load_morphology_with_spines(str(path))
