@@ -1,11 +1,12 @@
 import warnings
+from typing import TYPE_CHECKING
 
 import morphio
 import numpy as np
-import pandas  # ruff: ignore[unconventional-import-alias]
 import pandas as pd
-from scipy import stats
-from scipy.stats._distn_infrastructure import rv_frozen
+
+if TYPE_CHECKING:
+    from scipy.stats._distn_infrastructure import rv_frozen
 
 try:
     from conntility.subcellular import MorphologyPathDistanceCalculator
@@ -31,7 +32,7 @@ def path_distance_all_segments_from(
     path_distance_calculator: MorphologyPathDistanceCalculator,
     normalized_seg_loc: float = 0.5,
     lst_sec_types: list | None = None,
-) -> pandas.DataFrame:
+) -> pd.DataFrame:
     """Path distances from reference locations to all segments of a morphology.
 
     Calculates path distances from reference locations on a morphology to all segments of the
@@ -89,8 +90,8 @@ def path_distance_all_segments_from(
 
 
 def select_segments_as_cluster_centers(
-    n_pick: int, locs: pandas.DataFrame, distr: rv_frozen, lst_sec_types: list | None = None
-) -> pandas.DataFrame:
+    n_pick: int, locs: pd.DataFrame, distr: "rv_frozen", lst_sec_types: list | None = None
+) -> pd.DataFrame:
     p = distr.pdf(locs[_SOM_PAD])  # ty:ignore[unresolved-attribute]
     if lst_sec_types is not None:
         p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)  # ruff: ignore[non-augmented-assignment]
@@ -168,7 +169,7 @@ def min_max_offset_for_center_segment(row: pd.Series, max_distance: float) -> pd
     )
 
 
-def candidate_segments_all_morphology(locs: pandas.DataFrame) -> pd.DataFrame:
+def candidate_segments_all_morphology(locs: pd.DataFrame) -> pd.DataFrame:
     """Creates a dataframe matching the format of 'candidate_segments_for_center' (*).
 
     * But where all parts of the morphology are admitted as candidates. \
@@ -405,6 +406,8 @@ def generate_neurite_locations_on(
             names=[_CEN_IDX],
         )
     else:
+        from scipy import stats  # ruff: ignore[import-outside-top-level]
+
         distr = stats.norm(center_path_distances_mean, center_path_distances_sd)
         centers = select_segments_as_cluster_centers(n_centers, locs, distr, lst_sec_types=None)
         lst_candidates_per_center = candidate_segments_for_center(
