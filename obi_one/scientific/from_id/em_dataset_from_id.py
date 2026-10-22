@@ -12,8 +12,8 @@ from pydantic import PrivateAttr
 from obi_one.config import settings
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.map_em_synapses.constants import C_P_LOCS
 
-C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
 _NM_to_UM = 1e-3
 
 

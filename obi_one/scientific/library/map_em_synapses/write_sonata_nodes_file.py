@@ -10,8 +10,7 @@ from pandas.api.types import is_string_dtype
 from voxcell import CellCollection
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
-
-MAX_COUNT_LIBRARY = 50
+from obi_one.scientific.library.map_em_synapses.constants import MAX_COUNT_LIBRARY
 
 
 def get_specified_tables(
