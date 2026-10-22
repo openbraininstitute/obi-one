@@ -187,3 +187,17 @@ jobs:
             echo "::error::Failed builds: ${failed[*]}. Re-run the failed runs."
             exit 1
           fi
+
+      - name: Trigger launch-system neurodamus executor publish
+        env:
+          LAUNCH_SYSTEM_DISPATCH_TOKEN: ${{ secrets.LAUNCH_SYSTEM_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "${LAUNCH_SYSTEM_DISPATCH_TOKEN}" ]; then
+            echo "::warning::LAUNCH_SYSTEM_DISPATCH_TOKEN not set; skipping launch-system dispatch"
+            exit 0
+          fi
+          gh api --method POST repos/openbraininstitute/launch-system/dispatches \
+            -H "Authorization: bearer ${LAUNCH_SYSTEM_DISPATCH_TOKEN}" \
+            -f event_type=neurodamus-executor-publish \
+            -f "client_payload[released_repo]=obi-one" \
+            -f "client_payload[tag]=${RELEASE_TAG}"
