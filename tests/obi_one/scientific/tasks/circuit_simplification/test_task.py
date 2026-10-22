@@ -12,6 +12,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from entitysdk.types import DerivationType
+
+pytest.importorskip("sonata_simplify")
+
 from sonata_simplify.pipeline import SimplificationPipeline
 
 from app.mappings import TASK_DEFINITIONS

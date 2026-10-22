@@ -136,7 +136,6 @@ scipy==1.18.1
 seaborn==0.13.2
 setuptools==84.2.1
 six==1.17.0
-sonata-simplify==0.2.5
 sortedcontainers==2.4.0
 stack-data==0.6.3
 sympy==1.14.0
