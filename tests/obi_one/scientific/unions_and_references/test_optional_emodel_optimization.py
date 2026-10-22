@@ -5,10 +5,9 @@ Task 2 (emodel optimization) requires the optional ``emodel`` extra
 not installed: the single guard lives in
 ``task2_emodel_optimization/__init__.py`` (``try/except ImportError`` around the
 Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
-``tasks.py`` imports from that package unconditionally and simply omits Task 2 when the
-classes are ``None``. ``config_task_map.py`` and ``scan_configs.py`` declare Task 2 by
-class path and gate it on ``requires_package="bluepyemodel"``, so they never import Task 2
-at module import time and report the task type as unavailable when the extra is missing.
+``config_task_map.py``, ``scan_configs.py``, and ``tasks.py`` declare Task 2 by class path
+and gate it on ``requires_package="bluepyemodel"``, so they never import Task 2 at module
+import time and report the task type as unavailable when the extra is missing.
 The same applies to ``app/endpoints/ion_channel_properties.py``,
 ``app/endpoints/scan_config.py`` and ``app/endpoints/config_validation.py``,
 which import ``fetch_variable_catalog`` and ``EModelOptimizationScanConfig``
@@ -126,7 +125,6 @@ def test_scan_configs_union_omits_emodel_optimization_without_bluepyemodel():
 def test_tasks_union_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.unions_and_references.tasks")
 
-    assert module.EModelOptimizationTask is None
     assert "EModelOptimizationTask" not in {member.__name__ for member in module._TASK_MEMBERS}
 
 

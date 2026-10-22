@@ -486,3 +486,21 @@ def iter_scan_config_refs() -> Iterator[ClassRef]:
             continue
         seen.add(name)
         yield extra_ref
+
+
+def iter_task_refs() -> Iterator[ClassRef]:
+    """Yield task class refs for union membership without importing task modules.
+
+    Includes every available ``TaskSpec.task_ref``, deduplicated by class name (several
+    ``TaskType`` values share ``GenerateSimulationTask``).
+    """
+    seen: set[str] = set()
+    for task_type, task_spec in TASK_SPECS.items():
+        if not _is_task_type_available(task_type):
+            continue
+        task_ref = task_spec.task_ref
+        name = class_name(task_ref)
+        if name in seen:
+            continue
+        seen.add(name)
+        yield task_ref
