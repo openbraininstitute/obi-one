@@ -4,7 +4,7 @@ The pack's sizes, read times, build time and memory, and fidelity, as measured. 
 
 The packs: hex4-l4 (nbS1, 5,030 cells), hex6-l1 (349 cells), CA1-300 (rat CA1, 300 cells), flywire-sugar (243 FlyWire cells), the 1,379-cell fly sample and the 291-cell rat sample (layer 1 of an nbS1 column). Two packs made of copies of the fly sample were measured too. Copies of one cell in one chunk give a coder repeats that no real circuit has, so their figures are left out.
 
-Sizes and reads are set against the alternative that nesting was chosen over, the levels written whole: every level whole, each chunk one zlib stream at level 6, with no plane blocks and no nesting. [alternatives.md](alternatives.md) calls these the flat blocks. The sizes dated 2026-10-19 were measured without the population boxes in the index; the chunk blocks are the same bytes.
+Sizes and reads are set against the alternative that nesting was chosen over, the levels written whole: every level whole, each chunk one zlib stream at level 6, with no plane blocks and no nesting. [alternatives.md](alternatives.md) calls these the flat blocks. The sizes dated 2026-10-19 were measured without the population boxes in the index; the chunk blocks are the same bytes. CA1-300 built with the boxes, 2026-10-23, comes to the same 10.02 MB, level by level ([below](#ca1-300-built-with-every-field-of-the-index)).
 
 ## Size
 
@@ -265,6 +265,25 @@ The far views overstate it. At 0.7 µm a pixel a fibre is a line a pixel wide ov
 - **The grid:** read back, every segment's ends are within 12.5 nm and its radius within 2.2%.
 - **Nesting is exact.** Decoded, the nested levels give the segments of the levels written whole, one to one: on hex4-l4 14,421,328 middle and 20,292,212 finest segments; on CA1-300 every level, by both readers (2026-10-19).
 
-## Not measured yet
+## CA1-300 built with every field of the index
 
-hex6-l1, flywire-sugar and CA1-300 built with the population boxes in the index: size, build time on 1, 2 and 4 processes, peak memory, and identical bytes across process counts.
+The first 300 cells of CA1's `hippocampus_neurons`, built as the asset job builds them, on the M4 Pro, 2026-10-23, three rounds.
+
+| Level | Segments | Bytes | Bytes a segment | Chunks |
+| --- | --- | --- | --- | --- |
+| Index and somas end at | | 0.047 MB | | |
+| 0.125 µm, over the middle | 2,547,377 | 2.698 MB | 1.06 | 1,799 |
+| 0.25 µm, over the far | 1,729,458 | 4.197 MB | 2.43 | 1,799 |
+| 1 µm, end branches under 5 µm pruned | 528,322 | 3.079 MB | 5.83 | 1,798 |
+| In all | 4,805,157 | 10.02 MB, 10,021,520 B | 2.09 | |
+
+| Processes | Build | Largest resident size of the main process |
+| --- | --- | --- |
+| 1 | 3.97-4.03 s | 727-834 MB |
+| 2 | 3.69-3.75 s | 823-836 MB |
+| 4 | 3.08-3.12 s | 751-832 MB |
+
+- **The same bytes on 1, 2 and 4 processes,** in every round.
+- **The resident size is the Mac's,** which only grows; it cannot stand in for a Linux container's peak.
+
+Not measured yet: hex6-l1 and flywire-sugar built the same way. Their circuits are on staging only.
