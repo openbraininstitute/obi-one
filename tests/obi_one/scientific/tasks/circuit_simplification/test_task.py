@@ -13,10 +13,6 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 from entitysdk.types import DerivationType
 
-pytest.importorskip("sonata_simplify")
-
-from sonata_simplify.pipeline import SimplificationPipeline
-
 from app.mappings import TASK_DEFINITIONS
 from app.services.resource_estimation.circuit_simplification import (
     FILTER_ALGORITHMS,
@@ -173,7 +169,8 @@ class TestApiCompatibility:
 
     def test_pipeline_accepts_simulation_config(self):
         """SimplificationPipeline should accept simulation_config kwarg."""
-        sig = inspect.signature(SimplificationPipeline.__init__)
+        pipeline_mod = pytest.importorskip("sonata_simplify.pipeline")
+        sig = inspect.signature(pipeline_mod.SimplificationPipeline.__init__)
         assert "simulation_config" in sig.parameters
         assert "simplification_mode" in sig.parameters
 
@@ -301,8 +298,10 @@ class TestTaskExecution:
         mock_pipeline,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
+        monkeypatch,
     ):
         """execute() should construct and run SimplificationPipeline for each algorithm."""
+        monkeypatch.delenv("JOB_CPUS", raising=False)
 
         # Build a single config
         config = self._make_config(tmp_path)
@@ -356,26 +355,23 @@ class TestTaskExecution:
         # Pipeline should have been constructed and run_recipe called
         mock_pipeline.assert_called_once()
         mock_pipeline.return_value.run_recipe.assert_called_once()
-        assert mock_pipeline.call_args.kwargs["n_processes"] is None
+        assert mock_pipeline.call_args.kwargs["n_processes"] == 1
         sim_config_path = Path(mock_pipeline.call_args.kwargs["simulation_config"])
         sim_config = json.loads(sim_config_path.read_text(encoding="utf-8"))
         assert "node_set" not in sim_config
         assert "node_sets_file" not in sim_config
 
-    def test_execute_passes_n_processes_to_pipeline(
+    def test_execute_uses_allocated_cpus_as_workers(
         self,
         fake_simplified_circuit: Path,
         mock_pipeline,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
+        monkeypatch,
     ):
-        """execute() should forward initialize.n_processes to SimplificationPipeline."""
-        config = self._make_config(tmp_path)
-        config.initialize = CircuitSimplificationScanConfig.Initialize(
-            circuit=CircuitFromID(id_str="test-circuit-id"),
-            n_processes=4,
-        )
-        task = CircuitSimplificationTask(config=config)
+        """execute() should run one pipeline worker per CPU in JOB_CPUS."""
+        monkeypatch.setenv("JOB_CPUS", "4")
+        task = CircuitSimplificationTask(config=self._make_config(tmp_path))
 
         mock_circuit = MagicMock()
         mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
@@ -848,10 +844,20 @@ class TestTaskInternals:
         circuit_path.write_text(json.dumps({"target_simulator": "Brian2"}))
         registered = MagicMock(id="registered-id")
 
-        with patch(
-            "obi_one.scientific.tasks.circuit_simplification.task.circuit_registration.register_circuit",
-            return_value=registered,
-        ) as register_circuit:
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_registration.register_circuit",
+                return_value=registered,
+            ) as register_circuit,
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.simplification_package_versions",
+                return_value={
+                    "obi-one": "0.0.0",
+                    "sonata-simplify": "0.0.0",
+                    "bluecellulab": "0.0.0",
+                },
+            ),
+        ):
             result = task._register_output(
                 db_client=MagicMock(),
                 circuit_path=circuit_path,

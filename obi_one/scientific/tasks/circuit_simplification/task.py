@@ -9,9 +9,11 @@ NEURON, point-neuron NEST variants as NEST, and adex_brian2 as Brian2.
 
 import json
 import logging
+import os
 import shutil
 import tempfile
 from enum import StrEnum
+from importlib import import_module
 from importlib.metadata import version
 from pathlib import Path
 from typing import ClassVar, Self
@@ -61,6 +63,11 @@ L = logging.getLogger(__name__)
 
 PROVENANCE_PACKAGES = ("obi-one", "sonata-simplify", "bluecellulab")
 PROVENANCE_FILE_NAME = "simplification_provenance.json"
+
+
+def simplification_worker_count() -> int:
+    """Workers for the pipeline: the CPUs the launch system allocated (JOB_CPUS), else 1."""
+    return int(os.environ.get("JOB_CPUS") or 1)
 
 
 def simplification_package_versions() -> dict[str, str]:
@@ -171,19 +178,6 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
                 SchemaKey.REFERENCE_TYPES: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
             },
-        )
-        n_processes: int | None = Field(
-            default=None,
-            title="Worker Processes",
-            description=(
-                "Number of worker processes for parallel filter computation."
-                " None or 1 = single-process."
-            ),
-            json_schema_extra={
-                SchemaKey.UI_HIDDEN: True,
-                SchemaKey.PARAMETER_ORDER_PRIORITY: 98,
-            },
-            ge=1,
         )
 
     algorithms: dict[str, SimplificationAlgorithmUnion] = Field(  # ty:ignore[no-matching-overload]
@@ -522,11 +516,11 @@ class CircuitSimplificationTask(Task):
                     simulation_backend=sim_backend,
                 )
 
-            # Import sonata_simplify lazily (heavy dependencies)
-            from sonata_simplify.pipeline import (  # ruff: ignore[import-outside-top-level] # ty: ignore[unresolved-import]
-                SimplificationPipeline,
+            # Import sonata_simplify lazily (heavy dependencies, optional private package)
+            SimplificationPipeline = getattr(  # ruff: ignore[non-lowercase-variable-in-function, get-attr-with-constant]
+                import_module("sonata_simplify.pipeline"), "SimplificationPipeline"
             )
-            from sonata_simplify.recipe import Recipe  # ruff: ignore[import-outside-top-level] # ty: ignore[unresolved-import]
+            Recipe = getattr(import_module("sonata_simplify.recipe"), "Recipe")  # ruff: ignore[non-lowercase-variable-in-function, get-attr-with-constant]
 
             for algorithm_block in algorithm_blocks.values():
                 algorithm_name = algorithm_block.algorithm_name
@@ -549,7 +543,7 @@ class CircuitSimplificationTask(Task):
                 pipeline = SimplificationPipeline(
                     simulation_config=str(sim_config_path),
                     simplification_mode=base_algorithm,
-                    n_processes=self.config.initialize.n_processes,
+                    n_processes=simplification_worker_count(),
                     **algorithm_block.pipeline_kwargs(),
                 )
 

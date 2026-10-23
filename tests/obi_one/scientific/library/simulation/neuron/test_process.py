@@ -387,3 +387,65 @@ def test_compile_neuron_mechanisms_raises_when_no_libnrnmech(mock_run_and_log, t
             mechanisms_dirs=[mech_dir],
             simulation_backend=SimulationBackend.bluecellulab,
         )
+
+
+def _write_biophysical_circuit_config(circuit_dir, *, with_mechanisms_dir: bool):
+    """Minimal SONATA circuit config libsonata can parse."""
+    (circuit_dir / "nodes.h5").touch()
+    components = {
+        "morphologies_dir": "morphs",
+        "biophysical_neuron_models_dir": "",
+        "point_neuron_models_dir": "",
+        "synaptic_models_dir": "",
+        "templates_dir": "",
+    }
+    if with_mechanisms_dir:
+        components["mechanisms_dir"] = "mechmods"
+    config = {
+        "version": 2.3,
+        "manifest": {"$BASE_DIR": "./"},
+        "components": components,
+        "networks": {
+            "nodes": [
+                {
+                    "nodes_file": "$BASE_DIR/nodes.h5",
+                    "populations": {
+                        "A": {
+                            "type": "biophysical",
+                            "biophysical_neuron_models_dir": "$BASE_DIR/emodels_hoc",
+                        }
+                    },
+                }
+            ],
+            "edges": [],
+        },
+    }
+    config_path = circuit_dir / "circuit_config.json"
+    config_path.write_text(json.dumps(config))
+    return config_path
+
+
+def test_get_mechanisms_dirs_from_population_properties(tmp_path):
+    """mechanisms_dir declared in circuit components is returned."""
+    config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=True)
+
+    dirs = test_module.get_mechanisms_dirs(config_path)
+
+    assert len(dirs) == 1
+    assert dirs[0].endswith("/mechmods")
+
+
+def test_get_mechanisms_dirs_mod_dir_fallback(tmp_path):
+    """Falls back to a sibling mod/ directory when components declare none."""
+    config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=False)
+    mod_dir = tmp_path / "mod"
+    mod_dir.mkdir()
+
+    assert test_module.get_mechanisms_dirs(config_path) == [mod_dir]
+
+
+def test_get_mechanisms_dirs_empty(tmp_path):
+    """No mechanisms_dir and no mod/ fallback yields an empty list."""
+    config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=False)
+
+    assert test_module.get_mechanisms_dirs(config_path) == []

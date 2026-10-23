@@ -13,7 +13,7 @@ Circuit simplification produces a reduced, simulatable SONATA circuit from a bio
 
 The `CircuitSimplificationScanConfig` class (located in `obi_one/scientific/tasks/circuit_simplification/task.py`) is UI-enabled and configures the simplification. It includes:
 
-- **Initialize**: the parent `Circuit` entity, an optional **Target Neuron Set** reference, and the hidden execution setting `n_processes`.
+- **Initialize**: the parent `Circuit` entity, and an optional **Target Neuron Set** reference. The pipeline uses as many worker processes as the launch system allocated (`JOB_CPUS`), or 1 when run locally.
 - **Neuron Sets**: a dictionary of biophysical neuron set blocks (e.g. by e-type or m-type via property neuron sets) that the target neuron set can reference. Without a target neuron set all biophysical neurons are simplified. A target neuron set is only accepted when every selected algorithm supports partial simplification (currently `single_compartment`); otherwise config validation fails.
 - **Algorithms**: a dictionary of simplification algorithm blocks. Each block names one algorithm to run; the registered output circuit is named `<parent>__<campaign>__<algorithm>`.
 

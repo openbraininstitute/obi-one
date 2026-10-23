@@ -13,7 +13,7 @@ cryptography==50.0.2
 cycler==0.12.1
 deprecation==2.1.0
 efel==5.7.34
-entitysdk==0.19.33
+entitysdk==0.19.34
 find-libpython==0.5.1
 fonttools==4.67.0
 h11==0.16.0
@@ -40,13 +40,13 @@ obi-auth==1.2.1
 packaging==26.3
 pandas==2.3.3
 pillow==13.0.0
-pycparser==3.11
+pycparser==3.12
 pydantic==2.14.1
 pydantic-core==2.50.1
 pydantic-settings==2.16.1
 pyjwt==2.15.1
 pyparsing==3.3.3
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
 python-dotenv==1.2.4
 pytz==2026.5
 pyyaml==6.0.3

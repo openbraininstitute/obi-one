@@ -27,7 +27,6 @@ from obi_one.scientific.tasks.circuit_simplification.task import (
     PROVENANCE_FILE_NAME,
     CircuitSimplificationScanConfig,
     CircuitSimplificationTask,
-    simplification_package_versions,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import BiophysicalNeuronSetReference
 
@@ -126,7 +125,6 @@ class TestTargetNeuronSet:
         config.initialize = CircuitSimplificationScanConfig.Initialize.model_construct(
             circuit=CircuitFromID(id_str="test-circuit-id"),
             target_neuron_set=MagicMock(),
-            n_processes=None,
         )
         kwargs = _run(config, tmp_path, mock_pipeline, target_set_name="MySet")
         sim_config = json.loads(Path(kwargs["simulation_config"]).read_text(encoding="utf-8"))
@@ -171,14 +169,20 @@ class TestExecuteOptions:
         task._circuit_entity = MagicMock()
         circuit_path = tmp_path / "circuit_config.json"
         circuit_path.write_text("{}")
-        with patch(
-            "obi_one.scientific.tasks.circuit_simplification.task.circuit_registration.register_circuit",
-        ) as register_circuit:
+        versions = {"obi-one": "0.0.0", "sonata-simplify": "0.0.0", "bluecellulab": "0.0.0"}
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_registration.register_circuit",
+            ) as register_circuit,
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.simplification_package_versions",
+                return_value=versions,
+            ),
+        ):
             task._register_output(
                 db_client=MagicMock(), circuit_path=circuit_path, algorithm_name="neuron_reduce"
             )
         kwargs = register_circuit.call_args.kwargs
-        versions = simplification_package_versions()
         assert f"sonata-simplify {versions['sonata-simplify']}" in kwargs["description"]
         assert f"bluecellulab {versions['bluecellulab']}" in kwargs["description"]
         # Reduced-morphology outputs have no exporter and default to NEURON.
