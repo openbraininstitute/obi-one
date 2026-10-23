@@ -51,21 +51,41 @@ def path_distance_all_segments_from(
         If None, all types are considered.
     """
     kwargs = {"str_section_id": _SEC_ID, "str_segment_id": _SEG_ID, "str_offset": _SEG_OFF}
-    locs_all = pd.concat(
-        [
-            pd.DataFrame(
-                {
-                    _SEG_ID: np.arange(m.sections[i].n_points - 1),
-                    _SEC_ID: np.ones(m.sections[i].n_points - 1, dtype=int) * (i + 1),
-                    _SEC_TYP: np.ones(m.sections[i].n_points - 1, dtype=int)
-                    * int(m.sections[i].type),
-                    _SEG_LEN: np.linalg.norm(np.diff(m.sections[i].points, axis=0), axis=1),
-                }
-            )
-            for i in range(len(m.sections))
-        ],
-        axis=0,
-    ).reset_index(drop=True)
+
+    # ``m.sections`` is a property that rebuilds its result on every access, so indexing it
+    # repeatedly inside a loop (``m.sections[i]``) is O(n) per access and O(n^2) overall for a
+    # morphology with n sections -- this dominated the runtime on large morphologies. Caching it
+    # once avoids that. Building the segment table from flat numpy arrays instead of one tiny
+    # per-section DataFrame (previously concatenated n times) also avoids the matching per-row
+    # pandas construction overhead.
+    sections = list(m.sections)
+    n_segments_per_section = np.fromiter(
+        (sec.n_points - 1 for sec in sections), dtype=int, count=len(sections)
+    )
+    sec_types_per_section = np.fromiter(
+        (int(sec.type) for sec in sections), dtype=int, count=len(sections)
+    )
+    seg_lengths = (
+        np.concatenate([np.linalg.norm(np.diff(sec.points, axis=0), axis=1) for sec in sections])
+        if sections
+        else np.empty(0, dtype=float)
+    )
+    seg_id = (
+        np.concatenate([np.arange(n) for n in n_segments_per_section])
+        if sections
+        else np.empty(0, dtype=int)
+    )
+    sec_id = np.repeat(np.arange(1, len(sections) + 1), n_segments_per_section)
+    sec_typ = np.repeat(sec_types_per_section, n_segments_per_section)
+
+    locs_all = pd.DataFrame(
+        {
+            _SEG_ID: seg_id,
+            _SEC_ID: sec_id,
+            _SEC_TYP: sec_typ,
+            _SEG_LEN: seg_lengths,
+        }
+    )
 
     if lst_sec_types is not None:
         locs_all = locs_all.loc[locs_all[_SEC_TYP].isin(lst_sec_types)].reset_index(drop=True)
