@@ -1,9 +1,13 @@
 from typing import Any
 
+from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+    PerNeuronExplicitMorphologyLocations,
+)
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.compartment_sets import (
     MaterializedCompartmentSet,
     build_compartment_set_for_neuron_set,
+    build_compartment_set_from_selected_rows,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
@@ -34,25 +38,33 @@ def materialize_locations_to_compartment_sets(
             continue
 
         locations_block = target_ref.block
-
-        neuron_set_ref = getattr(locations_block, "neuron_set", None)
-        if neuron_set_ref is None:
-            neuron_set_ref = single_config.default_neuron_set_reference
-
         comp_set_name = target_ref.block_name
 
         if comp_set_name in materialized:
             block.set_materialized_compartment_set_target(comp_set_name)
             continue
 
-        comp_set = build_compartment_set_for_neuron_set(
-            name=comp_set_name,
-            circuit=circuit,
-            node_population=node_population,
-            population=population,
-            neuron_set=neuron_set_ref,
-            locations_block=locations_block,
-        )
+        if isinstance(locations_block, PerNeuronExplicitMorphologyLocations):
+            # The selected points already name their neurons, so there is nothing to expand.
+            comp_set = build_compartment_set_from_selected_rows(
+                name=comp_set_name,
+                population=population,
+                locations_block=locations_block,
+            )
+        else:
+            neuron_set_ref = getattr(locations_block, "neuron_set", None)
+            if neuron_set_ref is None:
+                neuron_set_ref = single_config.default_neuron_set_reference
+
+            comp_set = build_compartment_set_for_neuron_set(
+                name=comp_set_name,
+                circuit=circuit,
+                node_population=node_population,
+                population=population,
+                neuron_set=neuron_set_ref,
+                locations_block=locations_block,
+            )
+
         block.set_materialized_compartment_set_target(comp_set_name)
 
         materialized[comp_set_name] = comp_set

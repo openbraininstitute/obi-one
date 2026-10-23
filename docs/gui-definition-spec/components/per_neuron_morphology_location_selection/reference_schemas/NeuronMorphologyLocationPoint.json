@@ -1,0 +1,32 @@
+{
+  "properties": {
+    "section_id": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Section ID",
+      "description": "SONATA global section ID: 0 for soma, then nrn_order neurites."
+    },
+    "offset": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Normalized section offset",
+      "description": "Normalized location along the section."
+    },
+    "node_id": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Node ID",
+      "description": "Identifier of the neuron this location belongs to."
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "section_id",
+    "offset",
+    "node_id"
+  ],
+  "title": "NeuronMorphologyLocationPoint",
+  "description": "A neuron ID, SONATA global section ID and normalized offset defining one location."
+}

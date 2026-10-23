@@ -44,6 +44,9 @@ from .neuron_ids import validate_neuron_ids
 from .neuron_property_filter import validate_neuron_property_filter
 from .neuron_set_combination import validate_neuron_set_combination
 from .object import validate_object
+from .per_neuron_morphology_location_selection import (
+    validate_per_neuron_morphology_location_selection,
+)
 from .reference import validate_reference
 from .root.block_dictionary import validate_block_dictionary
 from .root.block_single import validate_block_single
@@ -104,6 +107,9 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     UIElement.TASK_RESULT_SELECTOR: validate_task_result_selector,
     UIElement.ETYPE_SELECTOR: validate_etype_selector,
     UIElement.MORPHOLOGY_LOCATION_SELECTION: validate_morphology_location_selection,
+    UIElement.PER_NEURON_MORPHOLOGY_LOCATION_SELECTION: (
+        validate_per_neuron_morphology_location_selection
+    ),
     UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION: validate_morphology_section_type_selection,
     UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST: (
         validate_ion_channel_variable_modification_by_section_list

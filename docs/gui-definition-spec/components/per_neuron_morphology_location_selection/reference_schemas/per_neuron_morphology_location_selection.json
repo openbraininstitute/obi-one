@@ -1,0 +1,10 @@
+{
+  "items": {
+    "$ref": "#/components/schemas/NeuronMorphologyLocationPoint"
+  },
+  "type": "array",
+  "minItems": 1,
+  "title": "Explicit locations",
+  "description": "The exact points to target, each on a named neuron. Click anywhere on a neuron in the 3D view to add one, or type it in by hand. Each row is a single point: which neuron it belongs to, which branch of that neuron it sits on, and how far along that branch it is — 0 is the start of the branch, 1 is the end, 0.5 is halfway. Branch 0 is always the soma. At least one point is required.",
+  "ui_element": "per_neuron_morphology_location_selection"
+}

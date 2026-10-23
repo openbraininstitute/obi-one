@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
@@ -435,8 +436,14 @@ def _morphology_location_recording():
 
 
 def test_morphology_location_recording_rejects_none_locations():
-    with pytest.raises(ValueError, match="require morphology locations"):
+    """There is nothing to record without a target, so the field takes no null."""
+    with pytest.raises(ValidationError, match="morphology_locations"):
         MorphologyLocationVoltageRecording(morphology_locations=None)
+
+
+def test_morphology_location_recording_requires_locations():
+    with pytest.raises(ValidationError, match="morphology_locations"):
+        MorphologyLocationVoltageRecording()
 
 
 def test_morphology_location_recording_requires_end_time():

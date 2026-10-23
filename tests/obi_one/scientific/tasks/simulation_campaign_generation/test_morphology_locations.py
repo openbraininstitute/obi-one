@@ -6,10 +6,14 @@ materialises the locations against the circuit's morphologies, writes them to
 name instead of carrying a node set.
 """
 
+from typing import get_args
+
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.blocks.morphology_locations.clustered import (
     ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
@@ -21,6 +25,10 @@ from obi_one.scientific.blocks.morphology_locations.explicit import (
 )
 from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
+)
+from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+    NeuronMorphologyLocationPoint,
+    PerNeuronExplicitMorphologyLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
@@ -35,11 +43,18 @@ from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomat
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
+    MEModelWithSynapsesCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 from obi_one.scientific.unions_and_references.morphology_locations import (
     CircuitMorphologyLocationUnion,
     MorphologyLocationsReference,
     MorphologyLocationUnion,
+    SingleMorphologySamplingLocationUnion,
 )
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
@@ -69,6 +84,12 @@ MORPHOLOGY_LOCATIONS = {
     ),
     "ClusteredPathDistanceMorphologyLocations": ClusteredPathDistanceMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2, section_types=(3, 4)
+    ),
+    "PerNeuronExplicitMorphologyLocations": PerNeuronExplicitMorphologyLocations(
+        locations=(
+            NeuronMorphologyLocationPoint(node_id=0, section_id=0, offset=0.0),
+            NeuronMorphologyLocationPoint(node_id=1, section_id=1, offset=0.5),
+        )
     ),
 }
 
@@ -113,6 +134,95 @@ class TestUnionCoverage:
             CircuitMorphologyLocationUnion
         )
         assert "ExplicitMorphologyLocations" in union_member_names(MorphologyLocationUnion)
+
+    def test_every_single_morphology_sampling_block_implements_points_on(self):
+        """Its consumers call `points_on` directly, with no branch for anything else.
+
+        Synaptome placement and the morphology-locations plotting task both evaluate whatever
+        block they are given against one morphology, so a member without `points_on` would fail
+        at runtime rather than being rejected by the schema.
+        """
+        members = get_args(get_args(SingleMorphologySamplingLocationUnion)[0])
+
+        assert members, "the union should not be empty"
+        for block in members:
+            assert issubclass(block, MorphologyLocationsBlock), (
+                f"{block.__name__} is offered where `points_on` is called but does not implement it"
+            )
+
+    def test_per_neuron_locations_are_kept_out_of_the_sampling_union(self):
+        """Their rows already name their neurons, so there is no morphology to sample against."""
+        assert "PerNeuronExplicitMorphologyLocations" not in union_member_names(
+            SingleMorphologySamplingLocationUnion
+        )
+
+    @pytest.mark.parametrize(
+        ("config_class", "offered"),
+        [
+            (CircuitSimulationSingleConfig, True),
+            (MEModelSimulationSingleConfig, False),
+            (MEModelWithSynapsesCircuitSimulationSingleConfig, False),
+        ],
+    )
+    def test_per_neuron_locations_are_only_offered_for_multi_neuron_circuits(
+        self, config_class, offered
+    ):
+        """A node id has nothing to disambiguate when one neuron is simulated.
+
+        In the single-neuron forms the viewer writes the points it picks into
+        ``ExplicitMorphologyLocations``, so offering the per-neuron block there is a dead option.
+        """
+        picker = get_args(config_class.model_fields["morphology_locations"].annotation)[1]
+
+        assert ("PerNeuronExplicitMorphologyLocations" in union_member_names(picker)) is offered
+
+
+class TestPerNeuronExplicitLocations:
+    """Selected points name their own neuron, so they are written through unchanged."""
+
+    def test_the_selected_rows_are_written_exactly(self, morphology_circuit, tmp_path):
+        locations = PerNeuronExplicitMorphologyLocations(
+            locations=(
+                NeuronMorphologyLocationPoint(node_id=1, section_id=2, offset=0.75),
+                NeuronMorphologyLocationPoint(node_id=0, section_id=1, offset=0.25),
+            )
+        )
+        config = _locations_config(morphology_circuit, locations)
+
+        result = generate(config, tmp_path)
+
+        assert result.compartment_sets["Locations"]["compartment_set"] == [
+            [0, 1, 0.25],
+            [1, 2, 0.75],
+        ]
+        assert result.compartment_sets["Locations"]["population"] == MORPHOLOGY_POPULATION
+
+    def test_no_cross_product_with_a_neuron_set(self, morphology_circuit, tmp_path):
+        """Two points on two neurons stay two rows, however many neurons the circuit holds."""
+        locations = PerNeuronExplicitMorphologyLocations(
+            locations=(
+                NeuronMorphologyLocationPoint(node_id=0, section_id=1, offset=0.5),
+                NeuronMorphologyLocationPoint(node_id=1, section_id=1, offset=0.5),
+            )
+        )
+        config = _locations_config(morphology_circuit, locations)
+
+        result = generate(config, tmp_path)
+
+        assert len(result.compartment_sets["Locations"]["compartment_set"]) == 2
+
+    def test_it_does_not_take_a_neuron_set(self):
+        """The target neurons are the ones named by the points."""
+        assert "neuron_set" not in PerNeuronExplicitMorphologyLocations.model_fields
+
+    def test_locations_are_required(self):
+        """There is no usable empty state, so the block cannot be built without a point."""
+        with pytest.raises(ValidationError, match="locations"):
+            PerNeuronExplicitMorphologyLocations()
+
+    def test_an_empty_list_of_locations_is_rejected(self):
+        with pytest.raises(ValidationError, match="at least 1 item"):
+            PerNeuronExplicitMorphologyLocations(locations=())
 
 
 class TestCompartmentSetGeneration:
@@ -400,8 +510,12 @@ class TestTimeWindowRecording:
         assert recording.end_time == end_time
 
     def test_locations_are_still_required(self):
-        with pytest.raises(ValueError, match="require morphology locations"):
+        """The windowed variant inherits the target, so it is required there too."""
+        with pytest.raises(ValidationError, match="morphology_locations"):
             TimeWindowMorphologyLocationVoltageRecording(morphology_locations=None)
+
+        with pytest.raises(ValidationError, match="morphology_locations"):
+            TimeWindowMorphologyLocationVoltageRecording()
 
 
 class TestLocationTargeting:
