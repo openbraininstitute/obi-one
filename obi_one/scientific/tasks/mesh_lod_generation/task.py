@@ -10,7 +10,6 @@ This module is executed remotely by the obi-one launch-system. It:
 import os
 import pathlib
 import tempfile
-from importlib import import_module
 from typing import ClassVar
 from uuid import UUID
 
@@ -22,9 +21,7 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.mesh_lod_generation.config import MeshLodGenerationSingleConfig
 
 try:
-    # Dynamic import: ultraliser is a private CodeArtifact package absent from
-    # some environments; a static import would trip ty's unresolved-import rule.
-    ultraliser = import_module("ultraliser")
+    import ultraliser
 
     HAS_MESHING = True
 except ImportError:
@@ -57,12 +54,12 @@ def _generate_lods(
         raise RuntimeError(msg)
 
     if mesh_format in {"obj", "glb"}:
-        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)
+        mesh = ultraliser.Mesh(file_name=str(mesh_path), verbose=False)  # ty:ignore[unresolved-attribute]
     else:
         msg = f"Unsupported mesh format for LOD generation: {mesh_format}"
         raise RuntimeError(msg)
 
-    generator = ultraliser.LODGenerator(mesh)
+    generator = ultraliser.LODGenerator(mesh)  # ty:ignore[unresolved-attribute]
     generator.generate_web_lods(str(output_dir))
 
     lod_files: dict[os.PathLike, os.PathLike] = {

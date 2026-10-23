@@ -1,5 +1,4 @@
 import logging
-from importlib import import_module
 from pathlib import Path
 
 import morphio
@@ -44,7 +43,7 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
             - write_raw_spines: Whether to include raw segmented spines in the output.
         output_dir: Directory where skeletonization outputs will be written.
     """
-    ultraliser = import_module("ultraliser")
+    import ultraliser  # ruff: ignore[import-outside-top-level]
 
     ultraliser.skeletonize_neuron_mesh(
         mesh_path=str(parameters.mesh_path),
