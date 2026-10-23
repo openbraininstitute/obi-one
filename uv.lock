@@ -2494,7 +2494,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.110" },
+    { name = "bluecellulab", specifier = ">=2.6.104" },
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },

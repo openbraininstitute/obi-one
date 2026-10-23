@@ -10,7 +10,6 @@ NEURON, point-neuron NEST variants as NEST, and adex_brian2 as Brian2.
 import json
 import logging
 import os
-import shutil
 import tempfile
 from enum import StrEnum
 from importlib import import_module
@@ -507,15 +506,10 @@ class CircuitSimplificationTask(Task):
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithm_names:
                 mechanisms_dirs = sorted(set(process.get_mechanisms_dirs(input_circuit_path)))
-                sim_backend = (
-                    SimulationBackend.neurodamus
-                    if shutil.which("neurodamus-compile-mods")
-                    else SimulationBackend.bluecellulab
-                )
                 process.compile_mechanisms(
                     output_dir=Path(),
                     mechanisms_dirs=mechanisms_dirs,
-                    simulation_backend=sim_backend,
+                    simulation_backend=SimulationBackend.bluecellulab,
                 )
 
             # Import sonata_simplify lazily (heavy dependencies, optional private package)
