@@ -2,19 +2,29 @@
 
 import json
 from types import SimpleNamespace
+from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
+from entitysdk.types import CircuitScale
 
 from app.dependencies.entitysdk import get_client
 from app.endpoints import scan_config
 from obi_one.core.exception import ConfigValidationError
 from obi_one.core.info import Info
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.blocks.extracellular_locations.extracellular_locations import (
+    LinearExtracellularLocations,
+)
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
+    CreateExtracellularRecordingArrayScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -249,3 +259,33 @@ def test_a_successful_generation_deletes_nothing(client, monkeypatch, payload):
     assert response.status_code == 200, response.text
     assert response.json() == "campaign"
     assert db_client.deleted == []
+
+
+def test_a_weights_scan_no_task_can_run_registers_nothing(client, monkeypatch):
+    circuit = SimpleNamespace(
+        id=uuid4(), name="nbS1-O1", scale=CircuitScale.microcircuit, number_neurons=211_712
+    )
+    db_client = Mock()
+    db_client.get_entity.return_value = circuit
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    form = CreateExtracellularRecordingArrayScanConfig(
+        info=Info(campaign_name="Test campaign", campaign_description="Test description"),
+        initialize=CreateExtracellularRecordingArrayScanConfig.Initialize(
+            circuit=CircuitFromID(id_str=str(circuit.id)), calculation_method="LineSource"
+        ),
+        electrode_locations={
+            "Probe": LinearExtracellularLocations(n_electrodes=[16, 200], spacing=20.0)
+        },
+    )
+
+    response = client.post(
+        "/generated/create-extracellular-recording-array-scan-config-generate-grid",
+        json=json.loads(form.model_dump_json()),
+    )
+
+    # 211712 * 200 * 8e-6 = 339 GB of weights
+    body = assert_error_envelope(
+        response, status=422, reason="(211,712 cells, 200 electrodes) writes a weights file"
+    )
+    assert body["error_code"] == "INVALID_REQUEST"
+    assert [name for name, *_ in db_client.method_calls] == ["get_entity"]

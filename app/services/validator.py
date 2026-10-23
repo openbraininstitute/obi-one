@@ -5,6 +5,7 @@ operations intercepted, allowing semantic validation without creating resources.
 """
 
 import tempfile
+from collections.abc import Callable
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -13,7 +14,7 @@ import entitysdk
 
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
-from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.scan_generation import GridScanGenerationTask, ScanGenerationTask
 
 
 class _WriteInterceptingClient:
@@ -56,12 +57,14 @@ def run_grid_scan_validation(
     db_client: entitysdk.client.Client,
     *,
     execute_single_config_task: bool,
+    check_resources: Callable[[ScanGenerationTask, entitysdk.client.Client], None] | None = None,
 ) -> str | None:
     """Run the standard grid scan validation flow.
 
     This mirrors what the /generated/* endpoints do:
-    1. GridScanGenerationTask.execute() — always
-    2. run_tasks_for_generated_scan() — only if execute_single_config_task=True
+    1. check_resources() — if the config has one
+    2. GridScanGenerationTask.execute() — always
+    3. run_tasks_for_generated_scan() — only if execute_single_config_task=True
 
     Returns an error string or None if valid.
     """
@@ -74,6 +77,8 @@ def run_grid_scan_validation(
                 output_root=tdir,
                 coordinate_directory_option="ZERO_INDEX",
             )
+            if check_resources is not None:
+                check_resources(grid_scan, mock_client)  # ty:ignore[invalid-argument-type]
             grid_scan.execute(db_client=mock_client)  # ty:ignore[invalid-argument-type]
 
             if execute_single_config_task:
