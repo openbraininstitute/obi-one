@@ -1,148 +1,90 @@
-# Circuit morphology pack
+# Circuit morphology pack in OBI-One
 
-A pack holds the morphologies of a circuit's biophysical neurons in one binary file, ready for a viewer to draw: simplified, placed in the circuit and cut into chunks of space. It is written by `obi_one.scientific.library.morphology_pack`, whose `build` module takes a SONATA circuit on disk to a pack, and stored on the circuit as its `circuit_morphology_pack` asset, `circuit.mpack`, as `application/octet-stream`.
+A pack holds the morphologies of a circuit's biophysical neurons in one binary file, ready for a viewer to draw: simplified, placed in the circuit and cut into chunks of space. It is written by `obi_one.scientific.library.morphology_pack`, and stored on the circuit as its `circuit_morphology_pack` asset, `circuit.mpack`, as `application/octet-stream`.
+
+This page is how OBI-One builds and stores packs. The pack itself is documented beside its code, in [`obi_one/scientific/library/morphology_pack/docs/`](../../obi_one/scientific/library/morphology_pack/docs/README.md):
+
+- [the format](../../obi_one/scientific/library/morphology_pack/docs/format.md);
+- [what the browser's reader relies on](../../obi_one/scientific/library/morphology_pack/docs/reader-contract.md);
+- [how a pack is built](../../obi_one/scientific/library/morphology_pack/docs/architecture.md);
+- [the decisions](../../obi_one/scientific/library/morphology_pack/docs/adr/README.md);
+- [the alternatives weighed](../../obi_one/scientific/library/morphology_pack/docs/alternatives.md);
+- [the measurements](../../obi_one/scientific/library/morphology_pack/docs/performance.md).
 
 ## Where a pack is built
 
-A pack is one of a circuit's assets, built with the others by `generate_additional_circuit_assets`, last, so that the others are in when a job's time runs out while it builds. It is built when the circuit has none (one still uploading counts as none), or with `force`, and holds every level. A single-neuron circuit gets none: the viewer draws it from its morphology.
+A pack is one of a circuit's assets, built with the others by `generate_additional_circuit_assets`, last, so that the others are in when a job's time runs out while it builds.
+- It is built when the circuit has none, or with `force`. One still uploading counts as none.
+- It holds every level.
+- A single-neuron circuit gets none: the viewer draws it from its morphology.
 
-- **The circuit asset job**, which registration and customization launch once the circuit is validated, and `POST /declared/circuit/{circuit_id}/generate-assets` launches again. The endpoint launches nothing when the circuit has its compressed circuit, its connectivity matrices and, past single scale, its pack. Where the pack is the only asset missing, the job fetches only the circuit's config, its biophysical populations' nodes and their morphologies, with the node sets and the other populations' nodes.
-- **In the task that registers the circuit**, where its machine is enough: synapse parameterization, launched for at most 20 neurons; building a synaptome and EM synapse mapping, whose circuits are a single neuron, so no pack.
-- **Circuit extraction** registers its circuit on a machine sized for the extraction, so its launch adds a callback on the job's success, `POST /declared/task/callback/circuit-assets`, which launches the asset job for each circuit the task's activity generated that lacks one of the assets `generate-assets` checks for.
+It is built in three places:
 
-The job reads a circuit's files through the client's local store where it holds them, the public data mounted on the job's Fargate executors, and downloads the others.
+- **The circuit asset job.** Registration and customization launch it once the circuit is validated, and `POST /declared/circuit/{circuit_id}/generate-assets` launches it again.
+  - The endpoint launches nothing when the circuit has all of its compressed circuit, its connectivity matrices and, past single scale, its pack.
+  - Where the pack is the only asset missing, the job fetches only what the pack needs: the circuit's config, the node sets, the nodes, and the biophysical populations' morphologies.
+- **The task that registers the circuit,** where its machine is enough.
+  - Synapse parameterization, launched for at most 20 neurons, builds it there.
+  - Building a synaptome and EM synapse mapping make single-neuron circuits, so no pack.
+- **Circuit extraction's callback.** Extraction registers its circuit on a machine sized for the extraction, so its launch adds a callback on the job's success, `POST /declared/task/callback/circuit-assets`. The callback launches the asset job for each circuit the task's activity generated that lacks one of the assets `generate-assets` checks for.
 
-The job's machine follows the circuit's scale (`ASSET_GENERATION_RESOURCES`): 1 core and 4 GB up to a small circuit, 2 cores and 16 GB for a microcircuit, and 4 cores and 16 GB past it, each for an hour. 16 GB holds a pack of `MAX_SEGMENTS`, above the whole FlyWire brain's, on either. Registration computes the scale up to microcircuit from the neuron count, so a larger circuit gets the 4 cores only where it was registered with a larger `scale_override`.
+The job reads a circuit's files in this order:
+1. through the client's local store, where it holds them;
+2. from the public data mounted on the job's Fargate executors;
+3. by download, for the rest.
 
-A circuit without a biophysical population, or none of whose morphologies can be read, gets no pack, which is logged. So does a circuit whose levels come to more segments together than a pack may hold where it is built: the lesser of `MAX_SEGMENTS`, whatever the machine, and the memory the container leaves the build, its cgroup's limit (or the machine's memory) less what the process holds, `BASE_BYTES`, and `BYTES_A_WORKER` for each process the build runs over past two, at `BYTES_A_SEGMENT` a segment. The log says which of the two decided.
+`morphology_pack.staging.stage_morphology_pack_inputs` does the fetching. It stays in OBI-One when the pack package leaves it.
 
-A morphology that cannot be read is left out: a file that is not a morphology, or a name its container does not hold. Its cells are in the pack as somas with a radius of zero. So is a cell whose position or rotation is not a finite number.
+## The job's machine
 
-The morphologies are simplified, and the chunks encoded, over processes: one for each CPU the build may use, within its container's quota, and at most eight, past which the build's own work in the main process holds them up. The pack is the same to the byte on any number of them.
+The machine follows the circuit's scale, `ASSET_GENERATION_RESOURCES` in `obi_one/db_sdk/registration/circuit/launch_jobs.py`. Every job has an hour.
 
-## The format
-
-A pack is a header, an index and blocks, back to back. Numbers are little-endian.
-
-| Part | Content |
-| --- | --- |
-| Header, 12 bytes | `MPCK`, the format's version as uint16 (1), two spare bytes, the index's length in bytes as uint32 |
-| Index | JSON, deflated (zlib) |
-| Somas | x, y, z and radius of every cell as float32, in micrometres, deflated |
-| Chunks | A deflated block for every chunk of every level: the levels coarsest first, each level's chunks in the index's order |
-
-Offsets in the index count from the first byte after the index. Laid out coarsest first, a pack streamed in has the somas and every level's bases before the level itself. A reader finds each block by its offset only, so a pack laid out in another order reads alike.
-
-### Growing the format
-
-So that packs already written keep being read, and readers already deployed keep reading new packs:
-
-- Something new about a pack is an optional field of the index, its absence meaning it is not known: a reader does without it, as it did before the field was added.
-- A reader ignores the fields of the index it does not know.
-- Something too large for the index is a block of its own, which a field of the index finds by its offset and length, as `somas` finds the somas.
-- A field keeps its meaning; another meaning is another field.
-- The version goes up only for a change a reader of the version before would misread, such as a chunk's encoding or a unit; a reader refuses a version it does not know.
-
-### The index
-
-The index is the `Index` model of `obi_one.scientific.library.morphology_pack.codec`, with its fields spelled in camelCase.
-
-```json
-{
-  "layout": "space",
-  "gridUm": 0.025,
-  "radiusSteps": 16,
-  "bounds": [[0, -80000, 0], [46000, 1200, 120000]],
-  "populations": [
-    {
-      "name": "S1nonbarrel_neurons",
-      "cells": 10,
-      "boxes": {
-        "2": [[0, -80000, 0], [46000, -1000, 120000]],
-        "3": [[1000, -2000, 3000], [30000, 1200, 90000]]
-      }
-    }
-  ],
-  "somas": { "offset": 0, "bytes": 123 },
-  "levels": [
-    {
-      "toleranceUm": 0.125,
-      "pruneUm": 0.0,
-      "chunkSteps": 2000,
-      "segments": 151234,
-      "runs": 0,
-      "offset": 12123,
-      "base": 1,
-      "chunks": {
-        "box": [0, -3, 5, 0, -3, 6],
-        "bytes": [4100, 3900],
-        "segments": [77000, 74234],
-        "reach": [12, 0]
-      }
-    },
-    {
-      "toleranceUm": 0.25,
-      "pruneUm": 0.0,
-      "chunkSteps": 2000,
-      "segments": 98000,
-      "runs": 41,
-      "offset": 123,
-      "base": null,
-      "chunks": { "box": [0, -3, 5, 0, -3, 6], "bytes": [6100, 5900], "segments": [50000, 48000], "reach": [12, 0] }
-    }
-  ]
-}
-```
-
-- A position is a whole number of steps of `gridUm` micrometres, in the circuit's own frame. `bounds` holds every point of the first level, in steps.
-- A radius is `2 ** (step / radiusSteps)` micrometres.
-- A cell's number counts through `populations` in their order: the cells of the first population, then those of the second.
-- A population's `boxes` holds, for each section type its cells have (2 axon, 3 basal dendrite, 4 apical dendrite, as the morphologies give them), the box of its points of that type at the first level, in steps. A type it has no points of has no box. A viewer frames the cells it shows by the boxes of their populations and of the types it draws; a pack without `boxes` leaves it the whole pack's `bounds`.
-- A level drops the end branches shorter than `pruneUm`, then the points within `toleranceUm` of the path and of the diameter. Levels come finest first.
-- `base` is the level this one is read over: the next, coarser one, or `null` for a level read alone, the last.
-- A chunk is a cube of `chunkSteps` steps, the same at every level. `box` has three whole numbers a chunk: its corner is `box * chunkSteps`. `bytes`, `segments` and `reach` have one number a chunk, and a chunk's block starts where the one before it ends, the first at the level's `offset`.
-- `segments` counts the chunk's segments as read, and `runs` the level's runs, those of its own.
-- `reach` is how many steps the chunk's segments lie outside its cube at most, either end and any axis: a reader that culls by chunks grows each cube by it.
-
-### A chunk
-
-A level read over its base holds most of its segments as they follow the base's, and the rest as runs of its own. A segment of the base is followed where the finer level runs from its near point to its far point through points of its own: the inner points. The coarsest level, and any level read alone, holds runs only.
-
-A chunk's segments are, in this order:
-
-1. Those that follow the base's segments in the same box, in the order the base's chunk is read: for each base segment, the segments from its near point through each inner point to its far point, with its cell and type.
-2. Its runs. A run is a stretch of segments one after another along one unbranched polyline, all of them ending in the chunk. A segment belongs to the chunk its far point lies in, so a run's first point may lie outside its chunk.
-
-Nothing is cut at a chunk's wall, and a segment that follows a base segment may lie anywhere along it, outside the chunk: `reach` bounds both.
-
-A chunk's block, inflated, starts with four uint32: the base's segments in the box, the inner points, the runs, and the runs' segments. Streams of whole numbers follow.
-
-| Stream | A number for each | Signed |
+| Scale | Cores | Memory |
 | --- | --- | --- |
-| How many segments follow it: 0, or 1 and more | base segment | no |
-| Inner point: x, y, z and radius step, each against the chord's guess | inner point, four streams | yes |
-| Cell, as the difference from the run before | run | no |
-| Section type, as in SWC: 2 axon, 3 basal dendrite, 4 apical dendrite | run | no |
-| Length in segments | run | no |
-| How many runs back a run of its cell ends where it starts, or 0 | run | no |
-| First point: x, y, z against the chunk's corner, then the radius step | run with 0 just before, four streams | yes |
-| First point's radius step against the end of the run it refers to | run with more than 0 just before | yes |
-| Far point: x, y, z and radius step, each against the segment's near point, x, y and z less the guess from the step before | segment, four streams | yes |
+| single, pair, small | 1 | 4 GB |
+| microcircuit | 2 | 16 GB |
+| region, system, whole brain | 4 | 16 GB |
 
-A stream is one byte giving the width of its numbers in bytes, 1 to 4, then every number's lowest byte, then every number's next byte, and so on. A signed number is stored zigzag: `(n << 1) ^ (n >> 31)`.
+- **Why 16 GB is enough:** it holds a pack of `MAX_SEGMENTS` (300M segments, above the whole FlyWire brain's) on either two or four processes.
+- **Scale from registration:** registration computes the scale from the neuron count, up to microcircuit. A larger circuit gets the 4 cores only where it was registered with a larger `scale_override`.
 
-- A base segment followed by `k` segments has `k - 1` inner points, in order from its near point. The chord's guess of an inner point is `p + floor((q - p) / left)`, for each of x, y, z and radius step: `p` is the point before it (the base segment's near point, or the inner point before), `q` the base segment's far point, and `left` how many segments are still to come to `q`, the one it ends included.
-- A run that refers back starts at the x, y and z of the end of the run it refers to. Its radius step is that end's plus its own number.
-- A step's guess, after the first step of a run, is `floor((3 * s + 2) / 4)` of the step before it on x, y and z; the radius step has none.
+The build runs over one process a CPU the container allows, at most eight. The pack is the same to the byte on any number of processes.
 
-A block over 1 KB inflated is written as one zlib stream whose deflate blocks end at every byte plane, so each plane gets Huffman tables of its own; any inflater reads it as it reads a block deflated whole.
+## When a circuit gets no pack
 
-Runs are ordered by cell within a chunk. A segment's near point is the far point of the segment before it in its run, or the run's first point.
+Each case is logged. The circuit's viewer then shows its somas.
 
-### What is in it
+| Why | Log line |
+| --- | --- |
+| No biophysical population | `No morphology pack for circuit <id>: The circuit has no biophysical population` |
+| None of its morphologies can be read | `No morphology pack for circuit <id>: None of the circuit's morphologies could be read` |
+| Its levels come to more segments than the build may hold here | `No morphology pack for circuit <id>: The circuit's levels come to over the <n> segments a pack may hold here` |
+| A single-neuron circuit | `Circuit <id> is a single neuron — skipping circuit_morphology_pack` |
+| A pack already there, without `force` | `circuit_morphology_pack already present on circuit <id> — skipping` |
 
-- A neurite that leaves the soma starts with a segment from the soma's centre, as wide at both ends as the neurite's first traced point.
-- A soma is one sphere of NeuroM's soma radius: that of a single point, the mean distance of a contour's points from their centre, or the radius of the sphere with the area of a stack of cylinders.
-- Simplification is Ramer-Douglas-Peucker on x, y, z and twice the radius, section by section. It is the morphology viewer's measure, so a pack's finest level is what that viewer draws at the same tolerance.
-- The far level joins the sections that pruning leaves end to end before it is simplified.
-- A finer level follows a base segment wherever its own segments run along the base's path between the same two points: always where both levels prune alike, and over the far level wherever no branch along the way starts apart from its fork, in position or width.
+The segments a build may hold are the lesser of two limits:
+- `MAX_SEGMENTS`, whatever the machine;
+- what the container's memory leaves the build, as the package's README gives it.
+
+The log says which of the two decided, before the build starts:
+- `Morphology pack capped at <n> segments by <bytes> bytes of memory left`, where the memory decided;
+- `Morphology pack capped at <n> segments`, where `MAX_SEGMENTS` did.
+
+Some cells get only a soma, with a radius of zero. Each case logs a warning, and the pack is built with the rest:
+
+| Why | Warning |
+| --- | --- |
+| A morphology that cannot be read: a file that is not a morphology, or a name its container does not hold | `Morphology <name> left out: it could not be read` |
+| No finite position or rotation | `<n> cells of population <name> are somas alone: no finite position or rotation` |
+
+Each stage of a build logs its time as it ends: `Morphology pack: <n> morphologies read in <s> s`, then the levels simplified, the cells placed and the bytes packed.
+
+## Who may write the pack
+
+entitycore lets only members of a circuit's project add an asset to it, whether the circuit is public or not. OBI-One acts with the caller's token, so:
+
+- a pack is built where the circuit's owner's job runs, at registration or by `generate-assets`;
+- a viewer from another project cannot start a build for a public circuit;
+- removing an asset from a public circuit takes a service maintainer.
+
+A circuit registered before packs were built gets one when `generate-assets` is called for it by a member of its project.

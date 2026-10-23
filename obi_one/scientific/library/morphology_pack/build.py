@@ -1,6 +1,6 @@
 """A circuit's morphology pack, built from its files on disk.
 
-The format is specified in docs/internal/circuit-morphology-pack.md.
+The format is specified in docs/format.md beside this module.
 """
 
 import gc
