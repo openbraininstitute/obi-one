@@ -103,7 +103,7 @@ When registering a new **`TaskType`**:
 
 ## Code Conventions
 
-- Never add submodule re-exports in `obi_one/**/__init__.py`. Import from the defining module.
+- Never add imports in `obi_one/**/__init__.py`. Import from the defining module.
 - Before adding any new function/helper, search `obi_one/utils/`, `obi_one/db_sdk/`, `obi_one/scientific/library/`, and entitysdk (`Client` methods, `entitysdk.registration`). Reuse; do not duplicate. If reusable DB/registration logic is missing from entitysdk, flag it for entitysdk instead of building a parallel version in obi-one.
 - Put generic helpers (filesystem, format I/O, serialization, etc.) in `obi_one/utils/`; keep them task-agnostic.
 - Put database-related (entitysdk) helpers in `obi_one/db_sdk/`, not in task modules or `obi_one/utils/`.
