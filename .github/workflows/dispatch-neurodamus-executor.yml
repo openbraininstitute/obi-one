@@ -1,0 +1,78 @@
+name: Dispatch neurodamus executor publish
+
+# Runs after pin-release completes successfully on main. Separate so a
+# launch-system failure does not fail the pin or Docker/PyPI builds.
+#
+# Manual recovery: workflow_dispatch with the release tag.
+
+on:
+  workflow_run:
+    workflows: [pin-release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "obi-one calver release tag (e.g. 2026.10.19)"
+        required: true
+        type: string
+
+run-name: Dispatch neurodamus executor ${{ inputs.tag || github.event.workflow_run.display_title }}
+
+jobs:
+  dispatch:
+    # pin-release has two entry points: a thin release→dispatch job, then the real
+    # pin on main via workflow_dispatch. Only react to the latter when it succeeded.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Resolve release tag
+        id: tag
+        env:
+          MANUAL_TAG: ${{ inputs.tag }}
+          PIN_RUN_ID: ${{ github.event.workflow_run.id }}
+          PIN_DISPLAY_TITLE: ${{ github.event.workflow_run.display_title }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL_TAG:-}" ]; then
+            tag="${MANUAL_TAG}"
+          else
+            # run-name on pin-release is "pin-release <calver>"
+            tag="${PIN_DISPLAY_TITLE#pin-release }"
+            if [ -z "${tag}" ] || [ "${tag}" = "${PIN_DISPLAY_TITLE}" ]; then
+              echo "::error::Could not parse obi-one tag from pin run ${PIN_RUN_ID}: '${PIN_DISPLAY_TITLE}'"
+              exit 1
+            fi
+          fi
+          if ! [[ "${tag}" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "::error::Not a calver release tag: '${tag}'"
+            exit 1
+          fi
+          echo "value=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Create launch-system dispatch token
+        id: launch-system-dispatch
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.OBI_REPO_DISPATCHER_CLIENT_ID }}
+          private-key: ${{ secrets.OBI_REPO_DISPATCHER_PRIVATE_KEY }}
+          owner: openbraininstitute
+          repositories: launch-system
+          permission-actions: write
+
+      # launch-system: publish-neurodamus-runtime.yml (repository_dispatch neurodamus-executor-publish)
+      - name: Trigger launch-system neurodamus executor publish
+        env:
+          GH_TOKEN: ${{ steps.launch-system-dispatch.outputs.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/openbraininstitute/launch-system/dispatches \
+            -f event_type=neurodamus-executor-publish \
+            -f "client_payload[tag]=${RELEASE_TAG}"
+          echo "Dispatched neurodamus-executor-publish for obi-one ${RELEASE_TAG}"
