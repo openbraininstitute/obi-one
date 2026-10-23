@@ -36,7 +36,7 @@ on:
         required: true
         type: string
 
-run-name: pin-release ${{ github.event.release.tag_name || inputs.tag }}
+run-name: Pin release ${{ github.event.release.tag_name || inputs.tag }}
 
 env:
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
