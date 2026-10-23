@@ -11,12 +11,11 @@ from obi_one.scientific.library.map_em_synapses._defaults import (
     default_node_spec_for,
     sonata_config_for,
 )
+from obi_one.scientific.library.map_em_synapses.constants import STR_POST_NODE, STR_PRE_NODE
 from obi_one.scientific.library.map_em_synapses.map_synapse_locations import (
     map_afferents_to_spiny_morphology,
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
-    _STR_POST_NODE,
-    _STR_PRE_NODE,
     write_edges,
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
@@ -158,10 +157,10 @@ class EMSynapseMappingTask(Task):
                 mapped_subset = mapped_synapses_df.loc[mask]
 
                 pre_post = pandas.DataFrame(index=syn_subset.index)
-                pre_post[_STR_POST_NODE] = bio_node_id
+                pre_post[STR_POST_NODE] = bio_node_id
 
                 if is_int:
-                    pre_post[_STR_PRE_NODE] = (
+                    pre_post[STR_PRE_NODE] = (
                         syn_subset["pre_pt_root_id"].map(pt_root_to_bio_id).to_numpy()
                     )
                 else:
@@ -177,7 +176,7 @@ class EMSynapseMappingTask(Task):
 
         for idx, pp_df in enumerate(all_external_pre_post):
             if "pre_pt_root_id" in pp_df.columns:
-                pp_df[_STR_PRE_NODE] = (
+                pp_df[STR_PRE_NODE] = (
                     pp_df["pre_pt_root_id"].map(ext_pt_root_to_virtual_id).to_numpy()
                 )
                 all_external_pre_post[idx] = pp_df.drop(columns=["pre_pt_root_id"])

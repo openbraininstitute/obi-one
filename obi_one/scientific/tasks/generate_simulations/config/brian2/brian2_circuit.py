@@ -5,13 +5,11 @@ supported by the Brian2 simulator with point neuron models.
 """
 
 import logging
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_TIMESTAMPS_NAME,
@@ -21,6 +19,7 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_base import (
     Brian2SimulationScanConfig,
 )
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
@@ -42,8 +41,6 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
-
-Brian2CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
 class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
@@ -78,7 +75,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     class Initialize(Brian2SimulationScanConfig.Initialize):
         """Initialization parameters for a Brian2 circuit simulation."""
 
-        circuit: Brian2CircuitDiscriminator | list[Brian2CircuitDiscriminator] = Field(
+        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
             title="Circuit",
             description="Circuit to simulate.",
             json_schema_extra={

@@ -34,9 +34,7 @@ from obi_one.scientific.tasks.create_recording_array.process import (
     get_number_of_mpi_processes,
     run_bluerecording_write_weights,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
