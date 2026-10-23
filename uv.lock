@@ -218,7 +218,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.106"
+version = "2.6.110"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -237,9 +237,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/9e/f2d68a4c06caf96faafff14ffd9bfe50403d1916989938ad627637e53df8/bluecellulab-2.6.106.tar.gz", hash = "sha256:8f46f481839be548266564136327eb90b11d69f9920391323869d86b6e3509b2", size = 572282, upload-time = "2026-09-30T09:06:02.174Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/94/c16b273153885a9fa1a8d2f2d069748c6bc04ea9a9dbe14d8f6be0943f9a/bluecellulab-2.6.110.tar.gz", hash = "sha256:7202e412bab5c35ed7fff7d4c0ef0635c3f894fee97e6323f0b6c85d53e776c3", size = 597022, upload-time = "2026-10-23T14:32:26.369Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/c7/89c19e37fe93a29b5eb7eb7a5a22b43f3a1272a738ca8c1cabab292ef2c2/bluecellulab-2.6.106-py3-none-any.whl", hash = "sha256:e1ee69857008a13f6aeaf090a58d409e59e432fb95d6213c32d1c8d01ce533c3", size = 192493, upload-time = "2026-09-30T09:06:00.972Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/34/507cc1a04c49c72ab0bac208bf64e23fd55d4499eda3721e68eba194f920/bluecellulab-2.6.110-py3-none-any.whl", hash = "sha256:ea9037367f45e08b59b41e25df5eccac7cab179fc92004226ae67b6bef293672", size = 221575, upload-time = "2026-10-23T14:32:24.834Z" },
 ]
 
 [[package]]
@@ -2470,6 +2470,9 @@ service = [
     { name = "starlette" },
     { name = "uvicorn" },
 ]
+simplification = [
+    { name = "sonata-simplify", extra = ["simulation"] },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -2533,11 +2536,12 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
+    { name = "sonata-simplify", extras = ["simulation"], marker = "extra == 'simplification'", specifier = ">=0.2.5", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["emodel", "connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3429,6 +3433,33 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1f/ea/49c993d6dfdd7338c9b1000a0f36817ed7ec84577ae2e52f890d1a4ff909/smmap-5.0.3.tar.gz", hash = "sha256:4d9debb8b99007ae47165abc08670bd74cb74b5227dda7f643eccc4e9eb5642c", size = 22506, upload-time = "2026-03-09T03:43:26.1Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl", hash = "sha256:c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f", size = 24390, upload-time = "2026-03-09T03:43:24.361Z" },
+]
+
+[[package]]
+name = "sonata-simplify"
+version = "0.2.5"
+source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
+dependencies = [
+    { name = "click" },
+    { name = "h5py" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.5/sonata_simplify-0.2.5.tar.gz", hash = "sha512:0df3e2b1179bd3088a46fe9e30973f7ac2b70de19fc92352cfbb75c2645c4343acb45a216e49b8b379f8680c1390220155106216203008822ce33bd2e4b66a10", size = 2650567, upload-time = "2026-10-21T12:18:40.831Z" }
+wheels = [
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.5/sonata_simplify-0.2.5-py3-none-any.whl", hash = "sha512:5ef5f805e974afb7d2c18478a0c99ee54a2550a43bff28392c91f6a2220bf2a938c7d4ca15dc7ff259831dd5efffb604fdfd4e0a0810e3385d15615cd0ec651e", size = 381843, upload-time = "2026-10-21T12:18:40.401Z" },
+]
+
+[package.optional-dependencies]
+simulation = [
+    { name = "bluecellulab" },
+    { name = "bluepysnap" },
+    { name = "efel" },
+    { name = "libsonata" },
+    { name = "matplotlib" },
+    { name = "neuron" },
 ]
 
 [[package]]

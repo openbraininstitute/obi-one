@@ -65,6 +65,10 @@ _BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         f"{_BLOCK_REFERENCES}.synaptic_model_assigner",
         "SynapticModelAssignerReference",
     ),
+    "SimplificationAlgorithmReference": (
+        f"{_BLOCK_REFERENCES}.simplification_algorithms",
+        "SimplificationAlgorithmReference",
+    ),
     "ExtracellularLocationsReference": (
         f"{_BLOCK_REFERENCES}.extracellular_locations",
         "ExtracellularLocationsReference",
