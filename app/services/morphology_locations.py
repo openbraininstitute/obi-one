@@ -15,6 +15,18 @@ from app.services.circuit_visualization import (
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.compartment_sets import sample_morphology_locations
 
+# Generation cost grows with the morphology's section count (the per-call path-distance setup
+# scales with it), independent of how many locations are requested. Previews run synchronously
+# in a single-worker service with no request timeout, so a very large morphology would hold the
+# only process until it finishes. This bound refuses those with a clear message instead of
+# occupying the process. The threshold covers the morphology sizes seen in practice while
+# keeping the slowest allowed preview close to the latency we have validated as acceptable.
+MAX_PREVIEW_SECTIONS = 7000
+
+
+class MorphologyTooLargeForPreviewError(Exception):
+    """Raised when a morphology is too large to preview synchronously."""
+
 
 def resolve_morphology(client: Client, entity_id: UUID) -> morphio.Morphology:
     """Load the single morphology an entity identifies.
@@ -71,10 +83,23 @@ def preview_morphology_locations(
         Propagates ``TypeError`` from ``enforce_no_multi_param`` if any parameter is still a
         sweep list. That check runs before the morphology is resolved, so an unusable request
         costs no asset download.
+
+    Raises:
+        MorphologyTooLargeForPreviewError: If the morphology has more than
+            ``MAX_PREVIEW_SECTIONS`` sections, where synchronous generation is too slow.
     """
     locations_block.enforce_no_multi_param()
 
     morphology = resolve_morphology(client, entity_id)
+
+    n_sections = len(morphology.sections)
+    if n_sections > MAX_PREVIEW_SECTIONS:
+        msg = (
+            f"Morphology has {n_sections} sections, above the preview limit of "
+            f"{MAX_PREVIEW_SECTIONS}. Previews are not available for morphologies this large."
+        )
+        raise MorphologyTooLargeForPreviewError(msg)
+
     return sample_morphology_locations(
         locations_block=locations_block,
         morphology=morphology,

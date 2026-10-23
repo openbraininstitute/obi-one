@@ -12,7 +12,10 @@ from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
 from app.logger import L
 from app.schemas.morphology_locations import MorphologyLocation, MorphologyLocationsPreview
-from app.services.morphology_locations import preview_morphology_locations
+from app.services.morphology_locations import (
+    MorphologyTooLargeForPreviewError,
+    preview_morphology_locations,
+)
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationUnion,
@@ -58,6 +61,14 @@ def morphology_locations_preview_endpoint(
     L.info("morphology_locations_preview_endpoint")
     try:
         rows = preview_morphology_locations(db_client, entity_id, morphology_locations)
+    except MorphologyTooLargeForPreviewError as exc:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail={
+                "code": ApiErrorCode.INVALID_REQUEST,
+                "detail": str(exc),
+            },
+        ) from exc
     except TypeError as exc:
         # points_on rejects parameter sweeps; a preview needs one resolved value per parameter.
         raise HTTPException(

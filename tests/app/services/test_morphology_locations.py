@@ -7,6 +7,8 @@ from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, Circuit, MEModel
 
 from app.services.morphology_locations import (
+    MAX_PREVIEW_SECTIONS,
+    MorphologyTooLargeForPreviewError,
     preview_morphology_locations,
     resolve_morphology,
 )
@@ -196,3 +198,37 @@ class TestPreviewMorphologyLocations:
             preview_morphology_locations(MagicMock(entitysdk.client.Client), uuid4(), block)
 
         mock_resolve.assert_not_called()
+
+
+class TestPreviewSizeGate:
+    @staticmethod
+    def _preview_with_sections(n_sections, block):
+        morphology = MagicMock()
+        morphology.sections = [MagicMock()] * n_sections
+        with patch(f"{SERVICE_MODULE}.resolve_morphology", return_value=morphology):
+            return preview_morphology_locations(MagicMock(entitysdk.client.Client), uuid4(), block)
+
+    def test_morphology_over_the_limit_is_refused_before_generation(self):
+        block = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=5, section_types=(3, 4)
+        )
+        with (
+            patch(f"{SERVICE_MODULE}.sample_morphology_locations") as mock_sample,
+            pytest.raises(MorphologyTooLargeForPreviewError, match="above the preview limit"),
+        ):
+            self._preview_with_sections(MAX_PREVIEW_SECTIONS + 1, block)
+
+        # The expensive generation must not run for a refused morphology.
+        mock_sample.assert_not_called()
+
+    def test_morphology_at_the_limit_is_allowed(self):
+        block = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=5, section_types=(3, 4)
+        )
+        with patch(
+            f"{SERVICE_MODULE}.sample_morphology_locations", return_value=[(1, 0.5)]
+        ) as mock_sample:
+            result = self._preview_with_sections(MAX_PREVIEW_SECTIONS, block)
+
+        assert result == [(1, 0.5)]
+        mock_sample.assert_called_once()
