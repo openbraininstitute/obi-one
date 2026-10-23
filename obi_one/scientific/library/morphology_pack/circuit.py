@@ -1,7 +1,7 @@
 """From a SONATA circuit to a pack: its populations, their morphologies, and every cell placed."""
 
 import logging
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -145,30 +145,37 @@ def read_morphology(key: MorphologyKey, collection: morphio.Collection) -> Morph
 
 
 def simplified_all(
-    morphologies: Mapping[MorphologyKey, Morphology],
+    morphologies: dict[MorphologyKey, Morphology],
     levels: tuple[Level, ...],
     processes: Processes,
 ) -> Iterator[tuple[MorphologyKey, MorphologyLevels]]:
-    """Every morphology simplified to `levels`, over `processes`, in order, as each is done."""
+    """Every morphology simplified to `levels`, over `processes`, in order, as each is done.
+    Each is taken out of `morphologies` as it is sent to be simplified.
+    """
+    keys = list(morphologies)
     each = processes.map(
-        partial(simplified, levels=levels), morphologies.values(), per_job=MORPHOLOGIES_A_JOB
+        partial(simplified, levels=levels),
+        (morphologies.pop(key) for key in keys),
+        per_job=MORPHOLOGIES_A_JOB,
     )
-    return zip(morphologies, each, strict=True)
+    return zip(keys, each, strict=True)
 
 
 def place_cells(
     populations: Sequence[Population],
     levels: Sequence[Level],
-    shapes: Mapping[MorphologyKey, MorphologyLevels],
+    shapes: dict[MorphologyKey, MorphologyLevels],
 ) -> PackWriter:
     """A writer holding every cell of the populations, numbered through them in their order.
 
-    A cell is placed as a soma alone where its morphology is not in `shapes`, or where its
-    position or rotation is not a finite number.
+    The cells are placed a morphology at a time, and each morphology is taken out of `shapes`
+    once its cells are placed. A cell is placed as a soma alone where its morphology is not in
+    `shapes`, or where its position or rotation is not a finite number.
     """
     writer = PackWriter(
         [(population.name, len(population.morphologies)) for population in populations], levels
     )
+    waiting: dict[MorphologyKey, list[tuple[int, Population, int]]] = {}
     cell = 0
     for population in populations:
         placeable = population.placeable()
@@ -178,17 +185,16 @@ def place_cells(
                 np.count_nonzero(~placeable),
                 population.name,
             )
-        for key, rotation, position, finite in zip(
-            population.morphology_keys(),
-            population.rotations,
-            population.positions,
-            placeable,
-            strict=True,
+        for row, (key, finite) in enumerate(
+            zip(population.morphology_keys(), placeable, strict=True)
         ):
-            shape = shapes.get(key) if finite else None
-            if shape is None:
-                writer.add_soma(cell, position)
+            if finite and key in shapes:
+                waiting.setdefault(key, []).append((cell, population, row))
             else:
-                writer.add_cell(cell, shape, rotation, position)
+                writer.add_soma(cell, population.positions[row])
             cell += 1
+    for key, cells in waiting.items():
+        shape = shapes.pop(key)
+        for cell, population, row in cells:
+            writer.add_cell(cell, shape, population.rotations[row], population.positions[row])
     return writer

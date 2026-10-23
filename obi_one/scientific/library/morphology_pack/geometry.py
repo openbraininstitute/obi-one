@@ -218,7 +218,7 @@ def finer_along(
     """
     order, opens, keep = finer
     fine = order[keep]
-    place = np.full(len(morphology.points), -1)
+    place = np.full(len(morphology.points), -1, dtype=np.int32)
     place[fine] = np.arange(len(fine))
     along = place[path]
     there = along >= 0
@@ -256,7 +256,7 @@ def nesting(morphology: Morphology, finer: Kept, coarser: Kept) -> Nesting:
     inside = np.concatenate([[0], np.cumsum(there)])
     followed = there[near] & there[at] & (broken[at + 1] == broken[near + 1])
     near, at = near[followed], at[followed]
-    counts = np.zeros(int(coarser[2].sum()), dtype=np.int64)
+    counts = np.zeros(int(coarser[2].sum()), dtype=np.int32)
     counts[far[followed]] = inside[at + 1] - inside[near + 1]
     on = np.zeros(len(along), dtype=bool)
     on[spans(near + 1, at - near)] = True

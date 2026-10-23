@@ -372,6 +372,17 @@ class TestWriter:
         same = packs[0] == packs[1]
         assert same
 
+    def test_cells_added_in_any_order_write_the_same_pack(self):
+        shapes = simplified(load_with_a_branch_apart(), LEVELS)
+        packs = []
+        for order in ([0, 1, 2], [2, 0, 1]):
+            writer = PackWriter([("only", len(PLACES))], LEVELS, chunk_um=7.0)
+            for cell in order:
+                writer.add_cell(cell, shapes, *PLACES[cell])
+            packs.append(writer.pack())
+        same = packs[0] == packs[1]
+        assert same
+
     def test_a_writer_packs_once(self):
         writer = PackWriter([("only", 1)], [FINEST])
         writer.pack()

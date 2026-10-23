@@ -110,6 +110,13 @@ class TestPack:
         assert set(pack.levels[0].cells) == set(range(20))
         np.testing.assert_allclose(pack.somas[10:, :3], pack.somas[:10, :3] + 5000.0, atol=1e-3)
 
+    def test_placing_takes_each_shape_out_once_its_cells_are_placed(self):
+        population = population_of(CONTAINER_CIRCUIT, CONTAINER, "h5")
+        shapes = shapes_of(population)
+        writer = place_cells([population], [FINEST], shapes)
+        assert not shapes
+        assert set(read_pack(writer.pack()).levels[0].cells) == set(range(10))
+
     def test_a_cell_without_a_shape_is_a_soma_alone(self):
         population = population_of(FOLDER_CIRCUIT, FOLDER, "swc")
         shapes = shapes_of(population)

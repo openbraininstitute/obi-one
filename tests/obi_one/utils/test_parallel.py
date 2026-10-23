@@ -1,4 +1,6 @@
+import pickle  # ruff: ignore[suspicious-pickle-import]
 import sys
+import threading
 
 import pytest
 
@@ -36,13 +38,37 @@ class TestAvailableCpus:
         assert available_cpus() == 8
 
 
+UNPICKLED_IN: list[int] = []
+
+
+def note_the_thread() -> None:
+    UNPICKLED_IN.append(threading.get_ident())
+
+
+class NotesItsThread:
+    """Notes the thread it is unpickled in."""
+
+    def __reduce__(self):
+        return note_the_thread, ()
+
+
+def notes_its_thread(_) -> NotesItsThread:
+    return NotesItsThread()
+
+
 class TestProcesses:
     def test_results_come_in_the_order_of_the_work(self):
         with Processes(2) as processes:
             assert list(processes.map(abs, range(-50, 0), per_job=3)) == list(range(50, 0, -1))
 
+    def test_results_are_unpickled_in_the_callers_thread(self):
+        UNPICKLED_IN.clear()
+        with Processes(2) as processes:
+            list(processes.map(notes_its_thread, range(4)))
+        assert [threading.get_ident()] * 4 == UNPICKLED_IN
+
     def test_a_job_hands_back_what_it_freed(self, monkeypatch):
         calls = []
         monkeypatch.setattr(memory, "malloc_trim", lambda: calls.append)
-        assert each(abs, [-1, -2]) == [1, 2]
+        assert pickle.loads(each(abs, [-1, -2])) == [1, 2]  # ruff: ignore[suspicious-pickle-usage]
         assert calls == [0]

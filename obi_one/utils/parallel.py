@@ -2,6 +2,7 @@
 
 import multiprocessing
 import os
+import pickle  # ruff: ignore[suspicious-pickle-import]
 import sys
 import threading
 from collections import deque
@@ -48,9 +49,9 @@ def available_cpus() -> int:
     return cpus if quota is None else min(cpus, quota)
 
 
-def each[T, R](function: Callable[[T], R], items: Iterable[T]) -> list[R]:
-    """`function` of each of `items`, then what it freed handed back to the system."""
-    results = [function(item) for item in items]
+def each[T, R](function: Callable[[T], R], items: Iterable[T]) -> bytes:
+    """`function` of each of `items`, pickled, then what it freed handed back to the system."""
+    results = pickle.dumps([function(item) for item in items], protocol=pickle.HIGHEST_PROTOCOL)
     hand_back_freed()
     return results
 
@@ -95,19 +96,23 @@ class Processes:
     ) -> Iterator[R]:
         """`function` of each of `items`, in order, `per_job` items a job. Only `AHEAD` jobs a
         process are held at once, and each process hands back what a job freed.
+
+        Results, pickled by the processes, are unpickled in the caller's thread, not the pool's:
+        glibc keeps each thread's allocations in an arena of its own, and what the caller frees
+        can only be reused within the caller's.
         """
         if self.pool is None:
             yield from map(function, items)
             return
         job = partial(each, function)
-        sent: deque[Future[list[R]]] = deque()
+        sent: deque[Future[bytes]] = deque()
         try:
             for batch in batched(items, per_job):
                 sent.append(self.pool.submit(job, batch))
                 if len(sent) >= AHEAD * self.workers:
-                    yield from sent.popleft().result()
+                    yield from pickle.loads(sent.popleft().result())  # ruff: ignore[suspicious-pickle-usage]
             while sent:
-                yield from sent.popleft().result()
+                yield from pickle.loads(sent.popleft().result())  # ruff: ignore[suspicious-pickle-usage]
         finally:
             for future in sent:
                 future.cancel()

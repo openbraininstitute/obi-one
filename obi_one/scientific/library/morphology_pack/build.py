@@ -112,7 +112,8 @@ def every_level_within(
     processes: Processes,
 ) -> dict[MorphologyKey, MorphologyLevels]:
     """Every morphology at each of `LEVELS`, which come to at most `max_segments` together:
-    the build stops at the first morphology past them.
+    the build stops at the first morphology past them. Each is taken out of `morphologies` as
+    it is simplified.
     """
     library = {}
     segments = 0
@@ -146,10 +147,10 @@ def build_morphology_pack(
         stages.done("%d morphologies read", len(morphologies))
         shapes = every_level_within(morphologies, cells, max_segments, processes)
         stages.done("%d levels simplified", len(LEVELS))
-        del morphologies
         hand_back_freed()
         writer = place_cells(populations, LEVELS, shapes)
         del shapes
+        hand_back_freed()
         stages.done("%d cells placed", sum(cells.values()))
         pack = writer.pack(processes)
     stages.done("%d bytes packed", len(pack))

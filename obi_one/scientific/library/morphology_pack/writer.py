@@ -26,7 +26,7 @@ from obi_one.scientific.library.morphology_pack.geometry import (
     Polylines,
     spans,
 )
-from obi_one.utils.memory import malloc_trim
+from obi_one.utils.memory import hand_back_freed
 from obi_one.utils.parallel import ALONE, Processes
 
 CHUNK_UM = 50.0
@@ -34,6 +34,8 @@ MAX_CHUNKS = 4096
 CHUNKS_A_JOB = 8
 # Chunk boxes of cells, a row a point, gathered before they are made distinct.
 BOX_ROWS_AT_ONCE = 1 << 20
+# Coarser segments whose followers are gathered at once.
+FOLLOWED_AT_ONCE = 1 << 18
 NONE = np.zeros(0, dtype=np.int64)
 NO_POINTS = np.zeros((0, 4), dtype=np.int32)
 NO_ENDS = np.zeros((0, 3), dtype=np.int32)
@@ -47,7 +49,8 @@ class Points:
     """The points of a level, every cell's: a row a point.
 
     `counts` gives how many of the finer level's segments follow the segment each point ends,
-    and `follows` the points of this level that end the segments following the coarser level's.
+    empty at the finest level, and `follows` the points of this level that end the segments
+    following the coarser level's.
     """
 
     values: np.ndarray
@@ -81,7 +84,7 @@ def distinct_rows(rows: np.ndarray) -> np.ndarray:
 @dataclass
 class Placed:
     """The cells of one level, placed on the grid. Each list but `boxes` and `ends` has an entry
-    a cell.
+    a cell, in the order the cells were added.
 
     `boxes` has the chunks of side `chunk_steps` that the cells' segments end in, once for each
     batch of cells, and `ends` those of the cells since, a row a segment.
@@ -127,20 +130,29 @@ class Placed:
         return [*self.boxes, distinct_rows(np.concatenate([NO_ENDS, *self.ends]))]
 
     def joined(self) -> Points:
+        """The level's points, cell by cell in the cells' numbers' order. Each cell's `values`
+        are let go of as they are copied, so that they are not held twice.
+        """
         if not self.values:
             return Points(NO_POINTS, NONE.astype(bool), NONE, NONE, NONE, NONE)
-        points = [len(opens) for opens in self.opens]
+        order = np.argsort(self.cell, kind="stable").tolist()
+        points = np.array([len(self.opens[i]) for i in order])
+        firsts = (np.cumsum(points) - points).tolist()
+        values = np.empty((int(points.sum()), 4), dtype=np.int32)
         follows = np.empty(sum(map(len, self.follows)), dtype=np.int32)
         at = 0
-        for first, cell_follows in zip(np.cumsum(points) - points, self.follows, strict=True):
+        for i, first in zip(order, firsts, strict=True):
+            values[first : first + len(self.values[i])] = self.values[i]
+            self.values[i] = NO_POINTS
+            cell_follows = self.follows[i]
             follows[at : at + len(cell_follows)] = cell_follows + first
             at += len(cell_follows)
         return Points(
-            np.concatenate(self.values),
-            np.concatenate(self.opens),
-            np.concatenate(self.types),
-            np.repeat(np.array(self.cell, dtype=np.int32), points),
-            np.concatenate(self.counts, dtype=np.int32),
+            values,
+            np.concatenate([self.opens[i] for i in order]),
+            np.concatenate([self.types[i] for i in order]),
+            np.repeat(np.array(self.cell, dtype=np.int32)[order], points),
+            np.concatenate([self.counts[i] for i in order], dtype=np.int32),
             follows,
         )
 
@@ -300,12 +312,18 @@ class Followers:
 
 def followers(points: Points, coarser: Read) -> Followers:
     counts = coarser.counts[coarser.order]
-    first = (np.cumsum(coarser.counts, dtype=np.int32) - coarser.counts)[coarser.order]
+    first = np.cumsum(coarser.counts, dtype=np.int32)
+    first -= coarser.counts
+    first = first[coarser.order]
+    far = np.empty(int(counts.sum()), dtype=np.int32)
+    # a batch at a time: the finest level's followers are the most held at once
+    at = 0
+    for begin in range(0, len(counts), FOLLOWED_AT_ONCE):
+        part = slice(begin, begin + FOLLOWED_AT_ONCE)
+        gathered = points.follows[spans(first[part], counts[part])]
+        far[at : at + len(gathered)] = gathered
+        at += len(gathered)
     ends = np.cumsum(counts, dtype=np.int32)
-    # spans in 32 bits, made in place: the finest level's followers are the most held at once
-    at = np.arange(int(counts.sum()), dtype=np.int32)
-    at += np.repeat(first - (ends - counts), counts)
-    far = points.follows[at]
     return Followers(far, counts, np.concatenate([[0], ends])[coarser.edges])
 
 
@@ -505,8 +523,7 @@ class PackWriter:
         if len(nestings) != len(shapes) - 1:
             msg = "A morphology's nestings at odds with its levels"
             raise ValueError(msg)
-        none = np.broadcast_to(np.int32(0), len(shapes[0].opens))
-        counts = [none, *(n.counts for n in nestings)]
+        counts = [NONE, *(n.counts for n in nestings)]
         follows = [*(n.follows for n in nestings), NONE]
         for placed, shape, count, follow in zip(self.placed, shapes, counts, follows, strict=True):
             placed.add(cell, shape, rotation, position, count, follow)
@@ -521,7 +538,8 @@ class PackWriter:
         A writer packs once. The coarsest level is packed first, and written first after the
         somas, so that a reader streaming the pack has the base early; each level's cells are
         joined only when it comes to be packed, and its points let go of once the finer level
-        is packed over it; what each level frees is handed back to the system, where glibc can.
+        is packed over it; what joining a level and packing it free is handed back to the
+        system, where glibc can.
         """
         if not self.placed:
             msg = "A writer packs once"
@@ -532,9 +550,9 @@ class PackWriter:
         offset = len(blocks[0])
         entries: list[LevelEntry] = []
         coarser = Read(NONE, NONE, np.zeros(1, dtype=np.int64), NONE)
-        trim = malloc_trim()
         while placed:
             points = placed.pop().joined()
+            hand_back_freed()
             i = len(placed)
             if i == 0:
                 typed = population_boxes(points, [count for _, count in self.populations])
@@ -565,8 +583,7 @@ class PackWriter:
             offset += sum(map(len, packed.blocks))
             blocks += packed.blocks
             del packed
-            if trim is not None:
-                trim(0)
+            hand_back_freed()
         index = Index(
             bounds=bounds_of(typed),
             populations=[
