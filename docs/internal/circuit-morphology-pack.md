@@ -12,7 +12,7 @@ A pack is one of a circuit's assets, built with the others by `generate_addition
 
 The job reads a circuit's files through the client's local store where it holds them, the public data mounted on the job's Fargate executors, and downloads the others.
 
-The job's machine follows the circuit's scale (`ASSET_GENERATION_RESOURCES`): 1 core and 4 GB up to a small circuit, 2 cores and 16 GB for a microcircuit, and 4 cores and 30 GB past it, each for an hour, enough for the whole FlyWire brain's pack. Registration computes the scale up to microcircuit from the neuron count, so a larger circuit gets the large machine only where it was registered with a larger `scale_override`.
+The job's machine follows the circuit's scale (`ASSET_GENERATION_RESOURCES`): 1 core and 4 GB up to a small circuit, 2 cores and 16 GB for a microcircuit, and 4 cores and 16 GB past it, each for an hour. 16 GB holds a pack of `MAX_SEGMENTS`, above the whole FlyWire brain's, on either. Registration computes the scale up to microcircuit from the neuron count, so a larger circuit gets the 4 cores only where it was registered with a larger `scale_override`.
 
 A circuit without a biophysical population, or none of whose morphologies can be read, gets no pack, which is logged. So does a circuit whose levels come to more segments together than a pack may hold where it is built: the lesser of `MAX_SEGMENTS`, whatever the machine, and the memory the container leaves the build, its cgroup's limit (or the machine's memory) less what the process holds, `BASE_BYTES`, and `BYTES_A_WORKER` for each process the build runs over past two, at `BYTES_A_SEGMENT` a segment. The log says which of the two decided.
 

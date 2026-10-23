@@ -180,7 +180,7 @@ class TestSubmitCircuitJobs:
             (CircuitScale.pair, 1, 4),
             (CircuitScale.small, 1, 4),
             (CircuitScale.microcircuit, 2, 16),
-            (CircuitScale.whole_brain, 4, 30),
+            (CircuitScale.whole_brain, 4, 16),
             (None, 2, 16),
         ],
     )
