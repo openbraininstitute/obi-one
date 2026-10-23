@@ -315,13 +315,13 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.circuit_simplification: TaskSpec(
-        task_ref=(f"{_TASKS}.circuit_simplification", "CircuitSimplificationTask"),
+        task_ref=(f"{_TASKS}.circuit_simplification.task", "CircuitSimplificationTask"),
         single_config_ref=(
-            f"{_TASKS}.circuit_simplification",
+            f"{_TASKS}.circuit_simplification.task",
             "CircuitSimplificationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.circuit_simplification",
+            f"{_TASKS}.circuit_simplification.task",
             "CircuitSimplificationScanConfig",
         ),
         asset_label=AssetLabel.task_config,

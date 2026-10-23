@@ -23,7 +23,7 @@ from app.services.resource_estimation.circuit_simplification import (
 from app.services.task import estimate_task_resources
 from app.types import TaskType
 from obi_one.core.info import Info
-from obi_one.scientific.blocks.simplification_algorithms import (
+from obi_one.scientific.blocks.simplification_algorithms.models import (
     ALGORITHM_BLOCK_CLASSES,
     SingleCompartmentAlgorithm,
 )

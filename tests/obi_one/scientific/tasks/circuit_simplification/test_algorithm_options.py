@@ -12,15 +12,17 @@ from app.services.resource_estimation.circuit_simplification import (
 )
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
-from obi_one.scientific.blocks.simplification_algorithms import (
-    ALGORITHM_BLOCK_CLASSES,
+from obi_one.scientific.blocks.simplification_algorithms import metadata
+from obi_one.scientific.blocks.simplification_algorithms.metadata import (
     ALGORITHM_EXPORT_DESCRIPTIONS,
     ALGORITHM_EXPORT_MAP,
+    algorithm_supports_node_selection,
+)
+from obi_one.scientific.blocks.simplification_algorithms.models import (
+    ALGORITHM_BLOCK_CLASSES,
     LifNestAlgorithm,
     NeuronReduceAlgorithm,
     SingleCompartmentAlgorithm,
-    algorithm_supports_node_selection,
-    metadata,
 )
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.task import (

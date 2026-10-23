@@ -1,7 +1,7 @@
 import pytest
 
 from obi_one.core.info import Info
-from obi_one.scientific.blocks.simplification_algorithms import (
+from obi_one.scientific.blocks.simplification_algorithms.models import (
     AdexNestAlgorithm,
     LifNestAlgorithm,
     SingleCompartmentAlgorithm,
