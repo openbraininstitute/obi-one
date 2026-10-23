@@ -1,7 +1,6 @@
 name: Dispatch neurodamus executor publish
 
-# Runs after pin-release completes successfully on main. Separate so a
-# launch-system failure does not fail the pin or Docker/PyPI builds.
+# Runs after pin-release completes successfully on main. Separate so a launch-system failure does not fail the pin or Docker/PyPI builds.
 #
 # Manual recovery: workflow_dispatch with the release tag.
 
@@ -20,12 +19,8 @@ run-name: Dispatch neurodamus executor ${{ inputs.tag || github.event.workflow_r
 
 jobs:
   dispatch:
-    # pin-release has two entry points: a thin release→dispatch job, then the real
-    # pin on main via workflow_dispatch. Only react to the latter when it succeeded.
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'workflow_dispatch')
+    # pin-release has two entry points: a thin release→dispatch job, then the real pin on main via workflow_dispatch. Only react to the latter when it succeeded.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       actions: read
