@@ -32,17 +32,15 @@ tag (see [obi-one PR #1120](https://github.com/openbraininstitute/obi-one/pull/1
 
 ## GitHub App (obi-one repository)
 
-The **obi repo dispatcher** GitHub App must be **installed on `openbraininstitute/launch-system`**
-with permission to run workflows (`Actions: Read and write` is enough for `repository_dispatch`).
-
-Configure in obi-one:
+The **obi repo dispatcher** GitHub App is **installed on `openbraininstitute/obi-one`**.
+Credentials and config live in that repo:
 
 | Setting | Name |
 |---------|------|
 | Repository variable | `OBI_REPO_DISPATCHER_CLIENT_ID` |
 | Repository secret | `OBI_REPO_DISPATCHER_PRIVATE_KEY` |
 
-`dispatch-neurodamus-executor.yml` mints a short-lived installation token via
-`actions/create-github-app-token` and calls
-`repos/openbraininstitute/launch-system/dispatches`. The default obi-one `GITHUB_TOKEN`
-cannot dispatch into private launch-system.
+`dispatch-neurodamus-executor.yml` mints a short-lived installation token (scoped to
+`launch-system`, `permission-actions: write`) via `actions/create-github-app-token` and
+posts `repos/openbraininstitute/launch-system/dispatches`. The default obi-one
+`GITHUB_TOKEN` cannot dispatch into private launch-system.
