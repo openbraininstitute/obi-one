@@ -77,3 +77,9 @@ class TestMemoryLimit:
         held = SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=rss))
         monkeypatch.setattr(memory.psutil, "Process", lambda: held)
         assert memory_left() == left
+
+    def test_what_is_left_under_a_limit_given(self, cgroup, monkeypatch):
+        cgroup.v2.write_text(str(2**30))
+        held = SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=2**28))
+        monkeypatch.setattr(memory.psutil, "Process", lambda: held)
+        assert memory_left(2**29) == 2**29 - 2**28

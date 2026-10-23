@@ -18,8 +18,10 @@ VALIDATION_IMAGE_TYPE = "python_3_12_openmpi5_neuron9_neurodamus"
 # Fargate, whose executors mount the public data the job's client reads in place.
 ASSET_GENERATION_PLACEMENTS = {"cell_a": "fargate", "cell_b": "azure_container_apps"}
 # The asset job's cores and memory (GB) for each circuit scale, among the launch-system's
-# combinations. Past a microcircuit the morphology pack decides the memory: about 100 bytes a
-# segment, so 30 GB holds FlyWire's whole brain (about 255M segments).
+# combinations. Past a microcircuit the morphology pack decides the memory: 400 MB on two
+# processes, 128 MB each past two, and 50 bytes a segment, beyond what the process holds, so 16 GB
+# holds about the 300M segments a pack may hold at most, above FlyWire's whole brain, and 30 GB
+# all of them.
 ASSET_GENERATION_RESOURCES = {
     CircuitScale.single: (1, 4),
     CircuitScale.pair: (1, 4),

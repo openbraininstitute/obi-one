@@ -113,14 +113,40 @@ class TestNoPack:
 class TestSegmentCap:
     def test_the_fixed_cap_where_memory_holds_more(self, monkeypatch, caplog):
         monkeypatch.setattr(
-            build, "memory_left", lambda: build.MAX_SEGMENTS * build.BYTES_A_SEGMENT
+            build,
+            "memory_left",
+            lambda _: build.BASE_BYTES + 2 * build.MAX_SEGMENTS * build.BYTES_A_SEGMENT,
         )
         with caplog.at_level(logging.INFO, logger=build.L.name):
-            assert segment_cap() == build.MAX_SEGMENTS
+            assert segment_cap(workers=2) == build.MAX_SEGMENTS
         assert "by" not in caplog.records[-1].getMessage()
 
     def test_fewer_where_memory_holds_fewer(self, monkeypatch, caplog):
-        monkeypatch.setattr(build, "memory_left", lambda: 1000 * build.BYTES_A_SEGMENT + 1)
+        monkeypatch.setattr(
+            build, "memory_left", lambda _: build.BASE_BYTES + 1000 * build.BYTES_A_SEGMENT + 1
+        )
         with caplog.at_level(logging.INFO, logger=build.L.name):
-            assert segment_cap() == 1000
+            assert segment_cap(workers=2) == 1000
         assert "memory left" in caplog.records[-1].getMessage()
+
+    def test_none_where_memory_holds_no_more_than_the_base(self, monkeypatch):
+        monkeypatch.setattr(build, "memory_left", lambda _: build.BASE_BYTES - 1)
+        assert segment_cap(workers=2) == 0
+
+    @pytest.mark.parametrize("workers", [1, 2])
+    def test_two_processes_or_fewer_hold_the_base(self, monkeypatch, workers):
+        monkeypatch.setattr(
+            build, "memory_left", lambda _: build.BASE_BYTES + 1000 * build.BYTES_A_SEGMENT
+        )
+        assert segment_cap(workers=workers) == 1000
+
+    def test_each_process_past_two_holds_more(self, monkeypatch):
+        held = build.BASE_BYTES + 2 * build.BYTES_A_WORKER
+        monkeypatch.setattr(build, "memory_left", lambda _: held + 1000 * build.BYTES_A_SEGMENT)
+        assert segment_cap(workers=4) == 1000
+
+    def test_one_process_a_cpu_where_none_are_given(self, monkeypatch):
+        monkeypatch.setattr(build, "available_cpus", lambda: 3)
+        held = build.BASE_BYTES + build.BYTES_A_WORKER
+        monkeypatch.setattr(build, "memory_left", lambda _: held + 1000 * build.BYTES_A_SEGMENT)
+        assert segment_cap() == 1000

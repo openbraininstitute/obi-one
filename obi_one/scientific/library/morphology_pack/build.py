@@ -38,10 +38,14 @@ L = logging.getLogger(__name__)
 # Segments over every level a pack may hold, however much memory the machine has: above the whole
 # FlyWire brain's, about 255 million.
 MAX_SEGMENTS = 300_000_000
-# The memory a build holds at its peak, a segment over every level, the process's own included:
-# measured on 2 CPUs in a Linux container, about 70 where cells share their morphologies three to
-# one (CA1), and 99 where none share one, each morphology's levels held beside the cells'.
-BYTES_A_SEGMENT = 100
+# The memory a build holds at its peak beyond what the process held as it began, on two processes,
+# both included: `BASE_BYTES`, and `BYTES_A_SEGMENT` a segment over every level. Measured on 2 CPUs
+# in a Linux container, in the memory that cannot be reclaimed: 300 MB and 40 B a segment where
+# cells share their morphologies (CA1), 290 MB and 43 B where none share one.
+BASE_BYTES = 400 * 2**20
+BYTES_A_SEGMENT = 50
+# What each process past two holds beside them, measured at about 110 MB while simplifying.
+BYTES_A_WORKER = 128 * 2**20
 # Past about eight processes, what the main process does alone, chunk by chunk, keeps the others
 # waiting, while each holds its own memory.
 MAX_WORKERS = 8
@@ -66,21 +70,26 @@ class Stages:
         self.began = now
 
 
-def segment_cap() -> int:
-    """The segments a pack built here may hold: `MAX_SEGMENTS`, or fewer where the memory left
-    holds fewer, once what the process freed is handed back.
+def processes_for(workers: int | None) -> int:
+    """The processes a build runs over: `workers`, or one a CPU up to `MAX_WORKERS`."""
+    return workers or min(available_cpus(), MAX_WORKERS)
+
+
+def segment_cap(limit: int | None = None, workers: int | None = None) -> int:
+    """The segments a pack built here over `workers` processes, as `build_morphology_pack` counts
+    them, may hold: `MAX_SEGMENTS`, or fewer where the memory left under `limit`, the container's
+    where none is given, holds fewer, once what the process freed is handed back.
     """
     gc.collect()
     hand_back_freed()
-    left = memory_left()
-    within_memory = left // BYTES_A_SEGMENT
-    if within_memory < MAX_SEGMENTS:
-        L.info(
-            "Morphology pack capped at %d segments by %d bytes of memory left", within_memory, left
-        )
-        return within_memory
-    L.info("Morphology pack capped at %d segments", MAX_SEGMENTS)
-    return MAX_SEGMENTS
+    left = memory_left(limit)
+    base = BASE_BYTES + BYTES_A_WORKER * max(0, processes_for(workers) - 2)
+    cap = min(max(0, left - base) // BYTES_A_SEGMENT, MAX_SEGMENTS)
+    if cap < MAX_SEGMENTS:
+        L.info("Morphology pack capped at %d segments by %d bytes of memory left", cap, left)
+    else:
+        L.info("Morphology pack capped at %d segments", MAX_SEGMENTS)
+    return cap
 
 
 def read_populations(config: libsonata.CircuitConfig) -> list[Population]:
@@ -142,7 +151,7 @@ def build_morphology_pack(
     config = libsonata.CircuitConfig.from_file(str(config_path))
     populations = read_populations(config)
     cells = Counter(key for population in populations for key in population.morphology_keys())
-    with Processes(workers or min(available_cpus(), MAX_WORKERS), PRELOAD) as processes:
+    with Processes(processes_for(workers), PRELOAD) as processes:
         morphologies = read_morphologies(populations)
         stages.done("%d morphologies read", len(morphologies))
         shapes = every_level_within(morphologies, cells, max_segments, processes)

@@ -50,6 +50,9 @@ def memory_limit() -> int:
     return machine
 
 
-def memory_left() -> int:
-    """The bytes this process may hold beyond what it holds now."""
-    return max(0, memory_limit() - psutil.Process().memory_info().rss)
+def memory_left(limit: int | None = None) -> int:
+    """The bytes this process may hold beyond what it holds now, under `limit`, or
+    `memory_limit()` where none is given.
+    """
+    held = psutil.Process().memory_info().rss
+    return max(0, (memory_limit() if limit is None else limit) - held)
