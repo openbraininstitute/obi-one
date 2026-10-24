@@ -1,13 +1,13 @@
 import pytest
 
 from obi_one.core.info import Info
-from obi_one.scientific.blocks.simplification_algorithms.models import (
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     AdexNestAlgorithm,
     LifNestAlgorithm,
     SingleCompartmentAlgorithm,
 )
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.tasks.circuit_simplification.task import (
+from obi_one.scientific.tasks.circuit_simplification.config import (
     CircuitSimplificationScanConfig,
 )
 

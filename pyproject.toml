@@ -70,7 +70,7 @@ connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 meshing = ["ultraliser>=2.1.9"]
 
 # SIMPLIFICATION - optional, private dependency needed to run circuit simplification
-simplification = ["sonata-simplify[simulation]>=0.2.5"]
+simplification = ["sonata-simplify[simulation,reduction]>=0.2.5"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [

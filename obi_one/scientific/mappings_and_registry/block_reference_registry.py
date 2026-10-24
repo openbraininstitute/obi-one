@@ -66,7 +66,7 @@ _BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         "SynapticModelAssignerReference",
     ),
     "SimplificationAlgorithmReference": (
-        f"{_BLOCK_REFERENCES}.simplification_algorithms",
+        "obi_one.scientific.tasks.circuit_simplification.references",
         "SimplificationAlgorithmReference",
     ),
     "ExtracellularLocationsReference": (

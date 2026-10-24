@@ -10,7 +10,7 @@ from entitysdk.client import Client
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationSingleConfig
+from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationSingleConfig
 
 
 def estimate_circuit_simplification_count(*, db_client: Client, config_id: UUID) -> int:

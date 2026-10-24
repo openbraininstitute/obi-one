@@ -23,17 +23,19 @@ from app.services.resource_estimation.circuit_simplification import (
 from app.services.task import estimate_task_resources
 from app.types import TaskType
 from obi_one.core.info import Info
-from obi_one.scientific.blocks.simplification_algorithms.models import (
+from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
+from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import (
+    ALGORITHM_EXPORT_MAP,
+)
+from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     ALGORITHM_BLOCK_CLASSES,
     SingleCompartmentAlgorithm,
 )
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.tasks.circuit_simplification.task import (
-    ALGORITHM_EXPORT_MAP,
+from obi_one.scientific.tasks.circuit_simplification.config import (
     CircuitSimplificationScanConfig,
     CircuitSimplificationSingleConfig,
-    CircuitSimplificationTask,
 )
+from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationTask
 from obi_one.types import SimulationBackend
 
 

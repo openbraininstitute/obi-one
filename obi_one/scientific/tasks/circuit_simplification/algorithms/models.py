@@ -3,8 +3,8 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import ConfigDict, Discriminator, Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.simplification_algorithms.base import SimplificationAlgorithm
-from obi_one.scientific.blocks.simplification_algorithms.metadata import (
+from obi_one.scientific.tasks.circuit_simplification.algorithms.base import SimplificationAlgorithm
+from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import (
     ALGORITHM_EXPORT_DESCRIPTIONS,
     ALGORITHM_EXPORT_TITLES,
 )

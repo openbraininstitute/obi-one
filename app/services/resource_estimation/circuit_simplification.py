@@ -32,7 +32,7 @@ from obi_one.scientific.library.circuit_metrics import (
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_task_type,
 )
-from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationSingleConfig
+from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationSingleConfig
 
 # --- Calibration constants (PLACEHOLDERS - TODO: calibrate empirically) ---
 

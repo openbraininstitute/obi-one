@@ -919,6 +919,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dill"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc53c7d65b01e68edf64dea2932122fe7746a516f75d5/dill-0.4.1.tar.gz", hash = "sha256:423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa", size = 187315, upload-time = "2026-01-19T02:36:56.85Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d", size = 120019, upload-time = "2026-01-19T02:36:55.663Z" },
+]
+
+[[package]]
 name = "distributed"
 version = "2026.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2224,6 +2233,30 @@ wheels = [
 ]
 
 [[package]]
+name = "nest-neat"
+version = "1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cython" },
+    { name = "dill" },
+    { name = "matplotlib" },
+    { name = "neuron" },
+    { name = "numpy" },
+    { name = "pytest" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/70/d7c7e5491dce567b49b7270de002846171bcd13eab43173c5d1559ae5c99/nest_neat-1.1.tar.gz", hash = "sha256:d8486fc436a140cde5735f232b23771f25ffee7b5f5830171d0f5e1c02a0920b", size = 477625, upload-time = "2026-05-20T15:24:52.986Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/2a/39b22c016164e20583af8c7255480eef39bc5b491c46de3213c89ecaaaad/nest_neat-1.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0bcde13df3c37445560864fa1d23fe50f01dee4daa9287c8627f42f173f079fe", size = 592061, upload-time = "2026-05-20T15:24:33.669Z" },
+    { url = "https://files.pythonhosted.org/packages/28/52/566bfc970070b40275587530307f996a7f23cff7e5a839c8df99d741b0b0/nest_neat-1.1-cp312-cp312-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:1f6a3a1f7db6a8ee45dbf08f76ef791d70ca8288f3f38852c1024b7e676ec16b", size = 1673205, upload-time = "2026-05-20T15:24:35.504Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/c1/58a319502be7de28a5d681fe2ab2a662fac192a9ede0d7c6548ea8484e40/nest_neat-1.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:40c72834af7897978a71c5085bd90bbeea490eee4ed854bedabdd8030c5f53c0", size = 1711343, upload-time = "2026-05-20T15:24:37.246Z" },
+    { url = "https://files.pythonhosted.org/packages/92/37/80af08d8cde1abbecbff606ddb678589711e81e99e56336b1f53ab3ef124/nest_neat-1.1-cp312-cp312-musllinux_1_1_i686.whl", hash = "sha256:95454c9b9cf6b4da7cc6e5b83a67e0e24f509f15020dac9bfb745964f60f4d6d", size = 2238981, upload-time = "2026-05-20T15:24:38.945Z" },
+    { url = "https://files.pythonhosted.org/packages/54/87/047054e24170b14ea3fb844dd182f90e2fedce6d68d6f578872fdde28664/nest_neat-1.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:d3fa369855e1982cd363a0ff00a1b3b4ad7f4e9a53f87036b14444197bde983f", size = 2227594, upload-time = "2026-05-20T15:24:40.9Z" },
+]
+
+[[package]]
 name = "networkx"
 version = "3.7"
 source = { registry = "https://pypi.org/simple" }
@@ -2285,6 +2318,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/76/ae/71bdb6607da7f17ef4932349c6758c9c91faff87825227ebb94b5a84bc24/neuron-9.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:428e7787f1eebd594105337b4852688e0fba70c47832a3768c0c669134964c16", size = 21409125, upload-time = "2026-08-10T17:18:04.423Z" },
     { url = "https://files.pythonhosted.org/packages/67/cd/f341059ca6097d17e1887bc70b8202419ee50da19456dff4597e6614b21a/neuron-9.0.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c9132866e435f39177a8b02cecd479d54996f7ca0f68488b8a31ab0ef1bf5ad8", size = 17296379, upload-time = "2026-08-10T17:18:07.259Z" },
     { url = "https://files.pythonhosted.org/packages/3a/62/af8bf44e050a471f7e23f4df6e8d7ce225c680bc31a1cd3740fb444b720c/neuron-9.0.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e696cfcf4a807ba00602f5bca3873a2f09ea8adee148d54afe221ed5ad0163d8", size = 17991206, upload-time = "2026-08-10T17:18:10.16Z" },
+]
+
+[[package]]
+name = "neuron-reduce"
+version = "0.0.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/58/f8b3b6eb352cfc4f027e7a1ebebc9aaecfe1eb9eeafa9e039c7ec3b2b702/neuron_reduce-0.0.7.tar.gz", hash = "sha256:672b717dd28cc56605660f142eb407f2db864fa529dc4d9df70ab6e4e872bb3f", size = 18777, upload-time = "2020-08-16T07:52:22.638Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/b6/6ace32c7b86c7eacb9e41a304817546f08bca12db861c7cacf1f841abe2c/neuron_reduce-0.0.7-py3-none-any.whl", hash = "sha256:a3f038d2e082098bf92b8b03995ae58ef359fab3ba806c6448b10479fdd80745", size = 18723, upload-time = "2020-08-16T07:52:20.844Z" },
 ]
 
 [[package]]
@@ -2471,7 +2513,7 @@ service = [
     { name = "uvicorn" },
 ]
 simplification = [
-    { name = "sonata-simplify", extra = ["simulation"] },
+    { name = "sonata-simplify", extra = ["reduction", "simulation"] },
 ]
 
 [package.dev-dependencies]
@@ -2536,7 +2578,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
-    { name = "sonata-simplify", extras = ["simulation"], marker = "extra == 'simplification'", specifier = ">=0.2.5", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
+    { name = "sonata-simplify", extras = ["reduction", "simulation"], marker = "extra == 'simplification'", specifier = ">=0.2.5", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3453,6 +3495,14 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+reduction = [
+    { name = "dill" },
+    { name = "nest-neat" },
+    { name = "neuron" },
+    { name = "neuron-reduce" },
+    { name = "scikit-learn" },
+    { name = "sympy" },
+]
 simulation = [
     { name = "bluecellulab" },
     { name = "bluepysnap" },

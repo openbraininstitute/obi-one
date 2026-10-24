@@ -1,7 +1,7 @@
 from typing import Any, ClassVar, get_args
 
 from obi_one.core.block_reference import BlockReference
-from obi_one.scientific.blocks.simplification_algorithms.models import (
+from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     SimplificationAlgorithmUnion,
 )
 
