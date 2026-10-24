@@ -2,9 +2,11 @@
 
 import os
 import shutil
-from collections.abc import Generator
-from contextlib import contextmanager
+import stat
+from collections.abc import Generator, Iterable
+from contextlib import contextmanager, suppress
 from pathlib import Path
+from uuid import uuid4
 
 from obi_one.types import StrOrPath
 
@@ -30,6 +32,31 @@ def chdir(path: Path) -> Generator[None, None, None]:
         yield
     finally:
         os.chdir(previous)
+
+
+def write_whole(path: Path, data: bytes) -> None:
+    """Write ``data`` to ``path`` by way of a file beside it, so ``path`` is never part-written."""
+    part = path.with_name(f"{path.name}.{uuid4().hex}.part")
+    try:
+        part.write_bytes(data)
+        part.replace(path)
+    finally:
+        part.unlink(missing_ok=True)
+
+
+def remove_oldest_past(paths: Iterable[Path], limit: int) -> None:
+    """Remove the files of ``paths`` modified longest ago, past ``limit`` bytes in all."""
+    files = []
+    for path in paths:
+        with suppress(FileNotFoundError):
+            found = path.stat()
+            if stat.S_ISREG(found.st_mode):
+                files.append((found, path))
+    held = 0
+    for found, path in sorted(files, key=lambda file: file[0].st_mtime_ns, reverse=True):
+        held += found.st_size
+        if held > limit:
+            path.unlink(missing_ok=True)
 
 
 def copy_tree(source: Path, target: Path) -> None:

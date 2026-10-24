@@ -1,0 +1,48 @@
+import sys
+
+import pytest
+
+from obi_one.utils import parallel
+from obi_one.utils.parallel import Processes, available_cpus, each
+
+
+@pytest.fixture
+def cgroup(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(parallel.os, "sched_getaffinity", lambda _: set(range(8)), raising=False)
+    monkeypatch.setattr(parallel, "CPU_QUOTA", tmp_path / "cpu.max")
+    monkeypatch.setattr(parallel, "CPU_QUOTA_V1", tmp_path / "cpu.cfs_quota_us")
+    monkeypatch.setattr(parallel, "CPU_PERIOD_V1", tmp_path / "cpu.cfs_period_us")
+    return tmp_path
+
+
+class TestAvailableCpus:
+    @pytest.mark.parametrize(
+        ("quota", "cpus"),
+        [("max 100000", 8), ("200000 100000", 2), ("50000 100000", 1), ("1600000 100000", 8)],
+    )
+    def test_within_the_container_quota(self, cgroup, quota, cpus):
+        (cgroup / "cpu.max").write_text(f"{quota}\n")
+        assert available_cpus() == cpus
+
+    @pytest.mark.parametrize(("quota", "cpus"), [("-1", 8), ("300000", 3), ("50000", 1)])
+    def test_within_a_cgroup_v1_quota(self, cgroup, quota, cpus):
+        (cgroup / "cpu.cfs_quota_us").write_text(f"{quota}\n")
+        (cgroup / "cpu.cfs_period_us").write_text("100000\n")
+        assert available_cpus() == cpus
+
+    def test_every_cpu_without_a_quota(self, cgroup):
+        assert not any(cgroup.iterdir())
+        assert available_cpus() == 8
+
+
+class TestProcesses:
+    def test_results_come_in_the_order_of_the_work(self):
+        with Processes(2) as processes:
+            assert list(processes.map(abs, range(-50, 0), per_job=3)) == list(range(50, 0, -1))
+
+    def test_a_job_hands_back_what_it_freed(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(parallel, "malloc_trim", lambda: calls.append)
+        assert each(abs, [-1, -2]) == [1, 2]
+        assert calls == [0]
