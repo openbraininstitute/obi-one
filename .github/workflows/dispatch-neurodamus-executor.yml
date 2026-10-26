@@ -22,6 +22,7 @@ jobs:
     # pin-release has two entry points: a thin release→dispatch job, then the real pin on main via workflow_dispatch. Only react to the latter when it succeeded.
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       actions: read
       contents: read
