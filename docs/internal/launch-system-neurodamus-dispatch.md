@@ -22,11 +22,11 @@ The executor image installs deps from **`neurodamus_image.txt`** / **`.override`
 
 ## GitHub App (obi-one repository)
 
-The **obi repo dispatcher** GitHub App is **installed on `openbraininstitute/obi-one`**. Credentials and config live in that repo:
+The **obi repo dispatcher** GitHub App must be installed on **`openbraininstitute/obi-one`** (credentials) and **`openbraininstitute/launch-system`** (dispatch target). App permission: **Contents: Read and write** (required for `repository_dispatch`). Credentials live in the obi-one `release` environment:
 
 | Setting | Name |
 |---------|------|
 | `release` environment variable | `OBI_REPO_DISPATCHER_CLIENT_ID` |
 | `release` environment secret | `OBI_REPO_DISPATCHER_PRIVATE_KEY` |
 
-`dispatch-neurodamus-executor.yml` mints a short-lived installation token (scoped to `launch-system`, `permission-actions: write`) via `actions/create-github-app-token` and posts `repos/openbraininstitute/launch-system/dispatches`. The default obi-one `GITHUB_TOKEN` cannot dispatch into private launch-system.
+`dispatch-neurodamus-executor.yml` mints a short-lived installation token (scoped to `launch-system`, `permission-contents: write`) via `actions/create-github-app-token` and posts `repos/openbraininstitute/launch-system/dispatches`. The default obi-one `GITHUB_TOKEN` cannot dispatch into private launch-system.
