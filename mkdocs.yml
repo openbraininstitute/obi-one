@@ -19,6 +19,7 @@ nav:
   - Brian2 Point Neuron Simulations: brian2.md
   - Ion Channel Model Fitting: ion-channel-fitting.md
   - ME-model Build: memodel-build.md
+  - Neuronal Manipulation Properties: neuronal-manipulation-properties.md
 
 # Plugins
 plugins:
