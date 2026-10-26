@@ -1,4 +1,4 @@
-name: Pin release
+name: pin-release
 
 # For each release X published from the GitHub UI (tag X at main HEAD, commit A):
 #
@@ -17,6 +17,8 @@ name: Pin release
 #
 # Launch jobs of service X check out ``tag:X``, so the task code, the obi-one X
 # wheel and the transitive closure compiled on ``main`` come from the same commit.
+#
+# After this workflow succeeds on main (workflow_dispatch), a separate workflow (dispatch-neurodamus-executor.yml, via workflow_run) notifies launch-system. That run can fail without failing this workflow.
 #
 # Recovery: re-run the failed run, or run this workflow on ``main`` with the release
 # tag as input. If X is already pinned, only the builds are dispatched.
