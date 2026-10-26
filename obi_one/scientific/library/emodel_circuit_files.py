@@ -125,6 +125,7 @@ def _proc_lines(hoc_text: str, name: str) -> list[str]:
 
 
 def _raise_unexpected(proc_name: str, line: str) -> NoReturn:
+    """Reject a line the template cannot print, quoting at most MAX_QUOTED_LINE chars."""
     msg = f"unexpected line in {proc_name}(): {line[:MAX_QUOTED_LINE]!r}"
     raise HocTemplateError(msg)
 
@@ -136,6 +137,7 @@ def _distribution_value(formula: str) -> float | None:
 
 
 def _read_insert_channel(hoc_text: str, result: HocBiophysics) -> None:
+    """Fill ``channels_by_section_list`` from ``proc insertChannel()``."""
     section_list = None
     for line in _proc_lines(hoc_text, "insertChannel"):
         if match := FORSEC_RE.fullmatch(line):
@@ -150,6 +152,7 @@ def _read_insert_channel(hoc_text: str, result: HocBiophysics) -> None:
 
 
 def _read_biophys(hoc_text: str, result: HocBiophysics) -> None:
+    """Fill ``assignments`` and ``distributions`` from ``proc biophys()``."""
     section_list = None
     for line in _proc_lines(hoc_text, "biophys"):
         if match := FORSEC_RE.fullmatch(line):
