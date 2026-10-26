@@ -124,6 +124,7 @@ class SkeletonizationTask(Task):
             work_dir=work_dir,
             parameters=inputs.parameters,
         )
+        generated_entity = None
         if execution_activity_id is not None:
             L.info("Registering entities...")
             generated_entity = register_output_resource(

@@ -348,6 +348,20 @@ def test_create_inputs_passes_options(
     assert inputs.metadata.cell_morphology_description == description
 
 
+def test_execute_without_activity_registers_nothing(skeletonization_single_config):
+    module = "obi_one.scientific.tasks.skeletonization.task"
+    with (
+        patch.object(SkeletonizationTask, "_create_inputs"),
+        patch(f"{module}.run_process"),
+        patch(f"{module}.register_output_resource") as register_output_resource,
+    ):
+        SkeletonizationTask(config=skeletonization_single_config).execute(
+            db_client=Mock(), execution_activity_id=None
+        )
+
+    register_output_resource.assert_not_called()
+
+
 def test_run_process_calls_ultraliser(tmp_path):
     params = _process_parameters(tmp_path)
     output_dir = tmp_path / "out"
