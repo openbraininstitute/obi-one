@@ -103,6 +103,27 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )
 
+        remove_spines_from_skeleton: bool = Field(
+            default=True,
+            title="Remove Spines From Skeleton",
+            description=(
+                "Remove the spines from the skeleton and segment them. Disable this option to "
+                "keep the small branches in the skeleton, e.g. for retinal neurons, whose small "
+                "branches are not spines. No spines are segmented then."
+            ),
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+
+        repair_slicing_artifacts: bool = Field(
+            default=False,
+            title="Repair Slicing Artifacts",
+            description=(
+                "Enable this option if you suspect that the neuronal mesh might have slicing "
+                "artifacts due to issues during the EM reconstruction stage."
+            ),
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+
     initialize: Initialize = Field(
         title="Initialization",
         description="Parameters for initializing the skeletonization.",

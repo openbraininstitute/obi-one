@@ -53,6 +53,7 @@ class SkeletonizationTask(Task):
             entity_type=models.EMDenseReconstructionDataset,
         )
         cell_id = em_cell_mesh.dense_reconstruction_cell_id
+        segment_spines = self.config.initialize.remove_spines_from_skeleton
         return SkeletonizationInputs(
             metadata=Metadata(
                 subject=em_cell_mesh.subject,
@@ -62,6 +63,8 @@ class SkeletonizationTask(Task):
                 cell_morphology_name=self.config.initialize.cell_mesh.id_str,  # ty:ignore[unresolved-attribute]
                 cell_morphology_description=(
                     f"Reconstructed morphology and extracted spines of neuron {cell_id}"
+                    if segment_spines
+                    else f"Reconstructed morphology of neuron {cell_id}"
                 ),
                 em_dense_reconstruction_dataset=em_dense_reconstruction_dataset,
             ),
@@ -69,8 +72,9 @@ class SkeletonizationTask(Task):
                 mesh_path=em_cell_mesh_asset.path,
                 neuron_voxel_size=self.config.initialize.neuron_voxel_size,  # ty:ignore[invalid-argument-type]
                 spines_voxel_size=self.config.initialize.spines_voxel_size,  # ty:ignore[invalid-argument-type]
-                segment_spines=True,
+                segment_spines=segment_spines,
                 write_raw_spines=self.config.initialize.write_raw_spines,
+                repair_slicing_artifacts=self.config.initialize.repair_slicing_artifacts,
             ),
         )
 

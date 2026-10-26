@@ -1,4 +1,5 @@
 import logging
+from inspect import signature
 from pathlib import Path
 
 import morphio
@@ -24,6 +25,7 @@ def run_process(parameters: ProcessParameters, work_dir: WorkDir) -> Skeletoniza
     return _create_process_outputs(
         mesh_path=parameters.mesh_path,
         output_dir=work_dir.outputs,
+        segment_spines=parameters.segment_spines,
     )
 
 
@@ -37,13 +39,23 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
         parameters:
             Configuration parameters required for skeletonization, including:
             - mesh_path: Path to the input neuron mesh.
-            - segment_spines: Whether to segment dendritic spines.
+            - segment_spines: Whether to remove spines from the skeleton and segment them.
             - neuron_voxel_size: Voxel size for neuron processing.
             - spines_voxel_size: Voxel size for spine processing.
             - write_raw_spines: Whether to include raw segmented spines in the output.
+            - repair_slicing_artifacts: Whether to repair slicing artifacts in the mesh.
         output_dir: Directory where skeletonization outputs will be written.
     """
     import ultraliser  # ruff: ignore[import-outside-top-level]
+
+    # Passed only when set, since Ultraliser releases without the option reject it.
+    options = {}
+    if parameters.repair_slicing_artifacts:
+        accepted = signature(ultraliser.skeletonize_neuron_mesh).parameters
+        if "repair_slicing_artifacts" not in accepted:
+            msg = "Repairing slicing artifacts needs a newer Ultraliser than the one installed."
+            raise OBIONEError(msg)
+        options["repair_slicing_artifacts"] = True
 
     ultraliser.skeletonize_neuron_mesh(
         mesh_path=str(parameters.mesh_path),
@@ -52,10 +64,13 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
         neuron_voxel_size=parameters.neuron_voxel_size,
         spines_voxel_size=parameters.spines_voxel_size,
         write_raw_spines=parameters.write_raw_spines,
+        **options,
     )
 
 
-def _create_process_outputs(mesh_path: Path, output_dir: Path) -> SkeletonizationOutputs:
+def _create_process_outputs(
+    mesh_path: Path, output_dir: Path, *, segment_spines: bool
+) -> SkeletonizationOutputs:
     """Collect, post-process, and organize skeletonization output files.
 
     This function:
@@ -68,6 +83,7 @@ def _create_process_outputs(mesh_path: Path, output_dir: Path) -> Skeletonizatio
     Args:
         mesh_path: Input mesh path
         output_dir: Directory where skeletonization output files were generated.
+        segment_spines: Whether spines were segmented, i.e. whether there is a combined file.
 
     Returns:
         SkeletonizationOutputs
@@ -76,7 +92,7 @@ def _create_process_outputs(mesh_path: Path, output_dir: Path) -> Skeletonizatio
             - SWC morphology file
             - ASC morphology file
             - Combined H5 morphology file (with reconstructed spines,
-                and optional raw segmented spines)
+                and optional raw segmented spines), if spines were segmented
 
     Raises:
         OBIONEError
@@ -86,7 +102,7 @@ def _create_process_outputs(mesh_path: Path, output_dir: Path) -> Skeletonizatio
 
     spiny_morph_path = output_dir / f"{stem_name}.h5"
 
-    if not spiny_morph_path.exists():
+    if segment_spines and not spiny_morph_path.exists():
         msg = (
             f"No combined morphology h5 file {spiny_morph_path.name} found in the output location."
         )
@@ -101,13 +117,15 @@ def _create_process_outputs(mesh_path: Path, output_dir: Path) -> Skeletonizatio
     h5_path = output_dir / f"{stem_name}-morphology.h5"
 
     if not h5_path.exists():
-        msg = f"No HDF5 morphology file {swc_path.name} found in the output location"
+        msg = f"No HDF5 morphology file {h5_path.name} found in the output location"
         raise OBIONEError(msg)
 
     # Rename the combined morphology by adding "_with_spines" suffix
-    spiny_morph_path = spiny_morph_path.rename(
-        spiny_morph_path.with_name(f"{stem_name}{SPINY_MORPH_PATH_SUFFIX}.h5")
-    )
+    combined_morph_path = None
+    if segment_spines:
+        combined_morph_path = spiny_morph_path.rename(
+            spiny_morph_path.with_name(f"{stem_name}{SPINY_MORPH_PATH_SUFFIX}.h5")
+        )
 
     # Produce complimentary ASC morphologies from the original SWC
     morpho = morphio.mut.Morphology(str(h5_path))
@@ -118,5 +136,5 @@ def _create_process_outputs(mesh_path: Path, output_dir: Path) -> Skeletonizatio
         h5_morphology_file=h5_path,
         swc_morphology_file=swc_path,
         asc_morphology_file=asc_path,
-        h5_combined_morphology_file=spiny_morph_path,
+        h5_combined_morphology_file=combined_morph_path,
     )
