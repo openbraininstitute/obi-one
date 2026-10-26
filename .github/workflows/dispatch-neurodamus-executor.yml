@@ -59,7 +59,8 @@ jobs:
           private-key: ${{ secrets.OBI_REPO_DISPATCHER_PRIVATE_KEY }}
           owner: openbraininstitute
           repositories: launch-system
-          permission-actions: write
+          # repository_dispatch requires Contents write (not Actions)
+          permission-contents: write
 
       # launch-system: publish-neurodamus-runtime.yml (repository_dispatch neurodamus-executor-publish)
       - name: Trigger launch-system neurodamus executor publish
