@@ -1,0 +1,488 @@
+{
+  "SK_E2": {
+    "section_lists": [
+      "axonal",
+      "somatic"
+    ],
+    "entity_id": "e1090418-c607-4901-88ae-a5ceb5bfb75a",
+    "variables": {
+      "gSK_E2bar_SK_E2": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": 0.07122559514887086,
+          "axonal": 0.043464970297774394
+        }
+      },
+      "gSK_E2_SK_E2": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": null,
+          "somatic": null
+        }
+      },
+      "zTau_SK_E2": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "K_Tst": {
+    "section_lists": [
+      "axonal",
+      "somatic"
+    ],
+    "entity_id": "8c60dccf-8dfc-48a4-a2db-358b9643e3fb",
+    "variables": {
+      "gK_Tstbar_K_Tst": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": 0.054051616082045964,
+          "axonal": 0.19595980647004727
+        }
+      },
+      "gK_Tst_K_Tst": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "CaDynamics_DC0": {
+    "section_lists": [
+      "apical",
+      "axonal",
+      "basal",
+      "somatic"
+    ],
+    "entity_id": "3d371a7e-ff6a-45a0-9f32-34505ac940df",
+    "variables": {
+      "gamma_CaDynamics_DC0": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": 0.0054445280516955815,
+          "apical": 0.04854806287732945,
+          "somatic": 0.04043023681213434,
+          "basal": 0.030816770244775537
+        }
+      },
+      "decay_CaDynamics_DC0": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": 228.41406858766788,
+          "somatic": 182.5279946247098,
+          "apical": null,
+          "basal": null
+        }
+      },
+      "cai_CaDynamics_DC0": {
+        "units": "mM",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "basal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "Ca_LVAst": {
+    "section_lists": [
+      "apical",
+      "axonal",
+      "basal",
+      "somatic"
+    ],
+    "entity_id": "91cfc99a-9dc7-462c-9b08-330dfb4db871",
+    "variables": {
+      "gCa_LVAstbar_Ca_LVAst": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": 0.005627515608843819,
+          "basal": 4.976556830453403e-05,
+          "apical": 5.629989410011274e-06,
+          "axonal": 0.0004645405693356415
+        }
+      },
+      "gCa_LVAst_Ca_LVAst": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "basal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "NaTg": {
+    "section_lists": [
+      "apical",
+      "axonal",
+      "somatic"
+    ],
+    "entity_id": "13c947c3-cb76-4a9a-91f4-146e95bd25f3",
+    "variables": {
+      "gNaTgbar_NaTg": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": 0.0415459794348015,
+          "axonal": 0.9212158220973535,
+          "somatic": 0.088461031384198
+        }
+      },
+      "gNaTg_NaTg": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "somatic": null
+        }
+      },
+      "vshifth_NaTg": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "somatic": null
+        }
+      },
+      "vshiftm_NaTg": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "somatic": null
+        }
+      },
+      "slopeh_NaTg": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "somatic": null
+        }
+      },
+      "slopem_NaTg": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "Ca_HVA2": {
+    "section_lists": [
+      "apical",
+      "axonal",
+      "basal",
+      "somatic"
+    ],
+    "entity_id": "21ebb7ab-b41b-441d-b494-6665075d26b0",
+    "variables": {
+      "gCa_HVAbar_Ca_HVA2": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": 6.659320725686546e-05,
+          "somatic": 0.0005744852649124994,
+          "basal": 7.853910253921727e-05,
+          "axonal": 0.0009479162601455684
+        }
+      },
+      "gCa_HVA_Ca_HVA2": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "basal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "SKv3_1": {
+    "section_lists": [
+      "apical",
+      "axonal",
+      "somatic"
+    ],
+    "entity_id": "a014a0f6-217a-4e18-935f-aa298e35c9d1",
+    "variables": {
+      "gSKv3_1bar_SKv3_1": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": 0.8580318213495459,
+          "apical": 0.00032672030213838133,
+          "axonal": 0.9982071625075296
+        }
+      },
+      "gSKv3_1_SKv3_1": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "axonal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "pas": {
+    "section_lists": [
+      "apical",
+      "axonal",
+      "basal",
+      "somatic"
+    ],
+    "entity_id": null,
+    "variables": {
+      "g_pas": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": 3.400610853841489e-05,
+          "basal": 3.400610853841489e-05,
+          "somatic": 3.400610853841489e-05,
+          "axonal": 3.400610853841489e-05
+        }
+      },
+      "e_pas": {
+        "units": "",
+        "limits": null,
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": -72.02350572560218,
+          "basal": -72.02350572560218,
+          "somatic": -72.02350572560218,
+          "axonal": -72.02350572560218
+        }
+      }
+    }
+  },
+  "K_Pst": {
+    "section_lists": [
+      "axonal",
+      "somatic"
+    ],
+    "entity_id": "bdc5d10e-fd25-403b-83cd-81853676ca35",
+    "variables": {
+      "gK_Pstbar_K_Pst": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": 0.09202276034577542,
+          "axonal": 0.9051454283790868
+        }
+      },
+      "gK_Pst_K_Pst": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "Nap_Et2": {
+    "section_lists": [
+      "axonal"
+    ],
+    "entity_id": "7decbf75-9414-4754-bf54-5fa787097206",
+    "variables": {
+      "gNap_Et2bar_Nap_Et2": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": 7.875172858640481e-05
+        }
+      },
+      "gNap_Et2_Nap_Et2": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "axonal": null
+        }
+      }
+    }
+  },
+  "Ih": {
+    "section_lists": [
+      "apical",
+      "basal",
+      "somatic"
+    ],
+    "entity_id": "af9eef69-40a3-4e41-9c3f-542a9ff689fc",
+    "variables": {
+      "gIhbar_Ih": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": 1.151226556055784e-05,
+          "basal": 1.151226556055784e-05,
+          "somatic": 1.151226556055784e-05
+        }
+      },
+      "gIh_Ih": {
+        "units": "",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "apical": null,
+          "basal": null,
+          "somatic": null
+        }
+      }
+    }
+  },
+  "-": {
+    "section_lists": [
+      "somatic",
+      "basal",
+      "apical",
+      "axonal"
+    ],
+    "entity_id": null,
+    "variables": {
+      "cm": {
+        "units": "$\\mu$F/cm$^2$",
+        "limits": [
+          0.0,
+          10.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": null,
+          "basal": null,
+          "apical": null,
+          "axonal": null
+        }
+      },
+      "Ra": {
+        "units": "$\\Omega$-cm",
+        "limits": [
+          0.0,
+          1000.0
+        ],
+        "variable_type": "RANGE",
+        "section_lists_original_values": {
+          "somatic": null,
+          "basal": null,
+          "apical": null,
+          "axonal": null
+        }
+      }
+    }
+  }
+}
