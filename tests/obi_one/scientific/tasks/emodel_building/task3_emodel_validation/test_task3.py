@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from entitysdk.exception import IteratorResultError
 from pydantic import ValidationError
 
 pytest.importorskip("bluepyemodel")
@@ -98,7 +99,7 @@ def test_stage_final_entry_keeps_only_the_seed(tmp_path, monkeypatch):
     provenance = SimpleNamespace(
         emodel=SimpleNamespace(seed=1),
         config=SimpleNamespace(initialize=SimpleNamespace(emodel="L5PC")),
-        task_result=None,
+        task_result=SimpleNamespace(id="tr-id"),
     )
     entry = staging.stage_final_entry(provenance, tmp_path, MagicMock())
     written = json.loads((tmp_path / "final.json").read_text())
@@ -114,10 +115,66 @@ def test_stage_final_entry_missing_seed_raises(tmp_path, monkeypatch):
     provenance = SimpleNamespace(
         emodel=SimpleNamespace(seed=1),
         config=SimpleNamespace(initialize=SimpleNamespace(emodel="L5PC")),
-        task_result=None,
+        task_result=SimpleNamespace(id="tr-id"),
     )
     with pytest.raises(ValueError, match="seed=1"):
         staging.stage_final_entry(provenance, tmp_path, MagicMock())
+
+
+def synthesized_provenance(task_result=None):
+    return SimpleNamespace(
+        emodel=SimpleNamespace(
+            id="emodel-id",
+            seed=7,
+            iteration="thalamoreticular",
+            score=3.5,
+            species=SimpleNamespace(name="Mus musculus"),
+            brain_region=SimpleNamespace(name="TH"),
+            etypes=[SimpleNamespace(pref_label="dNAD_ltb")],
+            mtypes=[SimpleNamespace(pref_label="VPM_TC")],
+        ),
+        config=SimpleNamespace(initialize=SimpleNamespace(emodel="EM__test__0")),
+        task_result=task_result,
+    )
+
+
+def test_stage_final_entry_synthesized_from_emodel_output(tmp_path, monkeypatch):
+    output = {
+        "parameter": [{"name": "g_pas.all", "value": 4e-5}],
+        "fitness": 3.5,
+        "score": [{"name": "Step_150.soma.v.AP_amplitude", "value": 0.2}],
+        "features": [{"name": "Step_150.soma.v.AP_amplitude", "value": 45.0}],
+        "seed": 7,
+    }
+    monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: output)
+    entry = staging.stage_final_entry(synthesized_provenance(), tmp_path, MagicMock())
+    written = json.loads((tmp_path / "final.json").read_text())
+    assert list(written) == ["EM__test__0__7"]
+    assert entry["parameters"] == {"g_pas.all": 4e-5}
+    assert entry["etype"] == "dNAD_ltb"
+    assert entry["mtype"] == "VPM_TC"
+    assert entry["species"] == "Mus musculus"
+    assert entry["brain_region"] == "TH"
+    assert entry["iteration"] == "thalamoreticular"
+    assert entry["fitness"] == {"Step_150.soma.v.AP_amplitude": 0.2}
+    assert entry["features"] == {"Step_150.soma.v.AP_amplitude": 45.0}
+    assert entry["validated"] is None
+    assert entry["validation_fitness"] == {}
+
+
+def test_stage_final_entry_synthesized_requires_parameters(tmp_path, monkeypatch):
+    monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: {"parameter": []})
+    with pytest.raises(ValueError, match="no parameters"):
+        staging.stage_final_entry(synthesized_provenance(), tmp_path, MagicMock())
+
+
+def test_stage_final_entry_synthesized_requires_optimisation_output(tmp_path, monkeypatch):
+    def raise_empty(**_):
+        raise IteratorResultError
+
+    monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", raise_empty)
+    with pytest.raises(ValueError, match="no emodel_optimization_output asset"):
+        staging.stage_final_entry(synthesized_provenance(), tmp_path, MagicMock())
 
 
 def test_resolve_provenance_without_activity_raises():
@@ -125,6 +182,57 @@ def test_resolve_provenance_without_activity_raises():
     client.search_entity.return_value.first.return_value = None
     with pytest.raises(ValueError, match="only e-models optimised on the platform"):
         staging.resolve_optimisation_provenance(str(uuid4()), client)
+
+
+class TestCampaignConfigJson:
+    @staticmethod
+    def task_config(**kwargs):
+        defaults = {
+            "id": "config-id",
+            "meta": {"scan_parameters": {}},
+            "task_config_generator_id": "campaign-id",
+        }
+        return SimpleNamespace(**(defaults | kwargs))
+
+    def test_rebuilds_single_config_from_scan_form(self, monkeypatch):
+        scan = {
+            "type": "GridScanGenerationTask",
+            "form": {"type": "EModelOptimizationScanConfig", "initialize": {"emodel": "L5PC"}},
+        }
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: scan)
+        client = MagicMock()
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id")
+        result = staging._campaign_config_json(self.task_config(), client)
+        assert result["type"] == "EModelOptimizationSingleConfig"
+        assert result["initialize"] == {"emodel": "L5PC"}
+
+    def test_bare_scan_config_without_form(self, monkeypatch):
+        scan = {"type": "EModelOptimizationScanConfig", "initialize": {"emodel": "L5PC"}}
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: scan)
+        client = MagicMock()
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id")
+        result = staging._campaign_config_json(self.task_config(), client)
+        assert result["type"] == "EModelOptimizationSingleConfig"
+
+    def test_scan_parameters_raise(self):
+        task_config = self.task_config(meta={"scan_parameters": {"seed": [1, 2]}})
+        with pytest.raises(ValueError, match="cannot be reconstructed"):
+            staging._campaign_config_json(task_config, MagicMock())
+
+    def test_missing_campaign_raises(self):
+        task_config = self.task_config(task_config_generator_id=None)
+        with pytest.raises(ValueError, match="no task_config asset and no campaign"):
+            staging._campaign_config_json(task_config, MagicMock())
+
+    def test_missing_campaign_asset_raises(self, monkeypatch):
+        def raise_empty(**_):
+            raise IteratorResultError
+
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", raise_empty)
+        client = MagicMock()
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id")
+        with pytest.raises(ValueError, match="no task_config asset either"):
+            staging._campaign_config_json(self.task_config(), client)
 
 
 class TestSummariseModel:

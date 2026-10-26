@@ -16,6 +16,7 @@ from uuid import UUID
 import entitysdk
 from bluepyemodel.preprocessing import NormalizedIonChannelModel, preflight_morphology
 from bluepyemodel.tools.utils import are_same_protocol
+from entitysdk.exception import IteratorResultError
 from entitysdk.models import EModel, TaskActivity, TaskConfig, TaskResult
 from entitysdk.types import AssetLabel, EntityType, TaskActivityType, TaskResultType
 
@@ -50,7 +51,7 @@ class OptimisationProvenance:
 
     emodel: EModel
     config: EModelOptimizationSingleConfig
-    task_result: TaskResult
+    task_result: TaskResult | None
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,44 @@ class StagedValidation:
     settings: ResolvedValidationSettings
     final_entry: dict
     normalized_models: dict[str, NormalizedIonChannelModel]
+
+
+def _task_config_json(task_config: TaskConfig, db_client: entitysdk.client.Client) -> dict | None:
+    """Return the ``task_config`` JSON asset of a TaskConfig, or None if it has none."""
+    try:
+        return db_sdk.select_json_asset_content(
+            client=db_client,
+            entity=task_config,
+            selection={"label": AssetLabel.task_config},
+        )
+    except IteratorResultError:
+        return None
+
+
+def _campaign_config_json(task_config: TaskConfig, db_client: entitysdk.client.Client) -> dict:
+    """Rebuild a single-coordinate config from the campaign's scan config asset.
+
+    Provenance created outside the scan-generation flow (e.g. backfilled for e-models
+    optimised off-platform) may leave the coordinate JSON asset off the child
+    TaskConfig; the campaign's scan JSON still holds the full optimisation config.
+    """
+    if task_config.meta.get("scan_parameters"):
+        msg = (
+            f"TaskConfig {task_config.id} has no task_config asset and its scan "
+            "coordinates cannot be reconstructed from the campaign."
+        )
+        raise ValueError(msg)
+    generator_id = task_config.task_config_generator_id
+    if generator_id is None:
+        msg = f"TaskConfig {task_config.id} has no task_config asset and no campaign."
+        raise ValueError(msg)
+    campaign = db_client.get_entity(entity_id=generator_id, entity_type=TaskConfig)
+    scan_json = _task_config_json(campaign, db_client)
+    if scan_json is None:
+        msg = f"Campaign TaskConfig {campaign.id} has no task_config asset either."
+        raise ValueError(msg)
+    scan_config = scan_json.get("form", scan_json)
+    return {**scan_config, "type": EModelOptimizationSingleConfig.__name__}
 
 
 def resolve_optimisation_provenance(
@@ -91,11 +130,9 @@ def resolve_optimisation_provenance(
         )
         raise ValueError(msg)
     task_config = db_client.get_entity(entity_id=task_config_ids[0], entity_type=TaskConfig)
-    config_json = db_sdk.select_json_asset_content(
-        client=db_client,
-        entity=task_config,
-        selection={"label": AssetLabel.task_config},
-    )
+    config_json = _task_config_json(task_config, db_client)
+    if config_json is None:
+        config_json = _campaign_config_json(task_config, db_client)
     config = deserialize_obi_object_from_json_data(config_json)
     if not isinstance(config, EModelOptimizationSingleConfig):
         msg = f"TaskConfig {task_config.id} is not an EModelOptimizationSingleConfig."
@@ -115,10 +152,68 @@ def resolve_optimisation_provenance(
         None,
     )
     if task_result is None:
-        msg = f"Activity {activity.id} generated no emodel_optimization__result TaskResult."
-        raise ValueError(msg)
+        L.info(
+            "Activity %s generated no emodel_optimization__result TaskResult; the "
+            "final.json entry will be synthesized from the EModel's optimisation output.",
+            activity.id,
+        )
 
     return OptimisationProvenance(emodel=emodel, config=config, task_result=task_result)
+
+
+def _pref_label(items: list | None) -> str | None:
+    """Return the pref_label of the first classification, or None."""
+    return items[0].pref_label if items else None
+
+
+def _synthesized_final_entry(
+    provenance: OptimisationProvenance,
+    db_client: entitysdk.client.Client,
+) -> tuple[str, dict]:
+    """Build a ``final.json`` entry from the EModel's ``emodel_optimization_output``.
+
+    The optimisation output asset carries the same optimised parameters, scores and
+    features as the ``final.json`` entry of the optimisation TaskResult, so it can
+    stand in when no such TaskResult exists (e.g. backfilled provenance).
+    """
+    emodel = provenance.emodel
+    try:
+        output = db_sdk.select_json_asset_content(
+            client=db_client,
+            entity=emodel,
+            selection={"label": AssetLabel.emodel_optimization_output},
+        )
+    except IteratorResultError as e:
+        msg = (
+            f"EModel {emodel.id} has no emodel_optimization_output asset to rebuild "
+            "the final.json entry from."
+        )
+        raise ValueError(msg) from e
+
+    emodel_name = provenance.config.initialize.emodel
+    seed = int(emodel.seed)
+    parameters = {p["name"]: p["value"] for p in output.get("parameter", [])}
+    if not parameters:
+        msg = f"EModel {emodel.id} optimisation output has no parameters."
+        raise ValueError(msg)
+    entry = {
+        "emodel": emodel_name,
+        "etype": _pref_label(emodel.etypes),
+        "ttype": None,
+        "mtype": _pref_label(emodel.mtypes),
+        "species": emodel.species.name if emodel.species else None,
+        "brain_region": emodel.brain_region.name if emodel.brain_region else None,
+        "iteration": emodel.iteration,
+        "synapse_class": None,
+        "allen_notation": None,
+        "score": output.get("fitness", emodel.score),
+        "parameters": parameters,
+        "fitness": {s["name"]: s["value"] for s in output.get("score", [])},
+        "features": {f["name"]: f["value"] for f in output.get("features", [])},
+        "seed": seed,
+        "pdfs": [],
+    }
+    return f"{emodel_name}__{seed}", entry
 
 
 def stage_final_entry(
@@ -129,30 +224,34 @@ def stage_final_entry(
     """Write a ``final.json`` holding only the optimised model of the EModel's seed.
 
     The optimisation TaskResult stores BluePyEModel's ``final.json`` as its
-    ``emodel_analysis_summary``. Previous validation results are cleared so the
-    entry is re-scored from scratch.
+    ``emodel_analysis_summary``; when the provenance has no such TaskResult the
+    entry is synthesized from the EModel's ``emodel_optimization_output`` asset.
+    Previous validation results are cleared so the entry is re-scored from scratch.
     """
-    download_dir = coord_root / "optimisation_summary"
-    path = db_sdk.fetch_asset_by_label(
-        client=db_client,
-        entity=provenance.task_result,
-        asset_label=AssetLabel.emodel_analysis_summary,
-        output_path=download_dir,
-    )
-    final = json.loads(Path(path).read_text(encoding="utf-8"))
-    emodel_name = provenance.config.initialize.emodel
-    seed = int(provenance.emodel.seed)
-    key, entry = next(
-        (
-            (k, v)
-            for k, v in final.items()
-            if isinstance(v, dict) and v.get("emodel") == emodel_name and v.get("seed") == seed
-        ),
-        (None, None),
-    )
-    if entry is None:
-        msg = f"No final.json entry for emodel={emodel_name!r}, seed={seed}."
-        raise ValueError(msg)
+    if provenance.task_result is None:
+        key, entry = _synthesized_final_entry(provenance, db_client)
+    else:
+        download_dir = coord_root / "optimisation_summary"
+        path = db_sdk.fetch_asset_by_label(
+            client=db_client,
+            entity=provenance.task_result,
+            asset_label=AssetLabel.emodel_analysis_summary,
+            output_path=download_dir,
+        )
+        final = json.loads(Path(path).read_text(encoding="utf-8"))
+        emodel_name = provenance.config.initialize.emodel
+        seed = int(provenance.emodel.seed)
+        key, entry = next(
+            (
+                (k, v)
+                for k, v in final.items()
+                if isinstance(v, dict) and v.get("emodel") == emodel_name and v.get("seed") == seed
+            ),
+            (None, None),
+        )
+        if entry is None:
+            msg = f"No final.json entry for emodel={emodel_name!r}, seed={seed}."
+            raise ValueError(msg)
 
     entry = {**entry, "validation_fitness": {}, "validated": None}
     (coord_root / "final.json").write_text(json.dumps({key: entry}, indent=2), encoding="utf-8")

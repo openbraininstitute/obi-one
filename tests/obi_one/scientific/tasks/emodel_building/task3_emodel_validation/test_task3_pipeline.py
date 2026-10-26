@@ -11,6 +11,7 @@ pytest.importorskip("bluepyemodel")
 from bluepyemodel.emodel_pipeline import plotting
 from bluepyemodel.evaluation import evaluation
 from bluepyemodel.preprocessing import OptimizationArtifacts
+from entitysdk.exception import IteratorResultError
 from entitysdk.types import EntityType, TaskResultType
 
 from obi_one.scientific.tasks.emodel_building import (
@@ -96,7 +97,39 @@ class TestResolveOptimisationProvenance:
         with pytest.raises(TypeError, match="not an EModelOptimizationSingleConfig"):
             staging.resolve_optimisation_provenance(str(uuid4()), provenance_client(activity))
 
-    def test_requires_optimisation_result(self, monkeypatch):
+    def test_falls_back_to_campaign_config(self, monkeypatch):
+        activity = SimpleNamespace(
+            id="act", used=[ref(EntityType.task_config, "child")], generated=[]
+        )
+        scan = {"form": {"type": "EModelOptimizationScanConfig", "initialize": {}}}
+        responses = iter([IteratorResultError(), scan])
+
+        def select_or_raise(**_):
+            result = next(responses)
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+        seen = {}
+        config = MagicMock(spec=EModelOptimizationSingleConfig)
+
+        def fake_deserialize(data):
+            seen["data"] = data
+            return config
+
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", select_or_raise)
+        monkeypatch.setattr(staging, "deserialize_obi_object_from_json_data", fake_deserialize)
+        client = provenance_client(activity)
+        client.get_entity.side_effect = lambda entity_id, **_: SimpleNamespace(
+            id=entity_id, meta={}, task_config_generator_id="campaign-id"
+        )
+
+        provenance = staging.resolve_optimisation_provenance(str(uuid4()), client)
+
+        assert provenance.config is config
+        assert seen["data"]["type"] == "EModelOptimizationSingleConfig"
+
+    def test_missing_optimisation_result_is_allowed(self, monkeypatch):
         other = SimpleNamespace(id="tr", task_result_type="other")
         activity = SimpleNamespace(
             id="act",
@@ -109,10 +142,10 @@ class TestResolveOptimisationProvenance:
             "deserialize_obi_object_from_json_data",
             lambda _: MagicMock(spec=EModelOptimizationSingleConfig),
         )
-        with pytest.raises(ValueError, match="no emodel_optimization__result"):
-            staging.resolve_optimisation_provenance(
-                str(uuid4()), provenance_client(activity, [other])
-            )
+        provenance = staging.resolve_optimisation_provenance(
+            str(uuid4()), provenance_client(activity, [other])
+        )
+        assert provenance.task_result is None
 
 
 def test_stage_working_directory(tmp_path, monkeypatch):
