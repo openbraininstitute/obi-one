@@ -7,6 +7,8 @@ Provides logic to:
 - Fall back to emodel_circuit derivations for templates whose files cannot be read.
 - Compute the intersection (common) of mechanism variables across all templates.
 - Return a flat response matching the MEModel response shape.
+
+See ``docs/neuronal-manipulation-properties.md`` for the data flow and its limits.
 """
 
 from __future__ import annotations
@@ -55,18 +57,31 @@ if TYPE_CHECKING:
 
 L = logging.getLogger(__name__)
 
-# Same bound entitysdk's download_memodel and the ME-model build task use with one client.
-FETCH_CONCURRENCY = 8
+# One pool for every request in the process: the API serves many requests at once, so a
+# per-request pool would multiply threads and open connections with the request count.
+# 16 lets one request fetch a typical template's mod files in a single round; under load,
+# fetches queue here instead of piling onto entitycore and storage.
+# ponytail: fixed process-wide cap; make it a setting if the API's request concurrency
+# or the entitycore connection limits change.
+FETCH_POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="circuit-file-fetch")
 # hoc and mod files are a few KB to tens of KB; anything far larger is not a cell model
 # and is refused before it is read into memory.
 MAX_MODEL_FILE_BYTES = 1_000_000
 
+# (population, node_id) -> model_template, or -> EModel ID after derivation matching.
 TemplateNodes = dict[tuple[str, int], str]
 
 
 @dataclass
 class PopulationModelDirs:
-    """Where a population's cell templates and mechanisms live inside the circuit asset."""
+    """Where a population's cell templates and mechanisms live inside the circuit asset.
+
+    Attributes:
+        population_type: SONATA population type, e.g. ``biophysical`` or ``virtual``.
+        hoc_dir: ``biophysical_neuron_models_dir`` as an asset path; None when unset or
+            outside the asset.
+        mod_dir: ``mechanisms_dir`` as an asset path; None when unset or outside the asset.
+    """
 
     population_type: str
     hoc_dir: str | None
@@ -75,7 +90,12 @@ class PopulationModelDirs:
 
 @dataclass
 class TemplateModel:
-    """One cell template (``model_template`` value) read from the circuit's files."""
+    """One cell template (``model_template`` value) read from the circuit's files.
+
+    Attributes:
+        biophysics: The parsed hoc file.
+        mechanisms: Parsed mod files keyed by mechanism suffix, ``pas`` excluded.
+    """
 
     biophysics: HocBiophysics
     mechanisms: dict[str, ModMechanism]
@@ -171,12 +191,14 @@ def _stage_circuit_for_neuron_set(
 
     Copies circuit_config.json as a real file (not a symlink) so that
     $BASE_DIR resolves to the temp directory rather than the S3 cache.
-    Node sets and nodes.h5 files are staged with link_or_download (symlinks
-    to the S3 cache where available, downloads otherwise).
+    node_sets.json and every nodes.h5 are then staged concurrently on ``FETCH_POOL``
+    with link_or_download (symlinks to the S3 cache where available, downloads
+    otherwise). A missing node_sets.json is tolerated; it is optional in SONATA.
 
     Returns:
         The config path, population -> nodes.h5 asset path, and population ->
-        type and hoc / mod directories.
+        type and hoc / mod directories. An ``EntitySDKError`` from fetching
+        circuit_config.json or a nodes.h5 propagates.
     """
     # Copy config as a real file so $BASE_DIR resolves to temp_dir
     config_path = _stage_file(
@@ -188,22 +210,35 @@ def _stage_circuit_for_neuron_set(
         strategy=FetchFileStrategy.copy_or_download,
     )
 
-    # Stage node_sets.json (needed for neuron set resolution)
-    try:
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, "node_sets.json")
-    except Exception:  # ruff: ignore[blind-except]
-        L.debug("node_sets.json not available, continuing without it")
-
-    # Load circuit — $BASE_DIR now resolves to temp_dir because config is a real file
+    # Load circuit — $BASE_DIR now resolves to temp_dir because config is a real file.
+    # Only the config is read here; node sets and nodes are read later, after staging.
     snap_circuit = SnapCircuit(str(config_path))
 
-    pop_to_nodes_path: dict[str, str] = {}
+    pop_to_nodes_path = {
+        population: str(
+            Path(snap_circuit.nodes[population].h5_filepath).resolve().relative_to(temp_dir_path)
+        )
+        for population in snap_circuit.nodes.population_names
+    }
+
+    def stage(asset_path: str) -> Path:
+        return _stage_file(db_client, circuit_id, asset_id, temp_dir_path, asset_path)
+
+    def stage_node_sets() -> None:
+        # Needed for neuron set resolution, but optional in SONATA.
+        try:
+            stage("node_sets.json")
+        except Exception:  # ruff: ignore[blind-except]
+            L.debug("node_sets.json not available, continuing without it")
+
+    # Independent files: fetch together. A failed nodes.h5 re-raises from result().
+    futures = [FETCH_POOL.submit(stage_node_sets)]
+    futures.extend(FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values())
+    for future in futures:
+        future.result()
+
     pop_to_model_dirs: dict[str, PopulationModelDirs] = {}
-    for population in snap_circuit.nodes.population_names:
-        nodes_h5_resolved = Path(snap_circuit.nodes[population].h5_filepath).resolve()
-        nodes_relative = str(nodes_h5_resolved.relative_to(temp_dir_path))
-        _stage_file(db_client, circuit_id, asset_id, temp_dir_path, nodes_relative)
-        pop_to_nodes_path[population] = nodes_relative
+    for population in pop_to_nodes_path:
         pop_config = snap_circuit.nodes[population].config
         pop_to_model_dirs[population] = PopulationModelDirs(
             population_type=pop_config.get("type", ""),
@@ -232,7 +267,17 @@ def _fetch_and_parse[T](
     parse: Callable[[str], T],
     stage: Callable[[str], Path],
 ) -> dict[str, T | Exception]:
-    """Stage and parse each asset path concurrently; a failure is returned, not raised."""
+    """Stage and parse each asset path concurrently on ``FETCH_POOL``.
+
+    Args:
+        paths: Asset paths; duplicates are fetched once.
+        parse: Turns a file's text into its parsed form.
+        stage: Stages one asset path and returns the local file.
+
+    Returns:
+        Asset path -> parsed result, or the exception that stopped it. Failures are
+        returned so one bad file does not fail the other templates.
+    """
 
     def one(path: str) -> T | Exception:
         try:
@@ -243,8 +288,7 @@ def _fetch_and_parse[T](
 
     unique = sorted(set(paths))
     # Each fetch is a few HTTP round trips (API, redirect, storage); threads overlap them.
-    with ThreadPoolExecutor(max_workers=FETCH_CONCURRENCY) as executor:
-        return dict(zip(unique, executor.map(one, unique), strict=True))
+    return dict(zip(unique, FETCH_POOL.map(one, unique), strict=True))
 
 
 def _read_template_models(
@@ -720,6 +764,7 @@ def _compute_common_mechanism_variables(
 
 
 def _empty_response(warning: str) -> dict:
+    """A response with no variables and one warning."""
     return {
         "entity_type": "circuit",
         "populations": None,
@@ -752,7 +797,12 @@ def get_circuit_manipulation_properties(
 
     Returns:
         Dict with entity_type, populations, mechanism_variables_by_ion_channel,
-        and optional warnings.
+        and optional warnings. Each template that needed the derivation fallback, or
+        could not be resolved at all, gets one warning with the reason.
+
+    A ``ValueError`` propagates when the circuit has no single sonata_circuit asset,
+    the neuron set resolves to no nodes, or a selected population has no
+    model_template; the endpoint maps it to HTTP 400.
     """
     resolved_populations: list[str] | None = None
 
