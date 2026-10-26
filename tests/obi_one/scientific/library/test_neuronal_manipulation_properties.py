@@ -11,6 +11,7 @@ from entitysdk.types import FetchFileStrategy
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library import circuit as circuit_module
+from obi_one.scientific.library.emodel_circuit_files import HocTemplateError
 from obi_one.scientific.library.emodel_parameters import (
     ChannelInfo,
     ChannelSectionListMapping,
@@ -25,12 +26,16 @@ from obi_one.scientific.library.memodel_circuit import (
     get_memodel_mechanism_variables,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
+    MAX_MODEL_FILE_BYTES,
     _build_emodel_groups,
     _compute_common_mechanism_variables,
     _fetch_emodel_derivation_mapping,
     _get_circuit_asset,
     _match_templates_to_emodels,
+    _public_reason,
+    _read_model_file,
     _stage_circuit_for_neuron_set_resolution,
+    _stage_file,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -625,7 +630,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(mock_populations, mock_templates),
+                return_value=(mock_populations, mock_templates, {}),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -659,7 +664,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         assert "MechanismVariablesByIonChannel" in result
         # Both emodels have NaTg, so intersection should contain it
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
     def test_unmatched_templates_produce_warnings(self, mock_db_client):
         """Unmatched model_template values appear in warnings."""
@@ -677,7 +682,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
             "._stage_circuit_for_neuron_set_resolution",
-            return_value=(["S1nonbarrel_neurons"], mock_templates),
+            return_value=(["S1nonbarrel_neurons"], mock_templates, {}),
         ):
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
@@ -748,7 +753,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates),
+                return_value=(["S1nonbarrel_neurons"], mock_templates, {}),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -812,7 +817,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates),
+                return_value=(["S1nonbarrel_neurons"], mock_templates, {}),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -835,7 +840,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         assert natg_var.units == "S/cm2"
         assert natg_var.variable_type == "RANGE"
         assert natg.section_lists == ["somatic"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
 
 class TestComputeCommonMechanismVariablesEdgeCases:
@@ -918,7 +923,7 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set = MagicMock()
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
+        populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
             db_client=mock_db_client,
             circuit_id=circuit_id,
             circuit_entity=circuit_entity,
@@ -955,7 +960,7 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set = MagicMock()
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
+        populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
             db_client=client,
             circuit_id=str(uuid4()),
             circuit_entity=entity,
@@ -995,7 +1000,7 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         # Should not raise despite missing node_sets.json
-        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
+        populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
             db_client=client,
             circuit_id=str(uuid4()),
             circuit_entity=entity,
@@ -1033,6 +1038,7 @@ class TestStageCircuitForNeuronSetResolution:
                 return_value=(
                     circuit_dir / "circuit_config.json",
                     {"S1nonbarrel_neurons": "nodes.h5"},
+                    {},
                 ),
             ),
             pytest.raises(ValueError, match="No nodes file found for population"),
@@ -1133,7 +1139,7 @@ class TestGetCircuitManipulationPropertiesFastPath:
         assert result["populations"] is None
         assert "MechanismVariablesByIonChannel" in result
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
     def test_fast_path_no_derivations(self):
         """Fast path with no derivations returns empty with warning."""
@@ -1185,7 +1191,7 @@ class TestMultiPopulationRegression:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["pop_A", "pop_B"], mock_templates),
+                return_value=(["pop_A", "pop_B"], mock_templates, {}),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -1217,7 +1223,7 @@ class TestMultiPopulationRegression:
         assert mock_get_vars.call_count == 2
         # NaTg is common to both -> should appear in intersection
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
     def test_empty_node_id_lists_rejected(self, mock_db_client):
         """Neuron set returning {"pop": []} raises ValueError, not silent empty.
@@ -1415,3 +1421,104 @@ class TestMEModelCircuitValidation:
 
         with pytest.raises(OBIONEError, match="exactly one neuron"):
             circuit.confirm_single_neuron()
+
+
+class TestVariablesReadFromCircuitFiles:
+    """End to end on the tiny circuit: hoc and mod files replace the derivation lookup."""
+
+    def test_neuron_set_path_needs_no_derivation(self, mock_db_client):
+        neuron_set = MagicMock()
+        # One node, so one template: the response keeps that template's own values.
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
+
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+        )
+
+        mock_db_client.search_entity.assert_not_called()
+        assert result["populations"] == ["S1nonbarrel_neurons"]
+        assert result["warnings"] is None
+        channels = result["MechanismVariablesByIonChannel"]
+        assert {"pas", "NaTg", "-"} <= set(channels)
+        g_pas = channels["pas"].variables["g_pas"].section_lists_original_values
+        assert all(value is not None for value in g_pas.values())
+
+    def test_no_neuron_set_reads_every_template(self, mock_db_client):
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+        )
+
+        mock_db_client.search_entity.assert_not_called()
+        assert result["populations"] is None
+        assert result["warnings"] is None
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+
+    def test_unreadable_template_falls_back_to_derivation(self, mock_db_client):
+        """A hoc file that is not template output is reported and read from the database."""
+        mock_db_client.search_entity.return_value.all.return_value = []
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+        original = mock_db_client.fetch_file.side_effect
+
+        def _fetch_file(*, output_path, asset_path, **kwargs):
+            original(output_path=output_path, asset_path=asset_path, **kwargs)
+            if Path(asset_path).name == "cADpyr_L6BPC.hoc":
+                text = Path(output_path).read_text(encoding="utf-8")
+                Path(output_path).write_text(
+                    text.replace("    Ra = 100\n", "    Ra = x\n"), encoding="utf-8"
+                )
+
+        mock_db_client.fetch_file.side_effect = _fetch_file
+
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+        )
+
+        mock_db_client.search_entity.assert_called_once()
+        assert any(
+            "No derivation found for model_template: hoc:cADpyr_L6BPC" in w
+            for w in result["warnings"]
+        )
+        # The other template was still read from its files.
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+
+
+class TestCircuitFileSafety:
+    """Guards for paths and file content that come from user-registered circuits."""
+
+    @pytest.mark.parametrize("asset_path", ["../outside.hoc", "emodels_hoc/../../x.hoc", "/etc/x"])
+    def test_stage_file_refuses_paths_outside_the_asset(self, tmp_path, asset_path):
+        client = MagicMock()
+        with pytest.raises(ValueError, match="outside the circuit"):
+            _stage_file(client, str(uuid4()), uuid4(), tmp_path, asset_path)
+        client.fetch_file.assert_not_called()
+
+    def test_oversized_model_file_is_refused(self, tmp_path):
+        big = tmp_path / "big.hoc"
+        big.write_bytes(b"x" * (MAX_MODEL_FILE_BYTES + 1))
+        with pytest.raises(HocTemplateError, match="byte limit"):
+            _read_model_file(big)
+
+    def test_fetch_errors_do_not_reach_the_response(self):
+        err = RuntimeError("https://bucket.s3.amazonaws.com/x?X-Amz-Security-Token=secret")
+        assert "secret" not in _public_reason(err)
+        assert _public_reason(HocTemplateError("unexpected line")) == "unexpected line"
+
+    def test_template_name_with_traversal_falls_back(self, mock_db_client):
+        mock_db_client.search_entity.return_value.all.return_value = []
+        neuron_set = MagicMock()
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties.NodeStorage"
+        ) as mock_ns:
+            pop = MagicMock()
+            pop.attribute_names = ["model_template"]
+            pop.get_attribute.return_value = ["hoc:../../../escape"]
+            mock_ns.return_value.open_population.return_value = pop
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+            )
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert any("hoc:../../../escape" in w for w in result["warnings"])
+        fetched = [str(c.kwargs["asset_path"]) for c in mock_db_client.fetch_file.call_args_list]
+        assert not any("escape" in path for path in fetched)

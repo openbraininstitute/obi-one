@@ -13,14 +13,14 @@ from obi_one.scientific.library.emodel_parameters import (
     MechanismVariable,
     _build_channel_entity_id_mapping,
     _build_suffix_to_channel_name_mapping,
-    _expand_section_list,
     _expand_section_lists,
     _extract_channel_suffix,
-    _extract_section_properties,
     _fetch_optimization_parameters,
     _get_ion_channel_variables,
     _infer_section_lists_for_ion_channel_vars,
     _parse_optimization_parameters,
+    expand_section_list,
+    extract_section_properties,
     get_mechanism_variables,
     get_mechanism_variables_for_emodel,
 )
@@ -68,21 +68,21 @@ class TestValidSectionLists:
 
 
 class TestExpandSectionList:
-    """Tests for _expand_section_list."""
+    """Tests for expand_section_list."""
 
     def test_expand_all(self):
         """'all' expands to all 4 section lists."""
-        result = _expand_section_list("all")
+        result = expand_section_list("all")
         assert result == ["apical", "basal", "somatic", "axonal"]
 
     def test_expand_alldend(self):
         """'alldend' expands to apical and basal."""
-        result = _expand_section_list("alldend")
+        result = expand_section_list("alldend")
         assert result == ["apical", "basal"]
 
     def test_passthrough_unknown(self):
         """Unknown section lists pass through unchanged."""
-        result = _expand_section_list("somatic")
+        result = expand_section_list("somatic")
         assert result == ["somatic"]
 
     def test_expand_section_lists_deduplicates_in_input_order(self):
@@ -365,7 +365,7 @@ class TestMechanismVariableLoading:
             }
         )
 
-        variables = _extract_section_properties(mapping)
+        variables = extract_section_properties(mapping)
 
         assert len(variables) == 4
         assert {variable.section_list for variable in variables} == {"somatic", "axonal"}
