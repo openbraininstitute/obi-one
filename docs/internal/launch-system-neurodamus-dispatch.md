@@ -26,7 +26,7 @@ The **obi repo dispatcher** GitHub App is **installed on `openbraininstitute/obi
 
 | Setting | Name |
 |---------|------|
-| Repository variable | `OBI_REPO_DISPATCHER_CLIENT_ID` |
-| Repository secret | `OBI_REPO_DISPATCHER_PRIVATE_KEY` |
+| `release` environment variable | `OBI_REPO_DISPATCHER_CLIENT_ID` |
+| `release` environment secret | `OBI_REPO_DISPATCHER_PRIVATE_KEY` |
 
 `dispatch-neurodamus-executor.yml` mints a short-lived installation token (scoped to `launch-system`, `permission-actions: write`) via `actions/create-github-app-token` and posts `repos/openbraininstitute/launch-system/dispatches`. The default obi-one `GITHUB_TOKEN` cannot dispatch into private launch-system.
