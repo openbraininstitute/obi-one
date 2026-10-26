@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing import Annotated
+from uuid import UUID
 
 import entitysdk.client
 import entitysdk.exception
@@ -8,7 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
-from obi_one.db_sdk.db_sdk import get_recording_amplitudes, get_recording_protocols
+from app.services.electrical_cell_recording_properties import (
+    get_electrical_cell_recording_properties,
+)
 from obi_one.scientific.library.entity_property_types import (
     ElectricalCellRecordingMappedProperties,
 )
@@ -27,15 +30,11 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
     ),
 )
 def mapped_electrical_cell_recording_properties_endpoint(
-    recording_ids: Annotated[list[str], Query()],
+    recording_ids: Annotated[list[UUID], Query()],
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> dict:
     try:
-        by_recording = get_recording_protocols(
-            recording_ids=recording_ids,
-            db_client=db_client,
-        )
-        amplitudes_by_protocol = get_recording_amplitudes(
+        by_recording, amplitudes_by_protocol = get_electrical_cell_recording_properties(
             recording_ids=recording_ids,
             db_client=db_client,
         )
