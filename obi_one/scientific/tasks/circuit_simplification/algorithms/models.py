@@ -1,3 +1,4 @@
+import sys
 from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Discriminator, Field
@@ -116,6 +117,18 @@ class NeuronReduceAlgorithm(SimplificationAlgorithm):
     )
 
 
+class NeatReductionAlgorithm(SimplificationAlgorithm):
+    title: ClassVar[str] = ALGORITHM_EXPORT_TITLES["neat_reduction"]
+    algorithm_name: ClassVar[str] = "neat_reduction"
+    model_config = ConfigDict(
+        json_schema_extra={"description": ALGORITHM_EXPORT_DESCRIPTIONS["neat_reduction"]}
+    )
+
+    def pipeline_kwargs(self) -> dict[str, Any]:  # ruff: ignore[no-self-use]
+        """Run the NEAT subprocess with the task's interpreter (default is ``python3``)."""
+        return {"neat_config": {"python_executable": sys.executable}}
+
+
 SIMPLIFICATION_ALGORITHM_BLOCKS = (
     SingleCompartmentAlgorithm
     | LifNestAlgorithm
@@ -125,6 +138,7 @@ SIMPLIFICATION_ALGORITHM_BLOCKS = (
     | GlifNestAlgorithm
     | GifNestAlgorithm
     | NeuronReduceAlgorithm
+    | NeatReductionAlgorithm
 )
 
 SimplificationAlgorithmUnion = Annotated[
@@ -143,6 +157,7 @@ ALGORITHM_BLOCK_CLASSES: dict[str, type[SimplificationAlgorithm]] = {
         GlifNestAlgorithm,
         GifNestAlgorithm,
         NeuronReduceAlgorithm,
+        NeatReductionAlgorithm,
     )
 }
 

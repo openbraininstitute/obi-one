@@ -19,7 +19,7 @@ bluepysnap==3.0.8
 brainbuilder==0.20.9
 brian2==2.10.1
 cached-property==2.0.1
-cachetools==7.2.4
+cachetools==7.2.5
 caveclient==8.2.1
 certifi==2026.10.23
 cffi==2.1.1
@@ -163,7 +163,7 @@ typing-inspection==0.4.4
 tzdata==2026.5
 urllib3==2.8.0
 voxcell==3.1.11
-wcwidth==0.9.3
+wcwidth==0.9.4
 xarray==2026.9.0
 xmltodict==1.0.4
 zict==3.0.0

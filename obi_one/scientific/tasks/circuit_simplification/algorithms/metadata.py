@@ -13,6 +13,7 @@ ALGORITHM_EXPORT_MAP: dict[str, tuple[str, str | None]] = {
     "glif_nest": ("glif", "nest:glif_psc"),
     "gif_nest": ("gif", "nest:gif_cond_exp"),
     "neuron_reduce": ("neuron_reduce", None),
+    "neat_reduction": ("neat_reduction", None),
 }
 
 _NMDA_LIMITATION = (
@@ -29,6 +30,7 @@ BASE_ALGORITHM_TITLES: dict[str, str] = {
     "glif": "Generalized Leaky Integrate-and-Fire (GLIF)",
     "gif": "Generalized Integrate-and-Fire (GIF)",
     "neuron_reduce": "Neuron_Reduce Impedance-Based Reduction",
+    "neat_reduction": "NEAT Compartment Reduction (experimental)",
 }
 
 BASE_ALGORITHM_DESCRIPTIONS: dict[str, str] = {
@@ -96,6 +98,17 @@ BASE_ALGORITHM_DESCRIPTIONS: dict[str, str] = {
         " potential are re-measured on the reduced cells (validate-then-shift, 5% tolerance)"
         " and recorded in a per-model manifest. Requires the optional 'reduction' extra"
         " (neuron-reduce + NEURON)."
+    ),
+    "neat_reduction": (
+        "Analytically reduces the dendritic tree of each biophysical ME-model to a few"
+        " compartments with the NEAT library, preserving transfer impedance at selected"
+        " fit locations. Afferent synapses are remapped onto the reduced compartments"
+        " with a DC transfer-impedance conductance rescale. The output is a BBP SONATA"
+        " circuit of reduced multi-compartment ME-models (generated HOC template,"
+        " reduced SWC, generated channel MOD files) for NEURON. Holding, threshold,"
+        " input resistance and resting potential are re-measured on the reduced cells"
+        " (validate-then-shift) and recorded in a per-model manifest. Requires the"
+        " optional 'reduction' extra (nest-neat + NEURON)."
     ),
 }
 

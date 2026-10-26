@@ -1,6 +1,7 @@
 """Tests for algorithm options, neuron-set targeting, provenance and resource sizing."""
 
 import json
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -22,6 +23,7 @@ from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import 
 from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     ALGORITHM_BLOCK_CLASSES,
     LifNestAlgorithm,
+    NeatReductionAlgorithm,
     NeuronReduceAlgorithm,
     SingleCompartmentAlgorithm,
 )
@@ -78,11 +80,12 @@ class TestAlgorithmBlocks:
         assert ALGORITHM_EXPORT_MAP["neuron_reduce"] == ("neuron_reduce", None)
         assert ALGORITHM_BLOCK_CLASSES["neuron_reduce"] is NeuronReduceAlgorithm
 
-    def test_neat_reduction_not_exposed(self):
-        """NEAT is held back until sonata-simplify packages its runner script."""
-        assert "neat_reduction" not in ALGORITHM_EXPORT_MAP
-        assert "neat_reduction" not in ALGORITHM_BLOCK_CLASSES
-        assert "neat_reduction" not in ALGORITHM_EXPORT_DESCRIPTIONS
+    def test_neat_reduction_registered_without_exporter(self):
+        assert ALGORITHM_EXPORT_MAP["neat_reduction"] == ("neat_reduction", None)
+        assert ALGORITHM_BLOCK_CLASSES["neat_reduction"] is NeatReductionAlgorithm
+
+    def test_neat_description_is_not_the_stale_placeholder(self):
+        assert "not yet functional" not in ALGORITHM_EXPORT_DESCRIPTIONS["neat_reduction"]
 
     def test_single_compartment_filter_defaults(self):
         assert SingleCompartmentAlgorithm().pipeline_kwargs() == {
@@ -99,6 +102,11 @@ class TestAlgorithmBlocks:
     def test_filter_poles_can_be_scanned(self):
         assert SingleCompartmentAlgorithm(filter_poles=[1, 2, 4]).filter_poles == [1, 2, 4]
 
+    def test_neat_runs_subprocess_with_task_interpreter(self):
+        assert NeatReductionAlgorithm().pipeline_kwargs() == {
+            "neat_config": {"python_executable": sys.executable}
+        }
+
     def test_other_algorithms_use_pipeline_defaults(self):
         assert LifNestAlgorithm().pipeline_kwargs() == {}
         assert NeuronReduceAlgorithm().pipeline_kwargs() == {}
@@ -107,6 +115,7 @@ class TestAlgorithmBlocks:
         assert algorithm_supports_node_selection("single_compartment")
         assert not algorithm_supports_node_selection("lif_nest")
         assert not algorithm_supports_node_selection("neuron_reduce")
+        assert not algorithm_supports_node_selection("neat_reduction")
 
 
 class TestTargetNeuronSet:
@@ -153,14 +162,14 @@ class TestExecuteOptions:
         assert kwargs["strict_filters"] is False
 
     def test_execute_writes_provenance(self, mock_pipeline, tmp_path: Path):
-        config = TestTaskExecution._make_config(tmp_path, algorithm="neuron_reduce")
+        config = TestTaskExecution._make_config(tmp_path, algorithm="neat_reduction")
         kwargs = _run(config, tmp_path, mock_pipeline)
-        assert kwargs["simplification_mode"] == "neuron_reduce"
+        assert kwargs["simplification_mode"] == "neat_reduction"
         provenance_path = (
-            config.coordinate_output_root / "neuron_reduce" / "output" / PROVENANCE_FILE_NAME
+            config.coordinate_output_root / "neat_reduction" / "output" / PROVENANCE_FILE_NAME
         )
         provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
-        assert provenance["algorithm"] == "neuron_reduce"
+        assert provenance["algorithm"] == "neat_reduction"
         assert set(provenance["package_versions"]) == {
             "obi-one",
             "sonata-simplify",
@@ -184,7 +193,7 @@ class TestExecuteOptions:
             ),
         ):
             task._register_output(
-                db_client=MagicMock(), circuit_path=circuit_path, algorithm_name="neuron_reduce"
+                db_client=MagicMock(), circuit_path=circuit_path, algorithm_name="neat_reduction"
             )
         kwargs = register_circuit.call_args.kwargs
         assert f"sonata-simplify {versions['sonata-simplify']}" in kwargs["description"]
@@ -195,18 +204,18 @@ class TestExecuteOptions:
 
 class TestResourceEstimation:
     def test_reduction_algorithms(self):
-        assert {"neuron_reduce"} == REDUCTION_ALGORITHMS
+        assert {"neuron_reduce", "neat_reduction"} == REDUCTION_ALGORITHMS
 
     def test_reduction_needs_more_cores_than_point_neuron(self):
         point = estimate_resources_for_algorithms(["lif_nest"], nbio=10_000)
-        reduction = estimate_resources_for_algorithms(["neuron_reduce"], nbio=10_000)
+        reduction = estimate_resources_for_algorithms(["neat_reduction"], nbio=10_000)
         assert reduction[0] > point[0]
         assert reduction[2] >= point[2]
 
     def test_time_adds_up_over_algorithms(self):
         _, _, single = estimate_resources_for_algorithms(["neuron_reduce"], nbio=100_000)
         _, _, both = estimate_resources_for_algorithms(
-            ["neuron_reduce", "single_compartment"], nbio=100_000
+            ["neuron_reduce", "neat_reduction"], nbio=100_000
         )
         assert both > single
 

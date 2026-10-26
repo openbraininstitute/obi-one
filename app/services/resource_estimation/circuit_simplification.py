@@ -4,7 +4,7 @@ Estimates cores, memory, and time limit based on the input circuit's
 biophysical node count and edge count, plus the selected algorithm type.
 
 ``single_compartment`` performs expensive per-cell filter computation
-(Rossert kernels); ``neuron_reduce`` reduces every
+(Rossert kernels); ``neuron_reduce`` and ``neat_reduction`` reduce every
 cell's morphology in NEURON and re-measure its dynamics. Point-neuron
 algorithms (lif, adex, izhikevich, glif, gif) skip filter computation
 entirely and are much cheaper.
@@ -55,8 +55,8 @@ BASE_MEMORY_GB = 2.0
 FILTER_WORK_UNITS_PER_CORE_HOUR = 100_000
 POINT_NEURON_WORK_UNITS_PER_CORE_HOUR = 500_000
 
-# Morphological-reduction work units (cells) per core. neuron_reduce
-# reduces every biophysical cell in NEURON (subprocess per cell,
+# Morphological-reduction work units (cells) per core. neuron_reduce and
+# neat_reduction reduce every biophysical cell in NEURON (subprocess per cell,
 # mechanism compilation, impedance fits, re-measurement of holding/threshold),
 # which is far more expensive per cell than point-neuron calibration.
 REDUCTION_WORK_UNITS_PER_CORE = 2_000
@@ -69,7 +69,7 @@ DEFAULT_MAX_FILTER_LOCATIONS = 100
 FILTER_ALGORITHMS = {"single_compartment"}
 
 # Algorithms that reduce the detailed morphology to a few compartments.
-REDUCTION_ALGORITHMS = {"neuron_reduce"}
+REDUCTION_ALGORITHMS = {"neuron_reduce", "neat_reduction"}
 
 
 def _algorithm_workload(algorithm_name: str, nbio: int) -> tuple[int, int, int]:

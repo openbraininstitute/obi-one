@@ -3,7 +3,7 @@
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron, single-compartment or reduced multi-compartment circuits while
 preserving network connectivity. Each selected algorithm registers exactly one circuit in
-its target simulator format: single_compartment and neuron_reduce as
+its target simulator format: single_compartment, neuron_reduce and neat_reduction as
 NEURON, point-neuron NEST variants as NEST, and adex_brian2 as Brian2.
 """
 
