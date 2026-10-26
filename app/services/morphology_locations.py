@@ -15,13 +15,13 @@ from app.services.circuit_visualization import (
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.library.compartment_sets import sample_morphology_locations
 
-# Generation cost grows with the morphology's section count (the per-call path-distance setup
-# scales with it), independent of how many locations are requested. Previews run synchronously
-# in a single-worker service with no request timeout, so a very large morphology would hold the
-# only process until it finishes. This bound refuses those with a clear message instead of
-# occupying the process. The threshold covers the morphology sizes seen in practice while
-# keeping the slowest allowed preview close to the latency we have validated as acceptable.
-MAX_PREVIEW_SECTIONS = 7000
+# Generation cost grows with the morphology's section count, independent of how many locations
+# are requested: the path-distance setup allocates dense section-by-section tables, so memory
+# grows as section_count squared and is held for the whole request. Previews run synchronously
+# in the shared API process, so concurrent previews of very large morphologies could exhaust its
+# memory. This bound sits above the morphology sizes seen in practice, so it refuses only
+# pathological inputs rather than restricting normal use.
+MAX_PREVIEW_SECTIONS = 8000
 
 
 class MorphologyTooLargeForPreviewError(Exception):
