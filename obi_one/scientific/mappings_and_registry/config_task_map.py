@@ -314,6 +314,24 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         scan_config_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsScanConfig"),
         asset_label=None,
     ),
+    TaskType.circuit_simplification: TaskSpec(
+        task_ref=(f"{_TASKS}.circuit_simplification.task", "CircuitSimplificationTask"),
+        single_config_ref=(
+            f"{_TASKS}.circuit_simplification.config",
+            "CircuitSimplificationSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.circuit_simplification.config",
+            "CircuitSimplificationScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.circuit_simplification__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.circuit_simplification__config_generation
+        ),
+        single_task_config_type=TaskConfigType.circuit_simplification__config,
+        single_task_activity_type=TaskActivityType.circuit_simplification__execution,
+    ),
     TaskType.circuit_simulation_neurodamus_machine: TaskSpec(
         task_ref=(f"{_SIMULATION_EXECUTION}.task", "CircuitSimulationExecutionTask"),
         single_config_ref=(

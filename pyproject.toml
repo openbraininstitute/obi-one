@@ -69,6 +69,9 @@ connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 # MESHING - optional, private dependency needed for skeletonization and mesh LOD generation
 meshing = ["ultraliser>=2.1.9"]
 
+# SIMPLIFICATION - optional, private dependency needed to run circuit simplification
+simplification = ["sonata-simplify[simulation,reduction]>=0.2.6"]
+
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
     "ipykernel",
@@ -146,6 +149,7 @@ explicit = true
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch = "main" }
 ultraliser = { index = "obi-codeartifact" }
+sonata-simplify = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100

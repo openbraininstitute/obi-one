@@ -311,22 +311,6 @@ def test_compile_neuron_mechanisms_rejects_multiple_dirs(mock_run_and_log, tmp_p
 
 
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
-def test_compile_neuron_mechanisms_missing_lib(mock_run_and_log, tmp_path):
-    mech_dir = tmp_path / "mech"
-    mech_dir.mkdir()
-    output_dir = tmp_path / "output"
-    output_dir.mkdir()
-    mock_run_and_log.return_value.stdout = "compilation done"
-
-    with pytest.raises(RuntimeError, match=r"libnrnmech.so was not found"):
-        test_module.compile_mechanisms(
-            output_dir=output_dir,
-            mechanisms_dirs=[mech_dir],
-            simulation_backend=SimulationBackend.bluecellulab,
-        )
-
-
-@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
 def test_compile_neurodamus_mechanisms_uses_absolute_input_paths(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -363,3 +347,105 @@ def test_compile_mechanisms_unsupported_backend(tmp_path):
             mechanisms_dirs=[tmp_path / "mech"],
             simulation_backend="unsupported",  # ty:ignore[invalid-argument-type]
         )
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neuron_mechanisms_finds_dylib_on_macos(mock_run_and_log, tmp_path):
+    """libnrnmech.dylib (macOS) should be found, not just libnrnmech.so (Linux)."""
+    mech_dir = tmp_path / "mech"
+    mech_dir.mkdir()
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    mock_run_and_log.return_value.stdout = "compilation done"
+
+    dylib_file = output_dir / "arm64" / "libnrnmech.dylib"
+    dylib_file.parent.mkdir(parents=True)
+    dylib_file.write_text("dummy")
+
+    mechanism_build = test_module.compile_mechanisms(
+        output_dir=output_dir,
+        mechanisms_dirs=[mech_dir],
+        simulation_backend=SimulationBackend.bluecellulab,
+    )
+
+    assert isinstance(mechanism_build, NeuronMechanismBuild)
+    assert mechanism_build.libnrnmech_path == dylib_file
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+def test_compile_neuron_mechanisms_raises_when_no_libnrnmech(mock_run_and_log, tmp_path):
+    """RuntimeError should be raised when no libnrnmech shared object is found."""
+    mech_dir = tmp_path / "mech"
+    mech_dir.mkdir()
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    mock_run_and_log.return_value.stdout = "compilation done"
+
+    with pytest.raises(RuntimeError, match="libnrnmech was not found"):
+        test_module.compile_mechanisms(
+            output_dir=output_dir,
+            mechanisms_dirs=[mech_dir],
+            simulation_backend=SimulationBackend.bluecellulab,
+        )
+
+
+def _write_biophysical_circuit_config(circuit_dir, *, with_mechanisms_dir: bool):
+    """Minimal SONATA circuit config libsonata can parse."""
+    (circuit_dir / "nodes.h5").touch()
+    components = {
+        "morphologies_dir": "morphs",
+        "biophysical_neuron_models_dir": "",
+        "point_neuron_models_dir": "",
+        "synaptic_models_dir": "",
+        "templates_dir": "",
+    }
+    if with_mechanisms_dir:
+        components["mechanisms_dir"] = "mechmods"
+    config = {
+        "version": 2.3,
+        "manifest": {"$BASE_DIR": "./"},
+        "components": components,
+        "networks": {
+            "nodes": [
+                {
+                    "nodes_file": "$BASE_DIR/nodes.h5",
+                    "populations": {
+                        "A": {
+                            "type": "biophysical",
+                            "biophysical_neuron_models_dir": "$BASE_DIR/emodels_hoc",
+                        }
+                    },
+                }
+            ],
+            "edges": [],
+        },
+    }
+    config_path = circuit_dir / "circuit_config.json"
+    config_path.write_text(json.dumps(config))
+    return config_path
+
+
+def test_get_mechanisms_dirs_from_population_properties(tmp_path):
+    """mechanisms_dir declared in circuit components is returned."""
+    config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=True)
+
+    dirs = test_module.get_mechanisms_dirs(config_path)
+
+    assert len(dirs) == 1
+    assert dirs[0].endswith("/mechmods")
+
+
+def test_get_mechanisms_dirs_mod_dir_fallback(tmp_path):
+    """Falls back to a sibling mod/ directory when components declare none."""
+    config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=False)
+    mod_dir = tmp_path / "mod"
+    mod_dir.mkdir()
+
+    assert test_module.get_mechanisms_dirs(config_path) == [mod_dir]
+
+
+def test_get_mechanisms_dirs_empty(tmp_path):
+    """No mechanisms_dir and no mod/ fallback yields an empty list."""
+    config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=False)
+
+    assert test_module.get_mechanisms_dirs(config_path) == []
