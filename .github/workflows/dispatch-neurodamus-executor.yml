@@ -22,6 +22,7 @@ jobs:
     # pin-release has two entry points: a thin release→dispatch job, then the real pin on main via workflow_dispatch. Only react to the latter when it succeeded.
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       actions: read
       contents: read
@@ -58,7 +59,8 @@ jobs:
           private-key: ${{ secrets.OBI_REPO_DISPATCHER_PRIVATE_KEY }}
           owner: openbraininstitute
           repositories: launch-system
-          permission-actions: write
+          # repository_dispatch requires Contents write (not Actions)
+          permission-contents: write
 
       # launch-system: publish-neurodamus-runtime.yml (repository_dispatch neurodamus-executor-publish)
       - name: Trigger launch-system neurodamus executor publish
