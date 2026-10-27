@@ -12,7 +12,6 @@ from entitysdk.types import (
     AssetLabel,
     CircuitScale,
     ContentType,
-    EntityType,
     ExecutorType,
     TargetSimulator,
 )
@@ -28,6 +27,7 @@ from app.logger import L
 from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
+    AfterSuccess,
     AnyTaskDefinition,
     LaunchableTaskDefinition,
     MachineResources,
@@ -99,9 +99,9 @@ def submit_task_job(
         task_callback(event_type=CallBackEvent.job_on_failure, path="failure"),
         *callbacks,
     ]
-    if isinstance(task_definition, TaskDefinition) and task_definition.circuit_assets_on_success:
+    if isinstance(task_definition, TaskDefinition) and task_definition.after_success:
         all_callbacks.append(
-            task_callback(event_type=CallBackEvent.job_on_success, path="circuit-assets")
+            task_callback(event_type=CallBackEvent.job_on_success, path="after-success")
         )
 
     match task_definition.task_type:
@@ -358,20 +358,17 @@ def _task_callback(
     )
 
 
-def _activity_type(task_definition: AnyTaskDefinition) -> type[models.Activity]:
-    # TODO: Remove once simulations are migrated to generic configs
-    if isinstance(task_definition, TaskDefinitionLegacy):
-        return task_definition.activity_type
-    return models.TaskActivity
-
-
 def handle_task_failure_callback(
     *,
     activity_id: UUID,
     db_client: entitysdk.Client,
     task_definition: AnyTaskDefinition,
 ) -> None:
-    task_activity_type = _activity_type(task_definition)
+    # TODO: Remove once simulations are migrated to generic configs
+    if isinstance(task_definition, TaskDefinitionLegacy):
+        task_activity_type = task_definition.activity_type
+    else:
+        task_activity_type = models.TaskActivity
 
     current_status = db_client.get_entity(
         entity_id=activity_id, entity_type=task_activity_type
@@ -386,21 +383,32 @@ def handle_task_failure_callback(
         )
 
 
-def generated_circuits(
+def handle_task_after_success_callback(
     *,
     activity_id: UUID,
-    db_client: entitysdk.Client,
     task_definition: AnyTaskDefinition,
-) -> list[models.Circuit]:
-    """The circuits the task's activity generated."""
-    activity = db_client.get_entity(
-        entity_id=activity_id, entity_type=_activity_type(task_definition)
+    db_client: entitysdk.Client,
+    ls_client: httpx.Client,
+    compute_cell: str,
+    project_id: UUID,
+    virtual_lab_id: UUID,
+) -> None:
+    if not isinstance(task_definition, TaskDefinition) or task_definition.after_success is None:
+        raise ApiError(
+            message=f"Task type {task_definition.task_type} has nothing to run after success",
+            http_status_code=HTTPStatus.BAD_REQUEST,
+            error_code=ApiErrorCode.INVALID_REQUEST,
+        )
+    task_definition.after_success(
+        AfterSuccess(
+            activity=db_client.get_entity(entity_id=activity_id, entity_type=models.TaskActivity),
+            db_client=db_client,
+            ls_client=ls_client,
+            compute_cell=compute_cell,
+            project_id=project_id,
+            virtual_lab_id=virtual_lab_id,
+        )
     )
-    return [
-        db_client.get_entity(entity_id=entity.id, entity_type=models.Circuit)
-        for entity in activity.generated or []
-        if entity.type == EntityType.circuit
-    ]
 
 
 def estimate_task_resources(

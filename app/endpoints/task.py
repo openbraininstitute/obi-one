@@ -14,7 +14,6 @@ from app.dependencies.callback import CallBackUrlDep
 from app.dependencies.compute_cell import ComputeCellDep
 from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launch_system import LaunchSystemAsyncClientDep, LaunchSystemClientDep
-from app.endpoints.circuit_helpers import trigger_asset_generation_task
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
@@ -28,7 +27,6 @@ from app.schemas.task import (
 )
 from app.services import accounting as accounting_service, job as job_service, task as task_service
 from app.types import TaskType
-from obi_one.db_sdk.registration.circuit import missing_assets
 
 
 def _check_circuit_is_active(db_client: entitysdk.client.Client, config_id: UUID) -> None:
@@ -214,15 +212,14 @@ def task_failure_endpoint(
 
 
 @router.post(
-    "/callback/circuit-assets",
-    summary="Task circuit assets callback",
+    "/callback/after-success",
+    summary="Task after-success callback",
     description=(
-        "Callback endpoint that launches the circuit asset job for each circuit a task "
-        "generated that lacks one of its assets. Used by the launch-system on the success of a "
-        "task whose own machine is too small to build every circuit asset."
+        "Callback endpoint that runs what a task's definition has to run once it succeeds. "
+        "Used by the launch-system on the success of a task that has something to run."
     ),
 )
-def task_circuit_assets_endpoint(
+def task_after_success_endpoint(
     task_type: TaskType,
     activity_id: UUID,
     db_client: DatabaseClientDep,
@@ -230,34 +227,15 @@ def task_circuit_assets_endpoint(
     compute_cell: ComputeCellDep,
     user_context: UserContextWithProjectIdDep,
 ) -> None:
-    circuits = task_service.generated_circuits(
-        db_client=db_client,
+    task_service.handle_task_after_success_callback(
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
+        db_client=db_client,
+        ls_client=ls_client,
+        compute_cell=compute_cell,
+        project_id=user_context.project_id,
+        virtual_lab_id=user_context.virtual_lab_id,
     )
-    if not circuits:
-        L.warning("Task activity %s generated no circuit to build the assets of", activity_id)
-    refused = []
-    for circuit in circuits:
-        if not missing_assets(circuit):
-            L.info("Circuit %s has every asset the asset job builds", circuit.id)
-            continue
-        job_id = trigger_asset_generation_task(
-            ls_client=ls_client,
-            circuit_id=circuit.id,
-            scale=circuit.scale,
-            project_id=user_context.project_id,
-            virtual_lab_id=user_context.virtual_lab_id,
-            compute_cell=compute_cell,
-        )
-        if job_id is None:
-            refused.append(str(circuit.id))
-    if refused:
-        raise ApiError(
-            message=f"Failed to submit the asset job of circuits {', '.join(refused)}",
-            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            error_code=ApiErrorCode.INTERNAL_ERROR,
-        )
     return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
 
 

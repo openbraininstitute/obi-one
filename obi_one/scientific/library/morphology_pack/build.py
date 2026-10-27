@@ -13,13 +13,13 @@ from pathlib import Path
 import libsonata
 import morphio
 
+from obi_one.scientific.library.circuit import morphologies_source
 from obi_one.scientific.library.morphology_pack.circuit import (
     PRELOAD,
     MorphologyKey,
     Population,
     biophysical_populations,
     distinct_morphologies,
-    morphologies_source,
     place_cells,
     read_morphology,
     read_population,

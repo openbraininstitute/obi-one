@@ -1,12 +1,17 @@
 """Shared helpers for circuit registration and customization endpoints."""
 
 import logging
+from http import HTTPStatus
 from uuid import UUID
 
 import httpx
-from entitysdk.types import CircuitScale
+from entitysdk import models
+from entitysdk.types import CircuitScale, EntityType
 
 from app.config import settings
+from app.errors import ApiError, ApiErrorCode
+from app.schemas.task import AfterSuccess
+from obi_one.db_sdk.registration.circuit.generate import missing_assets
 from obi_one.db_sdk.registration.circuit.launch_jobs import (
     submit_circuit_asset_generation_job,
     submit_circuit_validation_job,
@@ -89,3 +94,37 @@ def trigger_asset_generation_task(
         app_version=settings.APP_VERSION,
         force=force,
     )
+
+
+def launch_missing_circuit_assets(done: AfterSuccess) -> None:
+    """Launch the asset job for each circuit the task generated that lacks one of its assets: for
+    a task whose machine is too small to build every asset itself.
+    """
+    circuits = [
+        done.db_client.get_entity(entity_id=entity.id, entity_type=models.Circuit)
+        for entity in done.activity.generated or []
+        if entity.type == EntityType.circuit
+    ]
+    if not circuits:
+        L.warning("Task activity %s generated no circuit to build the assets of", done.activity.id)
+    refused = []
+    for circuit in circuits:
+        if not missing_assets(circuit):
+            L.info("Circuit %s has every asset the asset job builds", circuit.id)
+            continue
+        job_id = trigger_asset_generation_task(
+            ls_client=done.ls_client,
+            circuit_id=circuit.id,
+            scale=circuit.scale,
+            project_id=done.project_id,
+            virtual_lab_id=done.virtual_lab_id,
+            compute_cell=done.compute_cell,
+        )
+        if job_id is None:
+            refused.append(str(circuit.id))
+    if refused:
+        raise ApiError(
+            message=f"Failed to submit the asset job of circuits {', '.join(refused)}",
+            http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error_code=ApiErrorCode.INTERNAL_ERROR,
+        )

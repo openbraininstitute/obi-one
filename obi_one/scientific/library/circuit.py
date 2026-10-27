@@ -23,11 +23,28 @@ L = logging.getLogger(__name__)
 CIRCUIT_MOD_DIR = "mod"
 
 # SONATA `alternate_morphologies` keys, mapped to their file extension. Order matters: it is
-# also the format-resolution priority used by morphology_pack.circuit.morphologies_source.
+# also the format-resolution priority used by morphologies_source.
 ALTERNATE_MORPHOLOGY_FORMATS: dict[str, Literal["asc", "h5"]] = {
     "neurolucida-asc": "asc",
     "h5v1": "h5",
 }
+
+
+def morphologies_source(
+    config: libsonata.CircuitConfig, name: str
+) -> tuple[Path, Literal["swc", "asc", "h5"]]:
+    """Where a population's morphologies are read from and their format: the first declared of
+    'swc', then 'asc', then 'h5'.
+    """
+    properties = config.node_population_properties(name)
+    if properties.morphologies_dir:
+        return Path(properties.morphologies_dir), "swc"
+    alternates = properties.alternate_morphology_formats
+    for key, morphology_format in ALTERNATE_MORPHOLOGY_FORMATS.items():
+        if key in alternates:
+            return Path(alternates[key]), morphology_format
+    msg = "No morphologies found"
+    raise ValueError(msg)
 
 
 class Circuit(OBIBaseModel):

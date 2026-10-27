@@ -115,7 +115,7 @@ The package is meant to leave OBI-One for a repository and a package of its own.
 | --- | --- | --- |
 | `obi_one.utils.parallel`: `Processes`, `available_cpus`, `ALONE` | `build`, `circuit`, `writer` | Moves with the package |
 | `obi_one.utils.memory`: `hand_back_freed`, `memory_left` | `build`, `writer` | Moves with the package |
-| `ALTERNATE_MORPHOLOGY_FORMATS` from `obi_one.scientific.library.circuit` | `circuit` | Copied in: the order in which a population's morphology formats are tried |
+| `morphologies_source` from `obi_one.scientific.library.circuit` | `build`, `staging` | Copied in: where a population's morphologies are read from, and in which format |
 | `TYPES_OF_BIOPHYS_NODES`, `get_names_of_typed_node_populations` from `obi_one.scientific.library.circuit_metrics` | `circuit` | Copied in: they read only the SONATA config |
 | `SONATA_CIRCUIT_ASSET_SELECTION`, `stage_circuit_nodes` from `obi_one.scientific.library.circuit_staging`, and `entitysdk` | `staging` | `staging.py` stays in OBI-One. Fetching a stored circuit's files is the asset job's work, not the pack's. |
 
@@ -125,7 +125,6 @@ What would import the new package instead:
 | --- | --- |
 | `obi_one/db_sdk/registration/circuit/generate.py` | `build_morphology_pack`, `segment_cap`, `NoPackError` |
 | `launch_scripts/launch_circuit_asset_generation/main.py` | `staging.stage_morphology_pack_inputs`, which stays in OBI-One |
-| `app/services/circuit_visualization.py` | `circuit.morphologies_source` |
 
 Its other dependencies come with it:
 

@@ -5,14 +5,12 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Literal
 
 import libsonata
 import morphio
 import numpy as np
 from bluepysnap.utils import euler2mat, quaternion2mat
 
-from obi_one.scientific.library.circuit import ALTERNATE_MORPHOLOGY_FORMATS
 from obi_one.scientific.library.circuit_metrics import (
     TYPES_OF_BIOPHYS_NODES,
     get_names_of_typed_node_populations,
@@ -66,23 +64,6 @@ class Population:
 
 def biophysical_populations(config: libsonata.CircuitConfig) -> list[str]:
     return sorted(get_names_of_typed_node_populations(config, TYPES_OF_BIOPHYS_NODES))
-
-
-def morphologies_source(
-    config: libsonata.CircuitConfig, name: str
-) -> tuple[Path, Literal["swc", "asc", "h5"]]:
-    """Where a population's morphologies are read from and their format: the first declared of
-    'swc', then 'asc', then 'h5'.
-    """
-    properties = config.node_population_properties(name)
-    if properties.morphologies_dir:
-        return Path(properties.morphologies_dir), "swc"
-    alternates = properties.alternate_morphology_formats
-    for key, morphology_format in ALTERNATE_MORPHOLOGY_FORMATS.items():
-        if key in alternates:
-            return Path(alternates[key]), morphology_format
-    msg = "No morphologies found"
-    raise ValueError(msg)
 
 
 def morphology_files(path: Path, morphology_format: str, names: Iterable[str]) -> list[Path]:

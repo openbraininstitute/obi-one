@@ -22,7 +22,7 @@ from app.schemas.circuit_visualization import (
     SectionDict,
     SynapseGroup,
 )
-from obi_one.scientific.library.morphology_pack.circuit import morphologies_source
+from obi_one.scientific.library.circuit import morphologies_source
 
 
 def circuit_asset_id(client: Client, circuit_id: UUID) -> UUID:

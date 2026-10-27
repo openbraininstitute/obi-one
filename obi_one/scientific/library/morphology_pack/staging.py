@@ -6,13 +6,13 @@ from pathlib import Path
 import libsonata
 from entitysdk import Client, models
 
+from obi_one.scientific.library.circuit import morphologies_source
 from obi_one.scientific.library.circuit_staging import (
     SONATA_CIRCUIT_ASSET_SELECTION,
     stage_circuit_nodes,
 )
 from obi_one.scientific.library.morphology_pack.circuit import (
     biophysical_populations,
-    morphologies_source,
     morphology_files,
 )
 

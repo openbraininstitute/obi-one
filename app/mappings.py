@@ -5,6 +5,7 @@ from entitysdk import models
 from entitysdk.types import TaskActivityType, TaskConfigType
 
 from app.config import settings
+from app.endpoints.circuit_helpers import launch_missing_circuit_assets
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
     AnyTaskDefinition,
@@ -81,7 +82,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),
-        circuit_assets_on_success=True,
+        after_success=launch_missing_circuit_assets,
     ),
     TaskDefinition(
         task_type=TaskType.circuit_single_build,

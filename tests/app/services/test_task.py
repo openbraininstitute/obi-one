@@ -10,15 +10,17 @@ import httpx
 import libsonata
 import pytest
 from entitysdk.common import ProjectContext
-from entitysdk.types import AssetLabel, EntityType, TaskActivityType, TaskConfigType
+from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
+from app.endpoints.circuit_helpers import launch_missing_circuit_assets
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
+    AfterSuccess,
     ClusterResources,
     LaunchableTaskDefinition,
     MachineResources,
@@ -72,9 +74,8 @@ MACHINE_PAYLOAD_FIELDS = {
 }
 
 
-# The tasks that register a circuit on a machine sized for themselves, and leave its pack to the
-# asset job their success calls back.
-CIRCUIT_ASSETS_ON_SUCCESS = {TaskType.circuit_extraction}
+# The tasks whose definitions have something to run once they succeed.
+AFTER_SUCCESS_TASK_TYPES = {TaskType.circuit_extraction}
 
 
 @pytest.fixture
@@ -249,7 +250,7 @@ def test_submit_task_job__success(
         if callback["event_type"] == CallBackEvent.job_on_success
     ]
     assert on_success == (
-        [f"{callback_url}/circuit-assets"] if task_type in CIRCUIT_ASSETS_ON_SUCCESS else []
+        [f"{callback_url}/after-success"] if task_type in AFTER_SUCCESS_TASK_TYPES else []
     )
 
 
@@ -644,7 +645,7 @@ def test_generic_job_data_legacy(config_id, activity_id, callbacks):
 
 @pytest.mark.parametrize(
     ("event_type", "path"),
-    [(CallBackEvent.job_on_failure, "failure"), (CallBackEvent.job_on_success, "circuit-assets")],
+    [(CallBackEvent.job_on_failure, "failure"), (CallBackEvent.job_on_success, "after-success")],
 )
 def test_task_callback(project_context, activity_id, event_type, path):
     res = test_module._task_callback(
@@ -667,50 +668,67 @@ def test_task_callback(project_context, activity_id, event_type, path):
     }
 
 
-def test_circuit_assets_on_success_for_the_tasks_that_defer_the_pack():
+def test_after_success_for_the_tasks_that_have_one():
     assert {
         task_type
         for task_type, definition in TASK_DEFINITIONS.items()
-        if getattr(definition, "circuit_assets_on_success", False)
-    } == CIRCUIT_ASSETS_ON_SUCCESS
-
-
-def test_generated_circuits(activity_id):
-    ids = [uuid4(), uuid4()]
-    activity = SimpleNamespace(
-        generated=[
-            SimpleNamespace(id=ids[0], type=EntityType.circuit),
-            SimpleNamespace(id=uuid4(), type=EntityType.simulation),
-            SimpleNamespace(id=ids[1], type=EntityType.circuit),
-        ]
-    )
-    circuits = {circuit_id: SimpleNamespace(id=circuit_id) for circuit_id in ids}
-
-    def get_entity(entity_id, entity_type):
-        return activity if entity_type is entitysdk.models.TaskActivity else circuits[entity_id]
-
-    db_client = Mock(get_entity=Mock(side_effect=get_entity))
-    assert test_module.generated_circuits(
-        activity_id=activity_id,
-        db_client=db_client,
-        task_definition=TASK_DEFINITIONS[TaskType.circuit_extraction],
-    ) == [circuits[circuit_id] for circuit_id in ids]
-    assert [call.kwargs for call in db_client.get_entity.call_args_list] == [
-        {"entity_id": activity_id, "entity_type": entitysdk.models.TaskActivity},
-        *({"entity_id": circuit_id, "entity_type": entitysdk.models.Circuit} for circuit_id in ids),
-    ]
-
-
-def test_generated_circuits_of_an_activity_that_generated_nothing(activity_id):
-    db_client = Mock(get_entity=Mock(return_value=SimpleNamespace(generated=None)))
+        if getattr(definition, "after_success", None)
+    } == AFTER_SUCCESS_TASK_TYPES
     assert (
-        test_module.generated_circuits(
-            activity_id=activity_id,
-            db_client=db_client,
-            task_definition=TASK_DEFINITIONS[TaskType.circuit_extraction],
-        )
-        == []
+        TASK_DEFINITIONS[TaskType.circuit_extraction].after_success is launch_missing_circuit_assets
     )
+
+
+def test_handle_task_after_success_callback(activity_id):
+    hook = Mock()
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction].model_copy(
+        update={"after_success": hook}
+    )
+    activity = SimpleNamespace(id=activity_id)
+    db_client = Mock(get_entity=Mock(return_value=activity))
+    ls_client = Mock()
+    project_id, virtual_lab_id = uuid4(), uuid4()
+
+    test_module.handle_task_after_success_callback(
+        activity_id=activity_id,
+        task_definition=task_definition,
+        db_client=db_client,
+        ls_client=ls_client,
+        compute_cell="cell_a",
+        project_id=project_id,
+        virtual_lab_id=virtual_lab_id,
+    )
+
+    db_client.get_entity.assert_called_once_with(
+        entity_id=activity_id, entity_type=entitysdk.models.TaskActivity
+    )
+    hook.assert_called_once_with(
+        AfterSuccess(
+            activity=activity,
+            db_client=db_client,
+            ls_client=ls_client,
+            compute_cell="cell_a",
+            project_id=project_id,
+            virtual_lab_id=virtual_lab_id,
+        )
+    )
+
+
+@pytest.mark.parametrize("task_type", [TaskType.circuit_single_build, TaskType.circuit_simulation])
+def test_handle_task_after_success_callback_without_a_hook(activity_id, task_type):
+    db_client = Mock()
+    with pytest.raises(ApiError) as e:
+        test_module.handle_task_after_success_callback(
+            activity_id=activity_id,
+            task_definition=TASK_DEFINITIONS[task_type],
+            db_client=db_client,
+            ls_client=Mock(),
+            compute_cell="cell_a",
+            project_id=uuid4(),
+            virtual_lab_id=uuid4(),
+        )
+    assert e.value.http_status_code == HTTPStatus.BAD_REQUEST
+    db_client.get_entity.assert_not_called()
 
 
 @pytest.mark.parametrize(

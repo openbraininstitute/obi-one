@@ -1,6 +1,10 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Annotated, Literal
 from uuid import UUID
 
+import entitysdk
+import httpx
 from entitysdk.models.activity import Activity, Entity
 from entitysdk.types import TaskActivityType, TaskConfigType
 from obp_accounting_sdk.constants import ServiceSubtype
@@ -120,6 +124,21 @@ class TaskGroupLegacyDefinition(Schema):
     config_type: type[Entity]
 
 
+@dataclass(frozen=True, kw_only=True)
+class AfterSuccess:
+    """What a task's after-success hook is given: its activity and the clients of the callback."""
+
+    activity: Activity
+    db_client: entitysdk.Client
+    ls_client: httpx.Client
+    compute_cell: str
+    project_id: UUID
+    virtual_lab_id: UUID
+
+
+AfterSuccessHook = Callable[[AfterSuccess], None]
+
+
 class TaskDefinition(Schema):
     """Definition of a task type with its associated models and configuration."""
 
@@ -128,9 +147,8 @@ class TaskDefinition(Schema):
     activity_type: TaskActivityType
     code: Code
     resources: Resources
-    # Launch the circuit asset job for each circuit the task generated, once it succeeds: for a
-    # task whose machine is too small to build every asset itself.
-    circuit_assets_on_success: bool = False
+    # Run by the launch-system's callback once the task's job succeeds.
+    after_success: AfterSuccessHook | None = None
 
     @property
     def config_type_name(self) -> str:
