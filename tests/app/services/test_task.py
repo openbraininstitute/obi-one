@@ -14,7 +14,7 @@ from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
-from app.endpoints.circuit_helpers import launch_missing_circuit_assets
+from app.endpoints.circuit_helpers import build_missing_circuit_assets
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
@@ -675,7 +675,7 @@ def test_after_success_for_the_tasks_that_have_one():
         if getattr(definition, "after_success", None)
     } == AFTER_SUCCESS_TASK_TYPES
     assert (
-        TASK_DEFINITIONS[TaskType.circuit_extraction].after_success is launch_missing_circuit_assets
+        TASK_DEFINITIONS[TaskType.circuit_extraction].after_success is build_missing_circuit_assets
     )
 
 

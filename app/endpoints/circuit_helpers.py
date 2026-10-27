@@ -96,9 +96,9 @@ def trigger_asset_generation_task(
     )
 
 
-def launch_missing_circuit_assets(done: AfterSuccess) -> None:
-    """Launch the asset job for each circuit the task generated that lacks one of its assets: for
-    a task whose machine is too small to build every asset itself.
+def build_missing_circuit_assets(done: AfterSuccess) -> None:
+    """Have the asset job build the assets each circuit the task generated lacks: for a task whose
+    machine is too small to build every asset itself.
     """
     circuits = [
         done.db_client.get_entity(entity_id=entity.id, entity_type=models.Circuit)

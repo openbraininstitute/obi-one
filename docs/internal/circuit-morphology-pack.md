@@ -26,7 +26,7 @@ It is built in three places:
 - **The task that registers the circuit,** where its machine is enough.
   - Synapse parameterization, launched for at most 20 neurons, builds it there.
   - Building a synaptome and EM synapse mapping make single-neuron circuits, so no pack.
-- **Circuit extraction's callback.** Extraction registers its circuit on a machine sized for the extraction, so its task definition's `after_success` hook, `launch_missing_circuit_assets` in `app/endpoints/circuit_helpers.py`, runs on the job's success through `POST /declared/task/callback/after-success`. It launches the asset job for each circuit the task's activity generated that lacks one of the assets `generate-assets` checks for.
+- **Circuit extraction's callback.** Extraction registers its circuit on a machine sized for the extraction, so its task definition's `after_success` hook, `build_missing_circuit_assets` in `app/endpoints/circuit_helpers.py`, runs on the job's success through `POST /declared/task/callback/after-success`. It has the asset job build the assets missing from each circuit the task's activity generated, those `generate-assets` checks for.
 
 The job reads a circuit's files in this order:
 1. through the client's local store, where it holds them;

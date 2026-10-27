@@ -29,7 +29,7 @@ def after_success(generated, circuits):
     )
 
 
-def test_launch_missing_circuit_assets():
+def test_build_missing_circuit_assets():
     circuits = [
         SimpleNamespace(id=uuid4(), scale=CircuitScale.small, assets=BUILT),
         SimpleNamespace(id=uuid4(), scale=CircuitScale.single, assets=BUILT),
@@ -46,7 +46,7 @@ def test_launch_missing_circuit_assets():
     with patch.object(
         test_module, "trigger_asset_generation_task", return_value=uuid4()
     ) as trigger:
-        test_module.launch_missing_circuit_assets(done)
+        test_module.build_missing_circuit_assets(done)
 
     assert [call.kwargs["entity_id"] for call in done.db_client.get_entity.call_args_list] == [
         circuit.id for circuit in circuits
@@ -65,13 +65,13 @@ def test_launch_missing_circuit_assets():
 
 
 @pytest.mark.parametrize("generated", [None, []])
-def test_launch_missing_circuit_assets_of_an_activity_that_generated_nothing(generated):
+def test_build_missing_circuit_assets_of_an_activity_that_generated_nothing(generated):
     with patch.object(test_module, "trigger_asset_generation_task") as trigger:
-        test_module.launch_missing_circuit_assets(after_success(generated, []))
+        test_module.build_missing_circuit_assets(after_success(generated, []))
     trigger.assert_not_called()
 
 
-def test_launch_missing_circuit_assets_when_a_job_is_refused():
+def test_build_missing_circuit_assets_when_a_job_is_refused():
     circuits = [SimpleNamespace(id=uuid4(), scale=CircuitScale.small, assets=[]) for _ in range(3)]
     generated = [SimpleNamespace(id=circuit.id, type=EntityType.circuit) for circuit in circuits]
 
@@ -81,7 +81,7 @@ def test_launch_missing_circuit_assets_when_a_job_is_refused():
         ) as trigger,
         pytest.raises(ApiError) as e,
     ):
-        test_module.launch_missing_circuit_assets(after_success(generated, circuits))
+        test_module.build_missing_circuit_assets(after_success(generated, circuits))
 
     assert e.value.http_status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert str(circuits[1].id) in e.value.message
