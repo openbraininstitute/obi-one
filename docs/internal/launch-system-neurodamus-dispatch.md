@@ -1,14 +1,16 @@
 # Trigger launch-system neurodamus executor publish
 
-After **pin-release** completes successfully on `main` (`workflow_dispatch`), GitHub starts **`dispatch-neurodamus-executor.yml`** via `workflow_run` (`types: [completed]`). That separate workflow dispatches **`neurodamus-executor-publish`** to **launch-system** with:
+After **pin-release** finishes the Docker and PyPI builds on `main` (`workflow_dispatch`), it fire-and-forget starts **`dispatch-neurodamus-executor.yml`** with the release tag. That separate workflow dispatches **`neurodamus-executor-publish`** to **launch-system** with:
 
 ```text
 client_payload.tag = <obi-one calver release tag>
 ```
 
-It is not part of the pin job graph, so a failed launch-system trigger or publish does not fail the pin or Docker/PyPI builds. Re-run **Dispatch neurodamus executor publish** manually with the release tag if needed.
+It is not part of the pin job's wait graph, so a failed launch-system trigger or publish does not fail the pin or Docker/PyPI builds. Re-run **Dispatch neurodamus executor publish** manually with the release tag if needed.
 
-Only successful pin-release runs that were started with `workflow_dispatch` (the real pin on `main`) trigger the dispatch. The thin release→re-dispatch job is ignored.
+Only the real pin on `main` dispatches this (the `pin` job). The thin release→re-dispatch job does not.
+
+This is not wired through `workflow_run`. The main pin is itself started with `GITHUB_TOKEN` from the thin release job, and GitHub suppresses `workflow_run` on completion of bot-dispatched runs.
 
 Launch-system workflow **`publish-neurodamus-runtime.yml`** (see [launch-system PR #228](https://github.com/openbraininstitute/launch-system/pull/228)) then:
 
