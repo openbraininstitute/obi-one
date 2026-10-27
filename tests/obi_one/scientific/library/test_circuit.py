@@ -586,3 +586,30 @@ def test_load_morphology_falls_back_to_swc_without_an_h5(monkeypatch, tmp_path):
     morphology = circuit.load_morphology(0, population="All")
 
     assert len(morphology.sections) == 2
+
+
+def config_declaring(morphologies_dir="", alternates=None):
+    properties = SimpleNamespace(
+        morphologies_dir=morphologies_dir, alternate_morphology_formats=alternates or {}
+    )
+    return SimpleNamespace(node_population_properties=lambda _name: properties)
+
+
+@pytest.mark.parametrize(
+    ("config", "source"),
+    [
+        (config_declaring("swc", {"h5v1": "h5"}), (Path("swc"), "swc")),
+        (
+            config_declaring(alternates={"h5v1": "h5", "neurolucida-asc": "asc"}),
+            (Path("asc"), "asc"),
+        ),
+        (config_declaring(alternates={"h5v1": "h5"}), (Path("h5"), "h5")),
+    ],
+)
+def test_morphologies_source_takes_the_first_format_declared(config, source):
+    assert test_module.morphologies_source(config, "All") == source
+
+
+def test_morphologies_source_without_morphologies():
+    with pytest.raises(ValueError, match="No morphologies found"):
+        test_module.morphologies_source(config_declaring(alternates={"other": "x"}), "All")

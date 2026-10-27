@@ -18,6 +18,7 @@ from obi_one.scientific.library.morphology_pack.geometry import (
 from tests.obi_one.scientific.library.morphology_pack.utils import (
     AXON,
     DENDRITE,
+    SOMA_ALONE,
     load,
     load_with_a_branch_apart,
 )
@@ -144,6 +145,10 @@ class TestSimplified:
                 (AXON, [[0, 0, 0], [0, -50, 0], [3, -100, 0], [0, -150, 0]], [0.5] * 4),
             ]
         )
+
+    def test_a_soma_alone_has_no_segments(self):
+        shapes = simplified(load(SOMA_ALONE), LEVELS).shapes
+        assert [len(shape.points) for shape in shapes] == [0] * len(LEVELS)
 
     def test_levels_come_in_the_order_asked(self):
         far, finest = simplified(load(), [FAR, FINEST]).shapes

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from obi_one.utils import memory
-from obi_one.utils.memory import malloc_trim, memory_left, memory_limit
+from obi_one.utils.memory import hand_back_freed, malloc_trim, memory_left, memory_limit
 
 MACHINE = 64 * 2**30
 
@@ -28,6 +28,20 @@ def test_none_where_the_c_library_has_none(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setattr(memory.ctypes, "CDLL", lambda _: SimpleNamespace())
     assert malloc_trim() is None
+
+
+def test_none_where_the_c_library_cannot_be_loaded(monkeypatch):
+    def not_found(_):
+        raise OSError
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(memory.ctypes, "CDLL", not_found)
+    assert malloc_trim() is None
+
+
+def test_nothing_handed_back_without_malloc_trim(monkeypatch):
+    monkeypatch.setattr(memory, "malloc_trim", lambda: None)
+    hand_back_freed()
 
 
 def test_glibcs_on_linux(monkeypatch):

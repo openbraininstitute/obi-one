@@ -1,5 +1,6 @@
 import json
 import zlib
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -8,19 +9,27 @@ from obi_one.scientific.library.morphology_pack import writer as writer_module
 from obi_one.scientific.library.morphology_pack.codec import (
     GRID_UM,
     HEADER,
+    Chunk,
     Chunks,
+    Runs,
     assemble,
     decode_chunk,
     take_apart,
 )
 from obi_one.scientific.library.morphology_pack.geometry import FAR, FINEST, LEVELS, simplified
-from obi_one.scientific.library.morphology_pack.reader import read_pack, run_segments
+from obi_one.scientific.library.morphology_pack.reader import (
+    Segments,
+    following,
+    read_pack,
+    run_segments,
+)
 from obi_one.scientific.library.morphology_pack.writer import PackWriter, placed
 from obi_one.utils.parallel import ALONE, Processes
 
 from tests.obi_one.scientific.library.morphology_pack.utils import (
     AXON,
     DENDRITE,
+    SOMA_ALONE,
     load,
     load_with_a_branch_apart,
 )
@@ -348,6 +357,26 @@ class TestWriter:
         with pytest.raises(ValueError, match="zip"):
             writer.add_cell(0, shapes, np.eye(3), np.zeros(3))
 
+    def test_a_cell_of_a_soma_alone(self):
+        writer = PackWriter([("only", 1)], LEVELS)
+        writer.add_cell(0, simplified(load(SOMA_ALONE), LEVELS), *PLACES[1])
+        pack = read_pack(writer.pack())
+        np.testing.assert_array_equal(pack.somas, [[1000.0, -2000.0, 3000.0, 5.0]])
+        assert [len(level.segments) for level in pack.levels] == [0] * len(LEVELS)
+
+    def test_a_morphology_must_nest_every_level(self):
+        shapes = simplified(load(), LEVELS)
+        writer = PackWriter([("only", 1)], LEVELS)
+        with pytest.raises(ValueError, match="nestings at odds"):
+            writer.add_cell(0, replace(shapes, nestings=shapes.nestings[1:]), *PLACES[0])
+
+    def test_boxes_gathered_in_parts_write_the_same_pack(self, monkeypatch):
+        _, whole = pack_of(load(), LEVELS, chunk_um=7.0)
+        monkeypatch.setattr(writer_module, "BOX_ROWS_AT_ONCE", 1)
+        _, parts = pack_of(load(), LEVELS, chunk_um=7.0)
+        same = whole == parts
+        assert same
+
     def test_a_point_is_placed_alike_wherever_it_sits(self):
         rng = np.random.default_rng(7)
         points = (rng.normal(size=(256, 3)) * 800).astype(np.float32)
@@ -388,3 +417,21 @@ class TestWriter:
         writer.pack()
         with pytest.raises(RuntimeError, match="packs once"):
             writer.pack()
+
+
+class TestReader:
+    def test_a_chunk_at_odds_with_the_coarser_level_is_refused(self):
+        none = np.zeros(0, dtype=np.int64)
+        no_points = np.zeros((0, 4), dtype=np.int64)
+        chunk = Chunk(np.array([2, 1]), no_points, Runs(none, none, none, no_points, no_points))
+        with pytest.raises(ValueError, match="counts at odds"):
+            following(chunk, Segments.none())
+
+    def test_a_chunk_at_odds_with_the_index_is_refused(self):
+        _, data = pack_of(load(), [FINEST])
+
+        def miscounted(index):
+            index["levels"][0]["chunks"]["segments"][0] += 1
+
+        with pytest.raises(ValueError, match="at odds with the index"):
+            read_pack(with_index(data, miscounted))

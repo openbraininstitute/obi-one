@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from itertools import pairwise
 from typing import Self
 
@@ -121,10 +121,6 @@ class MorphologyLevels:
     soma_radius: float
     nestings: tuple[Nesting, ...]
 
-    def only(self, place: int) -> Self:
-        """The morphology at its level `place` alone."""
-        return replace(self, shapes=(self.shapes[place],), nestings=())
-
 
 def pruned(morphology: Morphology, prune_um: float) -> np.ndarray:
     """Which sections stay: an end branch shorter than `prune_um` goes unless alone on its fork.
@@ -223,7 +219,7 @@ def finer_along(
     along = place[path]
     there = along >= 0
     before = np.maximum.accumulate(np.where(there, np.arange(len(path)), -1))
-    before = np.concatenate([[-1], before[:-1]])
+    before = np.concatenate([[-1], before])[:-1]
     near = fine[np.maximum(along - 1, 0)]
     walked = path[np.maximum(before, 0)]
     same = np.all(morphology.points[near] == morphology.points[walked], axis=1)

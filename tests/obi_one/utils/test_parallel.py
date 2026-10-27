@@ -37,6 +37,11 @@ class TestAvailableCpus:
         assert not any(cgroup.iterdir())
         assert available_cpus() == 8
 
+    def test_every_cpu_off_linux(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
+        monkeypatch.setattr(parallel.os, "cpu_count", lambda: 6)
+        assert available_cpus() == 6
+
 
 UNPICKLED_IN: list[int] = []
 
@@ -60,6 +65,13 @@ class TestProcesses:
     def test_results_come_in_the_order_of_the_work(self):
         with Processes(2) as processes:
             assert list(processes.map(abs, range(-50, 0), per_job=3)) == list(range(50, 0, -1))
+
+    def test_the_processes_serve_on_after_results_are_left_unread(self):
+        with Processes(2) as processes:
+            results = processes.map(abs, range(-50, 0))
+            assert next(results) == 50
+            results.close()
+            assert list(processes.map(abs, [-1, -2])) == [1, 2]
 
     def test_results_are_unpickled_in_the_callers_thread(self):
         UNPICKLED_IN.clear()

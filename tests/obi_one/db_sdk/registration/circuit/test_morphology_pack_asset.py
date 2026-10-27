@@ -172,6 +172,16 @@ class TestGenerateMorphologyPackAsset:
             client=client, pack_file=pack_file, registered_circuit=circuit
         )
 
+    def test_built_alone_without_a_client(self, tmp_path):
+        with patch.object(generate, "add_morphology_pack_asset") as upload:
+            pack_file = generate_morphology_pack_asset(
+                circuit_path=CONTAINER_CIRCUIT / "circuit_config.json",
+                output_dir=tmp_path / "pack",
+            )
+        assert pack_file is not None
+        assert pack_file.read_bytes().startswith(b"MPCK")
+        upload.assert_not_called()
+
     def test_none_where_the_circuit_can_have_none(self, tmp_path, caplog):
         with (
             patch(

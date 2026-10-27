@@ -24,6 +24,8 @@ SWC = """\
 12 2 0 -150 0 0.5 11
 """
 
+SOMA_ALONE = "1 1 0 0 0 5 -1\n"
+
 AXON = 2
 DENDRITE = 3
 

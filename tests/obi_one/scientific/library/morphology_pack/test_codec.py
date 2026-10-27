@@ -231,6 +231,12 @@ class TestChunk:
         data = zlib.decompress(encode_chunk(chunk, CHUNK_STEPS))
         assert COUNTS.unpack_from(data) == (2, 1, 3, 6)
 
+    def test_a_block_with_bytes_left_over_is_refused(self):
+        chunk = Chunk(np.array([0, 2]), np.array([[1, 1, 1, 1]]), some_runs())
+        data = zlib.decompress(encode_chunk(chunk, CHUNK_STEPS))
+        with pytest.raises(ValueError, match="left over"):
+            decode_chunk(zlib.compress(data + b"\0"))
+
     def test_a_large_block_deflated_by_planes_inflates_to_the_same_streams(self):
         runs = random_runs(np.random.default_rng(7), 300)
         chunk = Chunk(np.zeros(0, dtype=np.int64), NO_INNER, runs)
