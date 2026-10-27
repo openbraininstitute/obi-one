@@ -425,6 +425,7 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, mo
     "task_type",
     [
         TaskType.circuit_extraction,
+        TaskType.circuit_simplification,
         TaskType.efeature_extraction,
         TaskType.emodel_optimization,
         TaskType.emodel_validation,
@@ -450,6 +451,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
 
     expected_subtype = {
         TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
+        TaskType.circuit_simplification: ServiceSubtype.CIRCUIT_SIMPLIFICATION,
         TaskType.efeature_extraction: ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
         TaskType.emodel_optimization: ServiceSubtype.EMODEL_OPTIMISATION,
         TaskType.emodel_validation: ServiceSubtype.EMODEL_VALIDATION,
@@ -474,6 +476,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
     }
     expected_count = {
         TaskType.circuit_extraction: 1,
+        TaskType.circuit_simplification: 1,
         TaskType.efeature_extraction: 1,
         TaskType.emodel_optimization: 1,
         TaskType.emodel_validation: 1,
@@ -506,6 +509,10 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         patch(
             "app.services.accounting.estimate_circuit_extraction_count",
             return_value=expected_count[TaskType.circuit_extraction],
+        ),
+        patch(
+            "app.services.accounting.estimate_circuit_simplification_count",
+            return_value=expected_count[TaskType.circuit_simplification],
         ),
     ):
         res = test_module._evaluate_accounting_parameters(

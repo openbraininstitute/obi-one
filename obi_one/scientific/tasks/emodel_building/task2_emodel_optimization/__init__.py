@@ -2,8 +2,7 @@
 
 Task 2 requires the optional ``emodel`` dependency group (``bluepyemodel``). This
 module is the single place that guards the import: consumers elsewhere in the
-codebase (for example ``unions_and_references/tasks.py`` and app endpoints) import from here
-directly instead of each repeating their own
+app endpoints and tests import from here directly instead of each repeating their own
 ``try/except ImportError``. When ``bluepyemodel`` is not installed, the names
 below are ``None`` and ``HAS_EMODEL_OPTIMIZATION`` is ``False``.
 """

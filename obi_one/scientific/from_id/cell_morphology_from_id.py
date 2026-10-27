@@ -17,6 +17,7 @@ from entitysdk.types import (
     CellMorphologyProtocolDesign,
     ContentType,
     EntityType,
+    FetchFileStrategy,
     TaskActivityType,
 )
 
@@ -97,6 +98,19 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
         """
         return _morphology_source_mesh_entity(self.entity(db_client=db_client), db_client)
 
+    def write_spiny_neuron_h5(self, path_to: Path | str, db_client: DBClient) -> None:
+        """Download the morphology-with-spines H5 asset to ``path_to``."""
+        entity = self.entity(db_client=db_client)
+        db_client.fetch_assets(
+            entity,
+            selection={
+                "content_type": ContentType.application_x_hdf5,
+                "label": AssetLabel.morphology_with_spines,
+            },
+            output_path=Path(path_to),
+            strategy=FetchFileStrategy.copy_or_download,
+        ).one()
+
     def spiny_morphology(
         self, db_client: DBClient, path: str | os.PathLike | None = None
     ) -> "MorphologyWithSpines":
@@ -111,15 +125,7 @@ class CellMorphologyFromID(EntityFromID[CellMorphology]):
         if path.is_dir():
             path /= f"{entity.name}.h5"
 
-        db_client.fetch_assets(
-            entity,
-            selection={
-                "content_type": ContentType.application_x_hdf5,
-                "label": AssetLabel.morphology_with_spines,
-            },
-            output_path=Path(path),
-        ).one()
-
+        self.write_spiny_neuron_h5(path, db_client)
         return load_morphology_with_spines(str(path))
 
     def morphio_morphology(self, db_client: DBClient) -> "morphio.Morphology":

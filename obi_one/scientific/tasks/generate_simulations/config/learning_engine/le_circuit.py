@@ -1,20 +1,19 @@
 import logging
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    CircuitFromID,
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_base import (
     LearningEngineSimulationScanConfig,
 )
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     POINT_NEURON_SETS_REFERENCE_TYPES,
     POINT_NEURON_SETS_REFERENCE_UNION,
@@ -31,8 +30,6 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference, TimestampsUnion
 
 L = logging.getLogger(__name__)
-
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
 class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConfig):
