@@ -80,7 +80,8 @@ def path_distance_all_segments_from(
             _SEC_ID: sec_id,
             _SEC_TYP: sec_typ,
             _SEG_LEN: seg_lengths,
-        }
+        },
+        copy=False,
     )
 
     if lst_sec_types is not None:
