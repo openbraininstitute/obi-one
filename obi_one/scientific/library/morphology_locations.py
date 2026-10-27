@@ -61,16 +61,10 @@ def path_distance_all_segments_from(
     sections = list(m.sections)
     n_segments_per_section = np.diff(m.section_offsets) - 1
     sec_types_per_section = m.section_types.astype(int)
-    seg_lengths = (
-        np.concatenate([np.linalg.norm(np.diff(sec.points, axis=0), axis=1) for sec in sections])
-        if sections
-        else np.empty(0, dtype=float)
+    seg_lengths = np.concatenate(
+        [np.linalg.norm(np.diff(sec.points, axis=0), axis=1) for sec in sections]
     )
-    seg_id = (
-        np.concatenate([np.arange(n) for n in n_segments_per_section])
-        if sections
-        else np.empty(0, dtype=int)
-    )
+    seg_id = np.concatenate([np.arange(n) for n in n_segments_per_section])
     sec_id = np.repeat(np.arange(1, len(sections) + 1), n_segments_per_section)
     sec_typ = np.repeat(sec_types_per_section, n_segments_per_section)
 
