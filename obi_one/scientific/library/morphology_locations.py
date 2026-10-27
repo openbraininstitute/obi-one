@@ -59,12 +59,8 @@ def path_distance_all_segments_from(
     # per-section DataFrame (previously concatenated n times) also avoids the matching per-row
     # pandas construction overhead.
     sections = list(m.sections)
-    n_segments_per_section = np.fromiter(
-        (sec.n_points - 1 for sec in sections), dtype=int, count=len(sections)
-    )
-    sec_types_per_section = np.fromiter(
-        (int(sec.type) for sec in sections), dtype=int, count=len(sections)
-    )
+    n_segments_per_section = np.diff(m.section_offsets) - 1
+    sec_types_per_section = m.section_types.astype(int)
     seg_lengths = (
         np.concatenate([np.linalg.norm(np.diff(sec.points, axis=0), axis=1) for sec in sections])
         if sections
