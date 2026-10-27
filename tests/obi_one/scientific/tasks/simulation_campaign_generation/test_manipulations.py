@@ -7,8 +7,8 @@ responsibility rather than the blocks'.
 """
 
 import pytest
+from pydantic import ValidationError
 
-import obi_one as obi
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
@@ -16,6 +16,15 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
     ByNeuronModification,
     BySectionListMechanismVariableNeuronalManipulation,
     BySectionListModification,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ConnectSynapticManipulation,
+    DisconnectSynapticManipulation,
+    ScaleWeightSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -38,12 +47,13 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 )
 
 SYNAPTIC_MANIPULATIONS = {
-    "SynapticMgManipulation": obi.SynapticMgManipulation(magnesium_value=2.4),
-    "ScaleAcetylcholineUSESynapticManipulation": obi.ScaleAcetylcholineUSESynapticManipulation(
+    "SynapticMgManipulation": SynapticMgManipulation(magnesium_value=2.4),
+    "ScaleAcetylcholineUSESynapticManipulation": ScaleAcetylcholineUSESynapticManipulation(
         use_scaling=0.7
     ),
-    "ConnectSynapticManipulation": obi.ConnectSynapticManipulation(),
-    "DisconnectSynapticManipulation": obi.DisconnectSynapticManipulation(),
+    "ConnectSynapticManipulation": ConnectSynapticManipulation(),
+    "DisconnectSynapticManipulation": DisconnectSynapticManipulation(),
+    "ScaleWeightSynapticManipulation": ScaleWeightSynapticManipulation(weight_scaling=0.5),
 }
 
 
@@ -66,6 +76,7 @@ class TestUnionCoverage:
         assert union_member_names(Brian2SynapticManipulationsUnion) == {
             "ConnectSynapticManipulation",
             "DisconnectSynapticManipulation",
+            "ScaleWeightSynapticManipulation",
         }
 
 
@@ -79,7 +90,7 @@ class TestSynapticManipulations:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Magnesium": obi.SynapticMgManipulation(magnesium_value=2.4)},
+            blocks={"Magnesium": SynapticMgManipulation(magnesium_value=2.4)},
         )
 
         result = generate(config, tmp_path)
@@ -98,9 +109,7 @@ class TestSynapticManipulations:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={
-                "Acetylcholine": obi.ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5)
-            },
+            blocks={"Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5)},
         )
 
         result = generate(config, tmp_path)
@@ -119,8 +128,8 @@ class TestSynapticManipulations:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Disconnect": obi.DisconnectSynapticManipulation(),
-                "Connect": obi.ConnectSynapticManipulation(),
+                "Disconnect": DisconnectSynapticManipulation(),
+                "Connect": ConnectSynapticManipulation(),
             },
         )
 
@@ -130,6 +139,30 @@ class TestSynapticManipulations:
         weights = {override["name"]: override.get("weight") for override in overrides}
         assert weights["Disconnect"] == pytest.approx(0.0)
         assert weights["Connect"] == pytest.approx(1.0)
+
+    def test_scale_weight_emits_its_factor(self, circuit, tmp_path):
+        config = build_config(
+            CircuitSimulationSingleConfig,
+            circuit=circuit,
+            blocks={"Scale": ScaleWeightSynapticManipulation(weight_scaling=1.5)},
+        )
+
+        result = generate(config, tmp_path)
+
+        assert result.sonata_config["connection_overrides"] == [
+            {
+                "name": "Scale",
+                "source": DEFAULT_BIOPHYSICAL_NODE_SET,
+                "target": DEFAULT_BIOPHYSICAL_NODE_SET,
+                "delay": 0.0,
+                "weight": 1.5,
+            }
+        ]
+
+    @pytest.mark.parametrize("weight_scaling", [-0.5, [1.0, -0.5]])
+    def test_scale_weight_refuses_a_negative_factor(self, weight_scaling):
+        with pytest.raises(ValidationError):
+            ScaleWeightSynapticManipulation(weight_scaling=weight_scaling)
 
     def test_pre_and_post_synaptic_targets_are_honoured(self, circuit, tmp_path):
         presynaptic = BiophysicalPopulationIDNeuronSet(
@@ -146,7 +179,7 @@ class TestSynapticManipulations:
             blocks={
                 "Pre": presynaptic,
                 "Post": postsynaptic,
-                "Magnesium": lambda: obi.SynapticMgManipulation(
+                "Magnesium": lambda: SynapticMgManipulation(
                     magnesium_value=2.0,
                     presynaptic_neuron_set=presynaptic.ref,
                     postsynaptic_neuron_set=postsynaptic.ref,
@@ -166,9 +199,9 @@ class TestSynapticManipulations:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Acetylcholine": obi.ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5),
-                "Magnesium": obi.SynapticMgManipulation(magnesium_value=2.0),
-                "Disconnect": obi.DisconnectSynapticManipulation(),
+                "Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5),
+                "Magnesium": SynapticMgManipulation(magnesium_value=2.0),
+                "Disconnect": DisconnectSynapticManipulation(),
             },
         )
 

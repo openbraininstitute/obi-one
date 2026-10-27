@@ -5,12 +5,23 @@ from uuid import UUID
 import libsonata
 import pytest
 
-import obi_one as obi
 from obi_one.core.schema import SchemaKey
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationScanConfig,
 )
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
@@ -25,8 +36,8 @@ class _ClientThatMustNotBeUsed:
 
 
 def _recording(name="LFPRecording", dt=0.1):
-    recording = obi.ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
+    recording = ExtracellularElectrodeArrayRecordingBlock(
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
         dt=dt,
     )
     recording.set_block_name(name)
@@ -109,7 +120,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
 class TestCircuitUsability:
     def test_is_offered_only_where_the_circuit_allows_extracellular_recordings(self):
         """The frontend greys the block out when the circuit's usability flag is false."""
-        schema = obi.ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
+        schema = ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
         usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
 
         assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
@@ -119,17 +130,17 @@ class TestCircuitUsability:
 
 class TestCircuitRecordingUnion:
     def test_extracellular_recording_offered_by_circuit_simulations(self):
-        scan_config = obi.CircuitSimulationScanConfig.empty_config()
+        scan_config = CircuitSimulationScanConfig.empty_config()
         scan_config.add(_recording(), name="LFPRecording")
 
         assert isinstance(
             scan_config.recordings["LFPRecording"],
-            obi.ExtracellularElectrodeArrayRecordingBlock,
+            ExtracellularElectrodeArrayRecordingBlock,
         )
 
     def test_extracellular_recording_rejected_by_single_cell_simulations(self):
         """MEModel simulations have no circuit-wide weight matrix, so cannot record LFP."""
-        scan_config = obi.MEModelSimulationScanConfig.empty_config()
+        scan_config = MEModelSimulationScanConfig.empty_config()
 
         # Not in the block mapping, because it is not part of that config's recordings union.
         with pytest.raises(KeyError, match="ExtracellularElectrodeArrayRecordingBlock"):

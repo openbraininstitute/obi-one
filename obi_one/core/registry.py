@@ -1,7 +1,7 @@
-"""Task specs and block reference lookup.
+"""Task spec declarations for ``config_task_map``.
 
 Task dispatch maps live in ``config_task_map`` (declarative, resolved on use).
-Block references are registered at import time via ``block_ref_registry``.
+Block reference lookup lives in ``scientific.mappings_and_registry.block_reference_registry``.
 """
 
 from dataclasses import dataclass
@@ -69,27 +69,3 @@ class TaskSpec:
         if self.scan_config_ref is None:
             return (self.single_config_ref,)
         return (self.single_config_ref, self.scan_config_ref)
-
-
-class BlockReferenceRegistry:
-    """Maps BlockReference subclass names to their classes.
-
-    Used by ScanConfig.add() to resolve a reference type by name
-    when adding a block to a scan configuration.
-    """
-
-    def __init__(self) -> None:
-        """Initialize empty registry."""
-        self._by_name: dict[str, type] = {}
-
-    def register(self, cls: type) -> None:
-        """Register a BlockReference subclass."""
-        self._by_name[cls.__name__] = cls
-
-    def get_by_name(self, name: str) -> type | None:
-        """Return the BlockReference subclass with the given name, or None."""
-        return self._by_name.get(name)
-
-
-# Module-level singleton
-block_ref_registry = BlockReferenceRegistry()

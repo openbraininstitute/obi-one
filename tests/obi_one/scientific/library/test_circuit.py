@@ -5,13 +5,20 @@ from unittest.mock import patch
 import morphio
 import pytest
 
-import obi_one as obi
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific import library
 from obi_one.scientific.library import circuit as test_module
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.morphology_containerization import (
+    MorphologyContainerizationScanConfig,
+)
 
 from tests.utils import CIRCUIT_DIR
+
+
+def _patch_connectivity_matrix(monkeypatch, fake_type: type) -> None:
+    monkeypatch.setattr("conntility.ConnectivityMatrix", fake_type, raising=False)
 
 
 class _FakePopulation:
@@ -110,9 +117,7 @@ def fake_snap_circuit(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
     return test_module
 
@@ -295,9 +300,7 @@ def test_connectivity_matrix_compresses_multigraph(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
 
     c = test_module.Circuit(name="c1", path="x", matrix_path="m.h5")
@@ -327,9 +330,7 @@ def test_init_validates_connectivity_matrix_node_ids(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
 
     with pytest.raises(AssertionError):
@@ -368,7 +369,7 @@ def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
 
 
 def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
-    circuit = obi.Circuit(
+    circuit = Circuit(
         name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
         path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
     )
@@ -388,13 +389,13 @@ def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
 
 def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
     """A containerized circuit declares no per-morphology file, only `alternate_morphologies`."""
-    source = obi.Circuit(
+    source = Circuit(
         name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
         path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
     )
     hoc_path = Path(library.__file__).parent
-    scan_config = obi.MorphologyContainerizationScanConfig(
-        initialize=obi.MorphologyContainerizationScanConfig.Initialize(
+    scan_config = MorphologyContainerizationScanConfig(
+        initialize=MorphologyContainerizationScanConfig.Initialize(
             circuit=[source],
             hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
             hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
@@ -408,7 +409,7 @@ def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
-    containerized = obi.Circuit(
+    containerized = Circuit(
         name=source.name,
         path=str(tmp_path / grid_scan.output_root / source.name / "circuit_config.json"),
     )
@@ -426,14 +427,14 @@ def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
 
 
 def test_circuit_reports_when_no_morphology_source_provides_the_cell():
-    circuit = obi.Circuit(
+    circuit = Circuit(
         name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
         path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
     )
 
     with (
-        patch.object(obi.Circuit, "get_morphology_path", side_effect=FileNotFoundError),
-        patch.object(obi.Circuit, "_alternate_morphology_base", return_value=None),
+        patch.object(Circuit, "get_morphology_path", side_effect=FileNotFoundError),
+        patch.object(Circuit, "_alternate_morphology_base", return_value=None),
         pytest.raises(FileNotFoundError, match="tried: none"),
     ):
         circuit.load_morphology(0, population=circuit.default_population_name)

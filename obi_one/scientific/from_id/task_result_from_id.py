@@ -1,27 +1,24 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import TaskResult
-from entitysdk.models.entity import Entity
-from entitysdk.types import AssetLabel
-from pydantic import PrivateAttr
+from entitysdk.types import AssetLabel, FetchFileStrategy
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.db_sdk.db_sdk import fetch_asset_by_label, fetch_directory_asset_by_label
 
 
-class TaskResultFromID(EntityFromID):
+class TaskResultFromID(EntityFromID[TaskResult]):
     """Wrapper for downloading assets from a TaskResult entity."""
 
-    entitysdk_class: ClassVar[type[Entity]] = TaskResult
-    _entity: TaskResult | None = PrivateAttr(default=None)
+    _entitysdk_type: type[TaskResult] = TaskResult
 
     def download_asset_by_label(
         self,
         asset_label: AssetLabel,
         dest_dir: Path = Path(),
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
     ) -> Path:
         """Download a single asset matching the given label to dest_dir.
 
@@ -32,6 +29,7 @@ class TaskResultFromID(EntityFromID):
             entity=self.entity(db_client=db_client),
             asset_label=asset_label,
             output_path=dest_dir,
+            strategy=strategy,
         )
 
     def download_directory_asset_by_label(

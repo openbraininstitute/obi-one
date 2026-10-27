@@ -15,6 +15,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
+from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
@@ -44,6 +45,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
@@ -154,7 +156,9 @@ def activate_scan_config_endpoints() -> None:
         (MorphologyMetricsScanConfig, "run", "", True),
         (IonChannelModelSimulationScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
+        (MEModelBuildScanConfig, "generate", "", False),
         (CircuitExtractionScanConfig, "generate", "", False),
+        (CircuitSimplificationScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
@@ -170,6 +174,11 @@ def activate_scan_config_endpoints() -> None:
     # corresponding guard in obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.
     if EModelOptimizationScanConfig is not None:
         scan_configs.append((EModelOptimizationScanConfig, "generate", "", False))
+        from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config import (  # ruff: ignore[import-outside-top-level]
+            EModelValidationScanConfig,
+        )
+
+        scan_configs.append((EModelValidationScanConfig, "generate", "", False))
 
     for (
         form,

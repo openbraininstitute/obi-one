@@ -664,8 +664,8 @@ def test_task_launch_success__circuit_simulation(
                     "location": "https://github.com/openbraininstitute/obi-one.git",
                     "ref": release_tag_ref(settings.APP_VERSION),
                     "path": OBI_ONE_CODE_PATH,
-                    "dependencies": str(OBI_ONE_DEPS_DIR / "neurodamus_simulation.txt"),
-                    "capabilities": {"private_packages": False, "env_secrets": []},
+                    "dependencies": str(OBI_ONE_DEPS_DIR / "neurodamus_image.txt"),
+                    "capabilities": {"private_packages": True, "env_secrets": []},
                     "staged_directories": [],
                 },
                 "resources": task_def.resources.model_dump(mode="json")

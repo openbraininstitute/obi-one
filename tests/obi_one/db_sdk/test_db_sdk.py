@@ -13,7 +13,7 @@ from entitysdk.models import Asset, Entity, SimulationExecution
 from entitysdk.types import AssetLabel, ContentType, ExecutorType, TaskActivityType
 
 from obi_one.core.exception import OBIONEError
-from obi_one.db_sdk import db_sdk as test_module
+from obi_one.db_sdk import circuit as circuit_module, db_sdk as test_module
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
 
@@ -37,8 +37,8 @@ def client():
 
 @pytest.fixture
 def mock_entity():
-    """An Entity with an id alone: its model's own serializer, which a mock of it lacks."""
-    return Entity.model_construct(id=uuid4())
+    """Return a valid entity reference for activity serialization."""
+    return Entity(id=uuid4())
 
 
 @pytest.fixture
@@ -105,6 +105,27 @@ def test_get_task_config_asset():
 
     assert result is expected_asset
     client.select_assets.assert_called_once_with(
+        entity=config,
+        selection={"label": AssetLabel.task_config},
+    )
+
+
+def test_get_task_config_asset_content():
+    client = Mock()
+    config = Mock(spec=Entity)
+    config.id = uuid4()
+    expected_content = {"type": "CircuitSimplificationSingleConfig"}
+
+    with patch.object(
+        test_module,
+        "select_json_asset_content",
+        return_value=expected_content,
+    ) as mock_select_json_asset_content:
+        result = test_module.get_task_config_asset_content(client=client, config=config)
+
+    assert result == expected_content
+    mock_select_json_asset_content.assert_called_once_with(
+        client=client,
         entity=config,
         selection={"label": AssetLabel.task_config},
     )
@@ -385,7 +406,7 @@ def test_resolve_circuit_local_instance():
     circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
     circuit = Circuit(name="local", path=str(circuit_path))
 
-    resolved, entity = test_module.resolve_circuit(
+    resolved, entity = circuit_module.resolve_circuit(
         circuit,
         db_client=Mock(),
         entity_cache=False,
@@ -407,7 +428,7 @@ def test_resolve_circuit_from_id_without_cache(tmp_path):
         patch.object(CircuitFromID, "stage_circuit", return_value=staged_circuit) as mock_stage,
         patch.object(CircuitFromID, "entity", return_value=circuit_entity),
     ):
-        resolved, entity = test_module.resolve_circuit(
+        resolved, entity = circuit_module.resolve_circuit(
             circuit_from_id,
             db_client=db_client,
             entity_cache=False,
@@ -434,7 +455,7 @@ def test_resolve_circuit_from_id_with_cache(tmp_path):
         patch.object(CircuitFromID, "stage_circuit", return_value=staged_circuit) as mock_stage,
         patch.object(CircuitFromID, "entity", return_value=circuit_entity),
     ):
-        resolved, entity = test_module.resolve_circuit(
+        resolved, entity = circuit_module.resolve_circuit(
             circuit_from_id,
             db_client=db_client,
             entity_cache=True,
@@ -453,7 +474,7 @@ def test_resolve_circuit_from_id_with_cache(tmp_path):
 
 def test_resolve_circuit_unsupported_type():
     with pytest.raises(OBIONEError, match="Unsupported circuit type"):
-        test_module.resolve_circuit(
+        circuit_module.resolve_circuit(
             "not-a-circuit",
             db_client=Mock(),
             entity_cache=False,

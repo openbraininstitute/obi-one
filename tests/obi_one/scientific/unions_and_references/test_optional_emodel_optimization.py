@@ -5,10 +5,9 @@ Task 2 (emodel optimization) requires the optional ``emodel`` extra
 not installed: the single guard lives in
 ``task2_emodel_optimization/__init__.py`` (``try/except ImportError`` around the
 Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
-``scan_configs.py`` and ``tasks.py`` import from that package unconditionally and
-simply omit Task 2 when the classes are ``None``. ``config_task_map.py`` declares Task 2
-by class path and gates it on ``requires_package="bluepyemodel"``, so it never imports
-Task 2 at all and reports the task type as unavailable when the extra is missing.
+``config_task_map.py``, ``scan_configs.py``, and ``tasks.py`` declare Task 2 by class path
+and gate it on ``requires_package="bluepyemodel"``, so they never import Task 2 at module
+import time and report the task type as unavailable when the extra is missing.
 The same applies to ``app/endpoints/ion_channel_properties.py``,
 ``app/endpoints/scan_config.py`` and ``app/endpoints/config_validation.py``,
 which import ``fetch_variable_catalog`` and ``EModelOptimizationScanConfig``
@@ -54,6 +53,7 @@ class _BlockBluePyEModel(importlib.abc.MetaPathFinder):
 _MODULES_TO_EVICT = (
     "bluepyemodel",
     "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
+    "obi_one.scientific.tasks.emodel_building.task3_emodel_validation",
     "obi_one.scientific.mappings_and_registry.config_task_map",
     "app.endpoints.ion_channel_properties",
     "app.endpoints.scan_config",
@@ -116,7 +116,6 @@ def test_task2_package_omits_emodel_optimization_without_bluepyemodel():
 def test_scan_configs_union_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.unions_and_references.scan_configs")
 
-    assert module.EModelOptimizationScanConfig is None
     assert "EModelOptimizationScanConfig" not in {
         member.__name__ for member in module._SCAN_CONFIG_MEMBERS
     }
@@ -126,7 +125,6 @@ def test_scan_configs_union_omits_emodel_optimization_without_bluepyemodel():
 def test_tasks_union_omits_emodel_optimization_without_bluepyemodel():
     module = _exec_fresh("obi_one.scientific.unions_and_references.tasks")
 
-    assert module.EModelOptimizationTask is None
     assert "EModelOptimizationTask" not in {member.__name__ for member in module._TASK_MEMBERS}
 
 
@@ -189,3 +187,13 @@ def test_config_validation_omits_emodel_optimization_without_bluepyemodel():
 # emodel_optimization_without_bluepyemodel` above already cover the two files directly
 # responsible for the real bug (unconditional Task 2 imports in app/endpoints/), which is
 # what actually matters for `import app.application` to succeed without bluepyemodel.
+
+
+@pytest.mark.usefixtures("bluepyemodel_blocked")
+def test_unions_omit_emodel_validation_without_bluepyemodel():
+    scan_configs = _exec_fresh("obi_one.scientific.unions_and_references.scan_configs")
+    tasks = _exec_fresh("obi_one.scientific.unions_and_references.tasks")
+    assert "EModelValidationScanConfig" not in {
+        m.__name__ for m in scan_configs._SCAN_CONFIG_MEMBERS
+    }
+    assert "EModelValidationTask" not in {m.__name__ for m in tasks._TASK_MEMBERS}

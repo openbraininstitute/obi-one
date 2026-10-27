@@ -2,7 +2,9 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 
+import obi_one.scientific.tasks.simulation_execution.neuron.task as test_module
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.ion_channel_model.ion_channel_model import (
     IonChannelModelWithConductance,
@@ -17,19 +19,15 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_chan
     IonChannelModelSimulationScanConfig,
     IonChannelModelSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron import (
-    ion_channel_simulation_execution as test_module,
-)
-from obi_one.scientific.tasks.simulation_execution.neuron.ion_channel_simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution.neuron.config import (
     IonChannelModelSimulationExecutionSingleConfig,
+)
+from obi_one.scientific.tasks.simulation_execution.neuron.task import (
     IonChannelModelSimulationExecutionTask,
 )
 from obi_one.types import SimulationBackend
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
-_ION_CHANNEL = (
-    "obi_one.scientific.tasks.simulation_execution.neuron.ion_channel_simulation_execution"
-)
+_TASK = "obi_one.scientific.tasks.simulation_execution.neuron.task"
 
 
 @pytest.fixture
@@ -97,13 +95,13 @@ def _neurodamus_simulation_parameters(tmp_path, mechanism_build):
     )
 
 
-@patch(f"{_ION_CHANNEL}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_ION_CHANNEL}.stage_ion_channel_models_as_circuit")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_ion_channel_models_as_circuit")
+@patch(f"{_TASK}.create_dir")
 def test_execute_local_does_not_register(
     mock_create_dir,
     mock_stage_circuit,
@@ -149,14 +147,14 @@ def test_execute_local_does_not_register(
     db_client.update_entity.assert_not_called()
 
 
-@patch(f"{_ION_CHANNEL}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
-@patch(f"{_BASE}.register_simulation_results")
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_ION_CHANNEL}.stage_ion_channel_models_as_circuit")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
+@patch(f"{_TASK}.register_simulation_results")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_ion_channel_models_as_circuit")
+@patch(f"{_TASK}.create_dir")
 def test_execute_tracked_registers_and_updates_activity(
     mock_create_dir,
     mock_stage_circuit,
@@ -214,29 +212,27 @@ def test_execute_tracked_registers_and_updates_activity(
     )
 
 
-@patch(f"{_ION_CHANNEL}.deserialize_obi_object_from_json_data")
-@patch(f"{_ION_CHANNEL}.db_sdk.select_json_asset_content")
+@patch(f"{_TASK}.IonChannelModelSimulationSingleConfig.model_validate_json")
+@patch(f"{_TASK}.db_sdk.select_asset_content")
 def test_get_generation_single_config(
-    mock_select_json, mock_deserialize, config, generation_config
+    mock_select_content, mock_validate_json, config, generation_config
 ):
-    mock_select_json.return_value = {"type": "ion_channel"}
-    mock_deserialize.return_value = generation_config
+    json_bytes = b'{"type": "IonChannelModelSimulationSingleConfig"}'
+    mock_select_content.return_value = json_bytes
+    mock_validate_json.return_value = generation_config
 
     task = IonChannelModelSimulationExecutionTask(config=config)
     result = task.get_generation_single_config(db_client=MagicMock())
 
     assert result is generation_config
-    mock_select_json.assert_called_once()
+    mock_select_content.assert_called_once()
+    mock_validate_json.assert_called_once_with(json_bytes)
 
 
-@patch(f"{_ION_CHANNEL}.deserialize_obi_object_from_json_data")
-@patch(f"{_ION_CHANNEL}.db_sdk.select_json_asset_content")
-def test_get_generation_single_config_wrong_type(mock_select_json, mock_deserialize, config):
-    mock_select_json.return_value = {"type": "other"}
-    mock_deserialize.return_value = MagicMock()
+@patch(f"{_TASK}.db_sdk.select_asset_content")
+def test_get_generation_single_config_invalid_json(mock_select_content, config):
+    mock_select_content.return_value = b'{"type": "not-an-ion-channel-config"}'
 
     task = IonChannelModelSimulationExecutionTask(config=config)
-    with pytest.raises(
-        test_module.OBIONEError, match="Expected IonChannelModelSimulationSingleConfig"
-    ):
+    with pytest.raises(ValidationError):
         task.get_generation_single_config(db_client=MagicMock())

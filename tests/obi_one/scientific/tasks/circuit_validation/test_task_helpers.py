@@ -1,14 +1,12 @@
 """Unit tests for circuit validation task helpers — additional coverage."""
 
 import json
-import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import h5py
 import numpy as np
 import pandas as pd
-import pytest
 from bluepysnap import Circuit
 from bluepysnap.exceptions import BluepySnapError
 
@@ -17,7 +15,6 @@ from obi_one.scientific.library.circuit_id_mapping import (
     validate_id_mapping_files,
 )
 from obi_one.scientific.tasks.circuit_validation.task import (
-    _compile_mechanisms,
     _find_mod_dir,
     _find_morphology_for_template,
     _hoc_supports_h5_container,
@@ -74,38 +71,6 @@ class TestFindModDir:
         mock_circuit.nodes.__getitem__ = lambda _self, _k: mock_pop
 
         assert _find_mod_dir(mock_circuit) is None
-
-
-# ---------------------------------------------------------------------------
-# _compile_mechanisms
-# ---------------------------------------------------------------------------
-
-
-class TestCompileMechanisms:
-    def test_success(self, tmp_path):
-        mod_dir = tmp_path / "mods"
-        mod_dir.mkdir()
-        (mod_dir / "NaTg.mod").write_text("NEURON { SUFFIX NaTg }\n")
-
-        with patch("obi_one.scientific.tasks.circuit_validation.task.subprocess.run") as mock_run:
-            mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0)
-            _compile_mechanisms(mod_dir, tmp_path)
-
-        mock_run.assert_called_once()
-        args = mock_run.call_args
-        assert "nrnivmodl" in args[0][0][0]
-        assert str(mod_dir) in args[0][0]
-
-    def test_failure_raises(self, tmp_path):
-        mod_dir = tmp_path / "mods"
-        mod_dir.mkdir()
-
-        with patch("obi_one.scientific.tasks.circuit_validation.task.subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(
-                1, "nrnivmodl", stderr=b"syntax error in PROCEDURE"
-            )
-            with pytest.raises(RuntimeError, match="MOD compilation failed"):
-                _compile_mechanisms(mod_dir, tmp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -731,7 +696,7 @@ class TestRunCircuitValidation:
 
     @patch("obi_one.scientific.tasks.circuit_validation.task.stage_circuit")
     @patch("obi_one.scientific.tasks.circuit_validation.task._update_lifecycle_status")
-    @patch("obi_one.scientific.tasks.circuit_validation.task._compile_mechanisms")
+    @patch("obi_one.scientific.tasks.circuit_validation.task.compile_mechanisms")
     @patch("obi_one.scientific.tasks.circuit_validation.task._find_mod_dir")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_emodel_paths")
     @patch("obi_one.scientific.tasks.circuit_validation.task._validate_morphology_paths")

@@ -1,12 +1,12 @@
 import json
 
 from obi_one.core.schema import SchemaKey
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
     TsodyksMarkramSynapticModel,
 )
-from obi_one.scientific.tasks.circuit_extraction.task import (
+from obi_one.scientific.tasks.circuit_extraction.config import (
     CircuitExtractionScanConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.config import (

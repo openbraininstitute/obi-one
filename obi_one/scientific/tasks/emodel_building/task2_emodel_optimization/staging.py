@@ -14,6 +14,7 @@ from bluepyemodel.preprocessing import (
     OptimizationArtifacts,
     build_optimization_artifacts,
 )
+from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
 
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
@@ -42,6 +43,8 @@ def download_extraction_features(
         AssetLabel.efeature_extraction_features,
         dest_dir=features_dir,
         db_client=db_client,
+        # do not link because it can be modified in-place
+        strategy=FetchFileStrategy.copy_or_download,
     )
     # Rename to <emodel>.json if needed
     target = features_dir / f"{config.initialize.emodel}.json"
@@ -57,19 +60,21 @@ def stage_morphology(
     db_client: entitysdk.client.Client,
 ) -> str:
     """Download morphology SWC and return the filename."""
-    morph_dir = coord_root / "morphologies"
-    morph_dir.mkdir(parents=True, exist_ok=True)
-    morph_entity = config.morphology.cell_morphology
-    swc_content = morph_entity.swc_file_content(db_client=db_client)
-    # Use entity ID as filename base
-    morph_id = morph_entity.id_str
-    morph_filename = f"{morph_id}.swc"
-    (morph_dir / morph_filename).write_text(
-        swc_content,
-        encoding="utf-8",
+    cell_morphology = config.morphology.cell_morphology.entity(db_client=db_client)
+    path = (
+        db_client.fetch_assets(
+            cell_morphology,
+            selection={
+                "content_type": ContentType.application_swc,
+                "label": AssetLabel.morphology,
+            },
+            output_path=coord_root / "morphologies" / f"{cell_morphology.id}.swc",
+        )
+        .one()
+        .path
     )
-    L.info("Staged morphology: %s", morph_filename)
-    return morph_filename
+    L.info("Staged morphology: %s", path.name)
+    return path.name
 
 
 def stage_mechanisms(
@@ -147,5 +152,5 @@ def derive_mtype(
     morph_entity = config.morphology.cell_morphology
     entity = morph_entity.entity(db_client=db_client)
     if hasattr(entity, "mtypes") and entity.mtypes:
-        return str(entity.mtypes[0].pref_label)  # ty:ignore[not-subscriptable]
+        return str(entity.mtypes[0].pref_label)
     return None

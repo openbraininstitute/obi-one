@@ -12,11 +12,11 @@ from obi_one.scientific.tasks.build_synaptome import (
     MEModelSynapticModelPlacementSingleConfig,
     MEModelSynapticModelPlacementTask,
 )
-from obi_one.scientific.tasks.circuit_extraction import (
+from obi_one.scientific.tasks.circuit_extraction.config import (
     CircuitExtractionScanConfig,
     CircuitExtractionSingleConfig,
-    CircuitExtractionTask,
 )
+from obi_one.scientific.tasks.circuit_extraction.task import CircuitExtractionTask
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
 from obi_one.scientific.tasks.generate_simulations.config.neuron.aliases import Simulation
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
@@ -26,21 +26,23 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_chan
     IonChannelModelSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
-from obi_one.scientific.tasks.simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution.neuron.config import (
     CircuitSimulationExecutionSingleConfig,
-    CircuitSimulationExecutionTask,
     IonChannelModelSimulationExecutionSingleConfig,
-    IonChannelModelSimulationExecutionTask,
     SingleNeuronSimulationExecutionSingleConfig,
-    SingleNeuronSimulationExecutionTask,
     SingleNeuronSynaptomeSimulationExecutionSingleConfig,
+)
+from obi_one.scientific.tasks.simulation_execution.neuron.task import (
+    CircuitSimulationExecutionTask,
+    IonChannelModelSimulationExecutionTask,
+    SingleNeuronSimulationExecutionTask,
     SingleNeuronSynaptomeSimulationExecutionTask,
 )
-from obi_one.scientific.tasks.skeletonization import (
+from obi_one.scientific.tasks.skeletonization.config import (
     SkeletonizationScanConfig,
     SkeletonizationSingleConfig,
-    SkeletonizationTask,
 )
+from obi_one.scientific.tasks.skeletonization.task import SkeletonizationTask
 from obi_one.types import TaskType
 from obi_one.utils.lazy_import import class_name, import_class
 

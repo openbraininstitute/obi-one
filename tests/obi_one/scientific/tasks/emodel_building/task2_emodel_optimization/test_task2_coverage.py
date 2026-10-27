@@ -19,8 +19,8 @@ from bluepyemodel.preprocessing.schemas import (
 from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
+from obi_one.scientific.library import memodel_calibration_validation as calibration_validation
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    calibration_validation,
     registration,
     staging,
     utils,
@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     DistanceDependentDistribution,
+    DistributionParameter,
     EModelOptimisationParameters,
     GlobalParameterSelection,
     MechanismRegionSelection,
@@ -53,11 +54,19 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     params_definition_input_from_config,
 )
 
-from .test_parameter_selection import _model_entity, _scan_config_data, _somatic_assignment
+from .test_parameter_selection import (
+    ICM2_ID_STR,
+    ICM_ID_STR,
+    _model_entity,
+    _scan_config_data,
+    _somatic_assignment,
+)
+
+PAS_MODEL_ID_STR = "00000000-0000-0000-0000-000000000006"
 
 
 def _reference() -> IonChannelModelFromID:
-    return IonChannelModelFromID(id_str="icm-1")
+    return IonChannelModelFromID(id_str=ICM_ID_STR)
 
 
 def _selection(**overrides) -> ParametersSelection:
@@ -80,7 +89,7 @@ def _compiler_config(selection: ParametersSelection, custom=None) -> SimpleNames
 
 
 def _normalized_models() -> dict[str, NormalizedIonChannelModel]:
-    return {"icm-1": bpem_parameters.normalize_ion_channel_model(_model_entity())}
+    return {ICM_ID_STR: bpem_parameters.normalize_ion_channel_model(_model_entity())}
 
 
 def test_normalize_model_rejects_missing_required_metadata():
@@ -90,13 +99,13 @@ def test_normalize_model_rejects_missing_required_metadata():
         bpem_parameters.normalize_ion_channel_model(SimpleNamespace(nmodl_suffix="NaTg"))
     with pytest.raises(ValueError, match="no neuron_block"):
         bpem_parameters.normalize_ion_channel_model(
-            SimpleNamespace(nmodl_suffix="NaTg", id="icm-1")
+            SimpleNamespace(nmodl_suffix="NaTg", id=ICM_ID_STR)
         )
 
 
 def test_normalize_model_accepts_mapping_global_metadata_and_ignores_empty_duplicates():
     entity = {
-        "id": "icm-1",
+        "id": ICM_ID_STR,
         "nmodl_suffix": "NaTg",
         "neuron_block": {
             "range": [
@@ -118,19 +127,19 @@ def test_normalize_model_accepts_mapping_global_metadata_and_ignores_empty_dupli
 
 def test_resolve_and_fetch_ion_channel_models_preserve_reference_ids():
     entity = _model_entity()
-    reference = SimpleNamespace(id_str="icm-1", entity=Mock(return_value=entity))
+    reference = SimpleNamespace(id_str=ICM_ID_STR, entity=Mock(return_value=entity))
     reference_entity = reference.entity
     resolved = utils.resolve_ion_channel_models((reference,), object())
 
-    assert resolved["icm-1"].entity_id == "icm-1"
+    assert resolved[ICM_ID_STR].entity_id == ICM_ID_STR
     reference_entity.assert_called_once()
 
     client = SimpleNamespace(get_entity=Mock(return_value=entity))
-    catalog = utils.fetch_variable_catalog(["icm-2"], client)
+    catalog = utils.fetch_variable_catalog([ICM2_ID_STR], client)
 
-    assert catalog["icm-2"].entity_id == "icm-2"
+    assert catalog[ICM2_ID_STR].entity_id == ICM2_ID_STR
     client.get_entity.assert_called_once()
-    assert client.get_entity.call_args.kwargs["entity_id"] == "icm-2"
+    assert client.get_entity.call_args.kwargs["entity_id"] == ICM2_ID_STR
 
 
 @pytest.mark.parametrize(
@@ -194,7 +203,7 @@ def test_parameter_builder_rejects_invalid_global_parameter_sources():
         with pytest.raises(ValueError, match="not a GLOBAL"):
             bpem_parameters._build_global_parameters(selection, model, {})
 
-    unknown_reference = IonChannelModelFromID(id_str="icm-2")
+    unknown_reference = IonChannelModelFromID(id_str=ICM2_ID_STR)
     selection = _selection(
         ion_channel_models=(unknown_reference,),
         global_parameters={
@@ -278,28 +287,32 @@ def test_parameter_builder_rejects_wrong_capability_type():
         )
 
 
+_CONSTANT = {"name": "constant", "value": {"value": 1.0}}
+
+
 @pytest.mark.parametrize(
-    ("payload", "message"),
+    ("cls", "payload", "message"),
     [
-        ({"parameters": ("constant",)}, "must define a function"),
-        ({"function": "{distance}"}, "{value}"),
-        ({"function": "{value}"}, "{distance}"),
+        (DistanceDependentDistribution, {"function": "{distance}"}, "{value}"),
+        (DistanceDependentDistribution, {"function": "{value}"}, "{distance}"),
         (
-            {"function": "{value} * {distance}", "parameters": ("constant",)},
+            CustomDistanceDependentDistribution,
+            {"function": "{value} * {distance}", "parameters": [_CONSTANT]},
             "{constant}",
         ),
+        (DistanceDependentDistribution, {"parameters": ("constant",)}, "Extra inputs"),
     ],
 )
-def test_distance_distribution_validates_function_placeholders(payload, message):
+def test_distance_distribution_validates_function_placeholders(cls, payload, message):
     with pytest.raises(ValueError, match=message):
-        DistanceDependentDistribution(**payload)
+        cls(**payload)
 
 
 def test_distance_distribution_serializes_legacy_fields():
-    distribution = DistanceDependentDistribution(
+    distribution = CustomDistanceDependentDistribution(
         function="{value} * {distance} * {constant}",
         soma_ref_location=0.75,
-        parameters=("constant",),
+        parameters=[_CONSTANT],
     )
 
     assert distribution.to_emc_dict(name="custom") == {
@@ -441,7 +454,7 @@ def _pipeline_results(**overrides):
             "iteration": "4",
         },
         "calibration": None,
-        "validation": None,
+        "memodel_validation": None,
         "validation_status": ValidationStatus.created,
     }
     defaults.update(overrides)
@@ -474,7 +487,7 @@ def _registration_fixture(tmp_path, *, complete=True):
         metadata_entities=Mock(return_value=(species, brain_region)),
     )
     reference = SimpleNamespace(
-        id_str="icm-1", entity=Mock(return_value=SimpleNamespace(id="icm-1"))
+        id_str=ICM_ID_STR, entity=Mock(return_value=SimpleNamespace(id=ICM_ID_STR))
     )
     etype = SimpleNamespace(entity=Mock(return_value=SimpleNamespace(id="etype-id")))
     config = SimpleNamespace(
@@ -602,7 +615,7 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
         db_client,
         pipeline_results=_pipeline_results(
             calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
-            validation={
+            memodel_validation={
                 "spike_test": {"name": "SpikeTest", "passed": True},
                 "thumbnail_test": {
                     "name": "thumbnail",
@@ -718,27 +731,31 @@ def _config_data_for_selection(selection, distributions=None, **overrides):
 def _decay_distribution():
     return CustomDistanceDependentDistribution(
         function="math.exp({distance}*{constant})*{value}",
-        parameters=("constant",),
+        parameters=[DistributionParameter(name="constant", value=OptimizationValue(value=1.0))],
     )
 
 
-def test_scan_config_rejects_distribution_declaration_and_usage_errors():
-    undeclared = _selection(
+def test_scan_config_collects_distribution_parameter_values_from_distributions():
+    selection = _selection(
         mechanism_regions=_somatic_assignment(),
-        distribution_parameters={"missing": {"constant": OptimizationValue(value=1.0)}},
+        base_parameters={
+            "all": {
+                "cm": ParameterSelection(
+                    value=OptimizationValue(value=1.0),
+                    distribution="decay",
+                )
+            }
+        },
     )
-    with pytest.raises(ValueError, match="reference undeclared distribution 'missing'"):
-        EModelOptimizationScanConfig.model_validate(_config_data_for_selection(undeclared))
-
-    unknown_parameter = _selection(
-        mechanism_regions=_somatic_assignment(),
-        distribution_parameters={"decay": {"unknown": OptimizationValue(value=1.0)}},
+    config = EModelOptimizationScanConfig.model_validate(
+        _config_data_for_selection(selection, {"decay": _decay_distribution()})
     )
-    with pytest.raises(ValueError, match="undeclared parameters"):
-        EModelOptimizationScanConfig.model_validate(
-            _config_data_for_selection(unknown_parameter, {"decay": _decay_distribution()})
-        )
+    assert config.parameters_selection.distribution_parameters == {
+        "decay": {"constant": OptimizationValue(value=1.0)}
+    }
 
+
+def test_scan_config_rejects_distribution_usage_errors():
     undeclared_usage = _selection(
         mechanism_regions=_somatic_assignment(),
         base_parameters={
@@ -752,22 +769,6 @@ def test_scan_config_rejects_distribution_declaration_and_usage_errors():
     )
     with pytest.raises(ValueError, match="Parameters reference undeclared distributions"):
         EModelOptimizationScanConfig.model_validate(_config_data_for_selection(undeclared_usage))
-
-    missing_value = _selection(
-        mechanism_regions=_somatic_assignment(),
-        base_parameters={
-            "all": {
-                "cm": ParameterSelection(
-                    value=OptimizationValue(value=1.0),
-                    distribution="decay",
-                )
-            }
-        },
-    )
-    with pytest.raises(ValueError, match="Used distribution 'decay' is missing values"):
-        EModelOptimizationScanConfig.model_validate(
-            _config_data_for_selection(missing_value, {"decay": _decay_distribution()})
-        )
 
 
 def test_scan_config_rejects_empty_ion_channel_model_selection():
@@ -817,7 +818,7 @@ def test_remaining_block_validation_and_serialization_paths():
 
 
 def test_remaining_parameter_builder_paths():
-    model = _normalized_models()["icm-1"]
+    model = _normalized_models()[ICM_ID_STR]
     assert model.find_variable("gNa_NaTg").name == "gNa_NaTg"
 
     variables = bpem_parameters._normalize_variables(
@@ -828,7 +829,7 @@ def test_remaining_parameter_builder_paths():
     assert [variable.name for variable in variables] == ["h_NaTg", "q_NaTg"]
     assert bpem_parameters._location_sort_key("not-a-region") == (0, "not-a-region")
 
-    pas_reference = IonChannelModelFromID(id_str="pas-model")
+    pas_reference = IonChannelModelFromID(id_str=PAS_MODEL_ID_STR)
     pas_selection = _selection(
         ion_channel_models=(pas_reference,),
         mechanism_regions={"somatic": (MechanismRegionSelection(ion_channel_model=pas_reference),)},
@@ -837,7 +838,7 @@ def test_remaining_parameter_builder_paths():
         },
     )
     pas_model = NormalizedIonChannelModel(
-        entity_id="pas-model",
+        entity_id=PAS_MODEL_ID_STR,
         name="Passive",
         nmodl_suffix="pas",
         is_stochastic=False,
@@ -847,7 +848,7 @@ def test_remaining_parameter_builder_paths():
         global_variables=(),
         ion_names=frozenset(),
     )
-    mechanisms = bpem_parameters._build_mechanisms(pas_selection, {"pas-model": pas_model})
+    mechanisms = bpem_parameters._build_mechanisms(pas_selection, {PAS_MODEL_ID_STR: pas_model})
     assert [mechanism["name"] for mechanism in mechanisms] == ["pas"]
 
     missing_metadata_selection = _selection(
@@ -919,6 +920,11 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     monkeypatch.setattr("obi_one.scientific.tasks.emodel_building.utils.compile_mechanisms", Mock())
     monkeypatch.setattr("obi_one.scientific.tasks.emodel_building.utils.run_plot_models", Mock())
     monkeypatch.setattr(
+        "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task."
+        "run_inline_validation",
+        Mock(return_value=None),
+    )
+    monkeypatch.setattr(
         "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task.preflight_morphology",
         Mock(return_value=object()),
     )
@@ -944,7 +950,8 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     )
     monkeypatch.setattr(registration, "register_output_entities", register_outputs)
     monkeypatch.setattr(
-        calibration_validation, "locate_hoc", Mock(return_value=tmp_path / "hoc.hoc")
+        "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task.locate_hoc",
+        Mock(return_value=tmp_path / "hoc.hoc"),
     )
     compute_cv = Mock(
         return_value={
@@ -1002,7 +1009,7 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
         "iteration": "2",
     }
     assert results.calibration == {"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0}
-    assert results.validation == {"spike_test": {"name": "SpikeTest", "passed": True}}
+    assert results.memodel_validation == {"spike_test": {"name": "SpikeTest", "passed": True}}
     assert results.validation_status == ValidationStatus.done
     # the pipeline hands the staged SWC straight to the compute step — no re-location
     assert compute_cv.call_args.args[2] == tmp_path.resolve() / "morphologies" / "morphology.swc"
@@ -1010,6 +1017,39 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     assert task._registered_emodel_id == "emodel-id"
     assert task._registered_memodel_id == "memodel-id"
     mechanism = access_points[0].get_available_mechanisms()[0]
-    assert mechanism.id == "icm-1"
+    assert mechanism.id == ICM_ID_STR
     configuration = access_points[0].get_model_configuration()
     assert configuration.morph_modifiers == ["none"]
+
+
+def test_register_output_entities_registers_inline_emodel_validation(tmp_path, monkeypatch):
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, *_ = _registration_fixture(tmp_path)
+    register = Mock(return_value=["vr-1", "vr-2"])
+    monkeypatch.setattr(registration, "register_validation_results", register)
+    summary = {"passed": False, "settings": {}, "protocols": {}}
+
+    outputs = registration.register_output_entities(
+        config,
+        tmp_path,
+        db_client,
+        pipeline_results=_pipeline_results(emodel_validation=summary),
+    )
+
+    assert register.call_args.kwargs["summary"] is summary
+    assert register.call_args.kwargs["validated_entity_id"] == "emodel-id"
+    assert outputs.generated_ids[-2:] == ["vr-1", "vr-2"]
+
+
+def test_root_parameters_reject_legacy_distribution_parameters():
+    legacy = _selection(
+        distribution_parameters={"decay": {"constant": OptimizationValue(value=1.0)}}
+    )
+    with pytest.raises(ValueError, match="no longer part of the parameter selection"):
+        EModelOptimisationParameters.from_parameters_selection(legacy)
+
+    data = _scan_config_data()
+    data["emodel_optimisation_parameters"]["distribution_parameters"] = {}
+    with pytest.raises(ValueError, match="Extra inputs"):
+        EModelOptimizationScanConfig.model_validate(data)

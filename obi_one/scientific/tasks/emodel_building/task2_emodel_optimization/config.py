@@ -29,6 +29,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     TargetEFeaturesInput,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils import (
+    bpem_distribution_name,
     to_bpem_custom_distributions,
     to_bpem_distributions,
 )
@@ -47,16 +48,33 @@ class BlockGroup(StrEnum):
     SETTINGS = "Settings"
 
 
-def _used_distribution_names(selection: ParametersSelection) -> set[str]:
+def _used_distribution_names(
+    selection: ParametersSelection,
+    distributions: Mapping[str, DistanceDependentDistributionUnion],
+) -> set[str]:
+    """Collect the names of distributions referenced by parameters, as the resolver sees them.
+
+    Parameters reference a distribution by its ``distance_dependent_distributions`` key, which
+    is also the resolver name for every distribution except runtime-name standards (``step``);
+    those are translated to their canonical name via :func:`bpem_distribution_name`. References
+    that are not keys (e.g. a bare ``uniform``) pass through unchanged.
+    """
+
+    def resolver_name(reference: str) -> str:
+        distribution = distributions.get(reference)
+        if distribution is None:
+            return reference
+        return bpem_distribution_name(reference, distribution)
+
     used_distributions = {"uniform"}
     used_distributions.update(
-        parameter.distribution
+        resolver_name(parameter.distribution)
         for selections in selection.mechanism_regions.values()
         for assignment in selections
         for parameter in assignment.parameters.values()
     )
     used_distributions.update(
-        parameter.distribution
+        resolver_name(parameter.distribution)
         for parameters in selection.base_parameters.values()
         for parameter in parameters.values()
     )
@@ -85,36 +103,12 @@ def _validate_section_list_availability(
             raise ValueError(msg)
 
 
-def _validate_distribution_declarations(
-    selection: ParametersSelection,
-    custom_distributions: Mapping[str, DistanceDependentDistributionUnion],
-) -> None:
-    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
-    for distribution_name, configured_parameters in selection.distribution_parameters.items():
-        distribution = resolve_distance_dependent_distribution(
-            distribution_name,
-            bpem_custom_distributions,
-        )
-        if distribution is None:
-            msg = (
-                f"Distribution parameters reference undeclared distribution '{distribution_name}'."
-            )
-            raise ValueError(msg)
-        declared = set(distribution.parameters or [])
-        unknown = set(configured_parameters) - declared
-        if unknown:
-            msg = (
-                f"Distribution '{distribution_name}' has undeclared parameters: {sorted(unknown)}."
-            )
-            raise ValueError(msg)
-
-
 def _validate_used_distributions(
     selection: ParametersSelection,
-    custom_distributions: Mapping[str, DistanceDependentDistributionUnion],
+    distributions: Mapping[str, DistanceDependentDistributionUnion],
 ) -> None:
-    bpem_custom_distributions = to_bpem_custom_distributions(custom_distributions)
-    used_distributions = _used_distribution_names(selection)
+    bpem_custom_distributions = to_bpem_custom_distributions(distributions)
+    used_distributions = _used_distribution_names(selection, distributions)
     resolved = {
         name: resolve_distance_dependent_distribution(name, bpem_custom_distributions)
         for name in used_distributions
@@ -126,29 +120,13 @@ def _validate_used_distributions(
         msg = f"Parameters reference undeclared distributions: {sorted(missing_distributions)}."
         raise ValueError(msg)
 
-    for distribution_name in sorted(used_distributions):
-        distribution = resolved[distribution_name]
-        if distribution is None:  # pragma: no cover - guarded above
-            continue
-        declared = set(distribution.parameters or [])
-        if not declared:
-            continue
-        configured = selection.distribution_parameters.get(distribution_name, {})
-        missing = declared - set(configured)
-        if missing:
-            msg = (
-                f"Used distribution '{distribution_name}' is missing values for "
-                f"parameters: {sorted(missing)}."
-            )
-            raise ValueError(msg)
-
 
 class EModelOptimizationScanConfig(InfoScanConfig):
-    """ScanConfig for the BluePyEModel optimisation step.
+    """ScanConfig for the e-model optimisation step.
 
     Registered TaskConfigs from this class are normally executed by a remote
     launch-system worker: the worker stages entity assets, compiles this config
-    into the versioned params/recipe artifacts, runs BluePyEModel/NEURON, and
+    into the versioned params/recipe artifacts, runs the optimisation in NEURON, and
     registers the result. See ``EModelOptimizationTask.execute()`` for the
     optional local diagnostic path.
     """
@@ -156,8 +134,8 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     single_coord_class_name: ClassVar[str] = "EModelOptimizationSingleConfig"
     name: ClassVar[str] = "EModel Optimization"
     description: ClassVar[str] = (
-        "Run BluePyEModel parameter optimisation against extracted features,"
-        " followed by analysis and emodel export."
+        "Find ion channel densities that make the neuron model reproduce the "
+        "extracted e-features, then analyse and save the resulting e-model."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -181,7 +159,9 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     @property
     def parameters_selection(self) -> ParametersSelection:
         """Canonical selection used by existing runtime code."""
-        return self.emodel_optimisation_parameters.to_parameters_selection()
+        return self.emodel_optimisation_parameters.to_parameters_selection(
+            self.distance_dependent_distributions,
+        )
 
     def input_entities(self, db_client: Client) -> list:
         entities: list = [
@@ -219,10 +199,6 @@ class EModelOptimizationScanConfig(InfoScanConfig):
             self.morphology_settings,
             self.parameters_selection,
         )
-        _validate_distribution_declarations(
-            self.parameters_selection,
-            self.distance_dependent_distributions,
-        )
         _validate_used_distributions(
             self.parameters_selection,
             self.distance_dependent_distributions,
@@ -241,7 +217,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
 
     initialize: OptimizationInitialize = Field(
         title="Initialize",
-        description="E-model name and E-type entity used by the ``EModel_pipeline`` constructor.",
+        description="Name and e-type of the e-model being built.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: InfoBlockGroup.SETUP_BLOCK_GROUP,
@@ -321,9 +297,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
     optimization_settings: OptimizationSettings = Field(
         default_factory=OptimizationSettings,
         title="Optimization settings",
-        description=(
-            "Top-level ``pipeline_settings`` keys controlling optimisation, analysis, and export."
-        ),
+        description=("Settings controlling the optimisation run, the analysis, and the export."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETTINGS,
@@ -335,7 +309,7 @@ class EModelOptimizationScanConfig(InfoScanConfig):
         default_factory=OptimizationParams,
         title="Optimisation parameters",
         description=(
-            "Algorithm-specific ``optimisation_params`` (CMA sigma, IBEA probabilities, ...). "
+            "Settings specific to the chosen algorithm (CMA sigma, IBEA probabilities, ...). "
             "Offspring size is set in the optimization settings."
         ),
         json_schema_extra={

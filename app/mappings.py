@@ -44,6 +44,11 @@ def _obi_one_code(
     )
 
 
+def _neurodamus_image_code() -> PythonRepositoryCode:
+    """Launch code for tasks that run on the neurodamus executor image."""
+    return _obi_one_code("neurodamus_image.txt", capabilities=Capabilities(private_packages=True))
+
+
 def _build_task_definitions(
     definitions: Iterable[AnyTaskDefinition],
 ) -> dict[TaskType, AnyTaskDefinition]:
@@ -147,7 +152,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=_obi_one_code("neurodamus_simulation.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -164,7 +169,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.circuit_simulation_neurodamus_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=_obi_one_code("neurodamus_simulation.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -195,9 +200,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.ion_channel_fitting,
         config_type=TaskConfigType.ion_channel_modeling__config,
         activity_type=TaskActivityType.ion_channel_modeling__execution,
-        code=_obi_one_code(
-            "ion_channel_fitting.txt", capabilities=Capabilities(private_packages=True)
-        ),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -210,11 +213,27 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
+    TaskDefinition(
+        task_type=TaskType.memodel_build,
+        config_type=TaskConfigType.memodel_build__config,
+        activity_type=TaskActivityType.memodel_build__execution,
+        code=_obi_one_code("default.txt"),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="00:30",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
     TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=_obi_one_code("neurodamus_simulation.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -231,7 +250,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.single_neuron_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=_obi_one_code("neurodamus_simulation.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -248,7 +267,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.single_neuron_synaptome_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=_obi_one_code("neurodamus_simulation.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -327,10 +346,26 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinition(
+        task_type=TaskType.emodel_validation,
+        config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        activity_type=TaskActivityType.optimized_emodel_analysis_validation__execution,
+        code=_obi_one_code("emodel_building.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
         activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
-        code=_obi_one_code("extracellular_recording_weights_calculation.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -351,6 +386,24 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         resources=MachineResources(
             cores=16,
             memory=32,
+            timelimit="02:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.circuit_simplification,
+        config_type=TaskConfigType.circuit_simplification__config,
+        activity_type=TaskActivityType.circuit_simplification__execution,
+        code=_obi_one_code(
+            "circuit_simplification.txt", capabilities=Capabilities(private_packages=True)
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
             timelimit="02:00",
             compute_cell="local",
             placement_type_map={

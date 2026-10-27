@@ -79,6 +79,7 @@ class UIElement(StrEnum):
     BOOLEAN_INPUT = "boolean_input"
     DISTANCE_FUNCTION_INPUT = "distance_function_input"
     DISTANCE_FUNCTION_INPUT_NULLABLE = "distance_function_input_nullable"
+    DISTRIBUTION_PARAMETER_LIST = "distribution_parameter_list"
     EMODEL_OPTIMISATION_PARAMETERS = "emodel_optimisation_parameters"
     DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
@@ -88,6 +89,7 @@ class UIElement(StrEnum):
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
+    ION_CHANNEL_MODEL_PROPERTIES = "ion_channel_model_properties"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST = (
         "ion_channel_variable_modification_by_section_list"

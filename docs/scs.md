@@ -43,7 +43,10 @@ The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulatio
 A typical single cell simulation configuration includes:
 
 ```python
-from obi_one import MEModelSimulationSingleConfig, MEModelFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationSingleConfig,
+)
 
 config = MEModelSimulationSingleConfig(
     initialize=MEModelSimulationSingleConfig.Initialize(
@@ -97,7 +100,7 @@ Recordings capture electrophysiological data:
 ### Using GenerateSimulationTask
 
 ```python
-from obi_one import GenerateSimulationTask
+from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 
 task = GenerateSimulationTask(config=config)
 task.run(output_path=Path("output"))

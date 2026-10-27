@@ -3,16 +3,19 @@
 import json
 import logging
 import pickle  # ruff: ignore[suspicious-pickle-import]
+import re
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal
 
 import entitysdk
 from entitysdk import models
-from entitysdk.types import AssetLabel, ContentType
+from entitysdk.types import AssetLabel, ContentType, Sex
 from pydantic import Discriminator, Field, StringConstraints
 
 from obi_one.core.block import Block
@@ -24,7 +27,10 @@ from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations impor
     EquationKey,
     equation_schema_extra,
 )
+from obi_one.scientific.from_id.brain_region_from_id import BrainRegionFromID
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.from_id.species_from_id import SpeciesFromID
+from obi_one.scientific.from_id.strain_from_id import StrainFromID
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.utils.process import run_and_log
 
@@ -135,6 +141,121 @@ def plot_in_fresh_process(mechanisms_root: Path, **kwargs: Any) -> Any:
     return pickle.loads(io_path.read_bytes())  # ruff: ignore[suspicious-pickle-usage]
 
 
+NEURON_NAME_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
+
+
+def neuron_safe_name(name: str) -> str:
+    """A channel name as a NEURON SUFFIX: Kv6.2 gives Kv6_2."""
+    safe = re.sub(r"[^A-Za-z0-9_]", "_", name)
+    return safe if re.match(r"[A-Za-z_]", safe) else f"_{safe}"
+
+
+def _id(entity: Any) -> uuid.UUID | None:
+    return entity.id if entity is not None else None
+
+
+def _shared(items: list, what: str, key: Callable = _id, label: Callable = str) -> Any:
+    distinct = {key(item): item for item in items}
+    if len(distinct) > 1:
+        values = ", ".join(sorted(label(item) for item in distinct.values()))
+        msg = f"The recordings differ in {what} ({values}), so set the model's {what}."
+        raise ConfigValidationError(msg)
+    return next(iter(distinct.values()))
+
+
+def _ancestors(region_id: uuid.UUID, db_client: entitysdk.client.Client) -> list:
+    chain = [db_client.get_entity(entity_id=region_id, entity_type=models.BrainRegion)]
+    while chain[-1].parent_structure_id:
+        chain.append(
+            db_client.get_entity(
+                entity_id=chain[-1].parent_structure_id, entity_type=models.BrainRegion
+            )
+        )
+    return chain
+
+
+def common_parent_region(regions: list, db_client: entitysdk.client.Client) -> Any:
+    """The deepest region that contains every one of the regions."""
+    region_ids = list(dict.fromkeys(region.id for region in regions))
+    if len(region_ids) == 1:
+        return regions[0]
+    chains = [_ancestors(region_id, db_client) for region_id in region_ids]
+    in_all = set.intersection(*({region.id for region in chain} for chain in chains))
+    for region in chains[0]:
+        if region.id in in_all:
+            return region
+    msg = "The recordings' brain regions have no common parent, so set the model's brain region."
+    raise ConfigValidationError(msg)
+
+
+def generic_subject(species: Any, strain: Any, db_client: entitysdk.client.Client) -> Any:
+    """The `Generic <species>[/<strain>]` subject, registered in the project when there is none."""
+    name = f"Generic {species.name}" + (f"/{strain.name}" if strain else "")
+    for subject in db_client.search_entity(entity_type=models.Subject, query={"name": name}):
+        if subject.species.id == species.id and _id(subject.strain) == _id(strain):
+            return subject
+    return db_client.register_entity(
+        models.Subject(
+            name=name,
+            description=f"Subject for models of {species.name} built from several subjects.",
+            sex=Sex.unknown,
+            species=species,
+            strain=strain,
+        )
+    )
+
+
+@dataclass(frozen=True)
+class ResolvedModelProperties:
+    ion_channel_name: str
+    temperature: float | None
+    species: Any
+    strain: Any
+    brain_region: Any
+    # The recordings' own subject, when they share one with this species and strain.
+    subject: Any
+
+
+class IonChannelModelProperties(Block):
+    """What the fitted model is registered with. An unset property comes from the recordings."""
+
+    ion_channel_name: Annotated[str, StringConstraints(pattern=NEURON_NAME_PATTERN)] | None = Field(
+        default=None,
+        title="Ion channel name",
+        description=(
+            "SUFFIX of the mod file. Unset: the recordings' channel, so Kv6.2 gives Kv6_2. "
+            "Must start with a letter or underscore, and contain only letters, numbers and "
+            "underscores."
+        ),
+    )
+    temperature: float | None = Field(
+        default=None,
+        title="Temperature",
+        description="Temperature of the model, in °C. Unset: the recordings' temperature.",
+    )
+    species: SpeciesFromID | None = Field(
+        default=None,
+        title="Species",
+        description="Species of the model. Unset: the recordings' species.",
+    )
+    strain: StrainFromID | None = Field(
+        default=None,
+        title="Strain",
+        description=(
+            "Strain of the model, of its species. Unset: the strain of the recordings of that "
+            "species, if any."
+        ),
+    )
+    brain_region: BrainRegionFromID | None = Field(
+        default=None,
+        title="Brain region",
+        description=(
+            "Brain region of the model. Unset: the deepest region containing all the "
+            "recordings' regions."
+        ),
+    )
+
+
 class BlockGroup(StrEnum):
     """Block Groups."""
 
@@ -151,8 +272,8 @@ class HodgkinHuxleyIonChannelModel(Block):
         title="m exponent in channel equation",
         default=1,
         description=(
-            r"Exponent \(p\) of \(m\) in the channel equation: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            r"Exponent $p$ of $m$ in the channel equation: "
+            r"$g = \bar{g} \cdot m^p \cdot h^q$"
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -160,8 +281,8 @@ class HodgkinHuxleyIonChannelModel(Block):
         title="h exponent in channel equation",
         default=1,
         description=(
-            r"Exponent \(q\) of \(h\) in the channel equation: "
-            r"\(g = \bar{g} \cdot m^p \cdot h^q\)"
+            r"Exponent $q$ of $h$ in the channel equation: "
+            r"$g = \bar{g} \cdot m^p \cdot h^q$"
         ),
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
@@ -169,9 +290,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
         title="m∞ equation",
         description=(
-            r"Steady state activation parameter \( m_{\infty} \) equation. "
+            r"Steady state activation parameter $m_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
         ),
         default=EquationKey.SIG_FIT_MINF,
         json_schema_extra=equation_schema_extra,
@@ -185,9 +306,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     ] = Field(
         title="m time constant equation",
         description=(
-            r"Activation time constant \(\tau_m\) equation. "
+            r"Activation time constant $\tau_m$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}} \)"
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
         ),
         default=EquationKey.SIG_FIT_MTAU,
         json_schema_extra=equation_schema_extra,
@@ -196,9 +317,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     hinf_eq: Literal[EquationKey.SIG_FIT_HINF] = Field(
         title="h∞ equation",
         description=(
-            r"Steady state inactivation parameter \(h_{\infty}\) equation. "
+            r"Steady state inactivation parameter $h_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+            r"$\frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}}$"
         ),
         default=EquationKey.SIG_FIT_HINF,
         json_schema_extra=equation_schema_extra,
@@ -207,9 +328,9 @@ class HodgkinHuxleyIonChannelModel(Block):
     htau_eq: Literal[EquationKey.SIG_FIT_HTAU] = Field(
         title="h time constant equation",
         description=(
-            r"Inactivation time constant \(\tau_h\) equation. "
+            r"Inactivation time constant $\tau_h$ equation. "
             r"This equation will be used for solving the differential equation: "
-            r"\( \frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}} \)"
+            r"$\frac{dh}{dt} = \frac{h_{\infty} - h}{\tau_{h}}$"
         ),
         default=EquationKey.SIG_FIT_HTAU,
         json_schema_extra=equation_schema_extra,
@@ -239,26 +360,23 @@ class IonChannelFittingScanConfig(InfoScanConfig):
         recordings: tuple[IonChannelRecordingFromID, ...] = Field(
             title="Ion channel recordings",
             description=(
-                "The recordings to fit the channel model to. Several are fitted jointly into "
-                "one model, not one model each."
+                "The recordings to fit the channel model to, up to 3. Several are fitted "
+                "jointly into one model, not one model each."
             ),
             min_length=1,
+            max_length=3,
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
         )
 
-        ion_channel_name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")] = (
-            Field(
-                title="Ion channel name",
-                description=(
-                    "The name you want to give to the generated ion channel model "
-                    "(used as SUFFIX in the mod file). "
-                    "Name must start with a letter or underscore, and can only contain "
-                    "letters, numbers, and underscores."
-                ),
-                min_length=1,
-                default="DefaultIonChannelName",
-                json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-            )
+        model_properties: IonChannelModelProperties = Field(
+            default=IonChannelModelProperties(),
+            title="Model properties",
+            description=(
+                "The channel name, temperature, species, strain and brain region the model is "
+                "registered with. Each defaults to the recordings' value; set it when they "
+                "differ, or to change it."
+            ),
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_MODEL_PROPERTIES},
         )
 
     initialize: Initialize = Field(
@@ -288,14 +406,82 @@ class IonChannelFittingScanConfig(InfoScanConfig):
         entities = [
             recording.entity(db_client=db_client) for recording in self.initialize.recordings
         ]
-        temperatures = {entity.temperature for entity in entities}  # ty:ignore[unresolved-attribute]
-        if len(temperatures) > 1:
-            msg = (
-                "Ion channel recordings fitted together must share a temperature, because the "
-                f"fitted model records a single one. Got {sorted(temperatures, key=str)}."
-            )
-            raise ConfigValidationError(msg)
+        # Fails at generation, before anything is registered, when a property can't be resolved.
+        self.resolve_model_properties(entities, db_client=db_client)
         return entities
+
+    def resolve_model_properties(
+        self, recordings: list, db_client: entitysdk.client.Client
+    ) -> ResolvedModelProperties:
+        given = self.initialize.model_properties
+
+        ion_channel_name = given.ion_channel_name or neuron_safe_name(
+            _shared(
+                [recording.ion_channel for recording in recordings],
+                "ion channel",
+                label=lambda channel: channel.name,
+            ).name
+        )
+        temperature = (
+            given.temperature
+            if given.temperature is not None
+            else _shared(
+                [recording.temperature for recording in recordings],
+                "temperature",
+                key=lambda temperature: temperature,
+                label=lambda temperature: "none" if temperature is None else f"{temperature} °C",
+            )
+        )
+        species: Any = (
+            given.species.entity(db_client=db_client)
+            if given.species
+            else _shared(
+                [recording.subject.species for recording in recordings],
+                "species",
+                label=lambda species: species.name,
+            )
+        )
+        if given.strain:
+            strain = given.strain.entity(db_client=db_client)
+        else:
+            strains = [
+                recording.subject.strain
+                for recording in recordings
+                if recording.subject.species.id == species.id
+            ]
+            strain = (
+                _shared(
+                    strains,
+                    "strain",
+                    label=lambda strain: strain.name if strain else "no strain",
+                )
+                if strains
+                else None
+            )
+        if strain and strain.species_id != species.id:
+            msg = f"Strain {strain.name} is not a strain of {species.name}."
+            raise ConfigValidationError(msg)
+        brain_region = (
+            given.brain_region.entity(db_client=db_client)
+            if given.brain_region
+            else common_parent_region(
+                [recording.brain_region for recording in recordings], db_client=db_client
+            )
+        )
+
+        subjects = {recording.subject.id: recording.subject for recording in recordings}
+        subject = next(iter(subjects.values())) if len(subjects) == 1 else None
+        if subject and (subject.species.id != species.id or _id(subject.strain) != _id(strain)):
+            subject = None
+
+        return ResolvedModelProperties(
+            ion_channel_name=ion_channel_name,
+            temperature=temperature,
+            species=species,
+            strain=strain,
+            brain_region=brain_region,
+            subject=subject,
+        )
 
 
 class IonChannelFittingSingleConfig(IonChannelFittingScanConfig, SingleConfigMixin):
@@ -309,10 +495,9 @@ class IonChannelFittingTask(Task):
     def recordings(self) -> tuple[IonChannelRecordingFromID, ...]:
         return self.config.initialize.recordings
 
-    @property
-    def conductance_name(self) -> str:
-        """The conductance name for the generated ion channel model."""
-        return f"g{self.config.initialize.ion_channel_name}bar"
+    @staticmethod
+    def conductance_name(ion_channel_name: str) -> str:
+        return f"g{ion_channel_name}bar"
 
     def download_input(
         self,
@@ -329,7 +514,7 @@ class IonChannelFittingTask(Task):
                     db_client=db_client,
                 )
             )
-            trace_ljps.append(recording.entity(db_client=db_client).ljp)  # ty:ignore[unresolved-attribute]
+            trace_ljps.append(recording.entity(db_client=db_client).ljp)
         return trace_paths, trace_ljps
 
     @staticmethod
@@ -406,7 +591,7 @@ class IonChannelFittingTask(Task):
         figure_filepaths: dict[Path],  # ty:ignore[invalid-type-arguments]
         db_client: entitysdk.client.Client,
         range_vars: list[dict[str, str | None]],
-        recording_entity: Any,
+        properties: ResolvedModelProperties,
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
         useion = entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
@@ -427,30 +612,30 @@ class IonChannelFittingTask(Task):
             str(recording.entity(db_client=db_client).name) for recording in self.recordings
         )
 
-        # Extract subject and brain_region from recording metadata
-        subject = recording_entity.subject
-        brain_region = recording_entity.brain_region
+        subject = properties.subject or generic_subject(
+            properties.species, properties.strain, db_client=db_client
+        )
 
         model = db_client.register_entity(
             entitysdk.models.IonChannelModel(  # ty:ignore[possibly-missing-submodule]
                 name=self.config.info.campaign_name,
-                nmodl_suffix=self.config.initialize.ion_channel_name,
+                nmodl_suffix=properties.ion_channel_name,
                 description=(
-                    f"Ion channel model: {self.config.initialize.ion_channel_name}.mod "
+                    f"Ion channel model: {properties.ion_channel_name}.mod "
                     f"made using recordings: {recording_names} "
-                    f"for (temperature: {recording_entity.temperature}), "
-                    f"brain region: {brain_region.name}, "
+                    f"for (temperature: {properties.temperature}), "
+                    f"brain region: {properties.brain_region.name}, "
                     f"and subject: {subject.name}."
                 ),
                 contributions=None,  # TODO: fix this
                 is_ljp_corrected=True,
                 is_temperature_dependent=False,
-                temperature_celsius=recording_entity.temperature,
+                temperature_celsius=properties.temperature,
                 is_stochastic=False,
                 neuron_block=neuron_block,
-                brain_region=brain_region,
+                brain_region=properties.brain_region,
                 subject=subject,
-                conductance_name=self.conductance_name,
+                conductance_name=self.conductance_name(properties.ion_channel_name),
                 max_permeability_name=None,
             )
         )
@@ -480,7 +665,10 @@ class IonChannelFittingTask(Task):
         )
 
         try:  # ruff: ignore[too-many-statements-in-try-clause]
-            recording_entity = self.config.input_entities(db_client=db_client)[0]
+            properties = self.config.resolve_model_properties(
+                [recording.entity(db_client=db_client) for recording in self.recordings],
+                db_client=db_client,
+            )
 
             # download traces asset and metadata given id.
             # Get ljp (liquid junction potential) voltage corection from metadata
@@ -508,12 +696,12 @@ class IonChannelFittingTask(Task):
             coordinate_root = Path(self.config.coordinate_output_root).resolve()
             mechanisms_dir = coordinate_root / "mechanisms"
             mechanisms_dir.mkdir(parents=True, exist_ok=True)
-            output_name = mechanisms_dir / f"{self.config.initialize.ion_channel_name}.mod"
+            output_name = mechanisms_dir / f"{properties.ion_channel_name}.mod"
 
             write_vgate_output(
                 eq_names=eq_names,
                 eq_popt=eq_popt,  # ty:ignore[invalid-argument-type]
-                suffix=self.config.initialize.ion_channel_name,
+                suffix=properties.ion_channel_name,
                 ion="k",
                 m_power=model.m_power,  # ty:ignore[invalid-argument-type]
                 h_power=model.h_power,  # ty:ignore[invalid-argument-type]
@@ -528,15 +716,15 @@ class IonChannelFittingTask(Task):
                 cwd=coordinate_root,
             )
 
-            mech_suffix = self.config.initialize.ion_channel_name
+            mech_suffix = properties.ion_channel_name
             figure_paths_dict = plot_in_fresh_process(
                 coordinate_root,
                 mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see
                 # ion_channel_builder.io.write_output
                 mech_current="ik",
-                temperature=recording_entity.temperature,
-                mech_conductance_name=self.conductance_name,
+                temperature=properties.temperature,
+                mech_conductance_name=self.conductance_name(mech_suffix),
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
@@ -560,7 +748,7 @@ class IonChannelFittingTask(Task):
                 figure_filepaths=figure_paths_dict,
                 db_client=db_client,
                 range_vars=range_vars,  # ty:ignore[invalid-argument-type]
-                recording_entity=recording_entity,
+                properties=properties,
             )
 
             self._update_execution_activity(

@@ -1,6 +1,7 @@
+from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from app.dependencies.auth import user_verified
@@ -9,6 +10,7 @@ from app.services import file as file_service, morphology as morphology_service
 from app.services.morphology import (
     ALLOWED_EXTENSIONS,
     DEFAULT_SINGLE_POINT_SOMA_BY_EXT,
+    MorphologyFileError,
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -37,20 +39,30 @@ def validate_neuron_file(
         force_lower_case=True,
     )
 
-    morphology_service.load_morphio_morphology(input_morphology, raise_warnings=True)
-
-    morphology_service.validate_soma_diameter(file_path=input_morphology)
-
     if single_point_soma:
         single_point_soma_by_ext = dict.fromkeys(DEFAULT_SINGLE_POINT_SOMA_BY_EXT, True)
     else:
         single_point_soma_by_ext = DEFAULT_SINGLE_POINT_SOMA_BY_EXT
 
-    morphology = morphology_service.convert_morphology(
-        input_file=input_morphology,
-        output_dir=input_morphology.parent,
-        single_point_soma_by_ext=single_point_soma_by_ext,
-    )
+    try:
+        morphology_service.load_morphio_morphology(input_morphology, raise_warnings=True)
+        morphology_service.validate_soma_diameter(file_path=input_morphology)
+        morphology = morphology_service.convert_morphology(
+            input_file=input_morphology,
+            output_dir=input_morphology.parent,
+            single_point_soma_by_ext=single_point_soma_by_ext,
+        )
+    except MorphologyFileError as err:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail={"code": "INVALID_REQUEST", "detail": str(err)},
+        ) from err
+    except OSError as err:
+        # Server-side failure during conversion (a full disk, say), not the file's fault.
+        raise HTTPException(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            detail={"code": "INTERNAL_ERROR", "detail": str(err)},
+        ) from err
 
     zip_file = temp_dir / "morph_archive.zip"
     file_service.create_zip_file(

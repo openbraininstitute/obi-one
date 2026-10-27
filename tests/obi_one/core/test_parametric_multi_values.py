@@ -1,3 +1,7 @@
+import math
+from decimal import Decimal
+
+import numpy as np
 import pytest
 from pydantic import ValidationError
 from pydantic_core import PydanticCustomError
@@ -12,6 +16,17 @@ from obi_one.core.parametric_multi_values import (
     PositiveIntRange,
     check_annotation_arguments_and_create_kwargs,
 )
+
+
+def legacy_float_range_values(*, start: float, step: float, end: float) -> list[float]:
+    """Reference for ``FloatRange.values`` before removing ``numpy.linspace``."""
+    range_over_step = (Decimal(str(end)) - Decimal(str(start))) / Decimal(str(step))
+    floor_range_over_step = math.floor(range_over_step)
+    n = floor_range_over_step + 1
+    raw = np.linspace(start, start + floor_range_over_step * step, n)
+    decimals = len(str(step).split(".")[-1])
+    quantize_unit = Decimal(1).scaleb(-decimals)
+    return [float(Decimal(str(v)).quantize(quantize_unit)) for v in raw]
 
 
 class TestIntRange:
@@ -118,6 +133,27 @@ class TestIntRangeComparisons:
         assert r < None
 
 
+class TestFloatRangeMatchesLegacyLinspace:
+    @pytest.mark.parametrize(
+        ("start", "step", "end"),
+        [
+            (0.0, 0.5, 2.0),
+            (0.0, 0.1, 0.3),
+            (0.0, 10.0, 5.0),
+            (0.0, 0.3, 1.0),
+            (1.0, 0.5, 3.0),
+            (-1.0, 0.25, 1.0),
+            (0.1, 0.1, 0.3),
+            (0.0, 0.5, 1.0),
+            (2.5, 0.01, 2.53),
+        ],
+    )
+    def test_values_match_legacy_linspace(self, start: float, step: float, end: float) -> None:
+        expected = legacy_float_range_values(start=start, step=step, end=end)
+        actual = FloatRange(start=start, step=step, end=end).values
+        assert actual == expected
+
+
 class TestFloatRange:
     def test_basic_values(self):
         r = FloatRange(start=0.0, step=0.5, end=2.0)
@@ -133,6 +169,10 @@ class TestFloatRange:
     def test_step_larger_than_range(self):
         r = FloatRange(start=0.0, step=10.0, end=5.0)
         assert r.values == [0.0]
+
+    def test_step_not_evenly_dividing(self):
+        r = FloatRange(start=0.0, step=0.3, end=1.0)
+        assert r.values == [0.0, 0.3, 0.6, 0.9]
 
     def test_start_ge_end_raises(self):
         with pytest.raises(ValidationError, match="start must be < end"):

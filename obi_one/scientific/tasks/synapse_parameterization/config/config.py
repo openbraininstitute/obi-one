@@ -16,7 +16,7 @@ from obi_one.scientific.blocks.neuron_sets.specific import (
     AllPointNeurons,
     AllVirtualNeurons,
 )
-from obi_one.scientific.blocks.synaptic_models.tsodyks_markram import (
+from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
@@ -25,9 +25,7 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSynapseParameterizationNeuronSetUnion,

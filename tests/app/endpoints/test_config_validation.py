@@ -25,7 +25,7 @@ VALID_FITTING_CONFIG = {
     "info": {"campaign_name": "Kv3.1 fit", "campaign_description": "From traces."},
     "initialize": {
         "recordings": [{"id_str": "00000000-0000-0000-0000-000000000000"}],
-        "ion_channel_name": "Kv3_1",
+        "model_properties": {"ion_channel_name": "Kv3_1"},
     },
     "model_type": {
         "type": "HodgkinHuxleyIonChannelModel",
@@ -69,14 +69,19 @@ VALID_OPTIMIZATION_CONFIG = {
 def test_valid_fitting_config_parses():
     state = SharedStatePartial(ion_channel_fitting_config=VALID_FITTING_CONFIG)
 
-    assert state.ion_channel_fitting_config.initialize.ion_channel_name == "Kv3_1"
+    assert state.ion_channel_fitting_config.initialize.model_properties.ion_channel_name == "Kv3_1"
 
 
 def test_invalid_fitting_config_is_rejected():
     """Bad input fails at parse time; the endpoint turns this into HTTP 422."""
     # ion_channel_name becomes the NEURON SUFFIX, so it must be a valid identifier.
-    bad = {**VALID_FITTING_CONFIG, "initialize": {**VALID_FITTING_CONFIG["initialize"]}}
-    bad["initialize"]["ion_channel_name"] = "3bad-name"
+    bad = {
+        **VALID_FITTING_CONFIG,
+        "initialize": {
+            **VALID_FITTING_CONFIG["initialize"],
+            "model_properties": {"ion_channel_name": "3bad-name"},
+        },
+    }
 
     with pytest.raises(ValidationError):
         SharedStatePartial(ion_channel_fitting_config=bad)

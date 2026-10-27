@@ -8,7 +8,6 @@ import pydantic
 import pytest
 from bluepysnap import Circuit
 
-import obi_one as obi
 from obi_one.config import settings
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
@@ -18,6 +17,12 @@ from obi_one.scientific.blocks.neuron_sets.combined import (
     SetOperation,
 )
 from obi_one.scientific.blocks.neuron_sets.population import VirtualPopulationNeuronSet
+from obi_one.scientific.blocks.neuron_sets.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
+from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 
 from tests.utils import CIRCUIT_DIR
 
@@ -150,11 +155,11 @@ def test_circuit_extraction(tmp_path):
     = 16 extracted circuits.
     """
     circuit_list = [
-        obi.Circuit(
+        OBICircuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        OBICircuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
@@ -168,16 +173,16 @@ def test_circuit_extraction(tmp_path):
                 / f"do_virtual={do_virtual}"
                 / f"create_external={create_external}"
             )
-            neuron_set = obi.BiophysicalPopulationPredefinedNeuronSet(
+            neuron_set = BiophysicalPopulationPredefinedNeuronSet(
                 node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
             )
             info = Info(campaign_name="Test", campaign_description="Test campaign")
 
-            circuit_extractions_scan_config = obi.CircuitExtractionScanConfig.empty_config()
+            circuit_extractions_scan_config = CircuitExtractionScanConfig.empty_config()
             circuit_extractions_scan_config.set(info, name="info")
             circuit_extractions_scan_config.add(neuron_set, name="TestNeuronSet")
 
-            extraction_init = obi.CircuitExtractionScanConfig.Initialize(
+            extraction_init = CircuitExtractionScanConfig.Initialize(
                 circuit=circuit_list,
                 neuron_set=neuron_set.ref,
                 do_virtual=do_virtual,
@@ -242,7 +247,7 @@ def test_circuit_extraction_rejects_virtual_neuron_set():
     """CircuitExtractionScanConfig should not accept virtual neuron sets in neuron_sets."""
     virtual_nset = VirtualPopulationNeuronSet(population="VPM")
 
-    config = obi.CircuitExtractionScanConfig.empty_config()
+    config = CircuitExtractionScanConfig.empty_config()
     config.neuron_sets["virtual"] = virtual_nset
     with pytest.raises(pydantic.ValidationError, match="union_tag_invalid"):
         config.validated_config()
@@ -254,13 +259,13 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
     mock_validate = Mock()
     monkeypatch.setattr("obi_one.utils.circuit_validation.run_validation", mock_validate)
 
-    config = obi.CircuitExtractionScanConfig.empty_config()
+    config = CircuitExtractionScanConfig.empty_config()
     config.set(
         Info(campaign_name="DefaultTest", campaign_description="Test default neuron set"),
         name="info",
     )
-    init = obi.CircuitExtractionScanConfig.Initialize(
-        circuit=obi.Circuit(
+    init = CircuitExtractionScanConfig.Initialize(
+        circuit=OBICircuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
@@ -284,7 +289,7 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
     instance = grid_scan.single_configs[0]
     assert instance.initialize.neuron_set is not None
     assert instance.initialize.neuron_set.block_name == "Default: All Biophysical Neurons"
-    assert isinstance(instance.initialize.neuron_set.block, obi.AllBiophysicalNeurons)
+    assert isinstance(instance.initialize.neuron_set.block, AllBiophysicalNeurons)
 
     # Verify extracted circuit exists and has same number of neurons as input
     # (AllBiophysicalNeurons extracts all neurons, so sizes must match)
@@ -297,7 +302,7 @@ def test_circuit_extraction_with_default_neuron_set(tmp_path, monkeypatch):
 
 def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     """Test that combined neuron sets with None references get defaults filled in."""
-    config = obi.CircuitExtractionScanConfig.empty_config()
+    config = CircuitExtractionScanConfig.empty_config()
     config.set(
         Info(campaign_name="CombinedTest", campaign_description="Test combined neuron set"),
         name="info",
@@ -316,8 +321,8 @@ def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     config.add(combined, name="CombinedEXC")
 
     # Point initialize.neuron_set to the combined set
-    init = obi.CircuitExtractionScanConfig.Initialize(
-        circuit=obi.Circuit(
+    init = CircuitExtractionScanConfig.Initialize(
+        circuit=OBICircuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
@@ -341,14 +346,14 @@ def test_circuit_extraction_combined_neuron_set_with_defaults(tmp_path):
     combined_block = instance.neuron_sets["CombinedEXC"]
     assert combined_block.base_neuron_set is not None
     assert combined_block.base_neuron_set.block_name == "Default: All Biophysical Neurons"
-    assert isinstance(combined_block.base_neuron_set.block, obi.AllBiophysicalNeurons)
+    assert isinstance(combined_block.base_neuron_set.block, AllBiophysicalNeurons)
 
     # combined_with entry should also have been filled with the default
     assert len(combined_block.combined_with) == 3
     for ref, _op in combined_block.combined_with:
         assert ref is not None
         assert ref.block_name == "Default: All Biophysical Neurons"
-        assert isinstance(ref.block, obi.AllBiophysicalNeurons)
+        assert isinstance(ref.block, AllBiophysicalNeurons)
 
     # Verify extraction produced a valid circuit
     extracted_path = Path(instance.coordinate_output_root) / "circuit_config.json"

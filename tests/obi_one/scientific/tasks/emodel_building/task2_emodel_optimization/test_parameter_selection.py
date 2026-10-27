@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -37,6 +38,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks import (
     CustomDistanceDependentDistribution,
     EModelOptimisationParameters,
+    ExponentialDistanceDependentDistribution,
     GlobalParameterSelection,
     MechanismRegionSelection,
     MechanismsBySectionList,
@@ -47,6 +49,7 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.blocks i
     ParameterSelection,
     ParametersSelection,
     PhasePlotSettings,
+    StepDistanceDependentDistribution,
     UniformDistanceDependentDistribution,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
@@ -64,10 +67,16 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
 from obi_one.utils.filesystem import create_dir
 from obi_one.utils.io import write_json
 
+ETYPE_ID_STR = "00000000-0000-0000-0000-000000000001"
+TARGET_ID_STR = "00000000-0000-0000-0000-000000000002"
+MORPHOLOGY_ID_STR = "00000000-0000-0000-0000-000000000003"
+ICM_ID_STR = "00000000-0000-0000-0000-000000000004"
+ICM2_ID_STR = "00000000-0000-0000-0000-000000000005"
+
 
 def _somatic_assignment():
     """A region assignment for icm-1: mechanisms need at least one."""
-    return {"somatic": [{"ion_channel_model": {"id_str": "icm-1"}}]}
+    return {"somatic": [{"ion_channel_model": {"id_str": ICM_ID_STR}}]}
 
 
 def _scan_config_data(**overrides):
@@ -75,13 +84,13 @@ def _scan_config_data(**overrides):
         "info": {"campaign_name": "test", "campaign_description": "test"},
         "initialize": {
             "emodel": "test",
-            "etype": {"id_str": "etype"},
+            "etype": {"id_str": ETYPE_ID_STR},
         },
-        "target_efeatures": {"task_result": {"id_str": "target"}},
-        "morphology": {"cell_morphology": {"id_str": "morphology"}},
+        "target_efeatures": {"task_result": {"id_str": TARGET_ID_STR}},
+        "morphology": {"cell_morphology": {"id_str": MORPHOLOGY_ID_STR}},
         "emodel_optimisation_parameters": {
             "mechanisms": {
-                "ion_channel_models": [{"id_str": "icm-1"}],
+                "ion_channel_models": [{"id_str": ICM_ID_STR}],
                 "mechanism_regions": _somatic_assignment(),
             }
         },
@@ -92,7 +101,7 @@ def _scan_config_data(**overrides):
 
 def _model_entity(ion_names=("na",)):
     return SimpleNamespace(
-        id="icm-1",
+        id=ICM_ID_STR,
         name="Sodium channel",
         nmodl_suffix="NaTg",
         is_stochastic=False,
@@ -107,7 +116,7 @@ def _model_entity(ion_names=("na",)):
 
 
 def _compiler_fixture():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     selection = ParametersSelection(
         ion_channel_models=(reference,),
         mechanism_regions={
@@ -168,11 +177,13 @@ def _compiler_fixture():
             "uniform": UniformDistanceDependentDistribution(),
             "decay": CustomDistanceDependentDistribution(
                 function="math.exp({distance}*{constant})*{value}",
-                parameters=["constant"],
+                parameters=[
+                    {"name": "constant", "value": {"mode": "bounds", "bounds": (-0.1, 0.0)}}
+                ],
             ),
         },
     )
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     return config, reference, normalized
 
 
@@ -190,7 +201,7 @@ def test_parameter_selection_round_trips_and_serializes_axon_settings():
             morphology_settings={"axon_modifier": "none"},
             emodel_optimisation_parameters=EModelOptimisationParameters.from_parameters_selection(
                 ParametersSelection(
-                    ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+                    ion_channel_models=(IonChannelModelFromID(id_str=ICM_ID_STR),),
                     mechanism_regions=_somatic_assignment(),
                     base_parameters={},
                 )
@@ -350,7 +361,7 @@ def test_section_list_schema_exposes_typed_choices_and_aliases():
 
 
 def test_modifier_validation_rejects_stale_myelinated_rows_with_path():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     stale_selection = ParametersSelection(
         ion_channel_models=(reference,),
         mechanism_regions=_somatic_assignment(),
@@ -549,23 +560,34 @@ def test_recipe_file_contains_artifact_paths_and_pipeline_settings(tmp_path):
 
 def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
     class FakeExtractionTaskResult:
-        def download_asset_by_label(self, asset_label, *, dest_dir, db_client):
-            del asset_label, db_client
+        def download_asset_by_label(self, asset_label, *, dest_dir, db_client, strategy=None):
+            del asset_label, db_client, strategy
             path = dest_dir / "downloaded-features.json"
             path.write_text('{"features": []}', encoding="utf-8")
             return path
 
     class FakeMorphology:
-        id_str = "morphology-1"
+        id = "morphology-1"
 
-        def swc_file_content(self, *, db_client):
+        def entity(self, db_client=None):
             del db_client
-            return "1  soma  0 0 0 1 -1\\n"
+            return self
+
+    def fetch_assets(entity, selection, output_path):
+        del entity, selection
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("1  soma  0 0 0 1 -1\\n", encoding="utf-8")
+        result = Mock()
+        result.one.return_value = SimpleNamespace(path=path)
+        return result
 
     config = SimpleNamespace(
         initialize=SimpleNamespace(emodel="test"),
         morphology=SimpleNamespace(cell_morphology=FakeMorphology()),
     )
+    db_client = Mock()
+    db_client.fetch_assets.side_effect = fetch_assets
 
     features_path = staging.download_extraction_features(
         config,
@@ -573,7 +595,7 @@ def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
         tmp_path,
         object(),
     )
-    morphology_filename = staging.stage_morphology(config, tmp_path, object())
+    morphology_filename = staging.stage_morphology(config, tmp_path, db_client)
 
     assert features_path == tmp_path / "config" / "features" / "test.json"
     assert features_path.read_text(encoding="utf-8") == '{"features": []}'
@@ -649,7 +671,7 @@ def test_optimization_value_json_schema_mirrors_mode_rules():
 def test_global_parameters_default_is_validated_into_blocks():
     parameters = EModelOptimisationParameters(
         mechanisms=MechanismsBySectionList(
-            ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+            ion_channel_models=(IonChannelModelFromID(id_str=ICM_ID_STR),),
             mechanism_regions=_somatic_assignment(),
         )
     )
@@ -745,7 +767,7 @@ def test_params_builder_emits_complete_deterministic_definition():
 
 
 def test_params_builder_omits_reversal_potential_without_assigned_ion():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     selection = ParametersSelection(
         ion_channel_models=(reference,),
         mechanism_regions={
@@ -765,7 +787,7 @@ def test_params_builder_omits_reversal_potential_without_assigned_ion():
         parameters_selection=selection,
         distance_dependent_distributions={"uniform": UniformDistanceDependentDistribution()},
     )
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
 
     params = build_params_definition(params_definition_input_from_config(config), normalized)
 
@@ -863,7 +885,7 @@ def test_fresh_morph_modifiers_preserves_empty_and_default_selections():
 
 
 def test_local_mechanism_metadata_is_tagged_from_entitycore():
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     mechanism = MechanismConfiguration(name="NaTg", location=None)
 
     tagged = tag_local_mechanisms([mechanism], normalized)
@@ -879,7 +901,7 @@ def test_local_mechanism_metadata_is_tagged_from_entitycore():
     assert tagged is not None
     assert tagged[0].temperature == 34
     assert tagged[0].ljp_corrected is False
-    assert tagged[0].id == "icm-1"
+    assert tagged[0].id == ICM_ID_STR
     assert configuration.mechanism_names == {"NaTg"}
 
 
@@ -895,17 +917,17 @@ def test_stage_mechanisms_deduplicates_nested_models(tmp_path, monkeypatch):
 
     staging.stage_mechanisms(config, tmp_path, object())
 
-    assert downloaded == ["icm-1"]
+    assert downloaded == [ICM_ID_STR]
 
 
 def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(tmp_path):
     root_payload = {
         "mechanisms": {
-            "ion_channel_models": [{"id_str": "icm-1"}],
+            "ion_channel_models": [{"id_str": ICM_ID_STR}],
             "mechanism_regions": {
                 "apical": [
                     {
-                        "ion_channel_model": {"id_str": "icm-1"},
+                        "ion_channel_model": {"id_str": ICM_ID_STR},
                         "parameters": {
                             "gNa": {
                                 "type": "ParameterSelection",
@@ -925,7 +947,7 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
             "ena": {
                 "type": "GlobalParameterSelection",
                 "value": {"mode": "fixed", "value": 50.0},
-                "ion_channel_model": {"id_str": "icm-1"},
+                "ion_channel_model": {"id_str": ICM_ID_STR},
             },
         },
         "base_parameters": {
@@ -941,15 +963,6 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
                 },
             }
         },
-        "distribution_parameters": {
-            "decay": {
-                "constant": {
-                    "type": "OptimizationValue",
-                    "mode": "bounds",
-                    "bounds": [-0.1, 0.0],
-                },
-            }
-        },
     }
     data = _scan_config_data()
     data.pop("emodel_optimisation_parameters")
@@ -958,11 +971,17 @@ def test_hand_authored_root_parameter_configuration_builds_and_stages_artifacts(
         "decay": {
             "type": "CustomDistanceDependentDistribution",
             "function": "math.exp({distance}*{constant})*{value}",
-            "parameters": ["constant"],
+            "parameters": [
+                {
+                    "type": "DistributionParameter",
+                    "name": "constant",
+                    "value": {"type": "OptimizationValue", "mode": "bounds", "bounds": [-0.1, 0.0]},
+                }
+            ],
         }
     }
     config = EModelOptimizationScanConfig.model_validate(data)
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     capabilities = MorphologyCapabilities(
         has_myelinated=True,
         available_physical_sections=("somatic", "basal", "apical", "axonal"),
@@ -1044,7 +1063,7 @@ def test_region_group_rows_include_base_and_mechanism_parameters():
 
     assert {row.name for row in apical_rows} == {"gNa", "vshift"}
     assert all(row.kind == "region" for row in apical_rows)
-    assert all(row.mechanism == "icm-1" for row in apical_rows)
+    assert all(row.mechanism == ICM_ID_STR for row in apical_rows)
 
 
 def test_parameter_group_view_omits_unconfigured_regions():
@@ -1273,7 +1292,7 @@ def test_morphology_preflight_rejects_insufficient_source_axon_sections(tmp_path
 
 
 def test_root_emodel_optimisation_parameters_normalizes_to_canonical_selection():
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     root = EModelOptimisationParameters(
         mechanisms=MechanismsBySectionList(
             ion_channel_models=(reference,),
@@ -1320,19 +1339,19 @@ def test_single_config_asset_round_trips_plural_parameters_field(tmp_path):
     restored = deserialize_obi_object_from_json_data(payload)
 
     assert payload["emodel_optimisation_parameters"]["mechanisms"]["ion_channel_models"] == [
-        {"id_str": "icm-1", "type": "IonChannelModelFromID"}
+        {"id_str": ICM_ID_STR, "type": "IonChannelModelFromID"}
     ]
     assert "parameters_selection" not in payload
     assert isinstance(restored, EModelOptimizationSingleConfig)
     assert restored.emodel_optimisation_parameters.mechanisms.ion_channel_models == (
-        IonChannelModelFromID(id_str="icm-1"),
+        IonChannelModelFromID(id_str=ICM_ID_STR),
     )
 
 
 def test_root_parameters_selection_payload_is_rejected():
     data = _scan_config_data()
     data["parameters_selection"] = ParametersSelection(
-        ion_channel_models=(IonChannelModelFromID(id_str="icm-1"),),
+        ion_channel_models=(IonChannelModelFromID(id_str=ICM_ID_STR),),
         mechanism_regions=_somatic_assignment(),
         base_parameters={},
     ).model_dump(mode="json")
@@ -1344,8 +1363,10 @@ def test_root_parameters_selection_payload_is_rejected():
 
 def test_root_parameter_configuration_preserves_compiler_output():
     legacy_config, _, normalized = _compiler_fixture()
+    # Values now live on the custom distribution, so they are dropped from the selection here
+    # and must be re-collected from distance_dependent_distributions to match the legacy output.
     root = EModelOptimisationParameters.from_parameters_selection(
-        legacy_config.parameters_selection
+        legacy_config.parameters_selection.model_copy(update={"distribution_parameters": {}})
     )
     data = _scan_config_data()
     data.pop("emodel_optimisation_parameters")
@@ -1365,7 +1386,7 @@ def test_root_parameter_configuration_preserves_compiler_output():
 
 
 def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
-    selected = IonChannelModelFromID(id_str="icm-1")
+    selected = IonChannelModelFromID(id_str=ICM_ID_STR)
 
     with pytest.raises(ValueError, match="must not contain duplicate entity IDs"):
         MechanismsBySectionList(
@@ -1378,7 +1399,7 @@ def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
             mechanism_regions={
                 "somatic": (
                     MechanismRegionSelection(
-                        ion_channel_model=IonChannelModelFromID(id_str="icm-2"),
+                        ion_channel_model=IonChannelModelFromID(id_str=ICM2_ID_STR),
                     ),
                 )
             },
@@ -1386,7 +1407,7 @@ def test_mechanism_filing_validates_duplicates_and_unselected_models_directly():
 
 
 def test_root_parameter_block_validates_global_model_reference_directly():
-    selected = IonChannelModelFromID(id_str="icm-1")
+    selected = IonChannelModelFromID(id_str=ICM_ID_STR)
 
     with pytest.raises(ValueError, match="Global parameter 'ena' source must also be listed"):
         EModelOptimisationParameters(
@@ -1396,7 +1417,7 @@ def test_root_parameter_block_validates_global_model_reference_directly():
             global_parameters={
                 "ena": GlobalParameterSelection(
                     value=OptimizationValue(value=50.0),
-                    ion_channel_model=IonChannelModelFromID(id_str="icm-2"),
+                    ion_channel_model=IonChannelModelFromID(id_str=ICM2_ID_STR),
                 )
             },
             base_parameters={},
@@ -1417,7 +1438,7 @@ def test_no_replacement_keeps_myelinated_choice_unavailable():
 
 @pytest.mark.parametrize("field_name", ["base_parameters", "mechanism_regions"])
 def test_no_replacement_rejects_myelinated_configuration_rows(field_name):
-    reference = IonChannelModelFromID(id_str="icm-1")
+    reference = IonChannelModelFromID(id_str=ICM_ID_STR)
     if field_name == "base_parameters":
         selection = ParametersSelection(
             ion_channel_models=(reference,),
@@ -1570,7 +1591,7 @@ def test_input_entities_resolves_nested_root_mechanism_references(monkeypatch):
 
     monkeypatch.setattr("obi_one.core.entity_from_id.EntityFromID.entity", fake_entity)
 
-    assert config.input_entities(object()) == ["target", "morphology", "icm-1"]
+    assert config.input_entities(object()) == [TARGET_ID_STR, MORPHOLOGY_ID_STR, ICM_ID_STR]
 
 
 def test_section_list_choice_exposes_enabled_alias():
@@ -1634,6 +1655,7 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     )
     monkeypatch.setattr(task_module.emodel_building_utils, "compile_mechanisms", Mock())
     monkeypatch.setattr(task_module.emodel_building_utils, "run_plot_models", Mock())
+    monkeypatch.setattr(task_module, "run_inline_validation", Mock(return_value=None))
     monkeypatch.setattr(task_module, "preflight_morphology", Mock(return_value=object()))
     monkeypatch.setattr(task_module, "resolve_ion_channel_models", Mock(return_value={}))
     monkeypatch.setattr(staging, "derive_mtype", Mock(return_value="L5_TTPC"))
@@ -1752,7 +1774,7 @@ def test_upload_optimization_assets_is_a_no_op_regardless_of_present_files(tmp_p
 
 
 def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
-    normalized = {"icm-1": normalize_ion_channel_model(_model_entity())}
+    normalized = {ICM_ID_STR: normalize_ion_channel_model(_model_entity())}
     unknown = MechanismConfiguration(name="Unknown", location=None)
 
     assert tag_local_mechanisms(None, normalized) is None
@@ -1761,8 +1783,8 @@ def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
 
 def test_download_extraction_features_keeps_already_named_target(tmp_path):
     class AlreadyNamedExtraction:
-        def download_asset_by_label(self, asset_label, *, dest_dir, db_client):
-            del asset_label, db_client
+        def download_asset_by_label(self, asset_label, *, dest_dir, db_client, strategy=None):
+            del asset_label, db_client, strategy
             path = dest_dir / "test.json"
             path.write_text("{}", encoding="utf-8")
             return path
@@ -1849,7 +1871,8 @@ def test_distribution_dictionary_accepts_standard_entries_keyed_by_fixed_name():
             }
         )
     )
-    # Standard entries are forwarded under their fixed name; custom ones under their key.
+    # Every entry keeps its dictionary key, except standards BluePyEModel references by their
+    # fixed name: step (runtime placeholders) and uniform (the "no distribution" default).
     bpem = params_definition_input_from_config(config).distance_dependent_distributions
     assert set(bpem) == {"uniform", "step", "decay"}
 
@@ -1870,18 +1893,95 @@ def test_standard_distribution_settings_reach_bluepyemodel():
         )
     )
     bpem = params_definition_input_from_config(config).distance_dependent_distributions
-    assert bpem["exp"].soma_ref_location == pytest.approx(0.0)
+    # Exp keeps its dictionary key; step normalizes to its canonical runtime name.
+    assert bpem["Exp 1"].soma_ref_location == pytest.approx(0.0)
     assert bpem["step"].soma_ref_location == pytest.approx(0.25)
     assert bpem["step"].to_emc_dict()["name"] == "step"
 
 
-def test_distribution_dictionary_rejects_duplicate_names():
-    with pytest.raises(ValueError, match=r"declared more than once: \['exp'\]"):
+def test_distribution_dictionary_allows_same_type_under_distinct_keys():
+    # Two exponentials under distinct keys are distinct distributions: each keeps its key.
+    config = EModelOptimizationScanConfig.model_validate(
+        _scan_config_data(
+            distance_dependent_distributions={
+                "a": {"type": "ExponentialDistanceDependentDistribution"},
+                "b": {"type": "ExponentialDistanceDependentDistribution"},
+            }
+        )
+    )
+    bpem = params_definition_input_from_config(config).distance_dependent_distributions
+    assert {"a", "b"} <= set(bpem)
+
+
+def test_distribution_dictionary_rejects_duplicate_runtime_names():
+    # Runtime-name standards (step) normalize to their canonical name, so two of them collide.
+    with pytest.raises(ValueError, match=r"declared more than once: \['step'\]"):
         EModelOptimizationScanConfig.model_validate(
             _scan_config_data(
                 distance_dependent_distributions={
-                    "a": {"type": "ExponentialDistanceDependentDistribution"},
-                    "b": {"type": "ExponentialDistanceDependentDistribution"},
+                    "s1": {"type": "StepDistanceDependentDistribution"},
+                    "s2": {"type": "StepDistanceDependentDistribution"},
                 }
             )
         )
+
+
+def test_params_compilation_resolves_keyed_and_runtime_name_distributions():
+    """Compile params.json through BluePyEModel for the full range of distribution kinds.
+
+    This is the launch run's params/recipe stage without entitycore or NEURON. It guards the
+    distribution-naming contract end to end: a standard kept under the user's key (``Exp 0``),
+    standards BluePyEModel references by canonical name (``uniform`` default, ``step`` runtime
+    placeholders), and a custom referenced by key. Every emitted parameter reference must point
+    at a distribution the recipe declares, which is exactly what used to crash the compiler.
+    """
+    selection = ParametersSelection(
+        base_parameters={
+            "all": {
+                "cm": ParameterSelection(value=OptimizationValue(value=1.0), distribution="Exp 0"),
+                "g_pas": ParameterSelection(
+                    value=OptimizationValue(value=1.0), distribution="My Step"
+                ),
+                "e_pas": ParameterSelection(
+                    value=OptimizationValue(value=-70.0), distribution="Decay"
+                ),
+                "Ra": ParameterSelection(value=OptimizationValue(value=100.0)),
+            }
+        },
+        distribution_parameters={"Decay": {"constant": OptimizationValue(value=2.0)}},
+    )
+    config = SimpleNamespace(
+        parameters_selection=selection,
+        distance_dependent_distributions={
+            "Exp 0": ExponentialDistanceDependentDistribution(),
+            "Uniform 1": UniformDistanceDependentDistribution(),
+            "My Step": StepDistanceDependentDistribution(),
+            "Decay": CustomDistanceDependentDistribution(
+                function="math.exp({distance}*{constant})*{value}",
+                parameters=[{"name": "constant", "value": {"value": 2.0}}],
+            ),
+        },
+    )
+
+    params = build_params_definition(params_definition_input_from_config(config), {})
+
+    # The keyed standard keeps its key; runtime-name standards use canonical names; uniform (the
+    # "no distribution" default) is never emitted.
+    assert set(params["distributions"]) == {"Exp 0", "step", "Decay"}
+    assert params["distributions"]["Exp 0"]["fun"] == (
+        "(-0.8696 + 2.087*math.exp(({distance})*0.0031))*{value}"
+    )
+
+    references = {
+        parameter["name"]: parameter.get("dist")
+        for parameter in _parameter_rows(params)
+        if parameter["location"] == "all"
+    }
+    assert references == {
+        "cm": "Exp 0",
+        "g_pas": "step",
+        "e_pas": "Decay",
+        "Ra": None,  # uniform default: compiled without a dist key
+    }
+    # Every emitted reference resolves to a declared distribution (no dangling references).
+    assert {ref for ref in references.values() if ref} <= set(params["distributions"])

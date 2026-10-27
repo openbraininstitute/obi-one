@@ -1,6 +1,5 @@
 import functools
 from collections.abc import Callable
-from typing import ClassVar
 
 import numpy  # ruff: ignore[unconventional-import-alias]
 import pandas  # ruff: ignore[unconventional-import-alias]
@@ -8,14 +7,13 @@ import requests
 from caveclient import CAVEclient, set_session_defaults
 from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
-from entitysdk.models.entity import Entity
 from pydantic import PrivateAttr
 
 from obi_one.config import settings
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.map_em_synapses.constants import C_P_LOCS
 
-_C_P_LOCS = ["synapse_x", "synapse_y", "synapse_z"]
 _NM_to_UM = 1e-3
 
 
@@ -70,9 +68,9 @@ def _configure_caveclient_retries() -> None:
 _configure_caveclient_retries()
 
 
-class EMDataSetFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = EMDenseReconstructionDataset
-    _entity: EMDenseReconstructionDataset | None = PrivateAttr(default=None)
+class EMDataSetFromID(EntityFromID[EMDenseReconstructionDataset]):
+    _entitysdk_type: type[EMDenseReconstructionDataset] = EMDenseReconstructionDataset
+
     _viewer_resolution: numpy.ndarray | None = PrivateAttr(default=None)
     auth_token: str | None = None
 
@@ -94,7 +92,7 @@ class EMDataSetFromID(EntityFromID):
 
         syn_locs = syns[col_location].apply(
             lambda _x: pandas.Series(
-                _NM_to_UM * _x * self.viewer_resolution(db_client=db_client), index=_C_P_LOCS
+                _NM_to_UM * _x * self.viewer_resolution(db_client=db_client), index=C_P_LOCS
             )
         )
         syns = pandas.concat([syns, syn_locs], axis=1).reset_index(drop=True)
@@ -144,8 +142,8 @@ class EMDataSetFromID(EntityFromID):
 
     def _make_cave_client(self, db_client: Client, cave_version: int | None = None) -> CAVEclient:
         entity = self.entity(db_client=db_client)
-        datastack_name_ = entity.cave_datastack  # ty:ignore[unresolved-attribute]
-        cave_client_url_ = entity.cave_client_url  # ty:ignore[unresolved-attribute]
+        datastack_name_ = entity.cave_datastack
+        cave_client_url_ = entity.cave_client_url
 
         cave_client = CAVEclient(
             datastack_name_, server_address=cave_client_url_, auth_token=self.auth_token

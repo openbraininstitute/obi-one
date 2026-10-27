@@ -1,4 +1,5 @@
 import json
+import math
 from http import HTTPStatus
 
 import entitysdk
@@ -10,10 +11,8 @@ from app.schemas.accounting import AccountingParameters
 from app.schemas.task import LaunchableTaskDefinition, Resources, TaskLaunchSubmit
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.library.circuit_metrics import (
-    CircuitStatsLevelOfDetail,
-    get_circuit_metrics,
-)
+from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
+from obi_one.scientific.library.circuit_metrics import get_circuit_metrics
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_task_type,
 )
@@ -54,14 +53,14 @@ def get_required_cpu_memory_combo(
     raise ValueError(msg)
 
 
-def _get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
+def get_required_extra_storage_space(disk_space_gb_required: float) -> int | None:
     """Return the required extra storage space."""
     if disk_space_gb_required <= DEFAULT_DISK_SPACE_LIMIT_GB:
         # No extra space requires, use default
         return None
     if disk_space_gb_required <= EXTRA_DISK_SPACE_LIMIT_GB:
         # Allocate extra space
-        return np.ceil(disk_space_gb_required).astype(int)
+        return math.ceil(disk_space_gb_required)
 
     msg = (
         f"Not enough disk space"
@@ -161,7 +160,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     output_size_synapses = input_size_synapses * output_fraction
     output_size_gb = 1 + output_size_synapses * 1.85e-7
     try:
-        storage_gb = _get_required_extra_storage_space(output_size_gb)
+        storage_gb = get_required_extra_storage_space(output_size_gb)
     except ValueError as e:
         msg = (
             f"The extracted circuit would hold about {output_size_synapses:,.0f} synapses, about"

@@ -3,7 +3,6 @@ import json
 import pytest
 from pydantic import ValidationError
 
-import obi_one as obi
 from obi_one.core.deserialize import (
     deserialize_obi_object_from_json_data,
     deserialize_obi_object_from_json_file,
@@ -12,7 +11,12 @@ from obi_one.core.run_tasks import (
     run_task_for_single_config,
     run_tasks_for_generated_scan,
 )
+from obi_one.core.scan import GridScan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationSingleConfig,
+)
 
 from tests.utils import CIRCUIT_DIR, DATA_DIR
 
@@ -36,12 +40,12 @@ def test_deserialization(tmp_path):
 
     data = json.loads(simulation_json_path.read_bytes())
     simulation = deserialize_obi_object_from_json_data(data)
-    assert isinstance(simulation, obi.CircuitSimulationSingleConfig)
+    assert isinstance(simulation, CircuitSimulationSingleConfig)
     simulation.coordinate_output_root = tmp_path / "simulation_output"
     run_task_for_single_config(single_config=simulation)
 
     simulation = deserialize_obi_object_from_json_file(simulation_json_path)
-    assert isinstance(simulation, obi.CircuitSimulationSingleConfig)
+    assert isinstance(simulation, CircuitSimulationSingleConfig)
     simulation.coordinate_output_root = tmp_path / "simulation_output_2"
     run_task_for_single_config(single_config=simulation)
 
@@ -68,13 +72,13 @@ def test_deserialization(tmp_path):
 
     data = json.loads(grid_scan_json_path.read_bytes())
     grid_scan = deserialize_obi_object_from_json_data(data)
-    assert isinstance(grid_scan, obi.GridScan)
+    assert isinstance(grid_scan, GridScan)
     grid_scan.output_root = tmp_path / "simulation_output_7"
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
     grid_scan = deserialize_obi_object_from_json_file(grid_scan_json_path)
-    assert isinstance(grid_scan, obi.GridScan)
+    assert isinstance(grid_scan, GridScan)
     grid_scan.output_root = tmp_path / "simulation_output_8"
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
@@ -124,7 +128,7 @@ def test_deserialization_somatic_stimulus_type():
 
     stimulus = config.stimuli["LegacyStimulus"]
 
-    assert isinstance(stimulus, obi.ConstantCurrentClampSomaticStimulus)
+    assert isinstance(stimulus, ConstantCurrentClampSomaticStimulus)
     assert stimulus.type == "ConstantCurrentClampSomaticStimulus"
 
 

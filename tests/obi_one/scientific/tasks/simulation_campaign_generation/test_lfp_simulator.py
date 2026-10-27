@@ -7,8 +7,18 @@ applied through, so each refuses the other's block.
 
 import pytest
 
-import obi_one as obi
 from obi_one.core.exception import ConfigValidationError
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.blocks.recordings.soma import SomaVoltageRecording
+from obi_one.scientific.blocks.stimuli.electric_field import (
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+)
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -22,14 +32,14 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 ELECTRIC_FIELDS = [
-    obi.SpatiallyUniformElectricFieldStimulus,
-    obi.TemporallyCosineSpatiallyUniformElectricFieldStimulus,
+    SpatiallyUniformElectricFieldStimulus,
+    TemporallyCosineSpatiallyUniformElectricFieldStimulus,
 ]
 
 
 def _lfp():
-    return obi.ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=obi.SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
+    return ExtracellularElectrodeArrayRecordingBlock(
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
     )
 
 
@@ -42,12 +52,12 @@ def _config(circuit, blocks, simulator=None):
 
 class TestSimulator:
     def test_the_simulator_defaults_to_neuron(self, circuit, tmp_path):
-        result = generate(_config(circuit, {"Soma": obi.SomaVoltageRecording()}), tmp_path)
+        result = generate(_config(circuit, {"Soma": SomaVoltageRecording()}), tmp_path)
 
         assert result.sonata_config["target_simulator"] == "NEURON"
 
     def test_the_chosen_simulator_is_written(self, circuit, tmp_path):
-        config = _config(circuit, {"Soma": obi.SomaVoltageRecording()}, simulator="CORENEURON")
+        config = _config(circuit, {"Soma": SomaVoltageRecording()}, simulator="CORENEURON")
 
         result = generate(config, tmp_path)
 
@@ -81,7 +91,7 @@ class TestLFPRecordings:
         """CoreNEURON reads report names and targets split on whitespace; neurodamus handles it."""
         config = _config(
             circuit,
-            {"Recording 0": obi.SomaVoltageRecording(), "LFP A": _lfp()},
+            {"Recording 0": SomaVoltageRecording(), "LFP A": _lfp()},
             simulator="CORENEURON",
         )
 
@@ -112,7 +122,7 @@ class TestElectricFields:
     def test_neither_simulator_runs_them_with_lfp(self, simulator, circuit, tmp_path):
         config = _config(
             circuit,
-            {"Field": obi.SpatiallyUniformElectricFieldStimulus(), "LFP": _lfp()},
+            {"Field": SpatiallyUniformElectricFieldStimulus(), "LFP": _lfp()},
             simulator=simulator,
         )
 

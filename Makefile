@@ -30,6 +30,9 @@ install:  ## Default installation (for running tasks and local scripts)
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
 
+install-simplification:  ## Install with private circuit simplification dependencies (Requires AWS auth)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra simplification
+
 install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
 

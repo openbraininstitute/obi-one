@@ -2,9 +2,7 @@
 
 Task 2 requires the optional ``emodel`` dependency group (``bluepyemodel``). This
 module is the single place that guards the import: consumers elsewhere in the
-codebase (``obi_one/__init__.py``, ``config_task_map.py``,
-``unions_and_references/scan_configs.py``, ``unions_and_references/tasks.py``)
-import from here directly instead of each repeating their own
+app endpoints and tests import from here directly instead of each repeating their own
 ``try/except ImportError``. When ``bluepyemodel`` is not installed, the names
 below are ``None`` and ``HAS_EMODEL_OPTIMIZATION`` is ``False``.
 """
@@ -18,6 +16,7 @@ try:  # ruff: ignore[non-empty-init-module]
         MAX_DISTANCE_FUNCTION_LENGTH,
         CustomDistanceDependentDistribution,
         DistanceDependentDistribution,
+        DistributionParameter,
         ExponentialDistanceDependentDistribution,
         ExponentialNaDendDistanceDependentDistribution,
         LinearEPasApicDistanceDependentDistribution,
@@ -44,6 +43,7 @@ try:  # ruff: ignore[non-empty-init-module]
 except ImportError:
     CustomDistanceDependentDistribution: type | None = None
     DistanceDependentDistribution: type | None = None
+    DistributionParameter: type | None = None
     ExponentialDistanceDependentDistribution: type | None = None
     ExponentialNaDendDistanceDependentDistribution: type | None = None
     LinearEPasApicDistanceDependentDistribution: type | None = None
@@ -67,6 +67,7 @@ __all__ = [
     "MAX_DISTANCE_FUNCTION_LENGTH",
     "CustomDistanceDependentDistribution",
     "DistanceDependentDistribution",
+    "DistributionParameter",
     "EModelOptimizationScanConfig",
     "EModelOptimizationSingleConfig",
     "EModelOptimizationTask",
