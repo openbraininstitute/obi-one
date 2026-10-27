@@ -235,3 +235,13 @@ class TestModReader:
     def test_missing_neuron_block_raises(self):
         with pytest.raises(HocTemplateError, match="no NEURON block"):
             read_mod_mechanism("PARAMETER {\n  g = 1\n}\n")
+
+
+class TestReaderRejectsMalformedFiles:
+    def test_mod_without_suffix_raises(self):
+        with pytest.raises(HocTemplateError, match="no SUFFIX"):
+            read_mod_mechanism("NEURON {\n  RANGE g\n}\n")
+
+    def test_unbalanced_procedure_raises(self):
+        with pytest.raises(HocTemplateError, match="unbalanced braces"):
+            read_hoc_biophysics("proc insertChannel() {\n  forsec this.all {\n")
