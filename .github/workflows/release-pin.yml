@@ -18,7 +18,10 @@ name: pin-release
 # Launch jobs of service X check out ``tag:X``, so the task code, the obi-one X
 # wheel and the transitive closure compiled on ``main`` come from the same commit.
 #
-# After this workflow succeeds on main (workflow_dispatch), a separate workflow (dispatch-neurodamus-executor.yml, via workflow_run) notifies launch-system. That run can fail without failing this workflow.
+# After builds succeed on main (workflow_dispatch), this workflow fire-and-forget
+# dispatches dispatch-neurodamus-executor.yml so launch-system can rebuild the neurodamus
+# executor. That separate run can fail without failing this workflow. Not via workflow_run:
+# the main pin is started with GITHUB_TOKEN, whose completion does not emit workflow_run.
 #
 # Recovery: re-run the failed run, or run this workflow on ``main`` with the release
 # tag as input. If X is already pinned, only the builds are dispatched.
@@ -189,3 +192,8 @@ jobs:
             echo "::error::Failed builds: ${failed[*]}. Re-run the failed runs."
             exit 1
           fi
+
+      - name: Dispatch neurodamus executor publish
+        run: |
+          gh workflow run dispatch-neurodamus-executor.yml --ref main --raw-field tag="$RELEASE_TAG"
+          echo "Dispatched neurodamus executor publish for $RELEASE_TAG"
