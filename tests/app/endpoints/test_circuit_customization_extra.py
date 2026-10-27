@@ -456,6 +456,31 @@ class TestGetParentContext:
         assert context.hoc_stems == set()
         assert context.model_template_stems == set()
 
+    def test_falls_back_to_rglob_when_no_per_population_mechanisms_dir(self):
+        """Circuits predating per-population ``mechanisms_dir`` fall back to an rglob scan.
+
+        When ``_collect_parent_node_facts`` finds no mechanisms (empty filenames), the
+        fallback scans the staged tree for ``*.mod`` and parses both the filename stems and
+        the ``SUFFIX`` tokens from them.
+        """
+        expected_filenames = {p.stem for p in (TINY_CIRCUIT / "mod").glob("*.mod")}
+        assert expected_filenames  # sanity
+
+        with (
+            patch(f"{CUSTOMIZATION_MODULE}.stage_circuit", side_effect=_fake_stage_circuit),
+            patch(
+                f"{CUSTOMIZATION_MODULE}._collect_parent_node_facts",
+                return_value=(set(), set(), set(), set()),
+            ),
+        ):
+            context = _get_parent_context(MagicMock(), MagicMock(name="parent"))
+
+        # Fallback populated both sets from the staged .mod files.
+        assert context.mechanism_filenames == expected_filenames
+        # SUFFIX-parsed density mechanisms are present; POINT_PROCESS mods have no SUFFIX.
+        assert {"NaTg", "Ca_HVA2"} <= context.mechanism_suffixes
+        assert "ProbAMPANMDA_EMS" not in context.mechanism_suffixes
+
 
 # ---------------------------------------------------------------------------
 # _stage_and_register
