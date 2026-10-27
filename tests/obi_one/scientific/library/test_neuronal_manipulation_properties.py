@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from entitysdk.types import FetchFileStrategy
+from libsonata import NodeStorage
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library import circuit as circuit_module
@@ -27,6 +28,8 @@ from obi_one.scientific.library.memodel_circuit import (
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
     MAX_MODEL_FILE_BYTES,
+    PopulationModelDirs,
+    TemplateModel,
     _build_emodel_groups,
     _compute_common_mechanism_variables,
     _fetch_emodel_derivation_mapping,
@@ -34,8 +37,12 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _match_templates_to_emodels,
     _public_reason,
     _read_model_file,
+    _read_template_models,
+    _relative_dir,
+    _stage_circuit_for_neuron_set,
     _stage_circuit_for_neuron_set_resolution,
     _stage_file,
+    _unique_templates,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -1522,3 +1529,145 @@ class TestCircuitFileSafety:
         assert any("hoc:../../../escape" in w for w in result["warnings"])
         fetched = [str(c.kwargs["asset_path"]) for c in mock_db_client.fetch_file.call_args_list]
         assert not any("escape" in path for path in fetched)
+
+
+SINGLE_NEURON_CIRCUIT_DIR = Path(
+    "examples/data/single_neuron_circuits/SingleNeuronCircuit__top_nodes_dim6__IDX1"
+)
+
+
+def _copying_client(circuit_dir: Path, failing: set[str] = frozenset()) -> MagicMock:
+    """A db_client whose fetch_file copies from circuit_dir, raising for paths in failing."""
+    copy = _make_fetch_file_side_effect(circuit_dir)
+
+    def _fetch_file(*, output_path, asset_path, **kwargs):
+        if str(asset_path) in failing:
+            msg = f"404 for {asset_path}"
+            raise RuntimeError(msg)
+        copy(output_path=output_path, asset_path=asset_path, **kwargs)
+
+    client = MagicMock()
+    client.fetch_file.side_effect = _fetch_file
+    return client
+
+
+def _read_models(client, tmp_path, templates, dirs):
+    return _read_template_models(
+        client,
+        str(uuid4()),
+        uuid4(),
+        tmp_path,
+        {"S1nonbarrel_neurons": templates},
+        {"S1nonbarrel_neurons": dirs},
+    )
+
+
+class TestCircuitFileStagingEdges:
+    def test_stage_file_reuses_an_already_staged_file(self, tmp_path):
+        (tmp_path / "circuit_config.json").write_text("{}")
+        client = MagicMock()
+        path = _stage_file(client, str(uuid4()), uuid4(), tmp_path, "circuit_config.json")
+        assert path == tmp_path / "circuit_config.json"
+        client.fetch_file.assert_not_called()
+
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_relative_dir_is_none_when_unset(self, tmp_path, value):
+        assert _relative_dir(value, tmp_path) is None
+
+    def test_relative_dir_is_none_outside_the_asset(self, tmp_path):
+        assert _relative_dir(str(tmp_path.parent / "elsewhere"), tmp_path) is None
+        assert _relative_dir(str(tmp_path / "mod"), tmp_path) == "mod"
+
+    def test_missing_node_sets_json_is_tolerated(self, tmp_path):
+        client = _copying_client(TINY_CIRCUIT_DIR, failing={"node_sets.json"})
+        config_path, nodes, _dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), uuid4(), tmp_path
+        )
+        assert config_path.exists()
+        assert not (tmp_path / "node_sets.json").exists()
+        assert all((tmp_path / path).exists() for path in nodes.values())
+
+
+class TestReadTemplateModelsFailures:
+    HOC_TEMPLATE = "hoc:cADpyr_L6BPC"
+
+    def test_population_without_hoc_dir(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs(population_type="biophysical", hoc_dir=None, mod_dir="mod"),
+        )
+        assert models == {self.HOC_TEMPLATE: "population has no biophysical_neuron_models_dir"}
+        client.fetch_file.assert_not_called()
+
+    def test_population_without_mod_dir(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir=None),
+        )
+        assert models == {self.HOC_TEMPLATE: "population has no mechanisms_dir"}
+
+    def test_hoc_fetch_failure_is_reported_by_type_only(self, tmp_path):
+        client = _copying_client(
+            SINGLE_NEURON_CIRCUIT_DIR, failing={"emodels_hoc/cADpyr_L6BPC.hoc"}
+        )
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir="mod"),
+        )
+        assert models == {self.HOC_TEMPLATE: "files not readable (RuntimeError)"}
+
+    def test_mod_fetch_failure_fails_only_that_template(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR, failing={"mod/NaTg.mod"})
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir="mod"),
+        )
+        assert models == {self.HOC_TEMPLATE: "files not readable (RuntimeError)"}
+
+    def test_all_files_read(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir="mod"),
+        )
+        model = models[self.HOC_TEMPLATE]
+        assert isinstance(model, TemplateModel)
+        assert set(model.mechanisms) == model.biophysics.inserted_mechanisms - {"pas"}
+
+
+class TestUniqueTemplates:
+    @pytest.mark.parametrize(
+        ("circuit_dir", "enumerated"),
+        [(TINY_CIRCUIT_DIR, True), (SINGLE_NEURON_CIRCUIT_DIR, False)],
+    )
+    def test_enumerated_and_plain_columns_give_the_same_set(self, circuit_dir, enumerated):
+        population = "S1nonbarrel_neurons"
+        pop = NodeStorage(str(circuit_dir / population / "nodes.h5")).open_population(population)
+        assert ("model_template" in pop.enumeration_names) is enumerated
+        expected = {t for t in pop.get_attribute("model_template", pop.select_all()) if t}
+        assert _unique_templates(pop) == expected
+
+
+class TestNoNeuronSetWithoutTemplates:
+    def test_circuit_without_model_template_returns_a_warning(self, mock_db_client):
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties.NodeStorage"
+        ) as mock_ns:
+            mock_ns.return_value.open_population.return_value.attribute_names = ["x"]
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+            )
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert result["warnings"] == ["No population with a model_template found in this circuit."]

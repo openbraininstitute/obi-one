@@ -329,6 +329,7 @@ def _read_template_models(
 
     hocs = _fetch_and_parse(hoc_paths.values(), read_hoc_biophysics, stage)
 
+    parsed_hocs: dict[str, HocBiophysics] = {}
     mod_paths: dict[str, dict[str, str]] = {}
     for template, hoc_path in hoc_paths.items():
         biophysics = hocs[hoc_path]
@@ -340,6 +341,7 @@ def _read_template_models(
         if channels and mod_dir is None:
             result[template] = "population has no mechanisms_dir"
             continue
+        parsed_hocs[template] = biophysics
         mod_paths[template] = {channel: f"{mod_dir}/{channel}.mod" for channel in channels}
 
     mods = _fetch_and_parse(
@@ -349,18 +351,16 @@ def _read_template_models(
     )
 
     for template, paths in mod_paths.items():
-        result[template] = _template_model(hocs[hoc_paths[template]], paths, mods)
+        result[template] = _template_model(parsed_hocs[template], paths, mods)
     return result
 
 
 def _template_model(
-    biophysics: HocBiophysics | Exception,
+    biophysics: HocBiophysics,
     mod_paths: dict[str, str],
     mods: dict[str, ModMechanism | Exception],
 ) -> TemplateModel | str:
     """Join a parsed hoc file with its parsed mod files, or say why it cannot be."""
-    if isinstance(biophysics, Exception):
-        return _public_reason(biophysics)
     mechanisms: dict[str, ModMechanism] = {}
     for channel, path in mod_paths.items():
         mod = mods[path]
