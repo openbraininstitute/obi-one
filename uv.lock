@@ -2267,7 +2267,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.8"
+version = "4.2.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -2277,9 +2277,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/e0/8a8c82c1375c3c8dd449d82d6fd9e3bc936906568d3349f2c65954cb6844/neurodamus-4.2.8.tar.gz", hash = "sha256:095a1d78e967e323b71b2d836832c20cf3b19d3afefacfb8e66d0dc27115ad2d", size = 202208, upload-time = "2026-10-14T14:40:40.516Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/86/32fe3eaadf895d0653356853f039135232a957b1b12df0b03f84c941b969/neurodamus-4.2.9.tar.gz", hash = "sha256:23c42a29510186fce02e4393fdf7767eab92e453733fe71d7b3f50e8d682d852", size = 204898, upload-time = "2026-10-22T08:34:59.065Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/ac/9744a49d1c9a437a8158b3579fa746df0a3e765888c7cabb6c4c08a2a8c9/neurodamus-4.2.8-py3-none-any.whl", hash = "sha256:eb6d90a0c581cbb58d053710aecfae78b62b62b7da57d95a5a1601998d28b16b", size = 237538, upload-time = "2026-10-14T14:40:38.61Z" },
+    { url = "https://files.pythonhosted.org/packages/03/94/2a255590c269f60bbdbcba39ef5215bbc9d4f21b0d8ba3c0ee16273908ed/neurodamus-4.2.9-py3-none-any.whl", hash = "sha256:e5bdc20695ffafbf4c14f883f7b97078cec77a29f7b90ce911cd2901521185e8", size = 240457, upload-time = "2026-10-22T08:34:57.681Z" },
 ]
 
 [[package]]
@@ -2559,7 +2559,7 @@ requires-dist = [
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
-    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.8" },
+    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.9" },
     { name = "neurom" },
     { name = "notebook", marker = "extra == 'notebooks'" },
     { name = "numpy" },
