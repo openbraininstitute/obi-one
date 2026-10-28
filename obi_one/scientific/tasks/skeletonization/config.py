@@ -119,7 +119,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             title="Repair Slicing Artifacts",
             description=(
                 "Enable this option if you suspect that the neuronal mesh might have slicing "
-                "artifacts due to issues during the EM reconstruction stage."
+                "artifacts due to issues imposed during the EM reconstruction stage."
             ),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )
