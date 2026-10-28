@@ -3,7 +3,7 @@ from pathlib import Path
 
 from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
-from entitysdk.types import CircuitBuildCategory, DerivationType, TargetSimulator
+from entitysdk.types import CircuitBuildCategory, TargetSimulator
 
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
@@ -67,7 +67,8 @@ def register_output(
         if rn.me_model_entity is not None
     }
 
-    # Register circuit (entity + assets + links)
+    # Register circuit (entity + assets + links + one emodel_circuit derivation
+    # per unique EModel, labelled by model_template)
     registered_circuit = circuit_registration.register_circuit(
         client=db_client,
         circuit_path=circuit_path,
@@ -80,19 +81,11 @@ def register_output(
         experiment_date=source_dataset.experiment_date,
         license=em_entity.license,
         publications=publications,
+        derived_from_emodel=list(emodel_by_label.values()) or None,
+        derivation_label=list(emodel_by_label) or None,
         skip_additional_assets=False,
         skip_validation=True,
     )
-
-    for label, emodel in emodel_by_label.items():
-        circuit_registration.register_derivation(
-            client=db_client,
-            from_entity=emodel,
-            derivation_type=DerivationType.emodel_circuit,
-            registered_circuit=registered_circuit,
-            dry_run=False,
-            label=label,
-        )
 
     L.info(f"Output registered as: {registered_circuit.id}")  # ty:ignore[unresolved-attribute]
     return str(registered_circuit.id)  # ty:ignore[unresolved-attribute]

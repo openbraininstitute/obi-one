@@ -97,8 +97,8 @@ class TestRegisterOutputMultiple:
         assert desc.count("dup") == 1
         assert "unique" in desc
 
-    def test_registers_emodel_derivation_per_me_model_neuron(self, tmp_path):
-        """Each ME-model neuron produces one labelled emodel_circuit derivation."""
+    def test_passes_unique_emodels_and_labels_to_register_circuit(self, tmp_path):
+        """One emodel/label pair per unique EModel is forwarded to register_circuit."""
         db_client = Mock()
         circuit_path = tmp_path / "circuit_config.json"
         circuit_path.write_text("{}")
@@ -142,10 +142,7 @@ class TestRegisterOutputMultiple:
             patch(
                 "obi_one.scientific.tasks.em_synapse_mapping.register.circuit_registration.register_circuit",
                 return_value=registered_circuit,
-            ),
-            patch(
-                "obi_one.scientific.tasks.em_synapse_mapping.register.circuit_registration.register_derivation"
-            ) as mock_derivation,
+            ) as mock_register,
         ):
             register_output(
                 db_client=db_client,
@@ -158,11 +155,9 @@ class TestRegisterOutputMultiple:
                 total_external=0,
             )
 
-        assert mock_derivation.call_count == 2
-        calls = mock_derivation.call_args_list
-        assert calls[0].kwargs["from_entity"] is emodel_a
-        assert calls[0].kwargs["label"] == "hoc:mdl_a"
-        assert calls[0].kwargs["derivation_type"].value == "emodel_circuit"
-        assert calls[0].kwargs["registered_circuit"] is registered_circuit
-        assert calls[1].kwargs["from_entity"] is emodel_b
-        assert calls[1].kwargs["label"] == "hoc:mdl_b"
+        mock_register.assert_called_once()
+        call_kwargs = mock_register.call_args.kwargs
+        # Neuron 444 shares emodel_a's template, so it collapses to one pair;
+        # neuron 333 has no ME-model and contributes nothing.
+        assert call_kwargs["derived_from_emodel"] == [emodel_a, emodel_b]
+        assert call_kwargs["derivation_label"] == ["hoc:mdl_a", "hoc:mdl_b"]
