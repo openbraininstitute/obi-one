@@ -1,8 +1,8 @@
-from types import SimpleNamespace
-
-import numpy as np
+import morphio
 import pandas as pd
 import pytest
+from morphio import PointLevel, SectionType
+from morphio.mut import Morphology as MutMorphology
 from pydantic import ValidationError
 
 from obi_one.core.schema import SchemaKey
@@ -27,6 +27,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEC_LOC,
     _SEG_ID,
     _SEG_OFF,
+    MorphologyPathDistanceCalculator,
     add_normalized_section_offset,
 )
 
@@ -167,17 +168,15 @@ def test_clustered_morphology_locations_require_at_least_one_location_per_cluste
 
 
 def test_normalized_section_offset_includes_segment_offset():
-    section = SimpleNamespace(
-        points=np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [10.0, 0.0, 0.0],
-                [20.0, 0.0, 0.0],
-            ]
-        )
+    # One root section of length 20 (two segments of 10). A point in segment 1 (which starts
+    # 10 along the section) at offset 5 sits 15 along a 20-long section -> normalized 0.75.
+    mut = MutMorphology()
+    mut.append_root_section(
+        PointLevel([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [20.0, 0.0, 0.0]], [1.0, 1.0, 1.0]),
+        SectionType.axon,
     )
-    morphology = SimpleNamespace(sections=[section])
-    path_distance_calculator = SimpleNamespace(offset=np.array([[0.0, 10.0]]))
+    morphology = morphio.Morphology(mut)
+    path_distance_calculator = MorphologyPathDistanceCalculator(morphology)
     dataframe = pd.DataFrame(
         {
             _SEC_ID: [1],
