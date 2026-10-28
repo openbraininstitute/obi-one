@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     import morphio
+    import pandas as pd
 
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
     from obi_one.scientific.library.circuit import Circuit
@@ -72,6 +73,62 @@ class MaterializedCompartmentSet(BaseModel):
         return cls(name=name, population=population, compartment_entries=tuple(triplets))
 
 
+def normalized_offset_column(points: pd.DataFrame) -> str:
+    """Return the column of a generated points table holding the offset along the section.
+
+    Args:
+        points: the table a `MorphologyLocationsBlock` returns from `points_on`.
+
+    Returns:
+        The name of the offset column, preferring `normalized_section_offset` over `offset`.
+
+    Raises:
+        KeyError: if the table carries no `section_id`, or neither offset column.
+    """
+    if "section_id" not in points.columns:
+        msg = (
+            "MorphologyLocationsBlock must return a DataFrame with a 'section_id' column. "
+            f"Got columns: {list(points.columns)}"
+        )
+        raise KeyError(msg)
+
+    for candidate in ("normalized_section_offset", "offset"):
+        if candidate in points.columns:
+            return candidate
+
+    msg = (
+        "MorphologyLocationsBlock must return a DataFrame with either "
+        "'normalized_section_offset' (preferred) or 'offset'. "
+        f"Got columns: {list(points.columns)}"
+    )
+    raise KeyError(msg)
+
+
+def sample_morphology_locations(
+    *,
+    locations_block: MorphologyLocationsBlock,
+    morphology: morphio.Morphology,
+) -> list[tuple[int, float]]:
+    """Evaluate a morphology-location block against one morphology.
+
+    Section ids are SONATA global ids, as they are in a materialized compartment set: 0 is the
+    soma and neurites follow in `nrn_order`.
+
+    Args:
+        locations_block: the block to evaluate. Parameter sweeps are rejected by `points_on`.
+        morphology: the morphology to place locations on.
+
+    Returns:
+        `(section_id, offset)` per generated location, in generation order.
+    """
+    points = locations_block.points_on(morphology)
+    offset_column = normalized_offset_column(points)
+    return [
+        (int(section_id), float(offset))
+        for section_id, offset in zip(points["section_id"], points[offset_column], strict=True)
+    ]
+
+
 def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> None:
     if entry_count > MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES:
         msg = (
@@ -120,7 +177,7 @@ def _iter_morphologies(
     caller can tell an empty result apart from a partially skipped one.
     """
     for node_id in node_ids:
-        node_id_int = int(getattr(node_id, "id", node_id))
+        node_id_int = int(node_id)
         try:
             morph = circuit.load_morphology(node_id_int, population=population)
         except (FileNotFoundError, KeyError, ValueError) as exc:
@@ -151,40 +208,21 @@ def build_compartment_set_from_locations_block(
     locations: list[CompartmentLocation] = []
 
     for node_id, morph in morphology_items:
-        df = locations_block.points_on(morph)
-
-        if "section_id" not in df.columns:
-            msg = (
-                "MorphologyLocationsBlock must return a DataFrame with a 'section_id' column. "
-                f"Got columns: {list(df.columns)}"
-            )
-            raise KeyError(msg)
-
-        if "normalized_section_offset" in df.columns:
-            offset_col = "normalized_section_offset"
-        elif "offset" in df.columns:
-            offset_col = "offset"
-        else:
-            msg = (
-                "MorphologyLocationsBlock must return a DataFrame with either "
-                "'normalized_section_offset' (preferred) or 'offset'. "
-                f"Got columns: {list(df.columns)}"
-            )
-            raise KeyError(msg)
+        rows = sample_morphology_locations(locations_block=locations_block, morphology=morph)
 
         _validate_compartment_set_entry_count(
             name=name,
-            entry_count=len(locations) + len(df),
+            entry_count=len(locations) + len(rows),
         )
 
-        for _, row in df.iterrows():
-            locations.append(
-                CompartmentLocation(
-                    node_id=int(node_id),
-                    section_id=int(row["section_id"]),
-                    offset=float(row[offset_col]),
-                )
+        locations.extend(
+            CompartmentLocation(
+                node_id=int(node_id),
+                section_id=section_id,
+                offset=offset,
             )
+            for section_id, offset in rows
+        )
 
     return MaterializedCompartmentSet.from_locations(
         name=name,
