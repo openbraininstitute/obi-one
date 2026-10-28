@@ -11,8 +11,10 @@ shapes, which is what this module reads:
 - ``distribute_distance(CellRef.<section_list>, "<variable>", "<formula>")``
 
 Any other line inside those two procedures raises ``HocTemplateError``: the file was not
-produced by the template, so nothing is guessed. The ``.mod`` files in ``mechanisms_dir``
-give each mechanism's RANGE/GLOBAL variable names and the units declared in PARAMETER.
+produced by the template, so nothing is guessed. Mechanism GLOBAL values are the ones the
+template checks in ``proc check_simulator()``. The ``.mod`` files in ``mechanisms_dir``
+give each mechanism's RANGE/GLOBAL variable names and the units declared in PARAMETER;
+NEURON's built-in mechanisms have no mod file and are described by ``BUILTIN_MECHANISMS``.
 
 The result uses the same types as ``emodel_parameters.get_mechanism_variables_for_emodel``
 so the response builder in ``memodel_circuit`` stays unchanged.
@@ -30,8 +32,12 @@ from obi_one.scientific.library.emodel_parameters import (
     extract_section_properties,
 )
 
-PAS_MECHANISM = "pas"
 CONDUCTANCE_LIMITS = [0.0, 10.0]
+# Built-in mechanisms with nothing settable through a ``<variable>_<mechanism>`` name:
+# ``capacitance`` sets ``cm``, already a section property, and ion mechanisms
+# (``na_ion`` and the like) are set directly, as ``ena = 50`` in biophys().
+ION_MECHANISM_SUFFIX = "_ion"
+CAPACITANCE_MECHANISM = "capacitance"
 # Longest hoc line quoted in an error message; the message reaches the API response.
 MAX_QUOTED_LINE = 120
 
@@ -41,8 +47,14 @@ INSERT_RE = re.compile(r"insert (\w+)")
 ASSIGN_RE = re.compile(rf"(\w+) = ({NUMBER_PATTERN})")
 DISTRIBUTE_RE = re.compile(r'distribute_distance\(CellRef\.(\w+), "(\w+)", "([^"]*)"\)')
 TRAILING_FACTOR_RE = re.compile(rf"\*\s*({NUMBER_PATTERN})\s*$")
-LEADING_FACTOR_RE = re.compile(rf"^\s*({NUMBER_PATTERN})\s*\*")
+CHECK_PARAMETER_RE = re.compile(rf'check_parameter\("(\w+)", ({NUMBER_PATTERN}), \1\)')
 MOD_BLOCK_RE = re.compile(r"\b(NEURON|PARAMETER)\s*\{(.*?)\n\s*\}", re.DOTALL)
+# NMODL does not need a newline between NEURON block statements, so the block is split on
+# its keywords rather than its lines.
+MOD_NEURON_KEYWORD_RE = re.compile(
+    r"\b(SUFFIX|POINT_PROCESS|ARTIFICIAL_CELL|RANGE|GLOBAL|USEION|NONSPECIFIC_CURRENT"
+    r"|ELECTRODE_CURRENT|POINTER|BBCOREPOINTER|EXTERNAL|THREADSAFE|REPRESENTS)\b"
+)
 MOD_UNIT_RE = re.compile(rf"^(\w+)\s*(?:=\s*{NUMBER_PATTERN})?\s*\(([^)]*)\)")
 
 
@@ -60,6 +72,32 @@ class ModMechanism:
     units: dict[str, str] = field(default_factory=dict)
 
 
+# Mechanisms NEURON ships without a mod file (the list BluePyEModel uses, minus the two
+# above), with their settable RANGE variables and units from the NEURON documentation.
+BUILTIN_MECHANISMS: dict[str, ModMechanism] = {
+    name: ModMechanism(suffix=name, range_variables=variables, units=units)
+    for name, variables, units in (
+        ("pas", ["g", "e"], {"g": "S/cm2", "e": "mV"}),
+        ("fastpas", ["g", "e"], {"g": "S/cm2", "e": "mV"}),
+        (
+            "hh",
+            ["gnabar", "gkbar", "gl", "el"],
+            {"gnabar": "S/cm2", "gkbar": "S/cm2", "gl": "S/cm2", "el": "mV"},
+        ),
+        (
+            "extracellular",
+            ["xraxial", "xg", "xc", "e_extracellular"],
+            {"xraxial": "MOhm/cm", "xg": "S/cm2", "xc": "uF/cm2", "e_extracellular": "mV"},
+        ),
+    )
+}
+
+
+def has_variables(mechanism: str) -> bool:
+    """Whether a mechanism exposes ``<variable>_<mechanism>`` names a user could set."""
+    return mechanism != CAPACITANCE_MECHANISM and not mechanism.endswith(ION_MECHANISM_SUFFIX)
+
+
 @dataclass
 class HocBiophysics:
     """What a cell template's insertChannel() and biophys() procedures contain."""
@@ -67,12 +105,23 @@ class HocBiophysics:
     channels_by_section_list: dict[str, list[str]] = field(default_factory=dict)
     assignments: dict[tuple[str, str], float] = field(default_factory=dict)
     distributions: dict[tuple[str, str], float | None] = field(default_factory=dict)
+    global_values: dict[str, float] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     @property
     def inserted_mechanisms(self) -> set[str]:
-        """Every mechanism inserted in any section list."""
-        return {name for names in self.channels_by_section_list.values() for name in names}
+        """Every mechanism with variables inserted in any section list."""
+        return {
+            name
+            for names in self.channels_by_section_list.values()
+            for name in names
+            if has_variables(name)
+        }
+
+    @property
+    def mod_file_mechanisms(self) -> set[str]:
+        """The inserted mechanisms that need a mod file: all but NEURON's built-ins."""
+        return self.inserted_mechanisms - BUILTIN_MECHANISMS.keys()
 
 
 def read_mod_mechanism(mod_text: str) -> ModMechanism:
@@ -83,9 +132,9 @@ def read_mod_mechanism(mod_text: str) -> ModMechanism:
         raise HocTemplateError(msg)
 
     mechanism = ModMechanism(suffix="")
-    for raw_line in blocks["NEURON"].splitlines():
-        line = raw_line.split(":", 1)[0].strip()
-        keyword, _, rest = line.partition(" ")
+    code = "\n".join(line.split(":", 1)[0] for line in blocks["NEURON"].splitlines())
+    statements = MOD_NEURON_KEYWORD_RE.split(code)[1:]  # [keyword, rest, keyword, rest, ...]
+    for keyword, rest in zip(statements[::2], statements[1::2], strict=True):
         names = [name for name in re.split(r"[,\s]+", rest.strip()) if name]
         if keyword in {"SUFFIX", "POINT_PROCESS"} and names:
             mechanism.suffix = names[0]
@@ -131,8 +180,12 @@ def _raise_unexpected(proc_name: str, line: str) -> NoReturn:
 
 
 def _distribution_value(formula: str) -> float | None:
-    """The optimised value is the lone factor the template multiplies the formula by."""
-    match = TRAILING_FACTOR_RE.search(formula) or LEADING_FACTOR_RE.search(formula)
+    """The optimised value: the trailing factor every BluePyEModel distribution ends with.
+
+    A number anywhere else is a coefficient of the distribution, so None is returned
+    rather than a guess.
+    """
+    match = TRAILING_FACTOR_RE.search(formula)
     return float(match.group(1)) if match else None
 
 
@@ -178,15 +231,20 @@ def read_hoc_biophysics(hoc_text: str) -> HocBiophysics:
     result = HocBiophysics()
     _read_insert_channel(hoc_text, result)
     _read_biophys(hoc_text, result)
+    result.global_values = {
+        name: float(value) for name, value in CHECK_PARAMETER_RE.findall(hoc_text)
+    }
     return result
 
 
 def _channel_section_lists(biophysics: HocBiophysics) -> dict[str, list[str]]:
     """Channel -> sorted section lists, with aliases such as ``all`` expanded."""
     sections: dict[str, set[str]] = {}
+    inserted = biophysics.inserted_mechanisms
     for section_list, channels in biophysics.channels_by_section_list.items():
         for channel in channels:
-            sections.setdefault(channel, set()).update(expand_section_list(section_list))
+            if channel in inserted:
+                sections.setdefault(channel, set()).update(expand_section_list(section_list))
     return {channel: sorted(lists) for channel, lists in sections.items()}
 
 
@@ -208,8 +266,8 @@ def mechanism_variables(
 
     Args:
         biophysics: The template's parsed hoc file.
-        mechanisms: Parsed ``.mod`` files keyed by suffix, for every mechanism the template
-            inserts except the NEURON built-in ``pas``.
+        mechanisms: Parsed ``.mod`` files keyed by suffix, for every mechanism in
+            ``biophysics.mod_file_mechanisms``.
 
     Returns:
         The same ``(variables, channel_mapping)`` pair ``get_mechanism_variables_for_emodel``
@@ -221,7 +279,7 @@ def mechanism_variables(
     channel_sections = _channel_section_lists(biophysics)
     values = _values_by_section(biophysics)
 
-    missing = sorted(set(channel_sections) - set(mechanisms) - {PAS_MECHANISM})
+    missing = sorted(biophysics.mod_file_mechanisms - mechanisms.keys())
     if missing:
         msg = f"no mod file for inserted mechanisms: {missing}"
         raise HocTemplateError(msg)
@@ -235,11 +293,7 @@ def mechanism_variables(
 
     variables: list[MechanismVariable] = []
     for channel, section_lists in channel_sections.items():
-        mechanism = (
-            ModMechanism(suffix=PAS_MECHANISM, range_variables=["g", "e"])
-            if channel == PAS_MECHANISM
-            else mechanisms[channel]
-        )
+        mechanism = BUILTIN_MECHANISMS.get(channel) or mechanisms[channel]
         for name in mechanism.range_variables:
             # Ionic currents (i*) cannot be set; same rule as the EModel metadata path.
             if name.startswith("i"):
@@ -262,6 +316,7 @@ def mechanism_variables(
                 neuron_variable=f"{name}_{channel}",
                 channel_name=channel,
                 section_list="",
+                value=biophysics.global_values.get(f"{name}_{channel}"),
                 units=mechanism.units.get(name, ""),
                 limits=None,
                 variable_type="GLOBAL",
