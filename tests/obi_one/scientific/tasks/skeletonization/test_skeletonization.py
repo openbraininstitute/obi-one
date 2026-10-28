@@ -3,7 +3,7 @@
 import json
 import sys
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 from uuid import uuid4
 
 import httpx
@@ -50,6 +50,7 @@ from obi_one.scientific.tasks.skeletonization.schemas import (
     ProcessParameters,
     SkeletonizationOutputs,
 )
+from obi_one.scientific.tasks.skeletonization.task import SkeletonizationTask
 
 API_URL = "http://my-url"
 PAGINATION = {"page": 1, "page_size": 1, "total_items": 1}
@@ -240,7 +241,7 @@ def skeletonization_single_config(tmp_path, skeletonization_info, single_cell_me
     )
 
 
-def make_outputs(tmp_path):
+def make_outputs(tmp_path, *, with_spines=True):
     out = tmp_path / "out"
     out.mkdir()
     for f in ("a.swc", "a.asc", "a.h5", "a_with_spines.h5"):
@@ -249,7 +250,45 @@ def make_outputs(tmp_path):
         swc_morphology_file=out / "a.swc",
         asc_morphology_file=out / "a.asc",
         h5_morphology_file=out / "a.h5",
-        h5_combined_morphology_file=out / "a_with_spines.h5",
+        h5_combined_morphology_file=out / "a_with_spines.h5" if with_spines else None,
+    )
+
+
+def _skeletonize_2_2_9(
+    *,
+    mesh_path,
+    output_path,
+    neuron_voxel_size,
+    spines_voxel_size,
+    segment_spines,
+    write_raw_spines,
+):
+    """Keywords that Ultraliser 2.2.9's skeletonize_neuron_mesh accepts."""
+
+
+def _skeletonize_with_repair(
+    *,
+    mesh_path,
+    output_path,
+    neuron_voxel_size,
+    spines_voxel_size,
+    segment_spines,
+    write_raw_spines,
+    repair_slicing_artifacts=False,
+):
+    """Keywords of an Ultraliser release that can repair slicing artifacts."""
+
+
+def _process_parameters(tmp_path, *, repair_slicing_artifacts=False):
+    mesh_path = tmp_path / "mesh.obj"
+    mesh_path.write_text("dummy")
+    return ProcessParameters(
+        mesh_path=mesh_path,
+        segment_spines=True,
+        neuron_voxel_size=0.1,
+        spines_voxel_size=0.1,
+        write_raw_spines=False,
+        repair_slicing_artifacts=repair_slicing_artifacts,
     )
 
 
@@ -261,30 +300,113 @@ def test_input_entities_resolves_single_em_cell_mesh(skeletonization_single_conf
     assert entities == [mesh_entity]
 
 
-def test_run_process_calls_ultraliser(tmp_path):
-    mesh_path = tmp_path / "mesh.obj"
-    mesh_path.write_text("dummy")
-    params = ProcessParameters(
-        mesh_path=mesh_path,
-        segment_spines=True,
-        neuron_voxel_size=0.1,
-        spines_voxel_size=0.1,
-        write_raw_spines=False,
+def test_configs_without_new_options_keep_previous_behaviour(skeletonization_single_config):
+    data = skeletonization_single_config.model_dump(mode="json")
+    del data["initialize"]["remove_spines_from_skeleton"]
+    del data["initialize"]["repair_slicing_artifacts"]
+
+    config = SkeletonizationSingleConfig.model_validate(data)
+
+    assert config.initialize.remove_spines_from_skeleton is True
+    assert config.initialize.repair_slicing_artifacts is False
+
+
+@pytest.mark.parametrize(
+    ("remove_spines_from_skeleton", "description"),
+    [
+        (True, "Reconstructed morphology and extracted spines of neuron 123"),
+        (False, "Reconstructed morphology of neuron 123"),
+    ],
+)
+def test_create_inputs_passes_options(
+    tmp_path,
+    skeletonization_single_config,
+    subject,
+    brain_region,
+    em_dataset_with_slicing,
+    remove_spines_from_skeleton,
+    description,
+):
+    initialize = skeletonization_single_config.initialize.model_copy(
+        update={
+            "remove_spines_from_skeleton": remove_spines_from_skeleton,
+            "repair_slicing_artifacts": True,
+        }
     )
+    config = skeletonization_single_config.model_copy(update={"initialize": initialize})
+    db_client = Mock()
+    db_client.get_entity.side_effect = [
+        Mock(subject=subject, brain_region=brain_region, dense_reconstruction_cell_id=123),
+        em_dataset_with_slicing,
+    ]
+    db_client.fetch_assets.return_value.one.return_value.path = tmp_path / "mesh.glb"
+
+    inputs = SkeletonizationTask(config=config)._create_inputs(db_client, output_dir=tmp_path)
+
+    assert inputs.parameters.segment_spines is remove_spines_from_skeleton
+    assert inputs.parameters.repair_slicing_artifacts is True
+    assert inputs.metadata.cell_morphology_description == description
+
+
+def test_execute_without_activity_registers_nothing(skeletonization_single_config):
+    module = "obi_one.scientific.tasks.skeletonization.task"
+    with (
+        patch.object(SkeletonizationTask, "_create_inputs"),
+        patch(f"{module}.run_process"),
+        patch(f"{module}.register_output_resource") as register_output_resource,
+    ):
+        SkeletonizationTask(config=skeletonization_single_config).execute(
+            db_client=Mock(), execution_activity_id=None
+        )
+
+    register_output_resource.assert_not_called()
+
+
+def test_run_process_calls_ultraliser(tmp_path):
+    params = _process_parameters(tmp_path)
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    ultraliser_mock = Mock()
+    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_2_2_9))
 
     with patch.dict(sys.modules, {"ultraliser": ultraliser_mock}):
         _run_process_executable(params, output_dir)
     ultraliser_mock.skeletonize_neuron_mesh.assert_called_once_with(
-        mesh_path=str(mesh_path),
+        mesh_path=str(params.mesh_path),
         output_path=str(output_dir),
         segment_spines=True,
         neuron_voxel_size=0.1,
         spines_voxel_size=0.1,
         write_raw_spines=False,
     )
+
+
+def test_run_process_repairs_slicing_artifacts(tmp_path):
+    params = _process_parameters(tmp_path, repair_slicing_artifacts=True)
+    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_with_repair))
+
+    with patch.dict(sys.modules, {"ultraliser": ultraliser_mock}):
+        _run_process_executable(params, tmp_path)
+    ultraliser_mock.skeletonize_neuron_mesh.assert_called_once_with(
+        mesh_path=str(params.mesh_path),
+        output_path=str(tmp_path),
+        segment_spines=True,
+        neuron_voxel_size=0.1,
+        spines_voxel_size=0.1,
+        write_raw_spines=False,
+        repair_slicing_artifacts=True,
+    )
+
+
+def test_run_process_refuses_repair_with_older_ultraliser(tmp_path):
+    params = _process_parameters(tmp_path, repair_slicing_artifacts=True)
+    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_2_2_9))
+
+    with (
+        patch.dict(sys.modules, {"ultraliser": ultraliser_mock}),
+        pytest.raises(OBIONEError, match="newer Ultraliser"),
+    ):
+        _run_process_executable(params, tmp_path)
+    ultraliser_mock.skeletonize_neuron_mesh.assert_not_called()
 
 
 def test_create_process_outputs_raises_when_no_h5(tmp_path):
@@ -294,6 +416,7 @@ def test_create_process_outputs_raises_when_no_h5(tmp_path):
         _create_process_outputs(
             mesh_path=tmp_path / "none.h5",
             output_dir=tmp_path,
+            segment_spines=True,
         )
 
 
@@ -306,10 +429,20 @@ def test_create_process_outputs_raises_when_no_swc(tmp_path):
     with (
         pytest.raises(OBIONEError, match="No SWC morphology"),
     ):
-        _create_process_outputs(mesh_path=mesh_path, output_dir=tmp_path)
+        _create_process_outputs(mesh_path=mesh_path, output_dir=tmp_path, segment_spines=True)
 
 
-def test_create_process_outputs_success(tmp_path):
+def test_create_process_outputs_raises_when_no_morphology_h5(tmp_path):
+    (tmp_path / "morph-morphology.swc").touch()
+
+    with pytest.raises(OBIONEError, match=r"No HDF5 morphology file morph-morphology\.h5"):
+        _create_process_outputs(
+            mesh_path=tmp_path / "morph.obj", output_dir=tmp_path, segment_spines=False
+        )
+
+
+@pytest.mark.parametrize("segment_spines", [True, False])
+def test_create_process_outputs_success(tmp_path, segment_spines):
     out = tmp_path / "outputs"
     out.mkdir()
     swc_contents = """
@@ -336,15 +469,18 @@ def test_create_process_outputs_success(tmp_path):
     morph.write(swc_path)
     morph.write(out / "morph-morphology.h5")
 
-    result = _create_process_outputs(mesh_path=mesh_path, output_dir=out)
+    result = _create_process_outputs(
+        mesh_path=mesh_path, output_dir=out, segment_spines=segment_spines
+    )
 
+    combined_path = out / "morph_with_spines.h5"
     assert result.swc_morphology_file == swc_path
     assert result.h5_morphology_file == out / "morph-morphology.h5"
     assert result.asc_morphology_file == out / "morph-morphology.asc"
-    assert result.h5_combined_morphology_file == out / "morph_with_spines.h5"
+    assert result.h5_combined_morphology_file == (combined_path if segment_spines else None)
     assert result.h5_morphology_file.exists()
     assert result.asc_morphology_file.exists()
-    assert (out / "morph_with_spines.h5").exists()
+    assert combined_path.exists() is segment_spines
 
 
 def test_register_output_resource_creates_protocol_when_missing(
@@ -419,6 +555,7 @@ def test_register_output_resource_creates_protocol_when_missing(
     assert result.name == metadata_with_protocol.cell_morphology_name
 
 
+@pytest.mark.parametrize("with_spines", [True, False])
 def test_register_output_resource_reuses_existing_protocol(
     tmp_path,
     httpx_mock,
@@ -427,6 +564,7 @@ def test_register_output_resource_reuses_existing_protocol(
     platform_user,
     metadata_with_protocol,
     protocol_created,
+    with_spines,
 ):
     morphology_id = uuid4()
     protocol_id = uuid4()
@@ -468,18 +606,20 @@ def test_register_output_resource_reuses_existing_protocol(
         url=f"{API_URL}/derivation",
         method="POST",
     )
-    for _ in range(4):
+    for _ in range(4 if with_spines else 3):
         httpx_mock.add_response(
             url=f"{API_URL}/cell-morphology/{morphology_id}/assets",
             method="POST",
             json=_asset_json(),
         )
 
-    outputs = make_outputs(tmp_path)
+    outputs = make_outputs(tmp_path, with_spines=with_spines)
     result = register_output_resource(entitysdk_client, metadata_with_protocol, outputs)
 
     assert result.id == morphology_id
     assert result.name == metadata_with_protocol.cell_morphology_name
+    morphology_request = httpx_mock.get_request(url=f"{API_URL}/cell-morphology", method="POST")
+    assert json.loads(morphology_request.content)["has_segmented_spines"] is with_spines
 
 
 def _em_cell_mesh_json(mesh_id: str):
