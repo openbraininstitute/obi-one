@@ -11,13 +11,15 @@ The variables are read from the files inside the circuit's `sonata_circuit` asse
 
 ## Data flow
 
-1. Stage `circuit_config.json`, then `node_sets.json` and every `nodes.h5` concurrently.
+1. Stage `circuit_config.json`, then `node_sets.json` and the `nodes.h5` files concurrently: every population when a neuron set is given, only the biophysical populations otherwise.
 2. Resolve the neuron set to node IDs per population, and read `model_template` for those nodes. Without a neuron set, take every distinct `model_template` of every biophysical population.
 3. For each template, fetch `<biophysical_neuron_models_dir>/<name>.hoc` and read two procedures:
    - `insertChannel()`: which mechanism is inserted in which section list.
    - `biophys()`: the value of each variable per section list.
-4. Fetch `<mechanisms_dir>/<mechanism>.mod` for each inserted mechanism except `pas`, and read its `RANGE` and `GLOBAL` variable names and the units declared in `PARAMETER`.
+4. Fetch `<mechanisms_dir>/<mechanism>.mod` for each inserted mechanism that is not a NEURON built-in, and read its `RANGE` and `GLOBAL` variable names and the units declared in `PARAMETER`. When the config declares no `mechanisms_dir`, `mod/` is tried first (OBI circuits), then `mechanisms/` (circuits staged by entitysdk from an MEModel); a missing directory costs one 404 per mechanism.
 5. Build each template's variables, then keep only the channels, variables and section lists common to all templates in the selection.
+
+NEURON's built-in mechanisms have no mod file. `pas`, `fastpas`, `hh` and `extracellular` get their settable `RANGE` variables and units from a table in the reader. `capacitance` and the ion mechanisms (`na_ion`, `k_ion`, ...) add no variable: `cm` is already a section property, and `ena` or `ek` are set directly in `biophys()`.
 
 ## Hoc reader
 
@@ -29,11 +31,13 @@ forsec CellRef.<section_list> { <variable> = <number> }
 distribute_distance(CellRef.<section_list>, "<variable>", "<formula>")
 ```
 
-For `distribute_distance`, the value is the factor the formula is multiplied by, which is the optimised value. Any other line rejects the template; nothing is guessed. A test renders a hoc file with the real template and checks the reader returns the input values.
+For `distribute_distance`, the value is the trailing factor of the formula, where every BluePyEModel distribution puts the optimised value; a formula without one gives `null` and a warning. The value of a mechanism `GLOBAL` variable is the one the template checks in `proc check_simulator()`. Any other line rejects the template; nothing is guessed. A test renders a hoc file with the real template and checks the reader returns the input values.
 
 ## Fallback and errors
 
-A template is read from the derivation path instead, with a warning naming the reason, when its hoc or mod file is missing, too large (over 1 MB) or not template output, or when its population has no `biophysical_neuron_models_dir` or `mechanisms_dir`. Warnings quote only the reader's own messages; fetch errors are logged and reported by type only, since they can contain signed storage URLs.
+A template is read from the derivation path instead, with a warning naming the reason, when its hoc or mod file is missing, too large (over 1 MB) or not template output, or when its population has no `biophysical_neuron_models_dir`. Warnings quote only the reader's own messages; fetch errors are logged and reported by type only, since they can contain signed storage URLs.
+
+A circuit without exactly one `sonata_circuit` asset is rejected (HTTP 400) with or without a neuron set.
 
 Asset paths built from circuit content are refused when absolute or containing `..`.
 

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from entitysdk.exception import EntitySDKError
 from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
@@ -28,6 +29,7 @@ from obi_one.scientific.library.memodel_circuit import (
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
     MAX_MODEL_FILE_BYTES,
+    UNDECLARED_MOD_DIRS,
     PopulationModelDirs,
     TemplateModel,
     _build_emodel_groups,
@@ -1103,9 +1105,10 @@ class TestStageCircuitForNeuronSetResolution:
 class TestGetCircuitManipulationPropertiesFastPath:
     """Tests for get_circuit_manipulation_properties with neuron_set=None (fast path)."""
 
-    def test_fast_path_with_derivations(self):
-        """Fast path fetches all derivations and computes intersection."""
-        client = MagicMock()
+    def test_fast_path_with_derivations(self, mock_db_client):
+        """Unreadable circuit files: every derivation is used and the intersection computed."""
+        client = mock_db_client
+        client.fetch_file.side_effect = EntitySDKError("storage unavailable")
         emodel_id_1 = str(uuid4())
         emodel_id_2 = str(uuid4())
 
@@ -1148,9 +1151,10 @@ class TestGetCircuitManipulationPropertiesFastPath:
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
         assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
-    def test_fast_path_no_derivations(self):
-        """Fast path with no derivations returns empty with warning."""
-        client = MagicMock()
+    def test_fast_path_no_derivations(self, mock_db_client):
+        """Unreadable circuit files and no derivations: empty response with a warning."""
+        client = mock_db_client
+        client.fetch_file.side_effect = EntitySDKError("storage unavailable")
         client.search_entity.return_value.all.return_value = []
 
         result = get_circuit_manipulation_properties(
@@ -1161,8 +1165,22 @@ class TestGetCircuitManipulationPropertiesFastPath:
 
         assert result["entity_type"] == "circuit"
         assert result["MechanismVariablesByIonChannel"] == {}
-        assert result["warnings"] is not None
-        assert any("No emodel_circuit derivations" in w for w in result["warnings"])
+        assert result["warnings"] == [
+            (
+                "Circuit files not readable (EntitySDKError)."
+                " No emodel_circuit derivations found for this circuit."
+            )
+        ]
+
+    def test_fast_path_rejects_a_malformed_circuit_like_the_neuron_set_path(self):
+        """A circuit without one sonata_circuit asset is a 400 in both modes."""
+        client = MagicMock()
+        client.get_entity.return_value.assets = []
+        with pytest.raises(ValueError, match="exactly one sonata_circuit"):
+            get_circuit_manipulation_properties(
+                db_client=client, circuit_id=str(uuid4()), neuron_set=None
+            )
+        client.search_entity.assert_not_called()
 
 
 class TestMultiPopulationRegression:
@@ -1537,13 +1555,17 @@ SINGLE_NEURON_CIRCUIT_DIR = Path(
 
 
 def _copying_client(circuit_dir: Path, failing: set[str] = frozenset()) -> MagicMock:
-    """A db_client whose fetch_file copies from circuit_dir, raising for paths in failing."""
+    """A db_client whose fetch_file copies from circuit_dir.
+
+    Paths in ``failing`` or absent from ``circuit_dir`` raise ``EntitySDKError``, as
+    entitysdk does for an HTTP 404.
+    """
     copy = _make_fetch_file_side_effect(circuit_dir)
 
     def _fetch_file(*, output_path, asset_path, **kwargs):
-        if str(asset_path) in failing:
-            msg = f"404 for {asset_path}"
-            raise RuntimeError(msg)
+        if str(asset_path) in failing or not (circuit_dir / asset_path).exists():
+            msg = f"HTTP error 404 for {asset_path}"
+            raise EntitySDKError(msg)
         copy(output_path=output_path, asset_path=asset_path, **kwargs)
 
     client = MagicMock()
@@ -1587,6 +1609,24 @@ class TestCircuitFileStagingEdges:
         assert not (tmp_path / "node_sets.json").exists()
         assert all((tmp_path / path).exists() for path in nodes.values())
 
+    def test_population_types_limit_which_nodes_files_are_staged(self, tmp_path):
+        client = _copying_client(TINY_CIRCUIT_DIR)
+        _config, nodes, dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), uuid4(), tmp_path, population_types=["biophysical"]
+        )
+        assert set(nodes) == {"S1nonbarrel_neurons"}
+        assert {"POm", "VPM"} <= set(dirs)  # directories known for every population
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert not any(path.startswith(("POm", "VPM")) for path in fetched)
+
+    def test_undeclared_mechanisms_dir_gets_the_probe_order(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)  # mechanisms_dir is ""
+        _config, _nodes, dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), uuid4(), tmp_path
+        )
+        assert dirs["S1nonbarrel_neurons"].mod_dirs == UNDECLARED_MOD_DIRS
+        assert UNDECLARED_MOD_DIRS[0] == "mod"
+
 
 class TestReadTemplateModelsFailures:
     HOC_TEMPLATE = "hoc:cADpyr_L6BPC"
@@ -1597,20 +1637,45 @@ class TestReadTemplateModelsFailures:
             client,
             tmp_path,
             {self.HOC_TEMPLATE},
-            PopulationModelDirs(population_type="biophysical", hoc_dir=None, mod_dir="mod"),
+            PopulationModelDirs(population_type="biophysical", hoc_dir=None, mod_dirs=("mod",)),
         )
         assert models == {self.HOC_TEMPLATE: "population has no biophysical_neuron_models_dir"}
         client.fetch_file.assert_not_called()
 
-    def test_population_without_mod_dir(self, tmp_path):
-        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+    @pytest.mark.parametrize("mod_folder", ["mod", "mechanisms"])
+    def test_undeclared_mod_dir_is_probed_in_order(self, tmp_path, mod_folder):
+        """Mod files in ``mod/`` (OBI circuits) or ``mechanisms/`` (entitysdk MEModels)."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / mod_folder)
+        client = _copying_client(circuit_dir)
         models = _read_models(
             client,
-            tmp_path,
+            tmp_path / "staged",
             {self.HOC_TEMPLATE},
-            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir=None),
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=UNDECLARED_MOD_DIRS),
         )
-        assert models == {self.HOC_TEMPLATE: "population has no mechanisms_dir"}
+        model = models[self.HOC_TEMPLATE]
+        assert isinstance(model, TemplateModel)
+        fetched = [str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list]
+        probes = [path for path in fetched if path.startswith("mod/")]
+        assert (
+            probes
+            if mod_folder == "mechanisms"
+            else not any(path.startswith("mechanisms/") for path in fetched)
+        )
+
+    def test_mod_file_in_no_candidate_dir_fails_the_template(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=UNDECLARED_MOD_DIRS),
+        )
+        assert models == {self.HOC_TEMPLATE: "files not readable (EntitySDKError)"}
 
     def test_hoc_fetch_failure_is_reported_by_type_only(self, tmp_path):
         client = _copying_client(
@@ -1620,9 +1685,9 @@ class TestReadTemplateModelsFailures:
             client,
             tmp_path,
             {self.HOC_TEMPLATE},
-            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir="mod"),
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
         )
-        assert models == {self.HOC_TEMPLATE: "files not readable (RuntimeError)"}
+        assert models == {self.HOC_TEMPLATE: "files not readable (EntitySDKError)"}
 
     def test_mod_fetch_failure_fails_only_that_template(self, tmp_path):
         client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR, failing={"mod/NaTg.mod"})
@@ -1630,9 +1695,9 @@ class TestReadTemplateModelsFailures:
             client,
             tmp_path,
             {self.HOC_TEMPLATE},
-            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir="mod"),
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
         )
-        assert models == {self.HOC_TEMPLATE: "files not readable (RuntimeError)"}
+        assert models == {self.HOC_TEMPLATE: "files not readable (EntitySDKError)"}
 
     def test_all_files_read(self, tmp_path):
         client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
@@ -1640,11 +1705,12 @@ class TestReadTemplateModelsFailures:
             client,
             tmp_path,
             {self.HOC_TEMPLATE},
-            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dir="mod"),
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
         )
         model = models[self.HOC_TEMPLATE]
         assert isinstance(model, TemplateModel)
-        assert set(model.mechanisms) == model.biophysics.inserted_mechanisms - {"pas"}
+        assert set(model.mechanisms) == model.biophysics.mod_file_mechanisms
+        assert "pas" in model.biophysics.inserted_mechanisms
 
 
 class TestUniqueTemplates:

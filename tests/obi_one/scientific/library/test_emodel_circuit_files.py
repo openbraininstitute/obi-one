@@ -14,6 +14,7 @@ import pytest
 
 from obi_one.scientific.library.emodel_circuit_files import (
     HocTemplateError,
+    ModMechanism,
     mechanism_variables,
     read_hoc_biophysics,
     read_mod_mechanism,
@@ -201,10 +202,61 @@ class TestHocReaderIsFailClosed:
         assert result.distributions == {("apical", "gIhbar_Ih"): None}
         assert len(result.warnings) == 1
 
+    def test_leading_factor_is_a_coefficient_not_the_value(self):
+        hoc_text = (
+            "proc insertChannel() {\n  forsec this.apical {\n    insert Ih\n  }\n}\n"
+            "proc biophys() {\n"
+            '  distribute_distance(CellRef.apical, "gIhbar_Ih", "2.087*exp(%.17g)+0.5")\n'
+            "}\n"
+        )
+        result = read_hoc_biophysics(hoc_text)
+        assert result.distributions == {("apical", "gIhbar_Ih"): None}
+        assert len(result.warnings) == 1
+
     def test_missing_mod_file_raises(self):
         biophysics = read_hoc_biophysics(HOC_PATH.read_text())
         with pytest.raises(HocTemplateError, match="no mod file for inserted mechanisms"):
             mechanism_variables(biophysics, {})
+
+
+class TestBuiltInMechanisms:
+    HOC_TEXT = (
+        'check_parameter("celsius", 34, celsius)\n'
+        'check_parameter("q10_demo", 2.3, q10_demo)\n'
+        "proc insertChannel() {\n"
+        "  forsec this.somatic {\n    insert hh\n    insert extracellular\n"
+        "    insert na_ion\n    insert capacitance\n    insert demo\n  }\n"
+        "}\n"
+        "proc biophys() {\n"
+        "  forsec CellRef.somatic {\n    gnabar_hh = 0.12\n    ena = 50\n"
+        "    xg_extracellular = 1e9\n    gbar_demo = 0.5\n  }\n"
+        "}\n"
+    )
+    DEMO_MOD = ModMechanism(suffix="demo", range_variables=["gbar"], global_variables=["q10"])
+
+    def test_only_mechanisms_with_a_mod_file_need_one(self):
+        biophysics = read_hoc_biophysics(self.HOC_TEXT)
+        assert biophysics.inserted_mechanisms == {"hh", "extracellular", "demo"}
+        assert biophysics.mod_file_mechanisms == {"demo"}
+
+    def test_built_ins_get_their_neuron_variables_and_ions_are_skipped(self):
+        biophysics = read_hoc_biophysics(self.HOC_TEXT)
+        variables, mapping = mechanism_variables(biophysics, {"demo": self.DEMO_MOD})
+        by_name = {(v.neuron_variable, v.section_list): v for v in variables}
+        assert by_name["gnabar_hh", "somatic"].value == pytest.approx(0.12)
+        assert by_name["gnabar_hh", "somatic"].units == "S/cm2"
+        assert by_name["gnabar_hh", "somatic"].limits == [0.0, 10.0]
+        assert by_name["el_hh", "somatic"].value is None
+        assert by_name["xg_extracellular", "somatic"].value == pytest.approx(1e9)
+        assert set(mapping.channel_to_section_lists) == {"hh", "extracellular", "demo"}
+
+    def test_global_value_comes_from_check_simulator(self):
+        biophysics = read_hoc_biophysics(self.HOC_TEXT)
+        assert biophysics.global_values == {"celsius": 34.0, "q10_demo": 2.3}
+        variables, _ = mechanism_variables(biophysics, {"demo": self.DEMO_MOD})
+        q10 = next(v for v in variables if v.neuron_variable == "q10_demo")
+        assert q10.variable_type == "GLOBAL"
+        assert q10.value == pytest.approx(2.3)
 
 
 class TestModReader:
@@ -231,6 +283,15 @@ class TestModReader:
             "PARAMETER {\n  gbar = 0.1 (S/cm2)\n  q10 = 2.3\n}\n"
         )
         assert mechanism.global_variables == ["q10", "shift"]
+
+    def test_statements_on_one_line_and_comments(self):
+        mechanism = read_mod_mechanism(
+            "NEURON { SUFFIX demo RANGE a, b GLOBAL c USEION na READ ena WRITE ina\n"
+            "  NONSPECIFIC_CURRENT i : RANGE not_a_variable\n}\n"
+        )
+        assert mechanism.suffix == "demo"
+        assert mechanism.range_variables == ["a", "b"]
+        assert mechanism.global_variables == ["c"]
 
     def test_missing_neuron_block_raises(self):
         with pytest.raises(HocTemplateError, match="no NEURON block"):
