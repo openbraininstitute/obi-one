@@ -141,6 +141,7 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     resolved_neuron = SimpleNamespace(
         pt_root_id=42,
         use_me_model=False,
+        me_model_entity=None,
         phys_node_props={},
     )
 

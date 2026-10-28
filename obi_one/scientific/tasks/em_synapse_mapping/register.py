@@ -3,7 +3,7 @@ from pathlib import Path
 
 from entitysdk import Client
 from entitysdk.models import EMDenseReconstructionDataset
-from entitysdk.types import CircuitBuildCategory, TargetSimulator
+from entitysdk.types import CircuitBuildCategory, DerivationType, TargetSimulator
 
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
@@ -57,6 +57,16 @@ def register_output(
     # Get publication links
     publications = assemble_publication_links(db_client, em_entity, all_notices)
 
+    # Each ME-model neuron's model_template (hoc:mdl_<emodel_id>) labels the
+    # EModel it was derived into, so neuronal manipulations can resolve the
+    # source EModel per node. ME-models sharing an EModel share a template and
+    # collapse to one derivation (unique on used/generated/type in entitycore).
+    emodel_by_label = {
+        str(rn.phys_node_props["model_template"][0]): rn.me_model_entity.emodel
+        for rn in resolved_neurons
+        if rn.me_model_entity is not None
+    }
+
     # Register circuit (entity + assets + links)
     registered_circuit = circuit_registration.register_circuit(
         client=db_client,
@@ -73,6 +83,16 @@ def register_output(
         skip_additional_assets=False,
         skip_validation=True,
     )
+
+    for label, emodel in emodel_by_label.items():
+        circuit_registration.register_derivation(
+            client=db_client,
+            from_entity=emodel,
+            derivation_type=DerivationType.emodel_circuit,
+            registered_circuit=registered_circuit,
+            dry_run=False,
+            label=label,
+        )
 
     L.info(f"Output registered as: {registered_circuit.id}")  # ty:ignore[unresolved-attribute]
     return str(registered_circuit.id)  # ty:ignore[unresolved-attribute]
