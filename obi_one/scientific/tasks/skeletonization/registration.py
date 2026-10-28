@@ -79,7 +79,7 @@ def register_output_resource(
       based on EM dataset metadata.
     - Registers a new CellMorphology entity via the shared registration service.
     - Uploads SWC, ASC, and HDF5 morphology files as assets.
-    - Uploads the combined H5 morphology (with spines) as an extra asset.
+    - Uploads the combined H5 morphology (with spines) as an extra asset, if spines were segmented.
     - Computes and registers morphometric measurements.
     - Creates a Derivation linking EMDenseReconstructionDataset to Morphology.
 
@@ -108,7 +108,7 @@ def register_output_resource(
     morphology = models.CellMorphology(
         name=metadata.cell_morphology_name,
         description=metadata.cell_morphology_description,
-        has_segmented_spines=True,
+        has_segmented_spines=outputs.h5_combined_morphology_file is not None,
         cell_morphology_protocol=protocol,
         brain_region=metadata.brain_region,
         subject=metadata.subject,
@@ -121,9 +121,9 @@ def register_output_resource(
         ".asc": outputs.asc_morphology_file,
     }
 
-    extra_assets = {
-        AssetLabel.morphology_with_spines: outputs.h5_combined_morphology_file,
-    }
+    extra_assets = {}
+    if outputs.h5_combined_morphology_file is not None:
+        extra_assets[AssetLabel.morphology_with_spines] = outputs.h5_combined_morphology_file
 
     registered_morphology = register_morphology_with_assets_and_metrics(
         client=client,
