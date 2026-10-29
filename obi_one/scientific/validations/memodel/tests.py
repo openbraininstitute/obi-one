@@ -15,6 +15,7 @@ from bluecellulab.analysis.inject_sequence import run_multirecordings_stimulus, 
 from bluecellulab.cell.core import Cell
 from bluecellulab.simulation.neuron_globals import NeuronGlobals
 from bluecellulab.stimulus.factory import IDRestTimings, StimulusFactory
+from bluecellulab.utils import efel_settings
 from bluecellulab.validation.base import TestResult, ValidationTest
 from bluecellulab.validation.plotting import plot_trace, plot_traces
 
@@ -25,6 +26,20 @@ _DEFAULT_BPAP_SPIKE_THRESHOLD_MV = -20.0
 _MIN_BPAP_TRACE_SAMPLES = 2
 _MAX_INPUT_RESISTANCE_MOHM = 1_000
 _MIN_CURVE_POINTS = 2
+
+
+def _optional_finite_current(name: str, value: float | None) -> float | None:
+    """Return ``value`` as a finite float, or None, rejecting invalid input."""
+    if value is None:
+        return None
+    message = f"{name} must be a finite number or None."
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError) as error:
+        raise TypeError(message) from error
+    if not np.isfinite(numeric):
+        raise ValueError(message)
+    return numeric
 
 
 def _count_bpap_spikes(
@@ -42,13 +57,8 @@ def _count_bpap_spikes(
         "stim_start": [start],
         "stim_end": [end],
     }
-    previous_threshold = float(efel.get_settings().Threshold)
-    try:
-        efel.set_setting("Threshold", threshold)
+    with efel_settings({"Threshold": threshold}):
         feature_results = efel.get_feature_values([trace], ["spike_count"])
-    finally:
-        # eFEL settings are process-global; do not change the following tests.
-        efel.set_setting("Threshold", previous_threshold)
 
     if not feature_results:
         return None
@@ -218,8 +228,8 @@ class AISSpikingTest(ValidationTest):
                 "stim_end": [IDRestTimings.PRE_DELAY.value + IDRestTimings.DURATION.value],
             },
         ]
-        efel.set_setting("Threshold", -40.0)
-        features = efel.get_feature_values(traces, ["peak_time"])
+        with efel_settings({"Threshold": -40.0}):
+            features = efel.get_feature_values(traces, ["peak_time"])
         axon_spike_time = features[0]["peak_time"]
         soma_spike_time = features[1]["peak_time"]
 
@@ -249,6 +259,7 @@ class BPAPTest(ValidationTest):
         self,
         *,
         amplitude_factor: float = 10.0,
+        amplitude: float | None = None,
         sim_duration: float = 1500.0,
         stim_duration: float = 5.0,
         holding_current: float | None = None,
@@ -260,7 +271,13 @@ class BPAPTest(ValidationTest):
         """Initialize the BPAP test.
 
         Args:
-            amplitude_factor: Multiplier of rheobase for stimulus amplitude.
+            amplitude_factor: Multiplier of rheobase for stimulus amplitude. Used
+                only when ``amplitude`` is not set.
+            amplitude: Absolute stimulus amplitude in nA. When set, it takes
+                precedence over ``amplitude_factor`` and the pulse does not scale
+                with rheobase. Preferred when a single AP depends on the holding
+                (pre-pulse voltage) rather than the pulse size, so the result is
+                stable across models with different rheobases.
             sim_duration: Total simulation duration in ms.
             stim_duration: Duration of the current pulse in ms.
             holding_current: Optional BPAP-specific holding current in nA. When
@@ -274,15 +291,8 @@ class BPAPTest(ValidationTest):
                 trace spike-count guard, in mV.
             simulator_config: Shared simulator conditions applied to this test.
         """
-        if holding_current is not None:
-            try:
-                holding_current = float(holding_current)
-            except (TypeError, ValueError) as error:
-                message = "holding_current must be a finite number or None."
-                raise TypeError(message) from error
-            if not np.isfinite(holding_current):
-                message = "holding_current must be a finite number or None."
-                raise ValueError(message)
+        holding_current = _optional_finite_current("holding_current", holding_current)
+        amplitude = _optional_finite_current("amplitude", amplitude)
         if expected_spike_count is not None:
             if isinstance(expected_spike_count, bool) or not isinstance(expected_spike_count, int):
                 message = "expected_spike_count must be an integer or None."
@@ -299,6 +309,7 @@ class BPAPTest(ValidationTest):
 
         self.simulator_config = simulator_config
         self.amplitude_factor = amplitude_factor
+        self.amplitude = amplitude
         self.sim_duration = sim_duration
         self.stim_duration = stim_duration
         self.holding_current = holding_current
@@ -322,7 +333,9 @@ class BPAPTest(ValidationTest):
             out_dir = Path(out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
 
-            amplitude = self.amplitude_factor * rheobase
+            amplitude = (
+                self.amplitude if self.amplitude is not None else (self.amplitude_factor * rheobase)
+            )
             cell = Cell.from_template_parameters(template_params)
             if self.holding_current is not None:
                 cell.hypamp = self.holding_current

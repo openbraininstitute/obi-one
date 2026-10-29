@@ -5,16 +5,28 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from bluecellulab.simulation.neuron_globals import NeuronGlobals
-from bluecellulab.validation import EfelMeasurement, GreaterThan, SequenceProtocol, StepProtocol
+from bluecellulab.validation import (
+    EfelMeasurement,
+    GreaterThan,
+    IsFalse,
+    SequenceProtocol,
+    StepProtocol,
+)
 from bluecellulab.validation.base import TestResult
+from entitysdk.schemas.memodel import DownloadedMEModel
 
+from obi_one.scientific.validations.base import InvalidValidationContextError
 from obi_one.scientific.validations.memodel.config import (
     SimulatorConfig,
     extract_simulator_config_from_hoc,
     load_simulator_config_from_hoc,
 )
-from obi_one.scientific.validations.memodel.presets import spiking_preset
+from obi_one.scientific.validations.memodel.presets import (
+    spiking_preset,
+    thalamic_depolarization_block_preset,
+)
 from obi_one.scientific.validations.memodel.profiles import (
+    DefaultMEModelValidationProfile,
     MEModelValidationProfile,
     ThalamicMEModelValidationProfile,
 )
@@ -29,6 +41,8 @@ from obi_one.scientific.validations.memodel.tests import (
 from obi_one.scientific.validations.memodel.workflow import (
     MEModelValidationWorkflow,
     MEModelWorkflowContext,
+    _derive_profile_holding_current,
+    _select_morphology_path,
 )
 
 
@@ -81,6 +95,7 @@ class TestMEModelValidationWorkflow:
             template_params=MagicMock(),
             rheobase=1.0,
             rin=100.0,
+            holding_current=-0.03,
             out_dir=tmp_path,
         )
 
@@ -100,18 +115,28 @@ class TestMEModelValidationWorkflow:
         assert len(tests) == 9
         assert sum(test.name == "Simulatable Neuron Spiking Validation" for test in tests) == 1
 
+        # Tonic firing pre-holds at the derived holding current (-0.03 nA),
+        # then steps +0.4 nA on top of it (-> 0.37 nA).
         tonic_spiking = tests[0]
         assert isinstance(tonic_spiking.protocol, SequenceProtocol)
         assert tonic_spiking.protocol.measurement_phase == 1
-        assert tonic_spiking.protocol.add_hypamp is True
+        assert tonic_spiking.protocol.add_hypamp is False
         assert tonic_spiking.protocol.phases[0][0] == pytest.approx(500.0)
-        assert tonic_spiking.protocol.phases[0][1] == pytest.approx(0.05)
+        assert tonic_spiking.protocol.phases[0][1] == pytest.approx(-0.03)
         assert tonic_spiking.protocol.phases[1][0] == pytest.approx(1350.0)
-        assert tonic_spiking.protocol.phases[1][1] == pytest.approx(0.20)
+        assert tonic_spiking.protocol.phases[1][1] == pytest.approx(0.37)
 
+        # Thalamic depol block pre-holds at the derived holding current
+        # (-0.03 nA), then steps at 200% rheobase (1.0 nA -> 2.0 nA) on top of
+        # the hold (-0.03 + 2.0 = 1.97 nA).
         depolarization_block = tests[1]
-        assert isinstance(depolarization_block.protocol, StepProtocol)
-        assert depolarization_block.protocol.threshold_percentage == 200.0  # ruff: ignore[float-equality-comparison]
+        assert isinstance(depolarization_block.protocol, SequenceProtocol)
+        assert depolarization_block.protocol.measurement_phase == 1
+        assert depolarization_block.protocol.add_hypamp is False
+        assert depolarization_block.protocol.phases[0][0] == pytest.approx(500.0)
+        assert depolarization_block.protocol.phases[0][1] == pytest.approx(-0.03)
+        assert depolarization_block.protocol.phases[1][0] == pytest.approx(1350.0)
+        assert depolarization_block.protocol.phases[1][1] == pytest.approx(1.97)
 
         assert isinstance(tests[2].protocol, SequenceProtocol)
         assert tests[2].protocol.measurement_phase == 2
@@ -140,6 +165,7 @@ class TestMEModelValidationWorkflow:
             template_params=MagicMock(),
             rheobase=1.0,
             rin=100.0,
+            holding_current=-0.03,
             out_dir=tmp_path,
             simulator_config=SimulatorConfig(celsius=34.0, v_init=-70.0),
         )
@@ -210,14 +236,17 @@ class TestMEModelValidationWorkflow:
             template_params=MagicMock(),
             rheobase=1.0,
             rin=100.0,
+            holding_current=-0.025,
             simulator_config=simulator_config,
             out_dir=tmp_path,
         )
 
         tests = workflow.get_tests(context)
 
+        # Tonic firing holds at the derived holding current from the context.
         assert tests[0].protocol.phases[0][1] == pytest.approx(-0.025)
-        assert tests[2].protocol.phases[0][1] == pytest.approx(-0.025)
+        # Rebound burst holds at the fixed calibrated current, not the pre-hold.
+        assert tests[2].protocol.phases[0][1] == pytest.approx(0.04140625)
         assert tests[3].simulator_config == simulator_config
         assert tests[7].simulator_config == simulator_config
         assert tests[8].simulator_config == simulator_config
@@ -469,6 +498,81 @@ class TestMEModelValidationWorkflow:
         )
 
 
+class TestSelectMorphologyPath:
+    """Guards the entitysdk DownloadedMEModel contract this workflow depends on.
+
+    ``_select_morphology_path`` reads ``morphology_path`` off the downloaded
+    model. If entitysdk renames or reshapes that field, these fail here rather
+    than only at runtime inside a notebook.
+    """
+
+    def _downloaded(self, tmp_path, morphology_name="morph.asc"):
+        morphology_path = tmp_path / morphology_name
+        hoc_path = tmp_path / "model.hoc"
+        mechanisms_dir = tmp_path / "mechanisms"
+        mechanisms_dir.mkdir()
+        hoc_path.write_text("")
+        return DownloadedMEModel(
+            hoc_path=hoc_path,
+            mechanisms_dir=mechanisms_dir,
+            mechanism_files=[],
+            morphology_path=morphology_path,
+        )
+
+    def test_schema_exposes_singular_morphology_path(self):
+        assert "morphology_path" in DownloadedMEModel.model_fields
+        assert "morphology_paths" not in DownloadedMEModel.model_fields
+
+    def test_returns_morphology_path_when_present(self, tmp_path):
+        downloaded = self._downloaded(tmp_path)
+        downloaded.morphology_path.write_text("")
+
+        result = _select_morphology_path(downloaded, "ent-123")
+
+        assert result == downloaded.morphology_path
+
+    def test_raises_when_morphology_file_missing(self, tmp_path):
+        downloaded = self._downloaded(tmp_path)
+
+        with pytest.raises(InvalidValidationContextError, match="ent-123"):
+            _select_morphology_path(downloaded, "ent-123")
+
+
+class TestDeriveProfileHoldingCurrent:
+    """Deriving the pre-hold current via BlueCelluLab's search.
+
+    The profile declares the target holding voltage; the current that reaches it
+    is found by bluecellulab.tools.search_hyp_current. Profiles that step from
+    rest (holding_voltage is None) skip the search and return None.
+    """
+
+    def _template_params(self):
+        tp = MagicMock()
+        tp.template_filepath = "model.hoc"
+        tp.morph_filepath = "morph.asc"
+        tp.template_format = "v6"
+        tp.emodel_properties = MagicMock()
+        return tp
+
+    def test_returns_none_for_profile_without_hold(self):
+        result = _derive_profile_holding_current(
+            DefaultMEModelValidationProfile(), self._template_params()
+        )
+        assert result is None
+
+    @patch("bluecellulab.tools.calculate_SS_voltage", return_value=-64.9)
+    @patch("bluecellulab.tools.search_hyp_current", return_value=0.065)
+    def test_delegates_to_bluecellulab_search_for_thalamic(self, mock_search, mock_ss):
+        result = _derive_profile_holding_current(
+            ThalamicMEModelValidationProfile(), self._template_params()
+        )
+        assert result == pytest.approx(0.065)
+        # The search targets the profile's -60 mV holding voltage.
+        assert mock_search.call_args.kwargs["target_voltage"] == pytest.approx(-60.0)
+        # The achieved hold is read back (and logged) via calculate_SS_voltage.
+        assert mock_ss.call_args.kwargs["step_level"] == pytest.approx(0.065)
+
+
 class TestMEModelValidationTask:
     def test_named_profile_is_forwarded(self, tmp_path):
         config = MEModelValidationSingleConfig(
@@ -493,3 +597,33 @@ class TestSpikingPreset:
         assert preset.measurement.feature_name == "Spikecount"
         assert isinstance(preset.criterion, GreaterThan)
         assert preset.criterion.threshold == 0
+
+
+class TestThalamicDepolarizationBlockPreset:
+    def test_prehold_then_rheobase_step(self):
+        # Hold at the derived holding current (-0.05 nA), then step 200% of
+        # rheobase (2.0 nA -> 4.0 nA) on top of the hold (-0.05 + 4.0 = 3.95 nA).
+        preset = thalamic_depolarization_block_preset(
+            rheobase=2.0,
+            holding_current=-0.05,
+        )
+        assert preset.name == "Simulatable Neuron Depolarization Block Validation"
+        assert isinstance(preset.protocol, SequenceProtocol)
+        assert preset.protocol.amplitude_mode == "amplitude"
+        assert preset.protocol.measurement_phase == 1
+        assert preset.protocol.add_hypamp is False
+        assert preset.protocol.phases[0][0] == pytest.approx(500.0)
+        assert preset.protocol.phases[0][1] == pytest.approx(-0.05)
+        assert preset.protocol.phases[1][0] == pytest.approx(1350.0)
+        assert preset.protocol.phases[1][1] == pytest.approx(3.95)
+        assert isinstance(preset.measurement, EfelMeasurement)
+        assert preset.measurement.feature_name == "depol_block_bool"
+        assert isinstance(preset.criterion, IsFalse)
+
+    def test_step_sits_on_top_of_zero_hold(self):
+        preset = thalamic_depolarization_block_preset(
+            rheobase=1.0,
+            holding_current=0.0,
+        )
+        assert preset.protocol.phases[0][1] == pytest.approx(0.0)
+        assert preset.protocol.phases[1][1] == pytest.approx(2.0)

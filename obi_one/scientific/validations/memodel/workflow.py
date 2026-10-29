@@ -12,8 +12,8 @@ This workflow is independent of the execution backend.
 
 import logging
 import math
-import os
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+from contextlib import chdir
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -111,7 +111,15 @@ def _resolve_holding_current(
     calibration: Any,
     validation_profile: MEModelValidationProfile,
 ) -> float:
-    """Resolve calibrated holding current without inventing model values."""
+    """Resolve the calibrated holding current without inventing model values.
+
+    When the calibration carries no ``holding_current``, the result is 0.0 nA
+    (no holding), which is the correct default for profiles whose protocols set
+    their own holding (e.g. the thalamic tonic-firing hold or the fixed rebound
+    holding). A profile that genuinely needs a nonzero calibrated holding opts
+    in by overriding ``requires_holding_current``; only then does a missing
+    value raise instead of defaulting to 0.0.
+    """
     holding_current = getattr(calibration, "holding_current", None)
     if holding_current is None:
         if validation_profile.requires_holding_current:
@@ -149,6 +157,83 @@ def _select_morphology_path(downloaded: DownloadedMEModel, entity_id: str) -> Pa
         message = f"No morphology was downloaded for MEModel {entity_id}."
         raise InvalidValidationContextError(message)
     return morphology_path
+
+
+def _resolve_rheobase(
+    validation_profile: MEModelValidationProfile,
+    cell: Any,
+    threshold_current: float | None,
+) -> float:
+    """Return the rheobase for a profile, recomputing it when required.
+
+    Profiles that run percentage-scaled step protocols recompute rheobase at the
+    HOC conditions, because the registered calibration may carry a placeholder
+    or a wrong-temperature value that breaks rheobase-scaled sweeps. Otherwise
+    the calibration ``threshold_current`` is reused when present.
+    """
+    from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
+        calculate_rheobase,
+    )
+
+    if not (validation_profile.recompute_rheobase or not threshold_current):
+        return threshold_current
+    rheobase = calculate_rheobase(cell=cell, section="soma[0]", segx=0.5, threshold_voltage=-40.0)
+    if validation_profile.recompute_rheobase and threshold_current:
+        logger.info(
+            "Recomputed rheobase=%.4f nA at HOC conditions (calibration "
+            "threshold_current=%.4f nA ignored for this profile).",
+            rheobase,
+            threshold_current,
+        )
+    return rheobase
+
+
+def _derive_profile_holding_current(
+    validation_profile: MEModelValidationProfile,
+    template_params: Any,
+) -> float | None:
+    """Return the holding current for a profile that pre-holds the cell.
+
+    Profiles that hold the cell at a target voltage (a defined experimental
+    condition, e.g. the thalamic -65 mV hold that inactivates T-type Ca) get the
+    current that reaches that voltage. The current is found with BlueCelluLab's
+    binary search over steady-state voltage, which mirrors how the holding
+    current is set experimentally. Returns None for profiles that step from rest.
+    """
+    holding_voltage = validation_profile.holding_voltage
+    if holding_voltage is None:
+        return None
+
+    from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
+        calculate_SS_voltage,
+        search_hyp_current,
+    )
+
+    # The hold may be depolarizing or hyperpolarizing relative to rest, so the
+    # search range spans both signs rather than the hyperpolarizing-only default.
+    holding_current = search_hyp_current(
+        template_path=template_params.template_filepath,
+        morphology_path=template_params.morph_filepath,
+        template_format=template_params.template_format,
+        emodel_properties=template_params.emodel_properties,
+        target_voltage=holding_voltage,
+        min_current=-0.5,
+        max_current=0.5,
+    )
+    achieved = calculate_SS_voltage(
+        template_path=template_params.template_filepath,
+        morphology_path=template_params.morph_filepath,
+        template_format=template_params.template_format,
+        emodel_properties=template_params.emodel_properties,
+        step_level=holding_current,
+    )
+    logger.info(
+        "Derived holding current %.4f nA to hold at %.1f mV (achieved %.2f mV).",
+        holding_current,
+        holding_voltage,
+        achieved,
+    )
+    return holding_current
 
 
 def _verify_simulator_configuration(simulator_config: SimulatorConfig) -> None:
@@ -195,6 +280,9 @@ class MEModelWorkflowContext(WorkflowContext):
         template_params: BlueCelluLab TemplateParams for creating the cell.
         rheobase: The rheobase (threshold) current in nA.
         rin: The input resistance in MOhm, when required by a profile.
+        holding_current: Current in nA that holds the cell at the profile's
+            requested holding voltage, when the profile requests one. None when
+            the profile does not pre-hold the cell (it then steps from rest).
         out_dir: Output directory for figures and artifacts.
         simulator_config: Global NEURON conditions applied for this run.
     """
@@ -202,6 +290,7 @@ class MEModelWorkflowContext(WorkflowContext):
     template_params: Any = None
     rheobase: float | None = None
     rin: float | None = None
+    holding_current: float | None = None
     out_dir: Path | None = None
     simulator_config: SimulatorConfig | None = None
 
@@ -274,8 +363,6 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         # Compile and explicitly load mechanisms before constructing the Cell.
         mechanisms_dir = Path(downloaded.mechanisms_dir).resolve()
         _compile_mechanisms(mechanisms_dir, self.output_dir)
-        # Change to output_dir so relative HOC/morphology dependencies resolve.
-        os.chdir(self.output_dir)
         _load_compiled_mechanisms(self.output_dir)
 
         # Create Cell
@@ -288,7 +375,6 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         )
         from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
             calculate_input_resistance,
-            calculate_rheobase,
         )
 
         set_neuron_globals(
@@ -317,13 +403,7 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         )
         _verify_simulator_configuration(simulator_config)
 
-        # Compute rheobase if not from calibration
-        if threshold_current:
-            rheobase = threshold_current
-        else:
-            rheobase = calculate_rheobase(
-                cell=cell, section="soma[0]", segx=0.5, threshold_voltage=-40.0
-            )
+        rheobase = _resolve_rheobase(self.validation_profile, cell, threshold_current)
 
         # Compute Rin for profiles that use voltage-based currents. Reuse the
         # calibrated value when available so the workflow matches platform data;
@@ -350,6 +430,12 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
                 )
                 raise InvalidValidationContextError(message)
 
+        # Derive the holding current for profiles that pre-hold the cell at a
+        # target voltage (None when the profile steps from rest).
+        holding_current_for_hold = _derive_profile_holding_current(
+            self.validation_profile, cell.template_params
+        )
+
         # Prepare output directory for figures
         cell_name = memodel.name or entity_id
         out_dir = self.output_dir / cell_name
@@ -365,6 +451,7 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
             template_params=cell.template_params,
             rheobase=rheobase,
             rin=rin,
+            holding_current=holding_current_for_hold,
             simulator_config=simulator_config,
             out_dir=out_dir,
             extra={"cell": cell, "memodel": memodel},
@@ -397,14 +484,20 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         if context.rheobase is None or context.out_dir is None:
             raise InvalidValidationContextError
 
+        # Multiprocessing tests (IV/FI curves) spawn workers that reinitialize
+        # NEURON and auto-load the compiled mechanisms from the current working
+        # directory. Run with the output directory as CWD so the workers find
+        # the library compiled during setup; the change is scoped and restored
+        # on exit so it does not leak into later work in the same process.
         test_results = []
-        for test in tests:
-            result = test.run(
-                context.template_params,
-                context.rheobase,
-                context.out_dir,
-            )
-            test_results.append(result)
+        with chdir(self.output_dir):
+            for test in tests:
+                result = test.run(
+                    context.template_params,
+                    context.rheobase,
+                    context.out_dir,
+                )
+                test_results.append(result)
         return test_results
 
     def register(  # ruff: ignore[no-self-use]

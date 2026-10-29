@@ -21,6 +21,7 @@ from obi_one.scientific.validations.memodel.presets import (
     depolarization_block_preset,
     rebound_burst_preset,
     spiking_preset,
+    thalamic_depolarization_block_preset,
     tonic_firing_preset,
 )
 from obi_one.scientific.validations.memodel.tests import (
@@ -36,6 +37,34 @@ if TYPE_CHECKING:
     from bluecellulab.validation.base import ValidationTest
 
     from obi_one.scientific.validations.memodel.workflow import MEModelWorkflowContext
+
+
+def _optional_finite(name: str, value: float | None) -> float | None:
+    """Return ``value`` as a finite float, or None, rejecting invalid input."""
+    if value is None:
+        return None
+    message = f"{name} must be a finite number or None."
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError) as error:
+        raise TypeError(message) from error
+    if not math.isfinite(numeric):
+        raise ValueError(message)
+    return numeric
+
+
+def _positive_finite(name: str, value: float) -> float:
+    """Return ``value`` as a positive finite float, rejecting invalid input."""
+    message = f"{name} must be a positive finite number."
+    if isinstance(value, bool):
+        raise TypeError(message)
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError) as error:
+        raise TypeError(message) from error
+    if not math.isfinite(numeric) or numeric <= 0.0:
+        raise ValueError(message)
+    return numeric
 
 
 class MEModelValidationProfile(ABC):
@@ -57,8 +86,41 @@ class MEModelValidationProfile(ABC):
 
     @property
     def requires_holding_current(self) -> bool:
-        """Whether workflow setup must provide calibrated holding current."""
+        """Whether a nonzero calibrated holding current is required.
+
+        Default False: a missing calibration holding resolves to 0.0 nA (no
+        holding). Override to True only for profiles whose protocols cannot run
+        meaningfully without a calibrated holding; a missing value then raises
+        instead of defaulting to 0.0.
+        """
         return False
+
+    @property
+    def recompute_rheobase(self) -> bool:
+        """Whether setup must compute rheobase instead of trusting calibration.
+
+        Default False: use ``calibration_result.threshold_current`` when present.
+        Override to True for profiles that run percentage-scaled step protocols
+        (e.g. the FI curve), where the rheobase must be the model's true firing
+        threshold at the HOC conditions. The registered calibration may carry a
+        placeholder or a value computed at the wrong temperature, which breaks
+        rheobase-scaled sweeps; recomputing at the HOC conditions avoids that.
+        """
+        return False
+
+    @property
+    def holding_voltage(self) -> float | None:
+        """Pre-step holding potential in mV, or None to step from rest.
+
+        Default None: protocols step from the cell's resting potential, which is
+        correct for cells that fire tonically from rest. Override to a target
+        voltage for cell classes that must be held depolarized before the step
+        (e.g. thalamic neurons held at ~-65 mV to inactivate T-type Ca so the
+        step produces tonic firing rather than a rebound burst). When set, setup
+        derives the holding current that reaches this voltage and stores it on
+        the context for the profile's pre-held protocols.
+        """
+        return None
 
     def validate_context(self, context: MEModelWorkflowContext) -> None:
         """Validate context data required by this profile."""
@@ -101,10 +163,13 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         *,
         bpap_holding_current: float | None = None,
         bpap_amplitude_factor: float = 30.0,
+        bpap_amplitude: float | None = None,
         bpap_trace_diagnostics: bool = False,
+        rebound_holding_current: float | None = None,
+        rebound_hyperpolarization_amplitude: float | None = None,
         rebound_hyperpolarization_duration_ms: float = 500.0,
     ) -> None:
-        """Configure optional model-specific BPAP settings.
+        """Configure optional model-specific BPAP and rebound settings.
 
         ``bpap_holding_current`` is used only by BPAP. When omitted, BPAP uses
         the calibrated holding current carried by the model's template
@@ -112,55 +177,49 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         metadata is zero or unavailable, for example 0.065 nA for the Ecel1
         trial or 0.040 nA for Spp variants.
 
-        ``bpap_amplitude_factor`` scales rheobase for the BPAP pulse. It
-        defaults to the tested thalamic value of 30.0; model-specific
-        overrides must be explicitly configured and verified.
+        ``bpap_amplitude_factor`` scales rheobase for the BPAP pulse. Used only
+        when ``bpap_amplitude`` is not set.
+
+        ``bpap_amplitude`` is an absolute BPAP pulse amplitude in nA. When set,
+        it takes precedence over ``bpap_amplitude_factor`` so the pulse does not
+        scale with rheobase. Preferred for thalamic cells: a single AP is set by
+        the depolarized holding (which inactivates T-type Ca), not by the pulse
+        size, so an absolute amplitude (~0.6 nA) gives one AP robustly across
+        models regardless of their rheobase.
 
         ``bpap_trace_diagnostics`` appends pulse-adjacent soma-voltage metrics
         to the BPAP result details without changing the protocol or outcome.
+
+        ``rebound_holding_current`` and ``rebound_hyperpolarization_amplitude``
+        are the calibrated BluePyOpt rebound-burst currents in nA. They are
+        per-model: each thalamic emodel has its own values from its
+        ``Step_ReboundBurst_burst`` protocol (e.g. holding 0.04921875 nA /
+        pulse -0.14140625 nA for Spp, 0.0875 / -0.246484375 for Ecel1). When
+        omitted, the preset defaults apply, which only reproduce the Spp_runaway
+        rebound; set both explicitly for every other model.
 
         ``rebound_hyperpolarization_duration_ms`` controls only the rebound
         hyperpolarization phase. It defaults to 500 ms to preserve the
         established thalamic protocol.
         """
-        if bpap_holding_current is not None:
-            try:
-                bpap_holding_current = float(bpap_holding_current)
-            except (TypeError, ValueError) as error:
-                message = "bpap_holding_current must be a finite number or None."
-                raise TypeError(message) from error
-            if not math.isfinite(bpap_holding_current):
-                message = "bpap_holding_current must be a finite number or None."
-                raise ValueError(message)
-        try:
-            bpap_amplitude_factor = float(bpap_amplitude_factor)
-        except (TypeError, ValueError) as error:
-            message = "bpap_amplitude_factor must be a positive finite number."
-            raise TypeError(message) from error
-        if not math.isfinite(bpap_amplitude_factor) or bpap_amplitude_factor <= 0.0:
-            message = "bpap_amplitude_factor must be a positive finite number."
-            raise ValueError(message)
         if not isinstance(bpap_trace_diagnostics, bool):
             message = "bpap_trace_diagnostics must be a boolean."
             raise TypeError(message)
-        if isinstance(rebound_hyperpolarization_duration_ms, bool):
-            message = "rebound_hyperpolarization_duration_ms must be a positive finite number."
-            raise TypeError(message)
-        try:
-            rebound_hyperpolarization_duration_ms = float(rebound_hyperpolarization_duration_ms)
-        except (TypeError, ValueError) as error:
-            message = "rebound_hyperpolarization_duration_ms must be a positive finite number."
-            raise TypeError(message) from error
-        if (
-            not math.isfinite(rebound_hyperpolarization_duration_ms)
-            or rebound_hyperpolarization_duration_ms <= 0.0
-        ):
-            message = "rebound_hyperpolarization_duration_ms must be a positive finite number."
-            raise ValueError(message)
-        self.bpap_holding_current = bpap_holding_current
-        self.bpap_amplitude_factor = bpap_amplitude_factor
+        self.bpap_holding_current = _optional_finite("bpap_holding_current", bpap_holding_current)
+        self.bpap_amplitude_factor = _positive_finite(
+            "bpap_amplitude_factor", bpap_amplitude_factor
+        )
+        self.bpap_amplitude = _optional_finite("bpap_amplitude", bpap_amplitude)
         self.bpap_trace_diagnostics = bpap_trace_diagnostics
-        self.rebound_hyperpolarization_duration_ms = rebound_hyperpolarization_duration_ms
+        self.rebound_holding_current = _optional_finite(
+            "rebound_holding_current", rebound_holding_current
+        )
+        self.rebound_hyperpolarization_amplitude = _optional_finite(
+            "rebound_hyperpolarization_amplitude", rebound_hyperpolarization_amplitude
+        )
+        self.rebound_hyperpolarization_duration_ms = _positive_finite(
+            "rebound_hyperpolarization_duration_ms", rebound_hyperpolarization_duration_ms
+        )
 
     @property
     def requires_rin(self) -> bool:
@@ -170,6 +229,23 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
     def requires_holding_current(self) -> bool:
         return True
 
+    @property
+    def recompute_rheobase(self) -> bool:
+        # The FI curve sweeps rheobase -> 3x rheobase, so it needs the model's
+        # true firing threshold. The registered calibration carries a shared
+        # lower-bound placeholder (~0.02 nA), not the per-model rheobase.
+        return True
+
+    @property
+    def holding_voltage(self) -> float:
+        # Thalamic neurons are held at -60 mV before the step to inactivate
+        # T-type Ca, so the spiking and depolarization-block steps produce
+        # regular tonic firing rather than a rebound burst. -60 mV and the
+        # 0.4 nA tonic step match the source ephys protocol (Hartley et al.,
+        # Cell Reports 2024, Figure 2O-R: neurons held at -60 mV, tonic firing
+        # characterized with depolarizing steps, representative traces at 400 pA).
+        return -60.0
+
     def build_tests(self, context: MEModelWorkflowContext) -> list[ValidationTest]:
         """Build the complete nine-test thalamic validation policy."""
         self.validate_context(context)
@@ -178,17 +254,36 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             message = f"Validation profile '{self.profile_name}' requires a positive finite Rin."
             raise InvalidValidationContextError(message)
         simulator_config = context.simulator_config or self.simulator_config_fallback
+        rheobase = context.rheobase
+        if rheobase is None:
+            message = (
+                f"Validation profile '{self.profile_name}' requires a rheobase to size the "
+                "depolarization-block step."
+            )
+            raise InvalidValidationContextError(message)
+        holding_current = context.holding_current
+        if holding_current is None:
+            message = (
+                f"Validation profile '{self.profile_name}' requires a derived holding current "
+                "to pre-hold the cell; setup did not provide one."
+            )
+            raise InvalidValidationContextError(message)
         return [
-            # Tonic firing uses a depolarized hold to inactivate T-type Ca.
+            # Tonic firing uses a depolarized hold to inactivate T-type Ca,
+            # then a 0.4 nA (400 pA) step, matching the source ephys protocol.
             tonic_firing_preset(
-                rin=rin,
-                holding_voltage=-65.0,
-                step_current=0.15,
-                simulator_config=simulator_config,
-                add_hypamp=True,
+                holding_current=holding_current,
+                step_current=0.4,
             ),
-            depolarization_block_preset(),
+            # Depolarization block uses the same depolarized hold so the step
+            # produces tonic firing rather than a rebound burst.
+            thalamic_depolarization_block_preset(
+                rheobase=rheobase,
+                holding_current=holding_current,
+            ),
             rebound_burst_preset(
+                holding_current=self.rebound_holding_current,
+                hyperpolarization_amplitude=self.rebound_hyperpolarization_amplitude,
                 hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
                 expect_spikes=True,
             ),
@@ -197,6 +292,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             # hidden by BlueCelluLab's pulse-centered recording plot.
             BPAPTest(
                 amplitude_factor=self.bpap_amplitude_factor,
+                amplitude=self.bpap_amplitude,
                 stim_duration=2.0,
                 holding_current=self.bpap_holding_current,
                 expected_spike_count=1,

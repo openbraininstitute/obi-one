@@ -16,7 +16,6 @@ from bluecellulab.validation import (
     StepProtocol,
 )
 
-from obi_one.scientific.validations.memodel.config import SimulatorConfig
 from obi_one.scientific.validations.memodel.names import ValidationName
 
 _DEFAULT_REBOUND_HOLDING_CURRENT_NA = 0.04140625
@@ -24,6 +23,10 @@ _DEFAULT_REBOUND_HYPERPOLARIZATION_AMPLITUDE_NA = -0.11953125
 _DEFAULT_REBOUND_HOLD_DURATION_MS = 5000.0
 _DEFAULT_REBOUND_HYPERPOLARIZATION_DURATION_MS = 500.0
 _DEFAULT_REBOUND_TOTAL_DURATION_MS = 25000.0
+# Stimulus waveform resolution for the rebound protocol. The calibrated
+# BluePyOpt rebound was reproduced at 0.1 ms; a coarser grid shifts the release
+# edge and can misresolve the burst on these stiff thalamic models.
+_REBOUND_DT_MS = 0.1
 
 
 def spiking_preset() -> ParametricValidation:
@@ -31,17 +34,92 @@ def spiking_preset() -> ParametricValidation:
     return ParametricValidation(
         validation_name=ValidationName.SPIKING,
         protocol=StepProtocol(threshold_percentage=130.0),
-        measurement=EfelMeasurement(feature_name="Spikecount"),
+        measurement=EfelMeasurement(feature_name="Spikecount", efel_settings={"Threshold": -40.0}),
         criterion=GreaterThan(threshold=0),
         figure_filename="spiking_validation.pdf",
     )
 
 
 def depolarization_block_preset() -> ParametricValidation:
-    """Depolarization block: no block should occur at 200% rheobase."""
+    """Depolarization block: no block should occur at 200% rheobase.
+
+    Steps from rest. Correct for cells that fire tonically from rest. For
+    intrinsic bursters (e.g. thalamic reticular neurons), use
+    ``thalamic_depolarization_block_preset`` instead, which pre-holds the cell
+    depolarized so the step produces tonic firing rather than a rebound burst.
+    """
     return ParametricValidation(
         validation_name=ValidationName.DEPOLARIZATION_BLOCK,
         protocol=StepProtocol(threshold_percentage=200.0),
+        measurement=EfelMeasurement(
+            feature_name="depol_block_bool",
+            efel_settings={"depol_block_min_duration": 150},
+        ),
+        criterion=IsFalse(),
+        figure_filename="depolarization_block_validation.pdf",
+    )
+
+
+def thalamic_depolarization_block_preset(
+    rheobase: float,
+    holding_current: float,
+    *,
+    step_percentage: float = 200.0,
+    settle_duration: float = 500.0,
+    step_duration: float = 1350.0,
+) -> ParametricValidation:
+    """Depolarization block for intrinsic bursters, with a depolarized pre-hold.
+
+    Holding the cell at a depolarized potential (~-65 mV) before the step keeps
+    the T-type Ca2+ channels inactivated, so the step produces regular tonic
+    firing rather than a rebound burst. Without the pre-hold, the burst rides on
+    a slow plateau that eFEL's ``depol_block_bool`` misreads as block. With it,
+    the step shows tonic firing and the plain eFEL feature judges block
+    correctly.
+
+    Protocol:
+        1. Hold at ``holding_current`` (derived by setup to reach the profile's
+           target holding voltage).
+        2. Apply a step at ``step_percentage`` of rheobase on top of the hold.
+        3. Measure depolarization block during the step.
+
+    Args:
+        rheobase: The model's rheobase in nA, used to size the step.
+        holding_current: Absolute holding current in nA that brings the cell to
+            the target holding voltage, derived by the workflow. Applied for the
+            whole protocol so the step sits on top of the hold.
+        step_percentage: Step amplitude as a percentage of rheobase (default
+            200%, matching the default depolarization-block protocol).
+        settle_duration: Duration of the pre-step hold phase in ms.
+        step_duration: Duration of the measured step phase in ms.
+
+    Returns:
+        A configured ParametricValidation for the thalamic depolarization-block
+        test.
+    """
+    step_current = rheobase * step_percentage / 100.0
+
+    # Two phases, both absolute current: hold to inactivate T-type, then the
+    # suprathreshold step on top of the hold. Measure block during the step.
+    # add_hypamp is False because holding_current already sets the hold; the
+    # models carry no separate calibrated holding to add.
+    phases: list[tuple[float, float]] = [
+        (settle_duration, holding_current),
+        (step_duration, holding_current + step_current),
+    ]
+
+    protocol = SequenceProtocol(
+        phases=phases,
+        pre_delay=0.0,
+        post_delay=250.0,
+        amplitude_mode="amplitude",
+        measurement_phase=1,
+        add_hypamp=False,
+    )
+
+    return ParametricValidation(
+        validation_name=ValidationName.DEPOLARIZATION_BLOCK,
+        protocol=protocol,
         measurement=EfelMeasurement(
             feature_name="depol_block_bool",
             efel_settings={"depol_block_min_duration": 150},
@@ -126,6 +204,7 @@ def rebound_burst_preset(
         amplitude_mode="amplitude",
         measurement_phase=2,
         add_hypamp=False,
+        dt=_REBOUND_DT_MS,
     )
 
     criterion: GreaterThan | EqualTo = (
@@ -134,7 +213,7 @@ def rebound_burst_preset(
     return ParametricValidation(
         validation_name=ValidationName.REBOUND_BURST,
         protocol=protocol,
-        measurement=EfelMeasurement(feature_name="Spikecount"),
+        measurement=EfelMeasurement(feature_name="Spikecount", efel_settings={"Threshold": -40.0}),
         criterion=criterion,
         figure_filename=(
             f"rebound_burst_hold{resolved_holding_current:g}nA_"
@@ -145,54 +224,40 @@ def rebound_burst_preset(
 
 
 def tonic_firing_preset(
-    rin: float,
+    holding_current: float,
     *,
-    holding_voltage: float = -65.0,
-    step_current: float = 0.15,
-    simulator_config: SimulatorConfig,
+    step_current: float = 0.4,
     settle_duration: float = 500.0,
-    add_hypamp: bool = True,
 ) -> ParametricValidation:
     """Tonic firing validation for thalamic-type neurons.
 
-    Holding the cell at a depolarized potential (~-65 mV) before the step keeps
+    Holding the cell at a depolarized potential (~-60 mV) before the step keeps
     the T-type Ca2+ channels inactivated, so the depolarizing step produces regular
-    tonic firing from the start rather than an onset burst.
+    tonic firing from the start rather than an onset burst. The -60 mV hold and
+    0.4 nA (400 pA) step match the source ephys protocol (Hartley et al.,
+    Cell Reports 2024, Figure 2O-R).
 
     Protocol:
-        1. Hold at holding_voltage (via DC offset current from v_init)
+        1. Hold at holding_current (derived by setup to reach the target voltage)
         2. Apply a depolarizing step on top of the holding current
         3. Measure spike count during the step
 
     Args:
-        rin: Input resistance of the cell in MOhm.
-        holding_voltage: Pre-step holding potential in mV (default -65 mV to
-            inactivate T-type channels).
+        holding_current: Absolute holding current in nA that brings the cell to
+            the target holding voltage, derived by the workflow.
         step_current: Absolute step current in nA applied on top of the holding
             current during the step phase.
-        simulator_config: Shared simulator conditions. Its ``v_init`` is used
-            for current conversion and must match global NEURON ``h.v_init``.
         settle_duration: Duration of the pre-step hold phase in ms. Longer values
             give the T-type channels more time to inactivate before the step.
-        add_hypamp: Whether to add the model's calibrated holding current on top
-            of the computed hold offset. Set False to avoid the onset burst caused
-            by the combined current at t=0.
 
     Returns:
         A configured ParametricValidation for the tonic firing test.
     """
-    # Holding current to bring the cell from the configured initial voltage to
-    # the requested holding voltage.
-    hold_offset = (
-        (holding_voltage - simulator_config.v_init) / rin
-        if holding_voltage != simulator_config.v_init
-        else 0.0
-    )
-
-    # Two phases: hold (settle_duration to equilibrate) → step (1350ms, measured)
+    # Two phases: hold (settle_duration to equilibrate) → step (1350ms, measured).
+    # add_hypamp is False because holding_current already sets the hold.
     phases: list[tuple[float, float]] = [
-        (settle_duration, hold_offset),  # Phase 0: pre-hold (inactivate T-type)
-        (1350.0, hold_offset + step_current),  # Phase 1: depolarizing step (measured)
+        (settle_duration, holding_current),  # Phase 0: pre-hold (inactivate T-type)
+        (1350.0, holding_current + step_current),  # Phase 1: depolarizing step (measured)
     ]
 
     protocol = SequenceProtocol(
@@ -201,7 +266,7 @@ def tonic_firing_preset(
         post_delay=250.0,
         amplitude_mode="amplitude",
         measurement_phase=1,  # Count spikes during the step
-        add_hypamp=add_hypamp,
+        add_hypamp=False,
     )
 
     return ParametricValidation(
@@ -210,7 +275,7 @@ def tonic_firing_preset(
         # the other, so the platform sees a single "Spiking Validation" result.
         validation_name=ValidationName.SPIKING,
         protocol=protocol,
-        measurement=EfelMeasurement(feature_name="Spikecount"),
+        measurement=EfelMeasurement(feature_name="Spikecount", efel_settings={"Threshold": -40.0}),
         criterion=GreaterThan(threshold=0),
         figure_filename="tonic_firing_validation.pdf",
     )
