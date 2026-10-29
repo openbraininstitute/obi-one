@@ -1,6 +1,12 @@
 """Shared filesystem cache for reusable artifacts."""
 
+import os
 from pathlib import Path
+from typing import Self
+
+
+class SharedCacheError(Exception):
+    """Raised when a shared cache path cannot be used."""
 
 
 class SharedCache:
@@ -11,13 +17,40 @@ class SharedCache:
     """
 
     def __init__(self, path: Path | str) -> None:
-        """Create a cache at ``path``.
-
-        Args:
-            path: Existing cache root directory.
-        """
+        """Create a cache at ``path``."""
         self._path = Path(path)
         self.mechanisms_dir.mkdir(parents=True, exist_ok=True)
+
+    @classmethod
+    def from_existing_path(cls, path: Path | str) -> Self:
+        """Return a ``SharedCache`` for an existing writable directory.
+
+        Raises:
+            SharedCacheError: If ``path`` is missing, not a directory, or not writable.
+        """
+        try:
+            resolved = Path(path).resolve()
+        except OSError as error:
+            msg = f"Shared cache path could not be resolved: {path}"
+            raise SharedCacheError(msg) from error
+
+        if not resolved.exists():
+            msg = f"Shared cache path does not exist: {resolved}"
+            raise SharedCacheError(msg)
+
+        if not resolved.is_dir():
+            msg = f"Shared cache path is not a directory: {resolved}"
+            raise SharedCacheError(msg)
+
+        if not os.access(resolved, os.W_OK):
+            msg = f"Shared cache path is not writable: {resolved}"
+            raise SharedCacheError(msg)
+
+        try:
+            return cls(resolved)
+        except OSError as error:
+            msg = f"Shared cache could not be initialized at {resolved}"
+            raise SharedCacheError(msg) from error
 
     @property
     def mechanisms_dir(self) -> Path:

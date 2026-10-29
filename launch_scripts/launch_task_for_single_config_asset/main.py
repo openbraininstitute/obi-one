@@ -14,7 +14,7 @@ from obi_auth.typedef import AuthMode, DeploymentEnvironment
 from obi_one.core.run_tasks import run_task_type
 from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
 from obi_one.types import TaskType
-from obi_one.utils.shared_cache import SharedCache
+from obi_one.utils.shared_cache import SharedCache, SharedCacheError
 
 L = logging.getLogger(__name__)
 
@@ -116,8 +116,12 @@ def main() -> int:
         else LocalAssetStore(prefix=Path(local_store_prefix)),
     )
     shared_cache = None
-    if shared_cache_path is not None and Path(shared_cache_path).is_dir():
-        shared_cache = SharedCache(shared_cache_path)
+    if shared_cache_path is not None:
+        try:
+            shared_cache = SharedCache.from_existing_path(shared_cache_path)
+        except SharedCacheError as error:
+            L.warning("Shared cache unavailable at %s: %s", shared_cache_path, error)
+            shared_cache = None
 
     try:
         # TODO: Remove once legacy tasks are moved to generic configs/activities

@@ -83,6 +83,37 @@ def test_main_success_calls_run_task_type_with_task_type_enum(
     assert shared_cache.mechanisms_dir == shared_cache_path / "mechanisms"
 
 
+def test_main_continues_without_shared_cache_when_unavailable(
+    launch_main, argv, monkeypatch, launch_env
+):
+    _store, shared_cache_path = launch_env
+    monkeypatch.setattr(sys, "argv", argv)
+    monkeypatch.setenv("SHARED_CACHE", str(shared_cache_path / "missing"))
+    with (
+        patch.object(launch_main, "Client", return_value=MagicMock()),
+        patch.object(launch_main, "update_activity_status"),
+        patch.object(launch_main, "finalize_activity"),
+        patch.object(launch_main, "run_task_type") as run_task_type,
+    ):
+        assert launch_main.main() == 0
+
+    assert run_task_type.call_args.kwargs["shared_cache"] is None
+
+
+def test_main_continues_without_shared_cache_when_unset(launch_main, argv, monkeypatch):
+    monkeypatch.setattr(sys, "argv", argv)
+    monkeypatch.delenv("SHARED_CACHE", raising=False)
+    with (
+        patch.object(launch_main, "Client", return_value=MagicMock()),
+        patch.object(launch_main, "update_activity_status"),
+        patch.object(launch_main, "finalize_activity"),
+        patch.object(launch_main, "run_task_type") as run_task_type,
+    ):
+        assert launch_main.main() == 0
+
+    assert run_task_type.call_args.kwargs["shared_cache"] is None
+
+
 def test_main_failure_finalizes_activity_with_error(launch_main, argv, monkeypatch):
     monkeypatch.setattr(sys, "argv", argv)
     with (
