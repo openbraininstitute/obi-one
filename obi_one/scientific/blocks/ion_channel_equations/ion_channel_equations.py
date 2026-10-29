@@ -17,15 +17,15 @@ class EquationKey(StrEnum):
 
 
 EQUATION_TITLES: dict[str, str] = {
-    EquationKey.SIG_FIT_MINF: "Sigmoid equation for m∞",
-    EquationKey.SIG_FIT_MTAU: "Sigmoid equation combination for τₘ",
-    EquationKey.THERMO_FIT_MTAU: "Double exponential denominator equation for τₘ",
+    EquationKey.SIG_FIT_MINF: r"Sigmoid equation for $m_\infty$",
+    EquationKey.SIG_FIT_MTAU: r"Sigmoid equation combination for $\tau_m$",
+    EquationKey.THERMO_FIT_MTAU: r"Double exponential denominator equation for $\tau_m$",
     EquationKey.THERMO_FIT_MTAU_V2: (
-        "Double exponential denominator equation with slope constraint for τₘ"
+        r"Double exponential denominator equation with slope constraint for $\tau_m$"
     ),
-    EquationKey.BELL_FIT_MTAU: "Bell equation for τₘ",
-    EquationKey.SIG_FIT_HINF: "Sigmoid equation for h∞",
-    EquationKey.SIG_FIT_HTAU: "Sigmoid equation for τₕ",
+    EquationKey.BELL_FIT_MTAU: r"Bell equation for $\tau_m$",
+    EquationKey.SIG_FIT_HINF: r"Sigmoid equation for $h_\infty$",
+    EquationKey.SIG_FIT_HTAU: r"Sigmoid equation for $\tau_h$",
 }
 
 EQUATION_LATEX: dict[str, str] = {

@@ -50,7 +50,7 @@ The frontend shows titles exactly as written, with no case transform. This cover
 
 - Write titles in sentence case: capitalize the first letter and write the rest in lowercase. Proper nouns and named models keep their capitals (Hodgkin-Huxley, Tsodyks-Markram, Ornstein-Uhlenbeck, Poisson, Neuropixels, Utah), and so do acronyms and symbols, written as the field uses them (ID, RRP, EM, ACh, Mg2+, U_SE, ME-model, NEURON). A leading variable keeps its case ("m exponent in channel equation"). Parentheses follow the same rule: "Soma voltage recording (full experiment)", "Neuron set (target)".
 - Give every field shown in the UI an explicit `title=`. Pydantic's default title is the field name in Title Case ("Random Seed").
-- A title may contain inline math between single dollars, rendered with KaTeX, e.g. `title=r"$m_\infty$ equation"`. Group names are shown in capitals, so they must not contain math.
+- A title may contain inline math between single dollars, rendered with KaTeX, e.g. `title=r"$m_\infty$ equation"`. This includes the option titles in `title_by_key`, e.g. `r"Sigmoid equation for $\tau_m$"`. Use math rather than Unicode look-alikes: Unicode has no subscript ∞. Group names are shown in capitals, so they must not contain math.
 
 `tests/ui_schema/test_titles.py` checks the mechanical part of these rules: no title written in capitals, no field titled with pydantic's default, and closed `$` pairs.
 

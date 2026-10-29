@@ -2,7 +2,8 @@
 
 See "Titles" in `docs/gui-definition-spec/gui-definition.md`. The walk visits what the frontend
 labels: group names, root elements, the blocks a block_union or block_dictionary offers, and every
-field that declares a `ui_element`. Fields without one are internals the frontend never labels.
+field that declares a `ui_element`, with its `title_by_key` option titles. Fields without a
+`ui_element` are internals the frontend never labels.
 """
 
 import re
@@ -17,6 +18,7 @@ from .validators.shared import openapi_schema, resolve_ref
 VARIANT_ROOTS = {UIElement.BLOCK_UNION, UIElement.BLOCK_DICTIONARY}
 PARENTHESES = re.compile(r"\([^)]*\)")
 MAX_ACRONYM_LENGTH = 4
+OPTION = "<option>"  # key reported for a `title_by_key` option title
 
 
 def forms() -> list[tuple[str, dict]]:
@@ -69,6 +71,8 @@ def labelled(node: dict, key: str | None, where: str, seen: frozenset) -> Iterat
     ui_element = node.get(SchemaKey.UI_ELEMENT)
     if ui_element is not None:
         yield where, key, node.get("title")
+        for option, title in node.get(SchemaKey.TITLE_BY_KEY, {}).items():
+            yield f"{where}[{option}]", OPTION, title
 
     if ui_element in VARIANT_ROOTS:
         for variant in variants(node):
@@ -108,8 +112,11 @@ FORM_IDS = [name for name, _ in FORMS]
 
 @pytest.mark.parametrize(("name", "form"), FORMS, ids=FORM_IDS)
 def test_titles_are_not_all_caps(name, form):
+    # Option titles often name a tool ("NEURON"), so only fields, blocks and groups are checked.
     shouting = [
-        (where, title) for where, _, title in form_titles(form) if title and is_all_caps(title)
+        (where, title)
+        for where, key, title in form_titles(form)
+        if key != OPTION and title and is_all_caps(title)
     ]
     shouting += [
         ("group", group) for group in form.get(SchemaKey.GROUP_ORDER, []) if is_all_caps(group)
