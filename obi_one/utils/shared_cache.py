@@ -16,9 +16,9 @@ class SharedCache:
     accessors are public.
     """
 
-    def __init__(self, path: Path | str) -> None:
+    def __init__(self, path: Path) -> None:
         """Create a cache at ``path``."""
-        self._path = Path(path)
+        self._path = path
         self.mechanisms_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
