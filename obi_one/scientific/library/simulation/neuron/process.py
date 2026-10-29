@@ -144,6 +144,7 @@ def compile_mechanisms(
     output_dir: Path,
     mechanisms_dirs: list[Path],
     simulation_backend: SimulationBackend,
+    cache_dir: Path | None = None,
 ) -> MechanismBuild:
 
     match simulation_backend:
@@ -156,6 +157,7 @@ def compile_mechanisms(
             return _compile_neurodamus_mechanisms(
                 output_dir=output_dir,
                 mechanisms_dirs=mechanisms_dirs,
+                cache_dir=cache_dir,
             )
         case _:
             msg = f"Unsupported simulation backend {simulation_backend}."
@@ -190,7 +192,10 @@ def _compile_neuron_mechanisms(
 
 
 def _compile_neurodamus_mechanisms(
-    *, output_dir: Path, mechanisms_dirs: list[Path]
+    *,
+    output_dir: Path,
+    mechanisms_dirs: list[Path],
+    cache_dir: Path | None = None,
 ) -> NeurodamusMechanismBuild:
     command = [
         "neurodamus-compile-mods",
@@ -203,6 +208,8 @@ def _compile_neurodamus_mechanisms(
         "--output-type",
         "json",
     ]
+    if cache_dir is not None:
+        command.extend(["--cache-dir", str(cache_dir.absolute())])
 
     compilation_output = run_and_log(
         command, cwd=output_dir, env={"PATH": f"/opt/obi/:{os.environ['PATH']}"}

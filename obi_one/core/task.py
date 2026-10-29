@@ -3,14 +3,20 @@ import logging
 
 from entitysdk import Client
 from entitysdk.models import TaskActivity
+from pydantic import ConfigDict, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.shared_cache import SharedCache
 
 L = logging.getLogger(__name__)
 
 
 class Task(OBIBaseModel, abc.ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    shared_cache: SharedCache | None = Field(default=None, exclude=True)
+
     @staticmethod
     def _get_execution_activity(
         db_client: Client | None = None,

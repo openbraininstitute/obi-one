@@ -53,12 +53,19 @@ def argv():
 def launch_env(tmp_path, monkeypatch):
     store = tmp_path / "local_store"
     store.mkdir()
+    shared_cache_path = store / "scratch" / "shared-cache"
+    shared_cache_path.mkdir(parents=True)
     monkeypatch.setenv("PERSISTENT_TOKEN_ID", "local-test-token")
     monkeypatch.setenv("DEPLOYMENT", "staging")
     monkeypatch.setenv("LOCAL_STORE_PREFIX", str(store))
+    monkeypatch.setenv("SHARED_CACHE", str(shared_cache_path))
+    return store, shared_cache_path
 
 
-def test_main_success_calls_run_task_type_with_task_type_enum(launch_main, argv, monkeypatch):
+def test_main_success_calls_run_task_type_with_task_type_enum(
+    launch_main, argv, monkeypatch, launch_env
+):
+    _store, shared_cache_path = launch_env
     monkeypatch.setattr(sys, "argv", argv)
     with (
         patch.object(launch_main, "Client", return_value=MagicMock()),
@@ -71,6 +78,9 @@ def test_main_success_calls_run_task_type_with_task_type_enum(launch_main, argv,
     run_task_type.assert_called_once()
     assert run_task_type.call_args.kwargs["task_type"] is TaskType.circuit_extraction
     assert run_task_type.call_args.kwargs["scan_output_root"] == "/out"
+    shared_cache = run_task_type.call_args.kwargs["shared_cache"]
+    assert shared_cache is not None
+    assert shared_cache.mechanisms_dir == shared_cache_path / "mechanisms"
 
 
 def test_main_failure_finalizes_activity_with_error(launch_main, argv, monkeypatch):
