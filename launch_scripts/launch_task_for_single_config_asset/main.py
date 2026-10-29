@@ -121,7 +121,6 @@ def main() -> int:
             shared_cache = SharedCache.from_existing_path(shared_cache_path)
         except SharedCacheError as error:
             L.warning("Shared cache unavailable at %s: %s", shared_cache_path, error)
-            shared_cache = None
 
     try:
         # TODO: Remove once legacy tasks are moved to generic configs/activities
