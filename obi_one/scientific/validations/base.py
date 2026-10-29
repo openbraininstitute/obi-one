@@ -19,6 +19,16 @@ class InvalidValidationContextError(ValueError):
     """Raised when a workflow context lacks required test inputs."""
 
 
+class ValidationRegistrationError(RuntimeError):
+    """Raised when one or more ValidationResults fail to register.
+
+    ``register_outcomes`` logs each per-result failure and continues so that a
+    single bad result does not discard the rest of the batch. This error is
+    raised afterwards so the task surfaces the failure instead of completing as
+    if every result had been registered.
+    """
+
+
 @dataclass
 class WorkflowContext:
     """Context produced by workflow setup, consumed by test execution.
@@ -193,16 +203,39 @@ class ValidationTask(Task):
 
         generated_ids = [r.entity_id for r in registered if r.entity_id]
 
-        logger.info(
-            "Validation complete. Registered %d ValidationResult(s) for entity %s",
-            len(generated_ids),
-            self.config.entity_id,
-        )
+        failed = [r for r in registered if r.entity_id is None]
 
         self._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
             generated=generated_ids,
+        )
+
+        if failed:
+            failed_names = ", ".join(sorted(r.test_result.name for r in failed))
+            msg = (
+                f"{len(failed)} of {len(registered)} ValidationResult(s) failed to "
+                f"register for entity {self.config.entity_id}: {failed_names}."
+            )
+            raise ValidationRegistrationError(msg)
+
+        skipped = [r for r in registered if r.skipped]
+        if skipped:
+            skipped_names = ", ".join(sorted(r.test_result.name for r in skipped))
+            logger.warning(
+                "%d of %d ValidationResult(s) were skipped for entity %s because a "
+                "result with the same name already exists: %s. Their new values were "
+                "NOT stored (pass overwrite_existing=True to replace).",
+                len(skipped),
+                len(registered),
+                self.config.entity_id,
+                skipped_names,
+            )
+
+        logger.info(
+            "Validation complete. Registered %d ValidationResult(s) for entity %s",
+            len(generated_ids),
+            self.config.entity_id,
         )
 
         return generated_ids

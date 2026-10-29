@@ -64,7 +64,17 @@ def _find_existing(
     name: str,
     validated_entity_id: UUID,
 ) -> ValidationResult | None:
-    """Find the single result matching a validation name and target entity."""
+    """Find the single result matching a validation name and target entity.
+
+    Matching is by validation name and entity only, not by protocol. This is
+    intentional: a validation name (e.g. "Spiking Validation") is one logical
+    verdict per model. A cell is validated under the single profile appropriate
+    to its e-type -- for example the thalamic profile holds at -65 mV before the
+    step to inactivate T-type Ca, which a standard profile does not -- so there
+    is exactly one correct protocol per cell and therefore one result per name.
+    Running a second profile that emits the same name on the same entity is
+    treated as a re-registration of that one verdict, not as a distinct result.
+    """
     iterator = client.search_entity(
         entity_type=ValidationResult,
         query={"name": name, "validated_entity_id": validated_entity_id},
@@ -239,8 +249,11 @@ def register_outcome(
     if existing is not None:
         existing_id = _result_id(existing)
         if not should_overwrite:
-            logger.info(
-                "ValidationResult '%s' already exists for entity %s. Skipping.",
+            logger.warning(
+                "ValidationResult '%s' already exists for entity %s; skipping and "
+                "keeping the existing result. The new result (possibly from a "
+                "different profile or run) is NOT stored. Pass overwrite_existing=True "
+                "to replace it.",
                 test_result.name,
                 validated_entity_id,
             )
