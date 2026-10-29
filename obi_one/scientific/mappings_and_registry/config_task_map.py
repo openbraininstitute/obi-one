@@ -119,6 +119,10 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.task import SynapseParameterizationTask
+from obi_one.scientific.validations.memodel.task import (
+    MEModelValidationSingleConfig,
+    MEModelValidationTask,
+)
 from obi_one.types import TaskType
 
 # Task registry: TaskType -> TaskRegistration.
@@ -320,6 +324,11 @@ TASK_MAP: dict[TaskType, TaskRegistration] = {
     TaskType.circuit_simulation_neurodamus_machine: TaskRegistration(
         task_cls=CircuitSimulationExecutionTask,
         single_config_cls=CircuitSimulationExecutionSingleConfig,
+        asset_label=None,
+    ),
+    TaskType.memodel_validation: TaskRegistration(
+        task_cls=MEModelValidationTask,
+        single_config_cls=MEModelValidationSingleConfig,
         asset_label=None,
     ),
 }

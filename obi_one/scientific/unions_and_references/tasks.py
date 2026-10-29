@@ -20,6 +20,7 @@ from obi_one.scientific.tasks.morphology_decontainerization import MorphologyDec
 from obi_one.scientific.tasks.morphology_locations import MorphologyLocationsTask
 from obi_one.scientific.tasks.morphology_metrics import MorphologyMetricsTask
 from obi_one.scientific.tasks.skeletonization import SkeletonizationTask
+from obi_one.scientific.validations.memodel.task import MEModelValidationTask
 
 TasksUnion = Annotated[
     GenerateSimulationTask
@@ -35,6 +36,7 @@ TasksUnion = Annotated[
     | MorphologyDecontainerizationTask
     | MorphologyMetricsTask
     | CreateExtracellularRecordingArrayScanConfig
-    | MorphologyLocationsTask,
+    | MorphologyLocationsTask
+    | MEModelValidationTask,
     Discriminator("type"),
 ]
