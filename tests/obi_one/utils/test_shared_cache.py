@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -40,12 +41,14 @@ def test_from_existing_path_raises_when_not_a_directory(cache_root):
 
 
 def test_from_existing_path_raises_when_not_writable(cache_root):
-    cache_root.chmod(0o555)
-    try:
-        with pytest.raises(SharedCacheError, match="not writable"):
-            SharedCache.from_existing_path(cache_root)
-    finally:
-        cache_root.chmod(0o755)
+    # Mock: chmod is ineffective for root (Docker CI).
+    with (
+        patch("obi_one.utils.shared_cache.os.access", return_value=False) as access,
+        pytest.raises(SharedCacheError, match="not writable"),
+    ):
+        SharedCache.from_existing_path(cache_root)
+
+    access.assert_called_once_with(cache_root.resolve(), os.W_OK)
 
 
 def test_from_existing_path_raises_when_resolve_fails(cache_root):
