@@ -44,7 +44,7 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
 
     class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model",
+            title="ME-model",
             description="ME Model to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
@@ -77,7 +77,7 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
 
     neuronal_manipulations: dict[str, NeuronalManipulationUnion] = Field(
         default_factory=dict,
-        title="Neuronal Manipulations",
+        title="Neuronal manipulations",
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,

@@ -41,7 +41,7 @@ class DurationVoltageCombination(ComplexVariableHolder):
 class Block:
 
     duration_voltage_combinations: list[DurationVoltageCombination] = Field(
-        title="Voltage Levels and Durations",
+        title="Voltage levels and durations",
         description="A list of duration and voltage combinations for the SEClamp stimulus. "
         "The first duration starts at time 0, "
         "and each subsequent duration starts when the previous one ends.",

@@ -269,7 +269,7 @@ def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_vir
     assert "about 1,100,000,000 synapses" in exc_info.value.message
     assert "more than the 200 GB of storage a task can have" in exc_info.value.message
     # Leaving out virtual neurons is only suggested when they were included.
-    assert ("turn off Include Virtual Populations" in exc_info.value.message) == do_virtual
+    assert ("turn off Include virtual populations" in exc_info.value.message) == do_virtual
 
 
 def test_estimate_task_resources_memory_limit(db_client):

@@ -16,6 +16,7 @@ _WindowStartTime = Annotated[
     NonNegativeFloat | list[NonNegativeFloat],
     Field(
         default=0.0,
+        title="Start time",
         description="Recording start time in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -28,6 +29,7 @@ _WindowEndTime = Annotated[
     NonNegativeFloat | list[NonNegativeFloat],
     Field(
         default=100.0,
+        title="End time",
         description="Recording end time in milliseconds (ms).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -85,7 +87,7 @@ def _check_time_window(
 class SomaVoltageRecording(Recording):
     """Records the soma voltage of a neuron set for the full length of the experiment."""
 
-    title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
+    title: ClassVar[str] = "Soma voltage recording (full experiment)"
 
     def _generate_config(
         self,
@@ -97,7 +99,7 @@ class SomaVoltageRecording(Recording):
 class TimeWindowSomaVoltageRecording(Recording):
     """Records the soma voltage of a neuron set over a specified time window."""
 
-    title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
+    title: ClassVar[str] = "Soma voltage recording (time window)"
 
     start_time: _WindowStartTime
     end_time: _WindowEndTime
@@ -125,7 +127,7 @@ class TimeWindowSomaVoltageRecording(Recording):
 class SimulationDtSomaVoltageRecording(SimulationDtRecording):
     """Records the soma voltage of a neuron set for the full length of the experiment."""
 
-    title: ClassVar[str] = "Soma Voltage Recording (Full Experiment)"
+    title: ClassVar[str] = "Soma voltage recording (full experiment)"
 
     def _generate_config(
         self,
@@ -139,7 +141,7 @@ class SimulationDtSomaVoltageRecording(SimulationDtRecording):
 class SimulationDtTimeWindowSomaVoltageRecording(SimulationDtRecording):
     """Records the soma voltage of a neuron set over a specified time window."""
 
-    title: ClassVar[str] = "Soma Voltage Recording (Time Window)"
+    title: ClassVar[str] = "Soma voltage recording (time window)"
 
     start_time: _WindowStartTime
     end_time: _WindowEndTime

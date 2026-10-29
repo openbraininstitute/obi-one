@@ -18,7 +18,7 @@ NodeSetType = CircuitNode | list[CircuitNode] # list[] not required
 class Block:
 
     node_set: NodeSetType = Field(
-        title="Node Set",
+        title="Node set",
         description="Name of the node set to use.",
         min_length=1,
         json_schema_extra={

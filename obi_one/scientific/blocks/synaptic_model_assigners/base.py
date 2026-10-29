@@ -27,7 +27,7 @@ class SynapseModelAssigner(Block):
 
     edge_population_name: str = Field(
         min_length=1,
-        title="Edge Population",
+        title="Edge population",
         description="Edge population of the SONATA circuit that is to be parameterized.",
         json_schema_extra={
             # Chemical rather than every edge population: these assigners carry
@@ -41,7 +41,7 @@ class SynapseModelAssigner(Block):
 
     synaptic_model: SynapticModelReference | None = Field(
         default=None,
-        title="Synaptic Model",
+        title="Synaptic model",
         description="Synaptic model to assign to the synapses between the source and target"
         " neuron sets.",
         json_schema_extra={

@@ -288,7 +288,7 @@ class HodgkinHuxleyIonChannelModel(Block):
     )
 
     minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
-        title="m∞ equation",
+        title=r"$m_\infty$ equation",
         description=(
             r"Steady state activation parameter $m_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
@@ -315,7 +315,7 @@ class HodgkinHuxleyIonChannelModel(Block):
     )
 
     hinf_eq: Literal[EquationKey.SIG_FIT_HINF] = Field(
-        title="h∞ equation",
+        title=r"$h_\infty$ equation",
         description=(
             r"Steady state inactivation parameter $h_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
@@ -390,7 +390,7 @@ class IonChannelFittingScanConfig(InfoScanConfig):
     )
 
     model_type: IonChannelModelUnion = Field(
-        title="Ion Channel Model",
+        title="Ion channel model",
         description=(
             "The Hodgkin-Huxley channel model to fit: an equation per gating variable, and "
             "the exponents p and q of m and h in the channel equation g = gbar * m^p * h^q."

@@ -875,7 +875,7 @@ class OptimizationInitialize(Block):
     """E-model name and e-type for the optimisation stage's Setup > Initialization card."""
 
     emodel: str = Field(
-        title="E-Model name",
+        title="E-model name",
         description="Name for the e-model being built (e.g. ``L5PC``).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )

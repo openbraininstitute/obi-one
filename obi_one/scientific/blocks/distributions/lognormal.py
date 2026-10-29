@@ -10,7 +10,7 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 class LogNormalDistribution(Distribution):
     """Samples positive, right-skewed values from a log-normal distribution."""
 
-    title: ClassVar[str] = "Log-Normal"
+    title: ClassVar[str] = "Log-normal"
 
     mean: float | list[float] = Field(
         default=0.0,

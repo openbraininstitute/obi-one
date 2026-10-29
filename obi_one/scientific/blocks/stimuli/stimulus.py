@@ -43,7 +43,7 @@ from obi_one.scientific.unions_and_references.timestamps import (
 # Eventually we can make the GUI always show the Block references at the top
 _TIMESTAMPS_OFFSET_FIELD = Field(
     default=0.0,
-    title="Timestamp Offset",
+    title="Timestamp offset",
     description="The offset of the stimulus relative to each timestamp in milliseconds (ms).",
     json_schema_extra={
         SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -209,7 +209,7 @@ class ContinuousStimulus(
 class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a fixed absolute amplitude."""
 
-    title: ClassVar[str] = "Constant Current Clamp (Absolute)"
+    title: ClassVar[str] = "Constant current clamp (absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
@@ -240,14 +240,14 @@ class ConstantCurrentClampSomaticStimulus(ContinuousStimulus):
 class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
     """A constant current injection at a percentage of each cell's threshold current."""
 
-    title: ClassVar[str] = "Constant Current Clamp (Relative)"
+    title: ClassVar[str] = "Constant current clamp (relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
 
     percentage_of_threshold_current: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=10.0,
-        title="Percentage of Threshold Current",
+        title="Percentage of threshold current",
         description="The percentage of a cell's threshold current to inject when the stimulus \
                     activates.",
         json_schema_extra={
@@ -272,14 +272,14 @@ class RelativeConstantCurrentClampSomaticStimulus(ContinuousStimulus):
 class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
     """A current injection which changes linearly in absolute ampltude over time."""
 
-    title: ClassVar[str] = "Linear Current Clamp (Absolute)"
+    title: ClassVar[str] = "Linear current clamp (absolute)"
 
     _module: str = "linear"
     _input_type: str = "current_clamp"
 
     amplitude_start: float | list[float] = Field(
         default=0.1,
-        title="Start Amplitude",
+        title="Start amplitude",
         description="The amount of current initially injected when the stimulus activates. "
         "Given in nanoamps.",
         json_schema_extra={
@@ -289,7 +289,7 @@ class LinearCurrentClampSomaticStimulus(ContinuousStimulus):
     )
     amplitude_end: float | list[float] = Field(
         default=0.2,
-        title="End Amplitude",
+        title="End amplitude",
         description="If given, current is interpolated such that current reaches this value when "
         "the stimulus concludes. Otherwise, current stays at 'Start Amplitude'. Given in nanoamps.",
         json_schema_extra={
@@ -317,7 +317,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
     over time.
     """
 
-    title: ClassVar[str] = "Linear Current Clamp (Relative)"
+    title: ClassVar[str] = "Linear current clamp (relative)"
 
     _module: str = "relative_linear"
     _input_type: str = "current_clamp"
@@ -326,7 +326,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         default=10.0,
         description="The percentage of a cell's threshold current to inject "
         "when the stimulus activates.",
-        title="Percentage of Threshold Current (Start)",
+        title="Percentage of threshold current (start)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.PERCENT,
@@ -336,7 +336,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
         default=100.0,
         description="If given, the percentage of a cell's threshold current is interpolated such "
         "that the percentage reaches this value when the stimulus concludes.",
-        title="Percentage of Threshold Current (End)",
+        title="Percentage of threshold current (end)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.PERCENT,
@@ -360,7 +360,7 @@ class RelativeLinearCurrentClampSomaticStimulus(ContinuousStimulus):
 class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     """Normally distributed current injection with a mean absolute amplitude."""
 
-    title: ClassVar[str] = "Normally Distributed Current Clamp (Absolute)"
+    title: ClassVar[str] = "Normally distributed current clamp (absolute)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -368,7 +368,7 @@ class NormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus):
     mean_amplitude: float | list[float] = Field(
         default=0.01,
         description="The mean value of current to inject. Given in nanoamps (nA).",
-        title="Mean Amplitude",
+        title="Mean amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.NANOAMPS,
@@ -404,7 +404,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
     current.
     """
 
-    title: ClassVar[str] = "Normally Distributed Current Clamp (Relative)"
+    title: ClassVar[str] = "Normally distributed current clamp (relative)"
 
     _module: str = "noise"
     _input_type: str = "current_clamp"
@@ -413,7 +413,7 @@ class RelativeNormallyDistributedCurrentClampSomaticStimulus(ContinuousStimulus)
         default=0.01,
         description="The mean value of current to inject as a percentage of a cell's \
                     threshold current.",
-        title="Percentage of Threshold Current (Mean)",
+        title="Percentage of threshold current (mean)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.PERCENT,
@@ -449,7 +449,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     absolute amplitude and temporal width.
     """
 
-    title: ClassVar[str] = "Multi Pulse Current Clamp (Absolute)"
+    title: ClassVar[str] = "Multi pulse current clamp (absolute)"
 
     _module: str = "pulse"
     _input_type: str = "current_clamp"
@@ -470,7 +470,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     ) = Field(
         default=DEFAULT_PULSE_STIMULUS_LENGTH_MILLISECONDS,
         description="The length of time each pulse lasts. Given in milliseconds (ms).",
-        title="Pulse Width",
+        title="Pulse width",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -482,7 +482,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
     ) = Field(
         default=1.0,
         description="The frequency of pulse trains. Given in Hertz (Hz).",
-        title="Pulse Frequency",
+        title="Pulse frequency",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.HERTZ,
@@ -511,7 +511,7 @@ class MultiPulseCurrentClampSomaticStimulus(ContinuousStimulus):
 class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
-    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
+    title: ClassVar[str] = "Sinusoidal current clamp (absolute)"
 
     _module: str = "sinusoidal"
     _input_type: str = "current_clamp"
@@ -519,7 +519,7 @@ class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
     maximum_amplitude: float | list[float] = Field(
         default=0.1,
         description="The maximum (and starting) amplitude of the sinusoid. Given in nanoamps (nA).",
-        title="Maximum Amplitude",
+        title="Maximum amplitude",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.NANOAMPS,
@@ -580,7 +580,7 @@ class SimulationDtSinusoidalCurrentClampSomaticStimulus(ContinuousStimulus):
 class SinusoidalCurrentClampSomaticStimulus(SimulationDtSinusoidalCurrentClampSomaticStimulus):
     """A sinusoidal current injection with a fixed frequency and maximum absolute amplitude."""
 
-    title: ClassVar[str] = "Sinusoidal Current Clamp (Absolute)"
+    title: ClassVar[str] = "Sinusoidal current clamp (absolute)"
 
     dt: (
         Annotated[NonNegativeFloat, Field(ge=MIN_TIMESTEP_MILLISECONDS)]
@@ -604,7 +604,7 @@ class SinusoidalCurrentClampSomaticStimulus(SimulationDtSinusoidalCurrentClampSo
 class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
     """A subthreshold current injection at a percentage below each cell's threshold current."""
 
-    title: ClassVar[str] = "Subthreshold Current Clamp (Relative)"
+    title: ClassVar[str] = "Subthreshold current clamp (relative)"
 
     _module: str = "subthreshold"
     _input_type: str = "current_clamp"
@@ -615,7 +615,7 @@ class SubthresholdCurrentClampSomaticStimulus(ContinuousStimulus):
                         E.g. 20 will apply 80\\% of the threshold current. Using a negative \
                             value will give more than 100. E.g. -20 will inject 120\\% of the \
                                 threshold current.",
-        title="Percentage Below Threshold",
+        title="Percentage below threshold",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.PERCENT,
@@ -641,7 +641,7 @@ class HyperpolarizingCurrentClampSomaticStimulus(ContinuousStimulus):
     The holding current is pre-defined for each cell.
     """
 
-    title: ClassVar[str] = "Hyperpolarizing Current Clamp"
+    title: ClassVar[str] = "Hyperpolarizing current clamp"
 
     _module: str = "hyperpolarizing"
     _input_type: str = "current_clamp"
@@ -664,14 +664,14 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     Warning: Maximum one SEClamp stimulus per location.
     """
 
-    title: ClassVar[str] = "Single Electrode Voltage Clamp 3 Levels Somatic Stimulus"
+    title: ClassVar[str] = "Single electrode voltage clamp 3 levels somatic stimulus"
 
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
     level1_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
-        title="Level 1 Duration",
+        title="Level 1 duration",
         description="Duration 1 of SEClamp stimulus (in ms)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -681,7 +681,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     level1_voltage: float | list[float] = Field(
         default=-80.0,
-        title="Level 1 Voltage",
+        title="Level 1 voltage",
         description="Amplitude 1 of SEClamp stimulus (in mV)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -691,7 +691,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     level2_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 2,
-        title="Level 2 Duration",
+        title="Level 2 duration",
         description="Duration 2 of SEClamp stimulus (in ms)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -701,7 +701,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     level2_voltage: float | list[float] = Field(
         default=0.0,
-        title="Level 2 Voltage",
+        title="Level 2 voltage",
         description="Amplitude 2 of SEClamp stimulus (in mV)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -711,7 +711,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     level3_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=DEFAULT_SIMULATION_LENGTH_MILLISECONDS / 4,
-        title="Level 3 Duration",
+        title="Level 3 duration",
         description="Duration 3 of SEClamp stimulus (in ms)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -721,7 +721,7 @@ class SEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
 
     level3_voltage: float | list[float] = Field(
         default=-80.0,
-        title="Level 3 Voltage",
+        title="Level 3 voltage",
         description="Amplitude 3 of  SEClamp stimulus (in mV)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -752,14 +752,14 @@ class MultiLevelSEClampSomaticStimulus(ContinuousStimulusWithoutTimestamps):
     Warning: Maximum one SEClamp stimulus per location.
     """
 
-    title: ClassVar[str] = "Single Electrode Voltage Clamp Multiple Levels Somatic Stimulus"
+    title: ClassVar[str] = "Single electrode voltage clamp multiple levels somatic stimulus"
 
     _module: str = "seclamp"
     _input_type: str = "voltage_clamp"
 
     duration_voltage: list[DurationVoltageCombination] = Field(
         min_length=1,
-        title="Voltage Levels and Durations",
+        title="Voltage levels and durations",
         description="A list of duration and voltage combinations for the SEClamp stimulus. "
         "The first duration starts at time 0, "
         "and each subsequent duration starts when the previous one ends.",

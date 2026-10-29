@@ -46,7 +46,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
 
     origin_x: float | list[float] = Field(
         default=0.0,
-        title="Origin X",
+        title="X origin",
         description="X coordinate of the origin point for the electrode array.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -54,7 +54,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
     )
     origin_y: float | list[float] = Field(
         default=0.0,
-        title="Origin Y",
+        title="Y origin",
         description="Y coordinate of the origin point for the electrode array.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -62,7 +62,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
     )
     origin_z: float | list[float] = Field(
         default=0.0,
-        title="Origin Z",
+        title="Z origin",
         description="Z coordinate of the origin point for the electrode array.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -73,7 +73,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         Annotated[float, Field(ge=0.0, lt=360.0)] | list[Annotated[float, Field(ge=0.0, lt=360.0)]]
     ) = Field(
         default=0.0,
-        title="Rotation X",
+        title="X rotation",
         description="Rotation of the array about the world X axis, in degrees.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -84,7 +84,7 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
         Annotated[float, Field(ge=0.0, lt=360.0)] | list[Annotated[float, Field(ge=0.0, lt=360.0)]]
     ) = Field(
         default=0.0,
-        title="Rotation Z",
+        title="Z rotation",
         description="Rotation of the array about the world Z axis, in degrees.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -135,12 +135,12 @@ class PatternedExtracellularLocations(ExtracellularLocations, ABC):
 class LinearExtracellularLocations(PatternedExtracellularLocations):
     """Extracellular locations arranged in a linear pattern."""
 
-    title: ClassVar[str] = "Linear Probe"
+    title: ClassVar[str] = "Linear probe"
     description: ClassVar[str] = "A single line of evenly spaced electrodes along the probe axis."
 
     n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=16,
-        title="Number of Electrodes",
+        title="Number of electrodes",
         description="Number of electrodes in the linear array.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -175,7 +175,7 @@ class TwoDPatternedExtracellularLocations(PatternedExtracellularLocations, ABC):
         Annotated[float, Field(ge=0.0, lt=360.0)] | list[Annotated[float, Field(ge=0.0, lt=360.0)]]
     ) = Field(
         default=0.0,
-        title="Rotation Y",
+        title="Y rotation",
         description="Roll of the array about its long (local +Y) axis, in degrees.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -209,7 +209,7 @@ class Neuropixels1ExtracellularLocations(TwoDPatternedExtracellularLocations):
 
     n_electrodes: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=384,
-        title="Number of Electrodes",
+        title="Number of electrodes",
         description="Number of electrodes in the Neuropixels 1.0 probe.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -253,14 +253,14 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     orient it.
     """
 
-    title: ClassVar[str] = "Rectangular Grid"
+    title: ClassVar[str] = "Rectangular grid"
     description: ClassVar[str] = (
         "A configurable rectangular grid of electrodes with independent row and column spacing."
     )
 
     grid_rows: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=10,
-        title="Grid Rows",
+        title="Grid rows",
         description="Number of electrode rows in the array.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -268,7 +268,7 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     )
     grid_columns: Annotated[int, Field(ge=1)] | list[Annotated[int, Field(ge=1)]] = Field(
         default=10,
-        title="Grid Columns",
+        title="Grid columns",
         description="Number of electrode columns in the array.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -276,7 +276,7 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     )
     x_offset: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = Field(
         default=400.0,
-        title="X Offset",
+        title="X offset",
         description="Spacing between columns along the local X axis, in micrometers.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -284,7 +284,7 @@ class GridExtracellularLocations(TwoDPatternedExtracellularLocations):
     )
     y_offset: Annotated[float, Field(gt=0.0)] | list[Annotated[float, Field(gt=0.0)]] = Field(
         default=400.0,
-        title="Y Offset",
+        title="Y offset",
         description="Spacing between rows along the local Y axis, in micrometers.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -318,7 +318,7 @@ class UTAHArrayExtracellularLocations(TwoDPatternedExtracellularLocations):
     placement (``origin`` and the rotations) is configurable.
     """
 
-    title: ClassVar[str] = "Utah Array"
+    title: ClassVar[str] = "Utah array"
     description: ClassVar[str] = (
         "The Blackrock Utah array: a fixed 10x10 grid of electrodes at 400 um spacing."
     )

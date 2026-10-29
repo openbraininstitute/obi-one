@@ -6,11 +6,13 @@ from obi_one.core.schema import SchemaKey, UIElement
 
 class Info(Block):
     campaign_name: str = Field(
+        title="Campaign name",
         min_length=1,
         description="Name of the campaign.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
     )
     campaign_description: str = Field(
+        title="Campaign description",
         min_length=1,
         description="Description of the campaign.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},

@@ -153,7 +153,7 @@ class ProtocolAndFeatureSelection(Block):
 
     selection: SelectEFeaturesByProtocol = Field(
         default_factory=SelectEFeaturesByProtocol,
-        title="EFeatures by protocol",
+        title="E-features by protocol",
         description=(
             "Protocols to extract features from, together with the per-protocol"
             " feature selection and the amplitude settings that govern it."

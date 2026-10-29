@@ -20,11 +20,11 @@ PathDistanceToleranceParameter = Annotated[float, Field(ge=1.0)]
 class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Locations uniformly sampled near a specified soma path distance."""
 
-    title: ClassVar[str] = "Path Distance Morphology Locations"
+    title: ClassVar[str] = "Path distance morphology locations"
 
     path_dist_mean: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
-        title="Path Distance Sampling Mean",
+        title="Path distance sampling mean",
         description=(
             "Target soma path distance used to bias where candidate locations are selected. "
             "Final locations are sampled uniformly from valid morphology intervals within "
@@ -38,7 +38,7 @@ class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
     path_dist_tolerance: PathDistanceToleranceParameter | list[PathDistanceToleranceParameter] = (
         Field(
             default=50.0,
-            title="Max Distance to Path Distance Sampling Mean",
+            title="Max distance to path distance sampling mean",
             description=(
                 "Allowed deviation from the target soma path distance. Locations are sampled "
                 "uniformly from valid morphology intervals within this tolerance. Must be at "

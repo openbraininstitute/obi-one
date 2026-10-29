@@ -14,7 +14,7 @@ class PoissonDistribution(Distribution):
 
     rate: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=1.0,
-        title="Event Rate",
+        title="Event rate",
         description="Expected event count represented by the distribution.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )

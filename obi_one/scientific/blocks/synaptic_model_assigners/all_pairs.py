@@ -12,7 +12,7 @@ L = logging.getLogger(__name__)
 class AllPairsSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to all synapses in the edge population."""
 
-    title: ClassVar[str] = "All Pairs"
+    title: ClassVar[str] = "All pairs"
 
     def _edge_indices(self, circuit: Circuit) -> np.ndarray:
         circ = circuit.sonata_circuit

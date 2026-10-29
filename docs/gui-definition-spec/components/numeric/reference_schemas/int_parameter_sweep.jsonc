@@ -11,7 +11,7 @@
       "type": "array"
     }
   ],
-  "title": "Random Seed",
+  "title": "Random seed",
   "description": "Random seed for the simulation.",
   "default": 1,
   "ui_element": "int_parameter_sweep"

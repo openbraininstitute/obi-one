@@ -4,7 +4,7 @@ UIElement: `UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON`
 
 This component backs `CircuitByNeuronMechanismVariableNeuronalManipulation`.
 
-It extends the single-neuron (MEModel) "Full Neuron Variable Modification" block
+It extends the single-neuron (MEModel) "Full neuron variable modification" block
 for use in circuit simulations. The key difference: the **Neuron Set** dropdown is
 visible, allowing the user to select which neurons the manipulation targets.
 
@@ -40,11 +40,11 @@ variables are available (intersection across all emodels in the selection).
 class CircuitByNeuronMechanismVariableNeuronalManipulation(
     ByNeuronMechanismVariableNeuronalManipulation,
 ):
-    title: ClassVar[str] = "Full Neuron Variable Modification"
+    title: ClassVar[str] = "Full neuron variable modification"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,

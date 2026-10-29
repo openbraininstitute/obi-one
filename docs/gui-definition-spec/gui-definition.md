@@ -31,7 +31,7 @@ The schema can be tested locally with the command:
 ScanConfigs are composed of multiple UI elements, each corresponding to a single variable in the Python definition of the ScanConfig. For example, there is a UI element for specifying a user-defined string:
 ```py
 file_name: str = Field(min_length=1,
-                        title="title",
+                        title="File name",
                         description="description",
                         json_schema_extra={
                             "SchemaKey.UI_ELEMENT": UIElement.STRING_INPUT,
@@ -43,6 +43,16 @@ The `ui_element` specified in the `json_schema_extra` dictionary of the Field de
 Each `ui_element` identifier corresponds to a strict reference schema. Schema validation checks that the definition of the parameter fits with what is expected and required for a `string_input`. Consequently, if two elements require different schema structures, they must use unique `ui_element` identifiers, even if they are functionally similar.
 
 All ui_elements must contain a `title` and a `description`.
+
+### Titles
+
+The frontend shows titles exactly as written, with no case transform. This covers field titles, root element titles, the `title` ClassVar of a block offered by a `block_union` or `block_dictionary`, and group names.
+
+- Write titles in sentence case: capitalize the first letter and write the rest in lowercase. Proper nouns and named models keep their capitals (Hodgkin-Huxley, Tsodyks-Markram, Ornstein-Uhlenbeck, Poisson, Neuropixels, Utah), and so do acronyms and symbols, written as the field uses them (ID, RRP, EM, ACh, Mg2+, U_SE, ME-model, NEURON). A leading variable keeps its case ("m exponent in channel equation"). Parentheses follow the same rule: "Soma voltage recording (full experiment)", "Neuron set (target)".
+- Give every field shown in the UI an explicit `title=`. Pydantic's default title is the field name in Title Case ("Random Seed").
+- A title may contain inline math between single dollars, rendered with KaTeX, e.g. `title=r"$m_\infty$ equation"`. Group names are shown in capitals, so they must not contain math.
+
+`tests/ui_schema/test_titles.py` checks the mechanical part of these rules: no title written in capitals, no field titled with pydantic's default, and closed `$` pairs.
 
 
 ## Types of UI element

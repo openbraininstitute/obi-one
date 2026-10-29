@@ -226,7 +226,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -243,7 +243,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
         ...,
     ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
-        title="Combine With",
+        title="Combine with",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
@@ -256,7 +256,7 @@ class CombinedNeuronSet(CombinedBaseNeuronSet):
 class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine biophysical neuron sets."""
 
-    title: ClassVar[str] = "Combined (Biophysical)"
+    title: ClassVar[str] = "Combined (biophysical)"
     description: ClassVar[str] = (
         "Use biophysical neuron sets combined with set operations."
         " Operations will be applied from top to bottom."
@@ -276,7 +276,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -293,7 +293,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         ...,
     ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
-        title="Combine With",
+        title="Combine with",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
@@ -306,7 +306,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
 class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine virtual neuron sets."""
 
-    title: ClassVar[str] = "Combined (Virtual)"
+    title: ClassVar[str] = "Combined (virtual)"
     description: ClassVar[str] = (
         "Use virtual neuron sets combined with set operations."
         " Operations will be applied from top to bottom."
@@ -324,7 +324,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: ATOMIC_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -341,7 +341,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         ...,
     ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
-        title="Combine With",
+        title="Combine with",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
@@ -354,7 +354,7 @@ class VirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine non-virtual neuron sets."""
 
-    title: ClassVar[str] = "Combined (Non-Virtual)"
+    title: ClassVar[str] = "Combined (non-virtual)"
     description: ClassVar[str] = (
         "Use non-virtual neuron sets combined with set operations."
         " Operations will be applied from top to bottom."
@@ -374,7 +374,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: ATOMIC_NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -391,7 +391,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
         ...,
     ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
-        title="Combine With",
+        title="Combine with",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
@@ -404,7 +404,7 @@ class NonVirtualCombinedNeuronSet(CombinedBaseNeuronSet):
 class PointCombinedNeuronSet(CombinedBaseNeuronSet):
     """Combine point neuron sets."""
 
-    title: ClassVar[str] = "Combined (Point)"
+    title: ClassVar[str] = "Combined (point)"
     description: ClassVar[str] = (
         "Use point neuron sets combined with set operations."
         " Operations will be applied from top to bottom."
@@ -422,7 +422,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
 
     base_neuron_set: ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Base neuron set to be combined.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -439,7 +439,7 @@ class PointCombinedNeuronSet(CombinedBaseNeuronSet):
         ...,
     ] = Field(  # ty:ignore[no-matching-overload]
         default=(),
-        title="Combine With",
+        title="Combine with",
         description="Neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,
