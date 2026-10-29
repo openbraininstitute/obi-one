@@ -1,4 +1,4 @@
-from obi_one.scientific.shared_cache import SharedCache
+from obi_one.utils.shared_cache import SharedCache
 
 
 class TestSharedCache:

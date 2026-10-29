@@ -12,7 +12,7 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     NeurodamusSimulationParameters,
     SimulationResults,
 )
-from obi_one.scientific.shared_cache import SharedCache
+from obi_one.utils.shared_cache import SharedCache
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
     MEModelSimulationSingleConfig,

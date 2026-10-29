@@ -15,7 +15,7 @@ from obi_one.scientific.mappings_and_registry.config_task_map import (
 from obi_one.types import TaskType
 
 if TYPE_CHECKING:
-    from obi_one.scientific.shared_cache import SharedCache
+    from obi_one.utils.shared_cache import SharedCache
 
 
 def run_task_for_single_config(

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.shared_cache import SharedCache
+from obi_one.utils.shared_cache import SharedCache
 
 L = logging.getLogger(__name__)
 

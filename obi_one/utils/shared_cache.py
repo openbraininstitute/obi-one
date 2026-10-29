@@ -1,10 +1,10 @@
-"""Shared filesystem cache for reusable scientific artifacts."""
+"""Shared filesystem cache for reusable artifacts."""
 
 from pathlib import Path
 
 
 class SharedCache:
-    """Filesystem cache for reusable scientific artifacts.
+    """Filesystem cache for reusable artifacts.
 
     Instantiation creates known sub-directories under ``path``. Only sub-directory
     accessors are public.

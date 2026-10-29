@@ -13,7 +13,7 @@ from obi_auth.typedef import AuthMode, DeploymentEnvironment
 
 from obi_one.core.run_tasks import run_task_type
 from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
-from obi_one.scientific.shared_cache import SharedCache
+from obi_one.utils.shared_cache import SharedCache
 from obi_one.types import TaskType
 
 L = logging.getLogger(__name__)
