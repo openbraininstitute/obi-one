@@ -1,5 +1,6 @@
 import abc
 import logging
+from typing import Annotated
 
 from entitysdk import Client
 from entitysdk.models import TaskActivity
@@ -15,7 +16,7 @@ L = logging.getLogger(__name__)
 class Task(OBIBaseModel, abc.ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    shared_cache: SharedCache | None = Field(default=None, exclude=True)
+    shared_cache: Annotated[SharedCache | None, Field(exclude=True)] = None
 
     @staticmethod
     def _get_execution_activity(
