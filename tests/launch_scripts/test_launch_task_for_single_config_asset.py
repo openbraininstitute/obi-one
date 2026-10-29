@@ -100,9 +100,15 @@ def test_main_continues_without_shared_cache_when_unavailable(
     assert run_task_type.call_args.kwargs["shared_cache"] is None
 
 
-def test_main_continues_without_shared_cache_when_unset(launch_main, argv, monkeypatch):
+@pytest.mark.parametrize("shared_cache_env", [None, ""], ids=["unset", "empty"])
+def test_main_continues_without_shared_cache_when_unset(
+    launch_main, argv, monkeypatch, shared_cache_env
+):
     monkeypatch.setattr(sys, "argv", argv)
-    monkeypatch.delenv("SHARED_CACHE", raising=False)
+    if shared_cache_env is None:
+        monkeypatch.delenv("SHARED_CACHE", raising=False)
+    else:
+        monkeypatch.setenv("SHARED_CACHE", shared_cache_env)
     with (
         patch.object(launch_main, "Client", return_value=MagicMock()),
         patch.object(launch_main, "update_activity_status"),

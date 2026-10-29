@@ -27,17 +27,6 @@ def test_from_existing_path_returns_cache_when_directory_exists(cache_root):
     assert cache.mechanisms_dir.is_dir()
 
 
-@pytest.mark.parametrize(
-    "empty_path",
-    ["", ".", Path()],
-    ids=["empty-str", "dot-str", "dot-path"],
-)
-def test_from_existing_path_raises_when_empty(empty_path):
-    # pathlib turns Path("") into Path("."), so cover that form explicitly.
-    with pytest.raises(SharedCacheError, match="must not be empty"):
-        SharedCache.from_existing_path(empty_path)
-
-
 def test_from_existing_path_raises_when_missing(cache_root):
     missing = cache_root / "missing"
     with pytest.raises(SharedCacheError, match="does not exist"):

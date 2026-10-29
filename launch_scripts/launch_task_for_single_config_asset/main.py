@@ -116,7 +116,7 @@ def main() -> int:
         else LocalAssetStore(prefix=Path(local_store_prefix)),
     )
     shared_cache = None
-    if shared_cache_path is not None:
+    if shared_cache_path:
         try:
             shared_cache = SharedCache.from_existing_path(shared_cache_path)
         except SharedCacheError as error:

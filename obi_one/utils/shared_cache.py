@@ -26,14 +26,8 @@ class SharedCache:
         """Return a ``SharedCache`` for an existing writable directory.
 
         Raises:
-            SharedCacheError: If ``path`` is empty, missing, not a directory, or not writable.
+            SharedCacheError: If ``path`` is missing, not a directory, or not writable.
         """
-        # Reject "" / "." (Path("") normalizes to ".") before resolve uses cwd.
-        raw_path = os.fspath(path)
-        if not raw_path or Path(raw_path) == Path():
-            msg = "Shared cache path must not be empty"
-            raise SharedCacheError(msg)
-
         try:
             resolved = Path(path).resolve()
         except OSError as error:
