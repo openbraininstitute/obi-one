@@ -24,6 +24,7 @@ from bluecellulab.validation.base import TestResult, ValidationTest
 from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import MEModel
+from entitysdk.schemas.memodel import DownloadedMEModel
 
 from obi_one.scientific.validations.base import (
     InvalidValidationContextError,
@@ -134,6 +135,20 @@ def _resolve_holding_current(
         )
         raise InvalidValidationContextError(message)
     return resolved_holding_current
+
+
+def _select_morphology_path(downloaded: DownloadedMEModel, entity_id: str) -> Path:
+    """Return the morphology path a Cell is built from.
+
+    ``download_memodel`` downloads a single morphology per model and exposes it
+    as ``morphology_path``. A missing file means the download did not produce a
+    usable morphology.
+    """
+    morphology_path = downloaded.morphology_path
+    if not morphology_path.exists():
+        message = f"No morphology was downloaded for MEModel {entity_id}."
+        raise InvalidValidationContextError(message)
+    return morphology_path
 
 
 def _verify_simulator_configuration(simulator_config: SimulatorConfig) -> None:
@@ -292,9 +307,11 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
             AIS_scaler=1.0,
         )
 
+        morphology_path = _select_morphology_path(downloaded, entity_id)
+
         cell = Cell(
             template_path=downloaded.hoc_path,
-            morphology_path=downloaded.morphology_path,
+            morphology_path=morphology_path,
             template_format="v6",
             emodel_properties=emodel_properties,
         )
