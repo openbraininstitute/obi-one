@@ -345,7 +345,9 @@ def mapped_circuit_properties_endpoint(
 @router.post(
     "/circuit/{circuit_id}/neuron-set-node-ids",
     summary="Resolve neuron set to node IDs",
-    description="Returns the node IDs for a given neuron set selection in a circuit.",
+    description="Returns the node IDs for a given neuron set selection in a circuit. "
+    "Swept (list-valued) fields of the neuron set are expanded and the resulting "
+    "node IDs are unioned per population.",
 )
 def neuron_set_node_ids(
     circuit_id: str,
@@ -379,6 +381,8 @@ def neuron_set_node_ids(
     summary="Circuit neuronal manipulation properties by neuron set",
     description="Returns intersection of mechanism variables for neuronal manipulation blocks "
     "for a Circuit entity, resolved by neuron set. "
+    "Swept (list-valued) fields of the neuron set are expanded and the resulting "
+    "node IDs are unioned per population. "
     "MEModel entities should use /memodel-neuronal-manipulation-properties instead.",
 )
 def neuronal_manipulation_properties_endpoint_by_neuron_set(
