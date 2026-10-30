@@ -13,6 +13,7 @@ The variables are read from the files inside the circuit's `sonata_circuit` asse
 
 1. Stage `circuit_config.json`. With a neuron set, stage `node_sets.json` and the `nodes.h5` of every population concurrently; the neuron set may name any population. Without one, only the `model_template` column of each biophysical population is needed, so each `nodes.h5` is read the cheapest way available (see [Reading `model_template` without a neuron set](#reading-model_template-without-a-neuron-set)).
 2. Resolve the neuron set to node IDs per population, and read `model_template` for those nodes. Without a neuron set, take every distinct `model_template` of every biophysical population.
+   A neuron set field set to a list is a scan dimension, as in a simulation: `node_set: ["L1_LAC", "L2_IPC"]` means one run per node set. `Block.expand_multi_values` makes one single-value copy per combination (at most 100), each copy is resolved on the same staged circuit, and the node IDs are merged per population (`get_expanded_neuron_ids`). The response then holds the variables shared by the neurons of every run, so a manipulation picked from it applies to the whole scan. `/circuit/{circuit_id}/neuron-set-node-ids` returns the same merged node IDs.
 3. For each template, fetch `<biophysical_neuron_models_dir>/<name>.hoc` and read two procedures:
    - `insertChannel()`: which mechanism is inserted in which section list.
    - `biophys()`: the value of each variable per section list.
