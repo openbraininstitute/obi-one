@@ -81,8 +81,8 @@ class TestMEModelValidationWorkflow:
         tests = workflow.get_tests(context)
         assert len(tests) == 2  # spiking and depolarization-block presets
         assert [test.name for test in tests] == [
-            "Simulatable Neuron Spiking Validation",
-            "Simulatable Neuron Depolarization Block Validation",
+            "Spiking Validation",
+            "Depolarization Block Validation",
         ]
 
     def test_get_tests_thalamic_profile(self, tmp_path):
@@ -102,18 +102,18 @@ class TestMEModelValidationWorkflow:
         tests = workflow.get_tests(context)
 
         assert [test.name for test in tests] == [
-            "Simulatable Neuron Spiking Validation",
-            "Simulatable Neuron Depolarization Block Validation",
-            "Simulatable Neuron Rebound Burst Validation",
-            "Simulatable Neuron Back-propagating Action Potential Validation",
-            "Simulatable Neuron AIS Spiking Validation",
-            "Simulatable Neuron Hyperpolarization Validation",
-            "Simulatable Neuron Input Resistance Validation",
-            "Simulatable Neuron IV Curve Validation",
-            "Simulatable Neuron FI Curve Validation",
+            "Spiking Validation",
+            "Depolarization Block Validation",
+            "Rebound Burst Validation",
+            "Back-propagating Action Potential Validation",
+            "AIS Spiking Validation",
+            "Hyperpolarization Validation",
+            "Input Resistance Validation",
+            "IV Curve Validation",
+            "FI Curve Validation",
         ]
         assert len(tests) == 9
-        assert sum(test.name == "Simulatable Neuron Spiking Validation" for test in tests) == 1
+        assert sum(test.name == "Spiking Validation" for test in tests) == 1
 
         # Tonic firing pre-holds at the derived holding current (-0.03 nA),
         # then steps +0.4 nA on top of it (-> 0.37 nA).
@@ -590,7 +590,7 @@ class TestMEModelValidationTask:
 class TestSpikingPreset:
     def test_creates_parametric_validation(self):
         preset = spiking_preset()
-        assert preset.name == "Simulatable Neuron Spiking Validation"
+        assert preset.name == "Spiking Validation"
         assert isinstance(preset.protocol, StepProtocol)
         assert preset.protocol.threshold_percentage == 130.0  # ruff: ignore[float-equality-comparison]
         assert isinstance(preset.measurement, EfelMeasurement)
@@ -607,7 +607,7 @@ class TestThalamicDepolarizationBlockPreset:
             rheobase=2.0,
             holding_current=-0.05,
         )
-        assert preset.name == "Simulatable Neuron Depolarization Block Validation"
+        assert preset.name == "Depolarization Block Validation"
         assert isinstance(preset.protocol, SequenceProtocol)
         assert preset.protocol.amplitude_mode == "amplitude"
         assert preset.protocol.measurement_phase == 1
