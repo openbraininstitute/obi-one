@@ -18,7 +18,11 @@ from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.blocks.neuron_sets.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+)
 from obi_one.scientific.library import circuit as circuit_module
+from obi_one.scientific.library.circuit import Circuit as ObiCircuit
 from obi_one.scientific.library.emodel_circuit_files import HocTemplateError, ModMechanism
 from obi_one.scientific.library.emodel_parameters import (
     ChannelInfo,
@@ -57,6 +61,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _unique_templates,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
+    get_expanded_neuron_ids,
 )
 
 from tests.obi_one.db_sdk.test_assets import storage_transport
@@ -680,6 +685,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         }
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         with (
             patch(
@@ -733,6 +739,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -769,6 +776,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         call_count = [0]
 
@@ -850,6 +858,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         def _mock_get_vars(_db_client, emodel_id):
             # Both emodels get the same hardcoded limits for conductance vars
@@ -941,6 +950,7 @@ class TestGetCircuitNodeIds:
 
         # Mock neuron set that returns dict of node IDs per population
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
         ids_per_population = get_circuit_node_ids(mock_db_client, circuit_id, neuron_set)
@@ -954,6 +964,7 @@ class TestGetCircuitNodeIds:
         circuit_id = str(uuid4())
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {
             "S1nonbarrel_neurons": [5, 6],
             "other_pop": [10, 11, 12],
@@ -966,6 +977,96 @@ class TestGetCircuitNodeIds:
             "other_pop": [10, 11, 12],
         }
 
+    def test_resolves_swept_node_set_to_union(self, mock_db_client):
+        """A list-valued node_set is expanded and its node IDs are unioned."""
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+        )
+
+        result = get_circuit_node_ids(mock_db_client, str(uuid4()), neuron_set)
+
+        obi_circuit = ObiCircuit(
+            name="N_10__top_nodes_dim6",
+            path=str(TINY_CIRCUIT_DIR / "circuit_config.json"),
+        )
+        expected = sorted(
+            set(
+                BiophysicalPopulationPredefinedNeuronSet(
+                    node_set="L6_IPC", population="S1nonbarrel_neurons"
+                ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+            )
+            | set(
+                BiophysicalPopulationPredefinedNeuronSet(
+                    node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+                ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+            )
+        )
+        assert result == {"S1nonbarrel_neurons": expected}
+        assert len(expected) > 0
+
+
+class TestGetExpandedNeuronIds:
+    """Tests for get_expanded_neuron_ids sweep expansion and per-population union."""
+
+    @pytest.fixture
+    def obi_circuit(self):
+        return ObiCircuit(
+            name="N_10__top_nodes_dim6",
+            path=str(TINY_CIRCUIT_DIR / "circuit_config.json"),
+        )
+
+    def test_scalar_neuron_set_unchanged(self, obi_circuit):
+        """A neuron set without swept fields resolves exactly as before."""
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="Layer6", population="S1nonbarrel_neurons"
+        )
+
+        result = get_expanded_neuron_ids(neuron_set, obi_circuit)
+
+        assert result == neuron_set.get_neuron_ids(obi_circuit)
+        assert len(result["S1nonbarrel_neurons"]) == 9
+
+    def test_node_set_list_unions_members(self, obi_circuit):
+        """A swept node_set expands per name and unions the resolved IDs."""
+        swept = BiophysicalPopulationPredefinedNeuronSet(
+            node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+        )
+
+        result = get_expanded_neuron_ids(swept, obi_circuit)
+
+        ids_a = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="L6_IPC", population="S1nonbarrel_neurons"
+        ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+        ids_b = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+        ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+        assert result["S1nonbarrel_neurons"] == sorted(set(ids_a) | set(ids_b))
+
+    def test_swept_sample_percentage_unions_subsets(self, obi_circuit):
+        """A swept sample_percentage expands per value; 100% covers all sampled IDs."""
+        swept = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="Layer6",
+            population="S1nonbarrel_neurons",
+            sample_percentage=[50, 100],
+            sample_seed=1,
+        )
+
+        result = get_expanded_neuron_ids(swept, obi_circuit)
+
+        full = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="Layer6", population="S1nonbarrel_neurons"
+        ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+        assert result["S1nonbarrel_neurons"] == sorted(full)
+
+    def test_unknown_node_set_member_raises(self, obi_circuit):
+        """An unknown name inside a swept node_set raises the usual error."""
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            node_set=["L6_IPC", "NONEXISTENT"], population="S1nonbarrel_neurons"
+        )
+
+        with pytest.raises(ValueError, match="not found in circuit"):
+            get_expanded_neuron_ids(neuron_set, obi_circuit)
+
 
 class TestStageCircuitForNeuronSetResolution:
     """Tests for _stage_circuit_for_neuron_set_resolution using tiny circuit data."""
@@ -976,6 +1077,7 @@ class TestStageCircuitForNeuronSetResolution:
         circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
@@ -1013,6 +1115,7 @@ class TestStageCircuitForNeuronSetResolution:
         client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
@@ -1052,6 +1155,7 @@ class TestStageCircuitForNeuronSetResolution:
         client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         # Should not raise despite missing node_sets.json
@@ -1083,6 +1187,7 @@ class TestStageCircuitForNeuronSetResolution:
         client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         # Return a population that doesn't exist in the circuit's nodes
         neuron_set.get_neuron_ids.return_value = {"nonexistent_pop": [0, 1]}
 
@@ -1112,6 +1217,7 @@ class TestStageCircuitForNeuronSetResolution:
         circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {}
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
@@ -1129,6 +1235,7 @@ class TestStageCircuitForNeuronSetResolution:
         circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1]}
 
         with patch(
@@ -1257,6 +1364,7 @@ class TestMultiPopulationRegression:
             ("pop_B", 0): "hoc:bAC_L6BTC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         with (
             patch(
@@ -1306,6 +1414,7 @@ class TestMultiPopulationRegression:
         circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": []}
 
         with pytest.raises(ValueError, match="resolved to no node IDs"):
@@ -1323,6 +1432,7 @@ class TestMultiPopulationRegression:
         circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {
             "pop_A": [],
             "pop_B": [],
@@ -1499,6 +1609,7 @@ class TestVariablesReadFromCircuitFiles:
 
     def test_neuron_set_path_needs_no_derivation(self, mock_db_client):
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         # One node, so one template: the response keeps that template's own values.
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
 
@@ -1530,6 +1641,7 @@ class TestVariablesReadFromCircuitFiles:
         neuron_set = None
         if node_ids is not None:
             neuron_set = MagicMock()
+            neuron_set.expand_multi_values.return_value = [neuron_set]
             neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": node_ids}
         get_circuit_manipulation_properties(
             db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
@@ -1568,6 +1680,7 @@ class TestVariablesReadFromCircuitFiles:
         """A hoc file that is not template output is reported and read from the database."""
         mock_db_client.search_entity.return_value.all.return_value = []
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
         original = mock_db_client.fetch_file.side_effect
 
@@ -1618,6 +1731,7 @@ class TestCircuitFileSafety:
     def test_template_name_with_traversal_falls_back(self, mock_db_client):
         mock_db_client.search_entity.return_value.all.return_value = []
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties.NodeStorage"
