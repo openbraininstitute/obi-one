@@ -54,14 +54,16 @@ def _build_mechanism_variables_by_ion_channel_response(
                     all_section_lists = {"somatic", "apical", "basal", "axonal"}
 
                 raw[channel] = {
-                    "section_lists": list(all_section_lists),
+                    # Sorted: a set has no stable order, and the response must not change
+                    # between identical requests. Values are keyed by section list.
+                    "section_lists": sorted(all_section_lists),
                     "entity_id": None,  # Section properties don't have entity IDs
                     "variables": {},
                 }
             else:
                 channel_info = channel_mapping.channel_to_section_lists.get(channel)
                 raw[channel] = {
-                    "section_lists": channel_info.section_lists if channel_info else [],
+                    "section_lists": sorted(channel_info.section_lists) if channel_info else [],
                     "entity_id": channel_info.entity_id if channel_info else None,
                     "variables": {},
                 }

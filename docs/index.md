@@ -140,3 +140,4 @@ make install-notebooks
 - [Single Cell Simulations](scs.md) - Learn about single cell simulation workflows
 - [Small Circuit Simulations](scircuit.md) - Learn about small circuit simulation workflows
 - [Morphology Registration](morphology-registration.md) - Uploading morphologies, including ones that fail validation
+- [Neuronal Manipulation Properties](neuronal-manipulation-properties.md) - How the variables of the neuronal manipulation block are read from a circuit's hoc and mod files
