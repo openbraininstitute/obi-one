@@ -101,11 +101,13 @@ class SimulationExecutionTask(Task):
             )
         L.info("Circuit staged at %s", staged_circuit.directory)
 
+        cache_dir = self.shared_cache.mechanisms_dir if self.shared_cache is not None else None
         with log_timing("compile_mechanisms"):
             mechanism_build = compile_mechanisms(
                 mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
                 output_dir=staged_circuit.directory.resolve(),
                 simulation_backend=self.simulation_backend,
+                cache_dir=cache_dir,
             )
         L.info("Mechanisms compiled: %s", mechanism_build)
 

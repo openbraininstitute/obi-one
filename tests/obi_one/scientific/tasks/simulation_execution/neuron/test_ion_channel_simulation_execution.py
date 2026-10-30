@@ -139,6 +139,7 @@ def test_execute_local_does_not_register(
         mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
         output_dir=staged_circuit.directory.resolve(),
         simulation_backend=SimulationBackend.neurodamus,
+        cache_dir=None,
     )
     db_client.get_entity.assert_not_called()
     mock_stage_sim.assert_called_once()
