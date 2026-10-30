@@ -44,7 +44,7 @@ dependencies = [
     "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
-    "connectome-utilities>=0.4.12",
+    "connectome-utilities>=0.4.17",
     "connectome-manipulator>=1.0.4",
     "morph_spines>=1.1.0",
     "morph-tool",
@@ -101,7 +101,7 @@ all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
-bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.8"]
+bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.9"]
 
 [dependency-groups]
 dev = [

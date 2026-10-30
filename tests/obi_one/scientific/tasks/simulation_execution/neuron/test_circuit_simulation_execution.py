@@ -110,6 +110,7 @@ def test_execute_local_skips_registration(
         mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
         output_dir=staged_circuit.directory.resolve(),
         simulation_backend=SimulationBackend.neurodamus,
+        cache_dir=None,
     )
     mock_get_params.assert_called_once_with(
         simulation_backend=SimulationBackend.neurodamus,

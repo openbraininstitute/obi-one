@@ -216,8 +216,13 @@ def calc_section_offset(
     all_sec_l = numpy.array([sec.length for sec in morph.sections])
     is_not_on_neurite = syns[prefix + STR_SEC_ID] < 1
 
-    abs_off = pd_calc.offset[syns[prefix + STR_SEC_ID] - 1, syns[prefix + STR_SEG_ID]]
-    rel_off = (abs_off + syns[prefix + STR_SEG_OFF]) / all_sec_l[syns[prefix + STR_SEC_ID] - 1]
+    abs_off = pd_calc.within_section_offsets(
+        syns,
+        str_section_id=prefix + STR_SEC_ID,
+        str_segment_id=prefix + STR_SEG_ID,
+        str_offset=prefix + STR_SEG_OFF,
+    )
+    rel_off = abs_off / all_sec_l[syns[prefix + STR_SEC_ID] - 1]
     rel_off[is_not_on_neurite] = 0.0
     return numpy.minimum(rel_off, 1.0)
 

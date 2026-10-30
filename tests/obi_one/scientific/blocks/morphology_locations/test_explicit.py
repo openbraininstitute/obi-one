@@ -141,6 +141,9 @@ def test_explicit_locations_reconstruct_random_locations(morphology):
         explicit_locations,
         random_locations,
         check_exact=False,
+        # path_distance follows conntility's table precision (float32), while the explicit
+        # path wraps it in float(); compare values, not the dtype.
+        check_dtype=False,
         atol=1e-4,
         rtol=1e-7,
     )

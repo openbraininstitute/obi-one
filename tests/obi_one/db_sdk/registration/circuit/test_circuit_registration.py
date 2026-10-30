@@ -2583,6 +2583,136 @@ def test_register_circuit_registers_explicit_derivation_source():
     assert mock_derivation.call_args.kwargs["label"] == "hoc:cADpyr_L5TPC"
 
 
+def test_register_circuit_registers_multiple_emodel_derivations():
+    """A list of EModels registers one labelled derivation per EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    emodel_a = _FakeEModel(id="emodel-a")
+    emodel_b = _FakeEModel(id="emodel-b")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:mdl_a", "hoc:mdl_b"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[emodel_a, emodel_b],
+            derivation_label=["hoc:mdl_a", "hoc:mdl_b"],
+            skip_additional_assets=True,
+        )
+
+    assert mock_derivation.call_count == 2
+    calls = mock_derivation.call_args_list
+    assert calls[0].kwargs["from_entity"] is emodel_a
+    assert calls[0].kwargs["label"] == "hoc:mdl_a"
+    assert calls[0].kwargs["derivation_type"].value == "emodel_circuit"
+    assert calls[1].kwargs["from_entity"] is emodel_b
+    assert calls[1].kwargs["label"] == "hoc:mdl_b"
+
+
+def test_register_circuit_rejects_mismatched_emodel_label_lists():
+    """List-valued provenance requires one label per EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(ValueError, match="same length"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[_FakeEModel(id="a"), _FakeEModel(id="b")],
+            derivation_label=["hoc:mdl_a"],
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_non_emodel_in_list():
+    """Every element of a list-valued source must be an EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(TypeError, match="derived_from_emodel must be an EModel"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[_FakeEModel(id="a"), MagicMock()],
+            derivation_label=["hoc:mdl_a", "hoc:mdl_b"],
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_unmatched_label_in_list():
+    """Every label of a list-valued source must match a circuit model_template."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:mdl_a"},
+        ),
+        pytest.raises(ValueError, match="derivation_label must match"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[_FakeEModel(id="a"), _FakeEModel(id="b")],
+            derivation_label=["hoc:mdl_a", "hoc:missing"],
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
 @pytest.mark.parametrize(
     "parent_derivation_type",
     [DerivationType.circuit_customization, DerivationType.circuit_simplification],

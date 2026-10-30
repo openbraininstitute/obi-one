@@ -672,7 +672,7 @@ wheels = [
 
 [[package]]
 name = "connectome-utilities"
-version = "0.4.14"
+version = "0.4.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -681,15 +681,14 @@ dependencies = [
     { name = "libsonata" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "scikit-learn" },
     { name = "scipy" },
     { name = "tables" },
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/10/0100c562b898d69fc19b4c1ecba0736eee355b703fb43dec8c371f990f52/connectome_utilities-0.4.14.tar.gz", hash = "sha256:8618077040e61ece76a0e60408ad6fdf2c515f012d550465fe3732f82b735da1", size = 33157944, upload-time = "2026-09-30T07:12:29.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/87/0da40c24aa492b2f8885b3a0462388e8691b318e8c131b9c724fd6723d63/connectome_utilities-0.4.17.tar.gz", hash = "sha256:1344f47b3a12e672ecd6e02e9144321dc555096bd8f0772521acb56af9cc211c", size = 33161257, upload-time = "2026-10-28T08:45:40.249Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/53/0c328303e2dd60dd110d4d86896622e8d3aec54378b6993a17c08d3168f2/connectome_utilities-0.4.14-py3-none-any.whl", hash = "sha256:57907d3b5f0af28898393924c7978f0620ded6db9b8fd8355f5676fb67c0ad08", size = 32813287, upload-time = "2026-09-30T07:12:25.857Z" },
+    { url = "https://files.pythonhosted.org/packages/76/0e/13c0c44887ce41085ac0021ee270e3e55bcb2a77f7379aaddf5119fe1632/connectome_utilities-0.4.17-py3-none-any.whl", hash = "sha256:9bb6816721c60429559c06ca00ba0ddb29a3ec9fd0df470c557a14e208bc4dd1", size = 32816183, upload-time = "2026-10-28T08:45:36.955Z" },
 ]
 
 [[package]]
@@ -2267,7 +2266,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.8"
+version = "4.2.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -2277,9 +2276,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/e0/8a8c82c1375c3c8dd449d82d6fd9e3bc936906568d3349f2c65954cb6844/neurodamus-4.2.8.tar.gz", hash = "sha256:095a1d78e967e323b71b2d836832c20cf3b19d3afefacfb8e66d0dc27115ad2d", size = 202208, upload-time = "2026-10-14T14:40:40.516Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/86/32fe3eaadf895d0653356853f039135232a957b1b12df0b03f84c941b969/neurodamus-4.2.9.tar.gz", hash = "sha256:23c42a29510186fce02e4393fdf7767eab92e453733fe71d7b3f50e8d682d852", size = 204898, upload-time = "2026-10-22T08:34:59.065Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/ac/9744a49d1c9a437a8158b3579fa746df0a3e765888c7cabb6c4c08a2a8c9/neurodamus-4.2.8-py3-none-any.whl", hash = "sha256:eb6d90a0c581cbb58d053710aecfae78b62b62b7da57d95a5a1601998d28b16b", size = 237538, upload-time = "2026-10-14T14:40:38.61Z" },
+    { url = "https://files.pythonhosted.org/packages/03/94/2a255590c269f60bbdbcba39ef5215bbc9d4f21b0d8ba3c0ee16273908ed/neurodamus-4.2.9-py3-none-any.whl", hash = "sha256:e5bdc20695ffafbf4c14f883f7b97078cec77a29f7b90ce911cd2901521185e8", size = 240457, upload-time = "2026-10-22T08:34:57.681Z" },
 ]
 
 [[package]]
@@ -2548,7 +2547,7 @@ requires-dist = [
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
-    { name = "connectome-utilities", specifier = ">=0.4.12" },
+    { name = "connectome-utilities", specifier = ">=0.4.17" },
     { name = "entitysdk", specifier = ">=0.19.33" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
@@ -2559,7 +2558,7 @@ requires-dist = [
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
-    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.8" },
+    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.9" },
     { name = "neurom" },
     { name = "notebook", marker = "extra == 'notebooks'" },
     { name = "numpy" },
