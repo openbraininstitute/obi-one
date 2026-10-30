@@ -701,7 +701,8 @@ def _stage_circuit_for_neuron_set_resolution(
     """Stage circuit files, resolve neuron set to node IDs, read model_template.
 
     Stages circuit_config.json, node_sets.json, and the nodes.h5 for each population
-    the neuron set spans, then resolves the neuron set and reads model_template
+    the neuron set spans, then resolves the neuron set (every scan value, see
+    ``get_expanded_neuron_ids``) and reads model_template
     for the resulting node IDs across all populations. The hoc and mod files of
     every template found are read in the same staging directory.
 
@@ -725,7 +726,7 @@ def _stage_circuit_for_neuron_set_resolution(
 
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
-        ids_per_population: dict[str, list[int]] = neuron_set.get_neuron_ids(obi_circuit)
+        ids_per_population: dict[str, list[int]] = get_expanded_neuron_ids(neuron_set, obi_circuit)
         if not ids_per_population:
             msg = f"Neuron set resolved to no node IDs for circuit {circuit_id}."
             raise ValueError(msg)
@@ -836,12 +837,39 @@ def _collect_all_templates(
     return templates_per_population, template_models
 
 
+def get_expanded_neuron_ids(neuron_set: NeuronSet, circuit: ObiCircuit) -> dict[str, list[int]]:
+    """Resolve a neuron set to node IDs per population, expanding swept fields.
+
+    A list in a block field is a parameter scan dimension: in a ScanConfig it produces
+    one single config per value. Declared endpoints receive no such expansion, so the
+    sweep is expanded here instead and the per-coordinate node IDs are unioned per
+    population — equivalent to resolving every scan point and merging its selection.
+
+    Args:
+        neuron_set: Neuron set to resolve (fields may hold swept list values).
+        circuit: The circuit to resolve against.
+
+    Returns:
+        Dict mapping population name to the sorted union of node IDs across all
+        expanded single-valued neuron sets.
+    """
+    ids_per_population: dict[str, set[int]] = {}
+    for expanded in neuron_set.expand_multi_values():
+        for population, node_ids in expanded.get_neuron_ids(circuit).items():
+            ids_per_population.setdefault(population, set()).update(node_ids)
+
+    return {population: sorted(ids) for population, ids in ids_per_population.items()}
+
+
 def get_circuit_node_ids(
     db_client: entitysdk.client.Client,
     circuit_id: str,
     neuron_set: NeuronSet,
 ) -> dict[str, list[int]]:
     """Resolve a neuron set to node IDs for a circuit.
+
+    Swept fields of the neuron set are expanded and the resulting node IDs are
+    unioned per population.
 
     Args:
         db_client: entitysdk client.
@@ -865,7 +893,7 @@ def get_circuit_node_ids(
 
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
-        ids_per_population = neuron_set.get_neuron_ids(obi_circuit)
+        ids_per_population = get_expanded_neuron_ids(neuron_set, obi_circuit)
 
     return ids_per_population
 

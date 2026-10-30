@@ -4,6 +4,9 @@ import entitysdk
 import pytest
 
 from app.endpoints import circuit_properties
+from obi_one.scientific.blocks.neuron_sets.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+)
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     CircuitUsability,
@@ -315,3 +318,110 @@ def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
     assert response["usability"][CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI] is False
     assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is False
     assert response["usability"][CircuitUsability.SHOW_NEURON_SETS] is False
+
+
+SWEPT_NEURON_SET_PAYLOAD = {
+    "type": "BiophysicalPopulationPredefinedNeuronSet",
+    "population": "S1nonbarrel_neurons",
+    "sample_percentage": 100,
+    "sample_seed": 1,
+    "node_set": ["L6_IPC", "L6_TPC:A"],
+}
+
+
+def test_neuron_set_node_ids_accepts_swept_node_set(monkeypatch):
+    """A list-valued node_set parses and reaches resolution; the union is returned."""
+    ids = {"S1nonbarrel_neurons": [1, 2, 3, 4]}
+    captured = {}
+
+    def fake_get_node_ids(**kwargs):
+        captured.update(kwargs)
+        return ids
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_node_ids", fake_get_node_ids)
+
+    request = circuit_properties.NodeIdsRequest.model_validate(
+        {"neuron_set": SWEPT_NEURON_SET_PAYLOAD}
+    )
+    assert isinstance(request.neuron_set, BiophysicalPopulationPredefinedNeuronSet)
+    assert request.neuron_set.node_set == ["L6_IPC", "L6_TPC:A"]
+
+    response = circuit_properties.neuron_set_node_ids(
+        circuit_id="circuit-id",
+        request=request,
+        db_client=SimpleNamespace(),
+    )
+
+    assert response.node_ids_per_population == ids
+    assert captured["neuron_set"] is request.neuron_set
+
+
+def test_neuron_set_node_ids_maps_value_error_to_400(monkeypatch):
+    def raise_value_error(**_kwargs):
+        msg = "Node set 'NONEXISTENT' not found in circuit 'x'."
+        raise ValueError(msg)
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_node_ids", raise_value_error)
+
+    request = circuit_properties.NodeIdsRequest.model_validate(
+        {"neuron_set": SWEPT_NEURON_SET_PAYLOAD}
+    )
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.neuron_set_node_ids(
+            circuit_id="circuit-id",
+            request=request,
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "not found in circuit" in exc_info.value.detail
+
+
+def test_manipulation_properties_endpoint_accepts_swept_node_set(monkeypatch):
+    """The swept payload parses and reaches get_circuit_manipulation_properties."""
+    expected = {"entity_type": "circuit", "populations": ["S1nonbarrel_neurons"]}
+    captured = {}
+
+    def fake_get_properties(**kwargs):
+        captured.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(
+        circuit_properties, "get_circuit_manipulation_properties", fake_get_properties
+    )
+
+    request = circuit_properties.CircuitNeuronalManipulationPropertiesRequest.model_validate(
+        {"entity_id": "circuit-id", "neuron_set": SWEPT_NEURON_SET_PAYLOAD}
+    )
+
+    response = circuit_properties.neuronal_manipulation_properties_endpoint_by_neuron_set(
+        request=request,
+        db_client=SimpleNamespace(),
+    )
+
+    assert response is expected
+    assert captured["neuron_set"] is request.neuron_set
+
+
+def test_manipulation_properties_endpoint_maps_value_error_to_400(monkeypatch):
+    def raise_value_error(**_kwargs):
+        msg = "Number of single-valued blocks 144 exceeds maximum allowed 100."
+        raise ValueError(msg)
+
+    monkeypatch.setattr(
+        circuit_properties, "get_circuit_manipulation_properties", raise_value_error
+    )
+
+    request = circuit_properties.CircuitNeuronalManipulationPropertiesRequest.model_validate(
+        {"entity_id": "circuit-id", "neuron_set": SWEPT_NEURON_SET_PAYLOAD}
+    )
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.neuronal_manipulation_properties_endpoint_by_neuron_set(
+            request=request,
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "exceeds maximum allowed" in exc_info.value.detail
