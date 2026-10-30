@@ -49,7 +49,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
 
     morphology_locations: dict[str, MorphologyLocationUnion] = Field(
         default_factory=dict,
-        title="Morphology Locations",
+        title="Morphology locations",
         description=(
             "Reusable rules for selecting precise locations on neuronal morphologies. "
             "Stimuli can reference these locations to target compartments instead of whole cells."
@@ -79,7 +79,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     class Initialize(BaseSimulationScanConfig.Initialize):
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
             default=1.1,
-            title="Extracellular Calcium Concentration",
+            title="Extracellular calcium concentration",
             description=(
                 "Extracellular calcium concentration around the synapse in millimoles (mM). "
                 "Increasing this value increases the probability of synaptic vesicle release, "

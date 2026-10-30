@@ -39,7 +39,7 @@ class BlockGroup(StrEnum):
     """Block groups for the simplification form."""
 
     SETUP = "Setup"
-    CIRCUIT_COMPONENTS = "Circuit Components"
+    CIRCUIT_COMPONENTS = "Circuit components"
     SIMPLIFICATION = "Simplification"
 
 
@@ -128,7 +128,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
         )
         target_neuron_set: ATOMIC_BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Target Neuron Set",
+            title="Target neuron set",
             description=(
                 "Neuron set to simplify (e.g. by e-type or m-type). If empty, all biophysical"
                 " neurons are simplified. Only supported by the single-compartment algorithm."
@@ -176,7 +176,7 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     )
     neuron_sets: dict[str, AtomicBiophysicalNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         default_factory=dict,
-        title="Neuron Sets",
+        title="Neuron sets",
         description="Neuron sets that can be selected as the target of the simplification.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,

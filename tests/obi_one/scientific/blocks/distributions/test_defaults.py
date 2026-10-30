@@ -37,7 +37,7 @@ def test_describe_distribution_falls_back_to_field_name():
 
 def test_describe_distribution_uses_field_title():
     assert describe_distribution(FloatConstantDistribution(value=1.5)) == (
-        "a Constant Float distribution with value=1.5"
+        "a Constant float distribution with value=1.5"
     )
 
 

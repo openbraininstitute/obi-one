@@ -19,11 +19,11 @@ L = logging.getLogger(__name__)
 class PresynapticNeuronSetSynapticModelAssigner(SynapseModelAssigner):
     """Assign a synaptic model to the efferent synapses of a presynaptic neuron set."""
 
-    title: ClassVar[str] = "Presynaptic Neuron Set"
+    title: ClassVar[str] = "Presynaptic neuron set"
 
     source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Source)",
+        title="Neuron set (source)",
         description="Source neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,

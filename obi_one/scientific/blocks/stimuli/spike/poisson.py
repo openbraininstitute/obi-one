@@ -26,7 +26,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
     repetitions of the same stimulus.
     """
 
-    title: ClassVar[str] = "Poisson Spikes (Efferent)"
+    title: ClassVar[str] = "Poisson spikes (efferent)"
 
     duration: (
         Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
@@ -54,7 +54,7 @@ class PoissonSpikeStimulus(SpikeStimulus):
     )
     random_seed: int | list[int] = Field(
         default=0,
-        title="Random Seed",
+        title="Random seed",
         description="Seed for the random number generator to ensure "
         "reproducibility of the spike generation.",
         json_schema_extra={

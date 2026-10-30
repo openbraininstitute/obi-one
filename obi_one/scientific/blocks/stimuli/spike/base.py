@@ -30,7 +30,7 @@ from obi_one.scientific.unions_and_references.timestamps import (
 class SpikeStimulus(StimulusWithTimestamps):
     source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Source)",
+        title="Neuron set (source)",
         description="Source neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -41,7 +41,7 @@ class SpikeStimulus(StimulusWithTimestamps):
 
     targeted_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Target neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,

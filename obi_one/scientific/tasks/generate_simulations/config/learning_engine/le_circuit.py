@@ -64,7 +64,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
 
         node_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Neuron Set",
+            title="Neuron set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -97,6 +97,7 @@ class LearningEngineCircuitSimulationScanConfig(LearningEngineSimulationScanConf
     )
 
     neuron_sets: dict[str, LearningEngineNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

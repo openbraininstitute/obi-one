@@ -66,7 +66,7 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
 
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description=(
             "Neuron set whose morphologies are used to generate locations. If omitted, "
             "locations are generated for the default biophysical neuron set."
@@ -79,7 +79,7 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
 
     random_seed: NonNegativeInt | list[NonNegativeInt] = Field(
         default=0,
-        title="Random Seed",
+        title="Random seed",
         description="Seed used when randomly selecting morphology locations.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -87,7 +87,7 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
     )
 
     section_types: SectionTypes = Field(
-        title="Section Types",
+        title="Section types",
         description="Neurite section types where locations may be generated.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.MORPHOLOGY_SECTION_TYPE_SELECTION,
@@ -101,7 +101,7 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
         | list[Annotated[PositiveInt, Field(le=MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS)]]
     ) = Field(
         default=20,
-        title="Number of Locations",
+        title="Number of locations",
         description=(
             "Total number of morphology locations to generate for each targeted neuron. "
             f"Maximum: {MAX_NUMBER_OF_MORPHOLOGY_LOCATIONS}."

@@ -143,7 +143,7 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
     Click on branches in the 3D viewer to select where stimuli or recordings are placed.
     """
 
-    title: ClassVar[str] = "Explicit Morphology Locations"
+    title: ClassVar[str] = "Explicit morphology locations"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
