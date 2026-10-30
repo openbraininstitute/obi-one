@@ -22,12 +22,6 @@ from obi_one.scientific.library.simulation.neuron.staging import (
     stage_ion_channel_models_as_circuit,
     stage_memodel_as_circuit,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (
-    IonChannelModelSimulationSingleConfig,
-)
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
-    MEModelSimulationSingleConfig,
-)
 from obi_one.scientific.tasks.simulation_execution.neuron.config import (
     CircuitSimulationExecutionSingleConfig,
     IonChannelModelSimulationExecutionSingleConfig,
@@ -43,6 +37,12 @@ if TYPE_CHECKING:
     from entitysdk.models import Simulation
 
     from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+    from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (  # ruff: ignore[line-too-long]
+        IonChannelModelSimulationSingleConfig,
+    )
+    from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+        MEModelSimulationSingleConfig,
+    )
 
 L = logging.getLogger(__name__)
 
@@ -203,7 +203,11 @@ class IonChannelModelSimulationExecutionTask(SimulationExecutionTask):
 
     def get_generation_single_config(
         self, db_client: entitysdk.client.Client
-    ) -> IonChannelModelSimulationSingleConfig:
+    ) -> "IonChannelModelSimulationSingleConfig":
+        from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models import (  # ruff: ignore[line-too-long, import-outside-top-level]
+            IonChannelModelSimulationSingleConfig,
+        )
+
         json_bytes = db_sdk.select_asset_content(
             client=db_client,
             entity=self.config.single_entity,
@@ -232,7 +236,11 @@ class SingleNeuronSimulationExecutionTask(SimulationExecutionTask):
 
     def get_generation_single_config(
         self, db_client: entitysdk.client.Client
-    ) -> MEModelSimulationSingleConfig:
+    ) -> "MEModelSimulationSingleConfig":
+        from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (  # ruff: ignore[import-outside-top-level]
+            MEModelSimulationSingleConfig,
+        )
+
         json_bytes = db_sdk.select_asset_content(
             client=db_client,
             entity=self.config.single_entity,
