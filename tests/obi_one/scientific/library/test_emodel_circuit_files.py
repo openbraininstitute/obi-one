@@ -15,9 +15,15 @@ import pytest
 from obi_one.scientific.library.emodel_circuit_files import (
     HocTemplateError,
     ModMechanism,
+    _distribution_value,
     mechanism_variables,
     read_hoc_biophysics,
     read_mod_mechanism,
+)
+from obi_one.scientific.library.emodel_parameters import (
+    ChannelInfo,
+    ChannelSectionListMapping,
+    MechanismVariable,
 )
 from obi_one.scientific.library.memodel_circuit import (
     _build_mechanism_variables_by_ion_channel_response,
@@ -213,6 +219,20 @@ class TestHocReaderIsFailClosed:
         assert result.distributions == {("apical", "gIhbar_Ih"): None}
         assert len(result.warnings) == 1
 
+    def test_value_written_first_is_read_like_the_derivation_path(self):
+        """Real line of rCA1-like ``cADpyr_bin_4``: BluePyEModel's ``step`` distribution."""
+        hoc_text = (
+            "proc insertChannel() {\n  forsec this.apical {\n    insert Ca_LVAst\n  }\n}\n"
+            "proc biophys() {\n"
+            '  distribute_distance(CellRef.apical, "gCa_LVAstbar_Ca_LVAst", '
+            '"0.0039788257139893729 * (0.1 + 0.9 * int((%.17g > 370.67452392578127) '
+            '&& (%.17g < 519.34097900390623)))")\n'
+            "}\n"
+        )
+        result = read_hoc_biophysics(hoc_text)
+        assert result.distributions == {("apical", "gCa_LVAstbar_Ca_LVAst"): 0.0039788257139893729}
+        assert result.warnings == []
+
     def test_missing_mod_file_raises(self):
         biophysics = read_hoc_biophysics(HOC_PATH.read_text())
         with pytest.raises(HocTemplateError, match="no mod file for inserted mechanisms"):
@@ -293,6 +313,21 @@ class TestModReader:
         assert mechanism.range_variables == ["a", "b"]
         assert mechanism.global_variables == ["c"]
 
+    def test_units_come_from_parameter_or_assigned(self):
+        """rCA1's ``cagk.mod`` declares ``tau`` and ``gkca`` with units in ASSIGNED only."""
+        mechanism = read_mod_mechanism(
+            "NEURON {\n  SUFFIX cagk\n  RANGE gbar, gkca, tau, st\n}\n"
+            "PARAMETER {\n  gbar=.01 (mho/cm2) : max\n  st=1 (1)\n}\n"
+            "ASSIGNED {\n  ik (mA/cm2)\n  oinf\n  tau (ms)\n  gkca (mho/cm2)\n}\n"
+        )
+        assert mechanism.units == {
+            "gbar": "mho/cm2",
+            "st": "1",
+            "ik": "mA/cm2",
+            "tau": "ms",
+            "gkca": "mho/cm2",
+        }
+
     def test_missing_neuron_block_raises(self):
         with pytest.raises(HocTemplateError, match="no NEURON block"):
             read_mod_mechanism("PARAMETER {\n  g = 1\n}\n")
@@ -306,3 +341,132 @@ class TestReaderRejectsMalformedFiles:
     def test_unbalanced_procedure_raises(self):
         with pytest.raises(HocTemplateError, match="unbalanced braces"):
             read_hoc_biophysics("proc insertChannel() {\n  forsec this.all {\n")
+
+
+D = "%.17g"
+
+
+class TestDistributionValue:
+    """The ``{value}`` of every BluePyEModel distribution, as BluePyOpt prints it in hoc."""
+
+    @pytest.mark.parametrize(
+        ("formula", "value"),
+        [
+            pytest.param(f"(-0.8696 + 2.087*exp(({D})*0.0031))*0.0012", 0.0012, id="exp"),
+            pytest.param(f"exp((-{D})/50)*0.04", 0.04, id="exp_na_dend"),
+            pytest.param(f"(1. + 3./100. * {D})*2.5e-05", 2.5e-05, id="linear_hd_apic"),
+            pytest.param(f"(15./(1. + exp((300-{D})/50)))*0.012", 0.012, id="sigmoid_kad_apic"),
+            pytest.param(
+                f"0.0039788257139893729 * (0.1 + 0.9 * int(({D} > 370.67) && ({D} < 519.34)))",
+                0.0039788257139893729,
+                id="step",
+            ),
+            pytest.param(
+                f"(-68.802204816706208-5*{D}/150)", -68.802204816706208, id="linear_e_pas_apic"
+            ),
+            pytest.param(f"(70.5+5*{D}/150)", 70.5, id="linear_e_pas_apic_positive"),
+            pytest.param(f"(0.5 + 1.2 * exp({D} * -0.003)) * 0.07", 0.07, id="custom_product"),
+            pytest.param("0.031", 0.031, id="uniform"),
+            pytest.param(f"(1+{D})*-0.5", -0.5, id="negative_value"),
+            pytest.param(f"exp(-{D}/50)*1.5e-05", 1.5e-05, id="exponent_in_value"),
+        ],
+    )
+    def test_value_is_found(self, formula, value):
+        assert _distribution_value(formula) == value
+
+    @pytest.mark.parametrize(
+        "formula",
+        [
+            pytest.param(f"2.087*exp({D})+0.5", id="number_added_after_a_function"),
+            pytest.param(f"0.5*{D}*0.2", id="two_plain_number_factors"),
+            pytest.param(f"(1 + 2*exp({D}*3)*0.5)", id="sum_with_a_function"),
+            pytest.param(f"{D}/150", id="no_plain_number"),
+            pytest.param(f"0.5*(1+2)*{D}", id="factor_not_depending_on_distance"),
+            pytest.param(f"(-0.8696 + 2.087*exp({D}*0.0031))", id="distribution_without_value"),
+            pytest.param("x", id="not_a_number"),
+            pytest.param(f"(0.5*{D}", id="unbalanced_parenthesis"),
+        ],
+    )
+    def test_no_single_reading_gives_none(self, formula):
+        assert _distribution_value(formula) is None
+
+
+class TestModUnits:
+    def test_repeated_blocks_are_merged(self):
+        """``StochKv3.mod`` has two ASSIGNED blocks; units of the first were lost."""
+        mechanism = read_mod_mechanism(
+            "NEURON {\n  SUFFIX StochKv3\n  RANGE gk, an, N0L0\n}\n"
+            "ASSIGNED {\n  an (/ms)\n  gk (S/cm2)\n}\n"
+            "ASSIGNED {\n  N0L0 N1L0 : populations\n}\n"
+        )
+        assert mechanism.units == {"an": "/ms", "gk": "S/cm2"}
+
+    def test_state_units_are_read(self):
+        mechanism = read_mod_mechanism(
+            "NEURON {\n  SUFFIX CaDynamics_DC0\n  RANGE decay\n}\n"
+            "PARAMETER {\n  decay = 80 (ms)\n}\n"
+            "STATE {\n  cai (mM)\n}\n"
+        )
+        assert mechanism.units == {"decay": "ms", "cai": "mM"}
+
+    def test_comments_are_ignored(self):
+        """A COMMENT block can quote a whole block; ``:`` comments can hide a name."""
+        mechanism = read_mod_mechanism(
+            "COMMENT\n  Old version:\n  NEURON {\n    SUFFIX old\n    RANGE stale\n  }\n"
+            "  PARAMETER {\n    stale = 2 (mV)\n  }\nENDCOMMENT\n"
+            "NEURON {\n  SUFFIX new : was old\n  RANGE g : , hidden\n}\n"
+            "PARAMETER {\n  g = 1 (S/cm2) : not (mV)\n}\n"
+        )
+        assert mechanism.suffix == "new"
+        assert mechanism.range_variables == ["g"]
+        assert mechanism.units == {"g": "S/cm2"}
+
+    def test_several_names_on_one_line_and_parameter_wins(self):
+        mechanism = read_mod_mechanism(
+            "NEURON {\n  SUFFIX demo\n}\n"
+            "PARAMETER {\n  gbar = 0.1 (S/cm2) <0, 1e9>\n}\n"
+            "ASSIGNED {\n  ina (mA/cm2) ik (mA/cm2)\n  gbar (mho/cm2)\n}\n"
+        )
+        assert mechanism.units == {"gbar": "S/cm2", "ina": "mA/cm2", "ik": "mA/cm2"}
+
+    def test_repo_stochkv3_keeps_every_unit(self):
+        mechanism = read_mod_mechanism((CIRCUIT_DIR / "mod" / "StochKv3.mod").read_text())
+        assert {k: mechanism.units[k] for k in ("an", "gk", "ltau", "gkbar")} == {
+            "an": "/ms",
+            "gk": "S/cm2",
+            "ltau": "ms",
+            "gkbar": "S/cm2",
+        }
+
+
+class TestSectionListOrder:
+    def test_section_lists_are_sorted_and_values_kept(self):
+        variables = [
+            MechanismVariable(
+                neuron_variable="cm",
+                section_list=section,
+                value=value,
+                channel_name="-",
+                variable_type="RANGE",
+            )
+            for section, value in (
+                ("somatic", 1.0),
+                ("axonal", 2.0),
+                ("basal", 3.0),
+                ("apical", 4.0),
+            )
+        ]
+        mapping = ChannelSectionListMapping(
+            channel_to_section_lists={
+                "NaTg": ChannelInfo(section_lists=["somatic", "axonal"], entity_id=None),
+                "Ih": ChannelInfo(section_lists=["basal", "apical"], entity_id=None),
+            }
+        )
+        response = _build_mechanism_variables_by_ion_channel_response(variables, mapping)
+        assert response["-"].section_lists == ["apical", "axonal", "basal", "somatic"]
+        assert response["-"].variables["cm"].section_lists_original_values == {
+            "somatic": 1.0,
+            "axonal": 2.0,
+            "basal": 3.0,
+            "apical": 4.0,
+        }
