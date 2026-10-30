@@ -161,6 +161,7 @@ class TestPlaceMorphologiesAndMechanisms:
     ):
         me_model_entity = SimpleNamespace(
             id=uuid4(),
+            emodel=SimpleNamespace(id=uuid4()),
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
         )
@@ -197,7 +198,9 @@ class TestPlaceMorphologiesAndMechanisms:
 
         assert result.pt_root_id == 42
         assert result.use_me_model is True
-        assert "model_template" in result.phys_node_props
+        assert result.me_model_entity is me_model_entity
+        expected_template = "hoc:mdl_" + str(me_model_entity.emodel.id).replace("-", "_")
+        assert result.phys_node_props["model_template"][0] == expected_template
         assert "@dynamics:threshold_current" in result.phys_node_props
         assert "@dynamics:holding_current" in result.phys_node_props
         assert mechanisms_placed == "mod"
@@ -246,6 +249,7 @@ class TestResolveListNeurons:
     ):
         me_model_entity = SimpleNamespace(
             id=uuid4(),
+            emodel=SimpleNamespace(id=uuid4()),
             morphology=morph_entity,
             calibration_result=SimpleNamespace(threshold_current=0.5, holding_current=0.1),
         )

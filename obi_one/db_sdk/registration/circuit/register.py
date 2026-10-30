@@ -109,6 +109,31 @@ def _get_biophysical_model_templates(circuit: OBICircuit) -> set[str]:
     return templates
 
 
+def _resolve_emodel_sources(
+    emodels: models.EModel | list[models.EModel],
+    labels: str | list[str] | None,
+    model_templates: set[str],
+) -> list[tuple[models.EModel, str]]:
+    """Normalize a single EModel or list of EModels into validated (emodel, label) pairs."""
+    emodel_list = emodels if isinstance(emodels, list) else [emodels]
+    for emodel in emodel_list:
+        if not isinstance(emodel, models.EModel):
+            msg = "derived_from_emodel must be an EModel or a list of EModels"
+            raise TypeError(msg)
+    if labels is None:
+        msg = "derivation_label is required when derived_from_emodel is provided"
+        raise ValueError(msg)
+    label_list = labels if isinstance(labels, list) else [labels]
+    if len(label_list) != len(emodel_list):
+        msg = "derivation_label must have the same length as derived_from_emodel"
+        raise ValueError(msg)
+    for label in label_list:
+        if label not in model_templates:
+            msg = "derivation_label must match a biophysical model_template in the circuit"
+            raise ValueError(msg)
+    return list(zip(emodel_list, label_list, strict=True))
+
+
 def _register_parent_emodel_derivations(
     client: Client,
     parent: models.Circuit | None,
@@ -165,9 +190,9 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     atlas: models.BrainAtlas | None = None,
     root: models.Circuit | UUID | None = None,
     parent: models.Circuit | UUID | None = None,
-    derived_from_emodel: models.EModel | None = None,
+    derived_from_emodel: models.EModel | list[models.EModel] | None = None,
     derivation_type: DerivationType | None = None,
-    derivation_label: str | None = None,
+    derivation_label: str | list[str] | None = None,
     contributions: dict | None = None,
     publications: dict | None = None,
     authorized_public: bool = False,
@@ -225,14 +250,16 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         parent: Parent circuit entity or ID (UUID) for the circuit derivation hierarchy
             (optional). When set, it creates a Circuit-to-Circuit derivation link with
             ``derivation_type`` and no label. ``root`` defaults from it.
-        derived_from_emodel: EModel source for an ``emodel_circuit`` derivation (optional).
-            It cannot be combined with ``parent`` and requires a ``derivation_label`` matching
-            a biophysical ``model_template`` in the circuit. It does not affect the hierarchy.
+        derived_from_emodel: EModel source(s) for ``emodel_circuit`` derivations (optional).
+            Accepts a single EModel or a list of EModels, one derivation per EModel. It cannot
+            be combined with ``parent`` and requires ``derivation_label`` matching biophysical
+            ``model_template`` values in the circuit. It does not affect the hierarchy.
         derivation_type: Type of derivation for a parent circuit. It must be ``None`` when an
             explicit EModel source is provided; explicit EModel sources always use
             ``emodel_circuit``.
-        derivation_label: Label for the derivation. It is required for an explicit EModel source,
-            must match a biophysical ``model_template``, and is forbidden otherwise.
+        derivation_label: Label(s) for the derivation. Required for an explicit EModel source:
+            a single label or a list matching ``derived_from_emodel`` in length, each matching
+            a biophysical ``model_template``. Forbidden otherwise.
         contributions: Resolved contributions dict (from get_contributions, optional).
         publications: Resolved publications dict (from get_publications, optional).
         authorized_public: Whether to make the circuit publicly accessible.
@@ -323,6 +350,7 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
     )
 
     # Resolve parent and derive root when not explicitly provided
+    emodel_sources: list[tuple[models.EModel, str]] = []
     if parent is not None and isinstance(parent, UUID):
         parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
     if parent is not None and derived_from_emodel is not None:
@@ -336,18 +364,16 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             msg = "derivation_label must be None when parent is provided"
             raise ValueError(msg)
     elif derived_from_emodel is not None:
-        if not isinstance(derived_from_emodel, models.EModel):
-            msg = "derived_from_emodel must be an EModel"
-            raise TypeError(msg)
+        # Explicit EModel provenance declared by the caller (e.g. synaptome or
+        # EM synapse mapping builds); labels must be circuit model_templates.
         if derivation_type is not None:
             msg = "derivation_type must be None when derived_from_emodel is provided"
             raise ValueError(msg)
-        if derivation_label is None:
-            msg = "derivation_label is required when derived_from_emodel is provided"
-            raise ValueError(msg)
-        if derivation_label not in _get_biophysical_model_templates(c):
-            msg = "derivation_label must match a biophysical model_template in the circuit"
-            raise ValueError(msg)
+        emodel_sources = _resolve_emodel_sources(
+            emodels=derived_from_emodel,
+            labels=derivation_label,
+            model_templates=_get_biophysical_model_templates(c),
+        )
     elif derivation_label is not None:
         msg = "derivation_label requires parent or derived_from_emodel"
         raise ValueError(msg)
@@ -391,6 +417,13 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
         L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
 
     # Derivation links: parent circuits and explicit EModels are mutually exclusive.
+    # The parent link records the circuit-to-circuit hierarchy (e.g. extraction);
+    # the emodel_circuit links record which EModel(s) the circuit's node
+    # model_templates were built from, consumed by neuronal manipulations.
+    # They are either inherited from the parent circuit or declared explicitly
+    # via derived_from_emodel — used by the synaptome and EM synapse mapping
+    # workflows, which build fresh hoc models rather than deriving a circuit
+    # from another circuit.
     if parent is not None:
         register_derivation(
             client=client,
@@ -399,6 +432,8 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             registered_circuit=registered_circuit,
             dry_run=dry_run,
         )
+        # Inherit the parent's emodel_circuit derivations still referenced by
+        # this circuit's model_templates.
         _register_parent_emodel_derivations(
             client=client,
             parent=parent,
@@ -407,15 +442,19 @@ def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, compl
             model_templates=_get_biophysical_model_templates(c),
             dry_run=dry_run,
         )
-    elif derived_from_emodel is not None:
-        register_derivation(
-            client=client,
-            from_entity=derived_from_emodel,
-            derivation_type=DerivationType.emodel_circuit,
-            registered_circuit=registered_circuit,
-            dry_run=dry_run,
-            label=derivation_label,
-        )
+    elif emodel_sources:
+        # Used for synaptome and EM synapse mapping workflows that build fresh hoc
+        # models rather than deriving a circuit from another circuit.
+        # One emodel_circuit derivation per explicit (emodel, label) pair.
+        for emodel, label in emodel_sources:
+            register_derivation(
+                client=client,
+                from_entity=emodel,
+                derivation_type=DerivationType.emodel_circuit,
+                registered_circuit=registered_circuit,
+                dry_run=dry_run,
+                label=label,
+            )
 
     # Contributions
     if contributions:
