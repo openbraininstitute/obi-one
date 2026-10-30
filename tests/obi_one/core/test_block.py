@@ -3,6 +3,7 @@ from pydantic import Field, ValidationError
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
+from obi_one.core.block_subunit.complex_variable_holder import DurationVoltageCombination
 from obi_one.core.parametric_multi_values import IntRange
 
 
@@ -17,9 +18,20 @@ class MultiValueBlock(Block):
     another_single: str = "hello"
 
 
+class TwoListsBlock(Block):
+    list_a: list[int] = Field(default=[1, 2])
+    list_b: list[str] = Field(default=["x", "y", "z"])
+
+
 class RangeBlock(Block):
     single_val: float = 1.0
     range_val: IntRange = IntRange(start=1, step=1, end=3)
+
+
+class NestedHolderBlock(Block):
+    combo: DurationVoltageCombination = Field(
+        default=DurationVoltageCombination(voltage=[1.0, 2.0], duration=5.0)
+    )
 
 
 class TestBlockCreation:
@@ -199,3 +211,62 @@ class TestBlockMultipleValueParametersEdgeCases:
         block = MixedBlock()
         params = block.multiple_value_parameters(category_name="cat")
         assert len(params) == 2  # multi and range_val
+
+
+class TestExpandMultiValues:
+    def test_no_multi_values_returns_self(self):
+        block = SimpleBlock(value=5, name="test")
+        expanded = block.expand_multi_values()
+        assert expanded == [block]
+        assert expanded[0] is block
+
+    def test_list_field_expands_to_single_values(self):
+        block = MultiValueBlock(list_val=[10, 20, 30])
+        expanded = block.expand_multi_values()
+        assert len(expanded) == 3
+        assert [b.list_val for b in expanded] == [10, 20, 30]
+        assert all(b.single_val == 1 and b.another_single == "hello" for b in expanded)
+
+    def test_cartesian_product_of_two_lists(self):
+        block = TwoListsBlock()
+        expanded = block.expand_multi_values()
+        assert len(expanded) == 6
+        pairs = {(b.list_a, b.list_b) for b in expanded}
+        assert pairs == {(1, "x"), (1, "y"), (1, "z"), (2, "x"), (2, "y"), (2, "z")}
+
+    def test_parametric_range_expands(self):
+        block = RangeBlock()
+        expanded = block.expand_multi_values()
+        assert [b.range_val for b in expanded] == [1, 2, 3]
+        assert all(b.single_val == pytest.approx(1.0) for b in expanded)
+
+    def test_expanded_blocks_pass_enforce_no_multi_param(self):
+        block = MultiValueBlock()
+        for expanded in block.expand_multi_values():
+            expanded.enforce_no_multi_param()  # Should not raise
+
+    def test_original_block_not_mutated(self):
+        block = MultiValueBlock(list_val=[10, 20])
+        block.expand_multi_values()
+        assert block.list_val == [10, 20]
+
+    def test_block_name_preserved(self):
+        block = MultiValueBlock()
+        block.set_block_name("my_block")
+        expanded = block.expand_multi_values()
+        assert all(b.block_name == "my_block" for b in expanded)
+
+    def test_max_n_exceeded_raises(self):
+        block = TwoListsBlock()
+        with pytest.raises(ValueError, match="exceeds maximum allowed"):
+            block.expand_multi_values(max_n=5)
+
+    def test_max_n_boundary_allowed(self):
+        block = TwoListsBlock()
+        expanded = block.expand_multi_values(max_n=6)
+        assert len(expanded) == 6
+
+    def test_nested_multi_value_raises(self):
+        block = NestedHolderBlock()
+        with pytest.raises(ValueError, match="nested multi-value"):
+            block.expand_multi_values()
