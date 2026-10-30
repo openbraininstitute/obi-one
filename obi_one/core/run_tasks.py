@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import entitysdk
 
@@ -13,6 +13,9 @@ from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_task_type,
 )
 from obi_one.types import TaskType
+
+if TYPE_CHECKING:
+    from obi_one.utils.shared_cache import SharedCache
 
 
 def run_task_for_single_config(
@@ -112,6 +115,7 @@ def run_task_type(
     db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
+    shared_cache: "SharedCache | None" = None,
 ) -> None:
     task_spec = get_task_spec_for_task_type(task_type)
     entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
@@ -144,7 +148,7 @@ def run_task_type(
 
     single_config.set_single_entity(entity)  # ty:ignore[unresolved-attribute]
 
-    task = task_spec.task_cls(config=single_config)
+    task = task_spec.task_cls(config=single_config, shared_cache=shared_cache)
     task.execute(
         db_client=db_client, entity_cache=entity_cache, execution_activity_id=execution_activity_id
     )

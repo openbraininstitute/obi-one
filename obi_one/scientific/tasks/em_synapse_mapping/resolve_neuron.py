@@ -50,6 +50,7 @@ class ResolvedNeuron:
     cave_version: int
     use_me_model: bool
     name_in_circuit: str
+    me_model_entity: MEModel | None = None
     phys_node_props: dict = field(default_factory=dict)
     fn_morph_h5: Path
     fn_morph_swc: Path
@@ -333,7 +334,9 @@ def place_morphologies_and_mechanisms(
         ensure_mechanisms_placed(memdl_paths.mechanisms_dir, out_root / mechanisms_placed)
         hoc_dir = out_root / "hoc"
         hoc_dir.mkdir(parents=True, exist_ok=True)
-        name_hoc_model = "mdl_" + str(me_model_entity.id).replace("-", "_")
+        # Template named after the EModel: ME-models sharing an EModel reuse one
+        # template, matching the single emodel_circuit derivation registered per EModel.
+        name_hoc_model = "mdl_" + str(me_model_entity.emodel.id).replace("-", "_")
         replace_hoc_template_name(
             hoc_file_in=memdl_paths.hoc_path,
             hoc_file_out=hoc_dir / (name_hoc_model + ".hoc"),
@@ -364,6 +367,7 @@ def place_morphologies_and_mechanisms(
         name_in_circuit=entity_id_str,
         cave_version=source_mesh_entity.release_version,
         use_me_model=(me_model_entity is not None),
+        me_model_entity=me_model_entity,
         phys_node_props=phys_node_props,
         fn_morph_h5=fn_spiny_morph,
         fn_morph_swc=fn_morphology_out_swc,
