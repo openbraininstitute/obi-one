@@ -518,12 +518,29 @@ class TestSelectMorphologyPath:
         assert "morphology_paths" in DownloadedMEModel.model_fields
         assert "morphology_path" not in DownloadedMEModel.model_fields
 
-    def test_returns_first_morphology_path(self, tmp_path):
-        downloaded = self._downloaded(tmp_path, morphology_names=("morph.asc", "morph.swc"))
+    def test_prefers_asc_over_other_formats(self, tmp_path):
+        # Order deliberately puts h5/swc before asc to prove it selects by
+        # format, not position.
+        downloaded = self._downloaded(
+            tmp_path, morphology_names=("morph.h5", "morph.swc", "morph.asc")
+        )
 
         result = _select_morphology_path(downloaded, "ent-123")
 
-        assert result == downloaded.morphology_paths[0]
+        assert result.suffix == ".asc"
+
+    def test_falls_back_to_swc_when_no_asc(self, tmp_path):
+        downloaded = self._downloaded(tmp_path, morphology_names=("morph.h5", "morph.swc"))
+
+        result = _select_morphology_path(downloaded, "ent-123")
+
+        assert result.suffix == ".swc"
+
+    def test_raises_when_no_loadable_morphology(self, tmp_path):
+        downloaded = self._downloaded(tmp_path, morphology_names=("morph.h5",))
+
+        with pytest.raises(InvalidValidationContextError, match="ent-123"):
+            _select_morphology_path(downloaded, "ent-123")
 
     def test_raises_when_no_morphology(self, tmp_path):
         downloaded = self._downloaded(tmp_path, morphology_names=())

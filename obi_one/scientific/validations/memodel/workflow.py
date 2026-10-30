@@ -146,16 +146,24 @@ def _resolve_holding_current(
 
 
 def _select_morphology_path(downloaded: DownloadedMEModel, entity_id: str) -> Path:
-    """Return the single morphology path a Cell is built from.
+    """Return the morphology path a Cell is built from.
 
-    ``download_memodel`` exposes the downloaded morphologies as
-    ``morphology_paths``; the first is used. An empty list means the download
-    produced no morphology.
+    ``download_memodel`` stages every morphology format the entity carries
+    (asc, swc, h5, ...) in ``morphology_paths``. The v6 HOC loads .asc or .swc,
+    so prefer .asc and fall back to .swc rather than taking an arbitrary entry.
     """
     if not downloaded.morphology_paths:
         message = f"No morphology was downloaded for MEModel {entity_id}."
         raise InvalidValidationContextError(message)
-    return downloaded.morphology_paths[0]
+    by_suffix = {path.suffix.lower(): path for path in downloaded.morphology_paths}
+    for suffix in (".asc", ".swc"):
+        if suffix in by_suffix:
+            return by_suffix[suffix]
+    message = (
+        f"No .asc or .swc morphology was downloaded for MEModel {entity_id}; "
+        f"got {[p.name for p in downloaded.morphology_paths]}."
+    )
+    raise InvalidValidationContextError(message)
 
 
 def _resolve_rheobase(
