@@ -1,12 +1,15 @@
-"""Neuronal manipulation properties for circuits.
+"""Which mechanism variables a neuronal manipulation can change in a circuit.
 
-Provides logic to:
-- Resolve a neuron set to node IDs for a circuit.
-- Read model_template property for selected node IDs.
-- Read each template's mechanism variables from the circuit's hoc and mod files.
-- Fall back to emodel_circuit derivations for templates whose files cannot be read.
-- Compute the intersection (common) of mechanism variables across all templates.
-- Return a flat response matching the MEModel response shape.
+For a circuit and an optional neuron set, the steps are:
+
+1. Find the cell templates (``model_template`` values) of the selected neurons in
+   ``nodes.h5``. Without a neuron set, only that column is read, by byte ranges.
+2. Read each template's ``.hoc`` file and the ``.mod`` files of its mechanisms from the
+   circuit asset, all fetched in parallel.
+3. Fill units the mod files leave undeclared from the ion channel model entities.
+4. For a template whose files cannot be read, use its emodel_circuit derivation instead.
+5. Keep the channels, variables and section lists common to all templates, and return
+   them in the MEModel response shape.
 
 See ``docs/neuronal-manipulation-properties.md`` for the data flow and its limits.
 """
@@ -15,20 +18,23 @@ from __future__ import annotations
 
 import logging
 import tempfile
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+import h5py
 import numpy as np
 from bluepysnap import Circuit as SnapCircuit
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import Derivation as DerivationModel
+from entitysdk.models import Derivation as DerivationModel, IonChannelModel
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
+from obi_one.db_sdk.assets import open_asset_h5
 from obi_one.scientific.library.circuit import CIRCUIT_MOD_DIR, Circuit as ObiCircuit
 from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.library.emodel_circuit_files import (
@@ -51,7 +57,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Container, Hashable, Iterable
 
     import entitysdk.client
-    from libsonata import NodePopulation
+    from entitysdk.models.asset import Asset
 
     from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 
@@ -66,15 +72,13 @@ FETCH_POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="circuit-file
 # hoc and mod files are a few KB to tens of KB; anything far larger is not a cell model
 # and is refused before it is read into memory.
 MAX_MODEL_FILE_BYTES = 1_000_000
-# Where circuits keep mod files when the config declares no mechanisms_dir, in probe order:
-# OBI circuits use ``mod`` (see ``ensure_mechanisms_dir``), entitysdk's MEModel staging
-# writes ``mechanisms``. A probe of a missing directory costs one 404 per mechanism.
+# Where circuits keep mod files when the config declares no mechanisms_dir, in order of
+# preference: OBI circuits use ``mod`` (see ``ensure_mechanisms_dir``), entitysdk's MEModel
+# staging writes ``mechanisms``. The first that holds a ``.mod`` file in the asset listing wins.
 UNDECLARED_MOD_DIRS = (CIRCUIT_MOD_DIR, "mechanisms")
 
 # (population, node_id) -> model_template, or -> EModel ID after derivation matching.
 TemplateNodes = dict[tuple[str, int], str]
-# (candidate directories, mechanism): one mod file to find in the first directory that has it.
-ModFileKey = tuple[tuple[str, ...], str]
 
 
 @dataclass
@@ -110,8 +114,12 @@ class TemplateModel:
 def _get_circuit_asset(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-) -> tuple[Circuit, UUID]:
-    """Get circuit entity and its sonata_circuit directory asset ID."""
+) -> tuple[Circuit, Asset]:
+    """Get circuit entity and its sonata_circuit directory asset.
+
+    The asset object, not its id, is passed on to ``fetch_file``: given an id, entitysdk
+    fetches the asset's metadata again before every file, one extra request per file.
+    """
     circuit_entity = db_client.get_entity(
         entity_id=UUID(circuit_id),
         entity_type=Circuit,
@@ -124,18 +132,18 @@ def _get_circuit_asset(
         msg = f"Circuit {circuit_id} must have exactly one sonata_circuit directory asset."
         raise ValueError(msg)
 
-    asset_id = directory_assets[0].id
-    if asset_id is None:
+    asset = directory_assets[0]
+    if asset.id is None:
         msg = f"Circuit {circuit_id} sonata_circuit asset has no ID."
         raise ValueError(msg)
 
-    return circuit_entity, asset_id
+    return circuit_entity, asset
 
 
 def _stage_file(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    asset_id: UUID,
+    asset: Asset,
     temp_dir: Path,
     asset_path: str,
     strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
@@ -159,7 +167,7 @@ def _stage_file(
     db_client.fetch_file(
         entity_id=UUID(circuit_id),
         entity_type=Circuit,
-        asset_id=asset_id,
+        asset_id=asset,
         output_path=output_path,
         asset_path=relative,
         strategy=strategy,
@@ -190,9 +198,11 @@ def _relative_dir(config_value: str | None, temp_dir_path: Path) -> str | None:
 def _stage_circuit_for_neuron_set(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    asset_id: UUID,
+    asset: Asset,
     temp_dir_path: Path,
     population_types: Container[str] | None = None,
+    *,
+    stage_nodes: bool = True,
 ) -> tuple[Path, dict[str, str], dict[str, PopulationModelDirs]]:
     """Stage the files needed to resolve a neuron set against a circuit.
 
@@ -201,10 +211,12 @@ def _stage_circuit_for_neuron_set(
     node_sets.json and the nodes.h5 of every population (or only those whose type is in
     ``population_types``) are then staged concurrently on ``FETCH_POOL`` with
     link_or_download (symlinks to the S3 cache where available, downloads otherwise).
-    A missing node_sets.json is tolerated; it is optional in SONATA.
+    A missing node_sets.json is tolerated; it is optional in SONATA. With
+    ``stage_nodes=False`` neither is fetched: the nodes paths are returned for the caller
+    to read another way.
 
     Returns:
-        The config path, population -> nodes.h5 asset path for the staged populations,
+        The config path, population -> nodes.h5 asset path for the selected populations,
         and population -> type and hoc / mod directories for every population. An
         ``EntitySDKError`` from fetching circuit_config.json or a nodes.h5 propagates.
     """
@@ -212,7 +224,7 @@ def _stage_circuit_for_neuron_set(
     config_path = _stage_file(
         db_client,
         circuit_id,
-        asset_id,
+        asset,
         temp_dir_path,
         "circuit_config.json",
         strategy=FetchFileStrategy.copy_or_download,
@@ -241,7 +253,7 @@ def _stage_circuit_for_neuron_set(
     }
 
     def stage(asset_path: str) -> Path:
-        return _stage_file(db_client, circuit_id, asset_id, temp_dir_path, asset_path)
+        return _stage_file(db_client, circuit_id, asset, temp_dir_path, asset_path)
 
     def stage_node_sets() -> None:
         # Needed for neuron set resolution, but optional in SONATA.
@@ -250,16 +262,17 @@ def _stage_circuit_for_neuron_set(
         except Exception:  # ruff: ignore[blind-except]
             L.debug("node_sets.json not available, continuing without it")
 
-    # Independent files: fetch together. A failed nodes.h5 re-raises from result().
-    futures = [FETCH_POOL.submit(stage_node_sets)]
-    futures.extend(FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values())
-    for future in futures:
-        future.result()
+    if stage_nodes:
+        # Independent files: fetch together. A failed nodes.h5 re-raises from result().
+        futures = [FETCH_POOL.submit(stage_node_sets)]
+        futures.extend(FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values())
+        for future in futures:
+            future.result()
 
     return config_path, pop_to_nodes_path, pop_to_model_dirs
 
 
-def _public_reason(err: Exception) -> str:
+def _public_reason(err: object) -> str:
     """Why a template could not be read, safe to return to the API caller.
 
     Only our own parse errors are quoted. Other errors (HTTP, filesystem) may carry
@@ -274,14 +287,14 @@ def _public_reason(err: Exception) -> str:
 
 def _fetch_and_parse[K: Hashable, T](
     keys: Iterable[K],
-    parse: Callable[[str], T],
+    parse: Callable[[K, str], T],
     stage: Callable[[K], Path],
 ) -> dict[K, T | Exception]:
     """Stage and parse one file per key concurrently on ``FETCH_POOL``.
 
     Args:
         keys: What to fetch, as ``stage`` understands it; duplicates are fetched once.
-        parse: Turns a file's text into its parsed form.
+        parse: Turns a key and its file's text into the parsed form.
         stage: Stages the file of one key and returns the local file.
 
     Returns:
@@ -291,7 +304,7 @@ def _fetch_and_parse[K: Hashable, T](
 
     def one(key: K) -> T | Exception:
         try:
-            return parse(_read_model_file(stage(key)))
+            return parse(key, _read_model_file(stage(key)))
         except Exception as err:  # ruff: ignore[blind-except]
             L.warning("Could not read circuit file %s", key, exc_info=True)
             return err
@@ -301,121 +314,388 @@ def _fetch_and_parse[K: Hashable, T](
     return dict(zip(unique, FETCH_POOL.map(one, unique), strict=True))
 
 
-def _stage_first_found(stage: Callable[[str], Path], key: ModFileKey) -> Path:
-    """The mod file from the first candidate directory that has it.
+def _parse_model_file(path: str, text: str) -> HocBiophysics | ModMechanism:
+    """Parse a hoc or mod file, chosen by the file extension."""
+    return read_hoc_biophysics(text) if path.endswith(".hoc") else read_mod_mechanism(text)
 
-    When no directory has it, the last probe's ``EntitySDKError`` propagates.
+
+def _asset_files(
+    db_client: entitysdk.client.Client, circuit_id: str, asset: Asset
+) -> dict[str, int] | Exception:
+    """Return asset path -> size in bytes for every file of the circuit, or the error.
+
+    One request lists the whole asset. The result serves two readers: the ``nodes.h5``
+    sizes let the byte-range read skip a ``HEAD`` request (storage refuses ``HEAD`` on
+    presigned URLs), and the paths show where the ``.mod`` files are.
+
+    A failure is logged and returned, not raised, like a failed file in
+    ``_fetch_and_parse``: ``nodes.h5`` is then downloaded whole, and every template
+    reports the reason.
     """
-    (*probe_dirs, last_dir), channel = key
-    for mod_dir in probe_dirs:
-        try:
-            return stage(f"{mod_dir}/{channel}.mod")
-        except EntitySDKError:
-            L.debug("No %s/%s.mod in the circuit, trying the next directory", mod_dir, channel)
-    return stage(f"{last_dir}/{channel}.mod")
+    try:
+        listing = db_client.list_directory(
+            entity_id=UUID(circuit_id), entity_type=Circuit, asset_id=asset.id
+        )
+    except Exception as err:  # ruff: ignore[blind-except]
+        L.warning("Could not list the files of circuit %s", circuit_id, exc_info=True)
+        return err
+    return {path.as_posix(): file.size for path, file in listing.files.items()}
+
+
+def _mod_files_by_dir(asset_paths: Iterable[str]) -> dict[str, list[str]]:
+    """Group the asset paths of the ``.mod`` files by their directory."""
+    by_dir: dict[str, list[str]] = {}
+    for path in map(PurePosixPath, asset_paths):
+        if path.suffix == ".mod":
+            by_dir.setdefault(str(path.parent), []).append(str(path))
+    return by_dir
+
+
+@dataclass
+class ModIndex:
+    """The mod files of one mechanisms directory, found by the mechanism each defines.
+
+    NEURON names a mechanism by the ``SUFFIX`` written inside the file, not by the file
+    name (rCA1's ``kdrbca1.mod`` defines ``kdrb``). So every mod file of the directory is
+    read, and indexed by its ``SUFFIX``.
+
+    Attributes:
+        mechanisms: SUFFIX -> parsed mod file, or the error when two files define it.
+        unread: Errors of files that could not be fetched; which mechanisms they define
+            is unknown, so a mechanism missing from ``mechanisms`` is reported with one.
+    """
+
+    mechanisms: dict[str, ModMechanism | Exception]
+    unread: list[Exception]
+
+    def lookup(self, channel: str) -> ModMechanism | str:
+        """The mechanism's parsed mod file, or the reason there is none."""
+        mod = self.mechanisms.get(channel)
+        if isinstance(mod, ModMechanism):
+            return mod
+        if mod is not None:
+            return _public_reason(mod)
+        if self.unread:
+            return _public_reason(self.unread[0])
+        return f"no mod file in the circuit defines mechanism '{channel}'"
+
+
+def _mod_index(
+    mod_paths: Iterable[str], files: dict[str, HocBiophysics | ModMechanism | Exception]
+) -> ModIndex:
+    """Index the parsed mod files of one directory by their ``SUFFIX``.
+
+    A file that is not a mechanism this module reads (it has no ``SUFFIX`` line) is
+    skipped. A file that could not be fetched or is too large is kept in ``unread``.
+    """
+    index = ModIndex(mechanisms={}, unread=[])
+    for path in mod_paths:
+        parsed = files[path]
+        if isinstance(parsed, ModMechanism):
+            if parsed.suffix in index.mechanisms:
+                msg = f"mechanism '{parsed.suffix}' is defined by more than one mod file"
+                index.mechanisms[parsed.suffix] = HocTemplateError(msg)
+            else:
+                index.mechanisms[parsed.suffix] = parsed
+        elif isinstance(parsed, Exception) and not isinstance(parsed, HocTemplateError):
+            index.unread.append(parsed)
+    return index
+
+
+def _template_hoc_paths(
+    templates_per_population: dict[str, set[str]],
+    pop_to_model_dirs: dict[str, PopulationModelDirs],
+) -> tuple[dict[str, str], dict[str, PopulationModelDirs], dict[str, str]]:
+    """Find each template's hoc file and model directories.
+
+    A template name is assumed to mean the same hoc file in every population that uses
+    it, so the first population that lists it decides its directories.
+
+    Returns:
+        Template -> hoc asset path, template -> its population's directories, and
+        template -> why it has no hoc path (its population declares no hoc directory).
+    """
+    hoc_paths: dict[str, str] = {}
+    template_dirs: dict[str, PopulationModelDirs] = {}
+    reasons: dict[str, str] = {}
+    for population, templates in templates_per_population.items():
+        dirs = pop_to_model_dirs[population]
+        for template in templates - template_dirs.keys():
+            template_dirs[template] = dirs
+            if dirs.hoc_dir is None:
+                reasons[template] = "population has no biophysical_neuron_models_dir"
+            else:
+                name = template.rsplit(":", maxsplit=1)[-1]
+                hoc_paths[template] = f"{dirs.hoc_dir}/{name}.hoc"
+    return hoc_paths, template_dirs, reasons
+
+
+def _mod_paths_per_dirs(
+    candidates: Iterable[tuple[str, ...]], mod_files_by_dir: dict[str, list[str]]
+) -> dict[tuple[str, ...], list[str]]:
+    """Pick, for each list of candidate directories, the mod files of the first one.
+
+    The first candidate that holds any ``.mod`` file wins; none gives an empty list.
+    """
+    return {
+        mod_dirs: next((sorted(mod_files_by_dir[d]) for d in mod_dirs if d in mod_files_by_dir), [])
+        for mod_dirs in dict.fromkeys(candidates)
+    }
 
 
 def _read_template_models(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    asset_id: UUID,
+    asset: Asset,
     temp_dir_path: Path,
     templates_per_population: dict[str, set[str]],
     pop_to_model_dirs: dict[str, PopulationModelDirs],
+    asset_files: dict[str, int] | Exception,
 ) -> dict[str, TemplateModel | str]:
-    """Read every template from its hoc file and the mod files it needs.
+    """Read every template from its hoc file and the mod files of its directory.
 
-    Two concurrent batches: all hoc files, then the union of their mod files, so a mod
-    file shared by several templates is fetched and parsed once.
+    The listing gives the mod file paths, then all hoc and mod files are fetched and parsed
+    in one parallel batch. Reading the whole mechanisms directory (a few dozen small files)
+    costs less than looking for each mechanism's file one by one, and the mod files do not
+    depend on the hoc files, so nothing waits. Units the mod files leave undeclared are
+    then filled from the database (``_fill_units_from_database``).
 
-    A template name is assumed to mean the same hoc file in every population that uses
-    it; the first population listing it decides the directories.
+    Args:
+        db_client: entitysdk client.
+        circuit_id: Circuit entity ID.
+        asset: The circuit's ``sonata_circuit`` asset.
+        temp_dir_path: Directory where files are staged for this request.
+        templates_per_population: Population -> the templates to read.
+        pop_to_model_dirs: Population -> where its hoc and mod files are.
+        asset_files: The asset listing from ``_asset_files``, or why it failed.
 
     Returns:
         Template -> its model, or the reason it could not be read.
     """
 
     def stage(path: str) -> Path:
-        return _stage_file(db_client, circuit_id, asset_id, temp_dir_path, path)
+        return _stage_file(db_client, circuit_id, asset, temp_dir_path, path)
 
-    def stage_mod(key: ModFileKey) -> Path:
-        return _stage_first_found(stage, key)
-
-    result: dict[str, TemplateModel | str] = {}
-    hoc_paths: dict[str, str] = {}
-    template_dirs: dict[str, PopulationModelDirs] = {}
-    for population, templates in templates_per_population.items():
-        dirs = pop_to_model_dirs[population]
-        for template in templates - template_dirs.keys():
-            template_dirs[template] = dirs
-            if dirs.hoc_dir is None:
-                result[template] = "population has no biophysical_neuron_models_dir"
-            else:
-                name = template.rsplit(":", maxsplit=1)[-1]
-                hoc_paths[template] = f"{dirs.hoc_dir}/{name}.hoc"
-
-    hocs = _fetch_and_parse(hoc_paths.values(), read_hoc_biophysics, stage)
-
-    parsed_hocs: dict[str, HocBiophysics] = {}
-    mod_keys: dict[str, dict[str, ModFileKey]] = {}
-    for template, hoc_path in hoc_paths.items():
-        biophysics = hocs[hoc_path]
-        if isinstance(biophysics, Exception):
-            result[template] = _public_reason(biophysics)
-            continue
-        parsed_hocs[template] = biophysics
-        mod_dirs = template_dirs[template].mod_dirs
-        mod_keys[template] = {
-            channel: (mod_dirs, channel) for channel in biophysics.mod_file_mechanisms
-        }
-
-    mods = _fetch_and_parse(
-        (key for keys in mod_keys.values() for key in keys.values()),
-        read_mod_mechanism,
-        stage_mod,
+    hoc_paths, template_dirs, reasons = _template_hoc_paths(
+        templates_per_population, pop_to_model_dirs
     )
+    result: dict[str, TemplateModel | str] = dict(reasons)
+    if not hoc_paths:
+        return result
+    if isinstance(asset_files, Exception):
+        return result | dict.fromkeys(hoc_paths, _public_reason(asset_files))
 
-    for template, keys in mod_keys.items():
-        result[template] = _template_model(parsed_hocs[template], keys, mods)
+    mod_paths = _mod_paths_per_dirs(
+        (template_dirs[template].mod_dirs for template in hoc_paths),
+        _mod_files_by_dir(asset_files),
+    )
+    files = _fetch_and_parse(
+        [*hoc_paths.values(), *(p for paths in mod_paths.values() for p in paths)],
+        _parse_model_file,
+        stage,
+    )
+    indexes = {dirs: _mod_index(paths, files) for dirs, paths in mod_paths.items()}
+
+    for template, hoc_path in hoc_paths.items():
+        parsed = files[hoc_path]
+        result[template] = (
+            _template_model(parsed, indexes[template_dirs[template].mod_dirs])
+            if isinstance(parsed, HocBiophysics)
+            else _public_reason(parsed)
+        )
+    _fill_units_from_database(
+        db_client,
+        [
+            mechanism
+            for model in result.values()
+            if isinstance(model, TemplateModel)
+            for mechanism in model.mechanisms.values()
+        ],
+    )
     return result
 
 
-def _template_model(
-    biophysics: HocBiophysics,
-    mod_keys: dict[str, ModFileKey],
-    mods: dict[ModFileKey, ModMechanism | Exception],
-) -> TemplateModel | str:
-    """Join a parsed hoc file with its parsed mod files, or say why it cannot be."""
+def _undeclared_units(mechanism: ModMechanism) -> list[str]:
+    """Variables shown in the response whose unit the mod file does not declare."""
+    shown = (*mechanism.settable_range_variables, *mechanism.global_variables)
+    return [name for name in shown if name not in mechanism.units]
+
+
+def _normalized_unit(unit: str) -> str:
+    """Write a unit so that equal units compare equal: ``mho`` is the old name of ``S``."""
+    return unit.replace("mho", "S").replace(" ", "")
+
+
+def _entity_units(model: IonChannelModel) -> dict[str, str]:
+    """Variable -> unit declared by an ion channel model entity (empty units skipped)."""
+    block = model.neuron_block
+    entries = [*(block.range or []), *(block.global_ or [])] if block else []
+    return {name: unit for entry in entries for name, unit in entry.items() if unit}
+
+
+def _database_units(mechanism: ModMechanism, models: Iterable[IonChannelModel]) -> dict[str, str]:
+    """Find units for the mechanism's undeclared variables in entities with its suffix.
+
+    Two mechanisms can share a suffix and still differ, so an entity is used only when
+    every unit that both it and the mod file declare is the same. A missing unit is taken
+    only when all those entities give the same one; otherwise it stays empty.
+
+    Example:
+        rCA1's ``kmb.mod`` declares ``gbar (mho/cm2)`` but no unit for ``tau``. An entity
+        with ``gbar: S/cm2`` and ``tau: ms`` matches (``mho`` is ``S``), so ``tau`` gets
+        ``ms``. An entity with ``gbar: mV`` is another mechanism and is ignored.
+
+    Returns:
+        Variable -> unit, only for the variables a unit was found for.
+    """
+    declared = {name: _normalized_unit(unit) for name, unit in mechanism.units.items()}
+    missing = _undeclared_units(mechanism)
+    # Missing variable -> {normalized unit: unit as written}, over the matching entities.
+    found: dict[str, dict[str, str]] = defaultdict(dict)
+    for model in models:
+        units = _entity_units(model)
+        if any(_normalized_unit(units[n]) != u for n, u in declared.items() if n in units):
+            continue  # same suffix, different mechanism
+        for name in missing:
+            if name in units:
+                found[name][_normalized_unit(units[name])] = units[name]
+    return {name: next(iter(units.values())) for name, units in found.items() if len(units) == 1}
+
+
+def _fill_units_from_database(
+    db_client: entitysdk.client.Client, mechanisms: Iterable[ModMechanism]
+) -> None:
+    """Fill the units the mod files leave undeclared, from ion channel model entities.
+
+    Some circuits' mod files declare no unit for some variables (the rCA1 circuits miss
+    15, such as ``tau_kmb``), while the database entity of the same mechanism has it.
+    The ``mechanisms`` are updated in place.
+
+    There is one search per suffix that misses a unit, all sent in parallel on
+    ``FETCH_POOL``. One search for all suffixes is not possible: entitycore filters one
+    ``nmodl_suffix`` per request, and searching by name would miss a third of the
+    entities, whose name differs from their suffix. A failed search is logged and leaves
+    the units empty: a unit is shown to the user, it is not worth failing the template.
+    """
+    # The same parsed mod file is shared by every template that inserts it, so it can
+    # appear several times; filling it again gives the same units.
+    by_suffix: dict[str, list[ModMechanism]] = defaultdict(list)
+    for mechanism in mechanisms:
+        if _undeclared_units(mechanism):
+            by_suffix[mechanism.suffix].append(mechanism)
+
+    def search(suffix: str) -> list[IonChannelModel] | Exception:
+        try:
+            return db_client.search_entity(
+                entity_type=IonChannelModel, query={"nmodl_suffix": suffix}
+            ).all()
+        except Exception as err:  # ruff: ignore[blind-except]
+            L.warning("Could not search ion channel models for %s", suffix, exc_info=True)
+            return err
+
+    for suffix, models in zip(by_suffix, FETCH_POOL.map(search, by_suffix), strict=True):
+        if isinstance(models, Exception):
+            continue
+        for mechanism in by_suffix[suffix]:
+            mechanism.units.update(_database_units(mechanism, models))
+
+
+def _template_model(biophysics: HocBiophysics, index: ModIndex) -> TemplateModel | str:
+    """Join a parsed hoc file with the mod files of the mechanisms it inserts.
+
+    Returns:
+        The template's model, or the reason when one mechanism has no usable mod file.
+    """
     mechanisms: dict[str, ModMechanism] = {}
-    for channel, key in mod_keys.items():
-        mod = mods[key]
-        if isinstance(mod, Exception):
-            return _public_reason(mod)
+    for channel in sorted(biophysics.mod_file_mechanisms):
+        mod = index.lookup(channel)
+        if isinstance(mod, str):
+            return mod
         mechanisms[channel] = mod
     return TemplateModel(biophysics=biophysics, mechanisms=mechanisms)
 
 
-def _unique_templates(pop_obj: NodePopulation) -> set[str]:
-    """Distinct non-empty model_template values of a whole population.
+def _unique_templates(group: h5py.Group) -> set[str] | None:
+    """Return the distinct, non-empty ``model_template`` values of one population.
 
-    Large circuits store model_template as an enumeration (one small integer per node
-    plus a value library); reading the integers avoids one Python string per node.
+    Only the ``model_template`` column is read. Large circuits store it as a SONATA
+    enumeration: one small integer per node plus an ``@library`` list of the names, so
+    the integers are read and only the distinct ones are looked up. The same code works
+    on a local file and on a remote one read by byte ranges.
+
+    Args:
+        group: The population's ``nodes/<population>/0`` group.
+
+    Returns:
+        The template names, or None when the population has no ``model_template``.
     """
-    everyone = pop_obj.select_all()
-    if "model_template" in pop_obj.enumeration_names:
-        library = pop_obj.enumeration_values("model_template")
-        indices = np.unique(pop_obj.get_enumeration("model_template", everyone))
-        templates = {library[index] for index in indices}
+    if "model_template" not in group:
+        return None
+    column = group["model_template"]
+    if "@library" in group and "model_template" in group["@library"]:
+        library = group["@library/model_template"].asstr()[:]
+        templates = {str(library[index]) for index in np.unique(column[:])}
     else:
-        templates = set(pop_obj.get_attribute("model_template", everyone))
-    return {template for template in templates if template}
+        templates = {str(template) for template in column.asstr()[:]}
+    return templates - {""}
+
+
+def _population_templates(
+    db_client: entitysdk.client.Client,
+    circuit_id: str,
+    asset: Asset,
+    temp_dir_path: Path,
+    population: str,
+    nodes_relative: str,
+    size: int | None,
+) -> set[str] | None:
+    """Return one population's distinct ``model_template`` values, reading little data.
+
+    The first way that works is used:
+
+    1. A symlink to the mounted asset store: no transfer at all.
+    2. Byte-range reads of only the ``model_template`` column (a 743 MB ``nodes.h5``
+       costs about 34 MB). Needs the file ``size`` from the listing.
+    3. A full download, when ranges fail (logged) or the size is unknown.
+
+    Returns:
+        The template names, or None when the population has no ``model_template``.
+    """
+    try:
+        path = _stage_file(
+            db_client,
+            circuit_id,
+            asset,
+            temp_dir_path,
+            nodes_relative,
+            strategy=FetchFileStrategy.link_only,
+        )
+    except EntitySDKError:
+        if size is not None:
+            try:
+                with open_asset_h5(
+                    db_client,
+                    entity_id=UUID(circuit_id),
+                    entity_type=Circuit,
+                    asset_id=asset.id,
+                    asset_path=nodes_relative,
+                    size=size,
+                ) as h5:
+                    return _unique_templates(h5[f"nodes/{population}/0"])
+            except Exception:  # ruff: ignore[blind-except]
+                L.warning(
+                    "Partial read of %s failed, downloading it", nodes_relative, exc_info=True
+                )
+        path = _stage_file(db_client, circuit_id, asset, temp_dir_path, nodes_relative)
+    with h5py.File(path, "r") as h5:
+        return _unique_templates(h5[f"nodes/{population}/0"])
 
 
 def _stage_circuit_for_neuron_set_resolution(
     db_client: entitysdk.client.Client,
     circuit_id: str,
     circuit_entity: Circuit,
-    asset_id: UUID,
+    asset: Asset,
     neuron_set: NeuronSet,
 ) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str]]:
     """Stage circuit files, resolve neuron set to node IDs, read model_template.
@@ -431,13 +711,15 @@ def _stage_circuit_for_neuron_set_resolution(
         keyed by population-qualified node IDs to avoid collisions between
         populations with overlapping local node IDs.
     """
+    # Listed while the circuit is staged and the neuron set resolved: no extra wait.
+    listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
 
         config_path, pop_to_nodes_path, pop_to_model_dirs = _stage_circuit_for_neuron_set(
             db_client,
             circuit_id,
-            asset_id,
+            asset,
             temp_dir_path,
         )
 
@@ -491,10 +773,11 @@ def _stage_circuit_for_neuron_set_resolution(
         template_models = _read_template_models(
             db_client,
             circuit_id,
-            asset_id,
+            asset,
             temp_dir_path,
             templates_per_population,
             pop_to_model_dirs,
+            listing.result(),
         )
 
     return populations, node_to_template, template_models
@@ -503,34 +786,52 @@ def _stage_circuit_for_neuron_set_resolution(
 def _collect_all_templates(
     db_client: entitysdk.client.Client,
     circuit_id: str,
-    asset_id: UUID,
+    asset: Asset,
 ) -> tuple[dict[str, set[str]], dict[str, TemplateModel | str]]:
-    """Every model_template of every biophysical population, with its model.
+    """Return every template of every biophysical population, with its model.
 
-    Only the nodes.h5 of biophysical populations are staged: virtual populations have no
-    model_template, and their nodes files can be large.
+    Virtual populations are skipped: they have no ``model_template``, and their
+    ``nodes.h5`` can be large. Populations are read one after the other, since a circuit
+    has one or two biophysical ones. The asset listing runs while the config is fetched.
+
+    Returns:
+        Population -> its templates, and template -> its model or the reason it failed.
     """
+    # Listed while circuit_config.json is fetched: no extra wait.
+    listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
         _config_path, pop_to_nodes_path, pop_to_model_dirs = _stage_circuit_for_neuron_set(
             db_client,
             circuit_id,
-            asset_id,
+            asset,
             temp_dir_path,
             population_types=TYPES_OF_BIOPHYS_NODES,
+            stage_nodes=False,
         )
+        asset_files = listing.result()
+        sizes = {} if isinstance(asset_files, Exception) else asset_files
         templates_per_population: dict[str, set[str]] = {}
         for population, nodes_relative in pop_to_nodes_path.items():
-            pop_obj = NodeStorage(str(temp_dir_path / nodes_relative)).open_population(population)
-            if "model_template" in pop_obj.attribute_names:
-                templates_per_population[population] = _unique_templates(pop_obj)
+            templates = _population_templates(
+                db_client,
+                circuit_id,
+                asset,
+                temp_dir_path,
+                population,
+                nodes_relative,
+                sizes.get(nodes_relative),
+            )
+            if templates is not None:
+                templates_per_population[population] = templates
         template_models = _read_template_models(
             db_client,
             circuit_id,
-            asset_id,
+            asset,
             temp_dir_path,
             templates_per_population,
             pop_to_model_dirs,
+            asset_files,
         )
     return templates_per_population, template_models
 
@@ -550,7 +851,7 @@ def get_circuit_node_ids(
     Returns:
         Dict mapping population name to list of node IDs.
     """
-    circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
+    circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
@@ -558,7 +859,7 @@ def get_circuit_node_ids(
         config_path, _, _ = _stage_circuit_for_neuron_set(
             db_client,
             circuit_id,
-            asset_id,
+            asset,
             temp_dir_path,
         )
 
@@ -573,11 +874,11 @@ def _build_template_groups(
     template_models: dict[str, TemplateModel | str],
     template_to_nodes: dict[str, list[tuple[str, int]]],
 ) -> tuple[dict[str, dict], dict[str, str], list[str]]:
-    """Build one group per template from its circuit files.
+    """Build one group of variables per template, from its circuit files.
 
     Returns:
-        Groups in the shape ``_build_emodel_groups`` produces, the templates that could
-        not be read with the reason, and warnings about values that could not be read.
+        The groups, in the shape ``_build_emodel_groups`` returns; template -> reason for
+        the templates that could not be read; and warnings for values not readable.
     """
     groups: dict[str, dict] = {}
     failed: dict[str, str] = {}
@@ -605,7 +906,14 @@ def _build_groups_with_fallback(
     node_to_template: TemplateNodes,
     template_models: dict[str, TemplateModel | str],
 ) -> tuple[dict[str, dict], list[str]]:
-    """Groups from circuit files first; the emodel_circuit derivation path for the rest."""
+    """Build groups from the circuit files, and from derivations for the templates left.
+
+    Each template that needed the derivation, or had none, gets one warning with the
+    reason its files could not be read.
+
+    Returns:
+        The groups, and the warnings.
+    """
     template_to_nodes: dict[str, list[tuple[str, int]]] = {}
     for key, template in node_to_template.items():
         template_to_nodes.setdefault(template, []).append(key)
@@ -833,12 +1141,12 @@ def get_circuit_manipulation_properties(
     model_template; the endpoint maps it to HTTP 400.
     """
     resolved_populations: list[str] | None = None
-    circuit_entity, asset_id = _get_circuit_asset(db_client, circuit_id)
+    circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
 
     if neuron_set is None:
         try:
             templates_per_population, template_models = _collect_all_templates(
-                db_client, circuit_id, asset_id
+                db_client, circuit_id, asset
             )
         except Exception as err:  # ruff: ignore[blind-except]
             # Circuit files unreadable: the derivation path is all that is left.
@@ -866,7 +1174,7 @@ def get_circuit_manipulation_properties(
                 db_client,
                 circuit_id,
                 circuit_entity,
-                asset_id,
+                asset,
                 neuron_set,
             )
         )
