@@ -213,7 +213,10 @@ def test_execute_tracked_registers_and_updates_activity(
     )
 
 
-@patch(f"{_TASK}.IonChannelModelSimulationSingleConfig.model_validate_json")
+@patch(
+    "obi_one.scientific.tasks.generate_simulations.config.neuron."
+    "neuron_ion_channel_models.IonChannelModelSimulationSingleConfig.model_validate_json"
+)
 @patch(f"{_TASK}.db_sdk.select_asset_content")
 def test_get_generation_single_config(
     mock_select_content, mock_validate_json, config, generation_config
