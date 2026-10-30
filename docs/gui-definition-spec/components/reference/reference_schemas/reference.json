@@ -46,7 +46,7 @@
       "type": "null"
     }
   ],
-  "title": "Neuron Set",
+  "title": "Neuron set",
   "description": "Neuron set to record from.",
   "ui_element": "reference",
   "reference_types": ["BiophysicalNeuronSetReference", "PointNeuronSetReference"]

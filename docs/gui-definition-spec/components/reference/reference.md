@@ -19,7 +19,7 @@ A field that accepts a single reference type still uses a list with one element:
 ```py
 class Block:
     node_set: NeuronSetReference | None = Field(default=None, # Must be present
-                                                title="Neuron Set",
+                                                title="Neuron set",
                                                 description="Neuron set to simulate.",
                                                 json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                                                                     SchemaKey.REFERENCE_TYPES: [NeuronSetReference.__name__]}
@@ -32,7 +32,7 @@ A field that accepts a union of reference types lists each one:
 class Recording:
     neuron_set: BiophysicalNeuronSetReference | PointNeuronSetReference | TimestampsReference | None = Field(
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Neuron set to record from.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,

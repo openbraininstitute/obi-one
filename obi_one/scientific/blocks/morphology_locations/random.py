@@ -19,7 +19,7 @@ _MIN_PD_SD = 0.1
 class RandomMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Uniformly distributed random locations."""
 
-    title: ClassVar[str] = "Random Morphology Locations"
+    title: ClassVar[str] = "Random morphology locations"
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
         locs = generate_neurite_locations_on(
@@ -46,11 +46,11 @@ class RandomMorphologyLocations(GeneratedMorphologyLocationsBlock):
 class RandomGroupedMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Completely random locations, but grouped into abstract groups."""
 
-    title: ClassVar[str] = "Random Grouped Morphology Locations"
+    title: ClassVar[str] = "Random grouped morphology locations"
 
     n_groups: PositiveInt | list[PositiveInt] = Field(
         default=1,
-        title="Number of Groups",
+        title="Number of groups",
         description=(
             "Number of conceptual groups to assign across the generated random locations. "
             "Groups can be used by downstream workflows to keep subsets of locations distinct."

@@ -37,7 +37,7 @@ class LearningEngineSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     class Initialize(BaseSimulationScanConfig.Initialize):
         random_seed: int | list[int] = Field(
             default=1,
-            title="Random Seed",
+            title="Random seed",
             description="Random seed for the simulation.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,

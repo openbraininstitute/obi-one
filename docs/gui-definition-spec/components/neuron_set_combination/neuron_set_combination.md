@@ -56,7 +56,7 @@ class BiophysicalCombinedNeuronSet(CombinedBaseNeuronSet):
         ...,
     ] = Field(
         default=(),
-        title="Combine With",
+        title="Combine with",
         description="List of neuron sets and set operations to combine with the base neuron set.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_SET_COMBINATION,

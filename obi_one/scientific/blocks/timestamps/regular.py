@@ -10,7 +10,7 @@ from obi_one.scientific.blocks.timestamps.base import Timestamps
 class RegularTimestamps(Timestamps):
     """A series of timestamps at regular intervals."""
 
-    title: ClassVar[str] = "Regular Timestamps"
+    title: ClassVar[str] = "Regular timestamps"
 
     interval: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=10.0,
@@ -22,6 +22,7 @@ class RegularTimestamps(Timestamps):
     )
 
     number_of_repetitions: NonNegativeInt | list[NonNegativeInt] = Field(
+        title="Number of repetitions",
         default=10,
         description="Number of timestamps to generate.",
         json_schema_extra={

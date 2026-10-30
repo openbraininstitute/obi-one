@@ -28,10 +28,10 @@ The variable picker is populated from mapped ion channel models properties using
 
 ```py
 class IonChannelVariableRecording(Recording):
-    title: ClassVar[str] = "Ion Channel Variable Recording (Full Experiment)"
+    title: ClassVar[str] = "Ion channel variable recording (full experiment)"
 
     variable: IonChannelVariableForRecording = Field(
-        title="Ion Channel Variable Name",
+        title="Ion channel variable name",
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={

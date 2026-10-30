@@ -40,7 +40,7 @@ class Config:
 
     neuron_sets: dict[str, AtomicAllNeuronSetUnion] = Field(
         default_factory=dict,
-        title="Neuron Sets",
+        title="Neuron sets",
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,

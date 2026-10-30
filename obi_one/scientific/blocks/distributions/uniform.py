@@ -10,7 +10,7 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 class FloatUniformDistribution(Distribution):
     """Samples floating-point values uniformly between a lower and upper bound."""
 
-    title: ClassVar[str] = "Uniform Floats"
+    title: ClassVar[str] = "Uniform floats"
 
     low: float | list[float] = Field(
         default=0.0,
@@ -51,7 +51,7 @@ class FloatUniformDistribution(Distribution):
 class IntUniformDistribution(Distribution):
     """Samples integer values uniformly from a lower-inclusive, upper-exclusive interval."""
 
-    title: ClassVar[str] = "Uniform Integers"
+    title: ClassVar[str] = "Uniform integers"
 
     low: int | list[int] = Field(
         default=0,

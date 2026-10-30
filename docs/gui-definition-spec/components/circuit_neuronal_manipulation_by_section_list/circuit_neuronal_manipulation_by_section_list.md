@@ -4,7 +4,7 @@ UIElement: `UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST`
 
 This component backs `CircuitBySectionListMechanismVariableNeuronalManipulation`.
 
-It extends the single-neuron (MEModel) "Variable Modification by Section List" block
+It extends the single-neuron (MEModel) "Variable modification by section list" block
 for use in circuit simulations. The key difference: the **Neuron Set** dropdown is
 visible, allowing the user to select which neurons the manipulation targets.
 
@@ -40,11 +40,11 @@ variables are available (intersection across all emodels in the selection).
 class CircuitBySectionListMechanismVariableNeuronalManipulation(
     BySectionListMechanismVariableNeuronalManipulation,
 ):
-    title: ClassVar[str] = "Variable Modification by Section List"
+    title: ClassVar[str] = "Variable modification by section list"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,

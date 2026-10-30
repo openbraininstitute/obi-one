@@ -66,7 +66,7 @@ class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
         | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)]
     ) = Field(
         default=100.0,
-        title="Sample (Percentage)",
+        title="Sample",
         description="Percentage of neurons to sample between 0 and 100%",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -76,7 +76,7 @@ class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
 
     sample_seed: int | list[int] = Field(
         default=1,
-        title="Sample Seed",
+        title="Sample seed",
         description="Seed for random sampling.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -87,7 +87,7 @@ class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
 class AllNeurons(DeprecatedSampleNeuronSet):
     """All biophysical excitatory neurons. Depracted."""
 
-    title: ClassVar[str] = "All Neurons (Deprecated)"
+    title: ClassVar[str] = "All neurons (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
@@ -97,7 +97,7 @@ class AllNeurons(DeprecatedSampleNeuronSet):
 class ExcitatoryNeurons(DeprecatedSampleNeuronSet):
     """All biophysical excitatory neurons. Depracted."""
 
-    title: ClassVar[str] = "All Excitatory Neurons (Deprecated)"
+    title: ClassVar[str] = "All excitatory neurons (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
@@ -107,7 +107,7 @@ class ExcitatoryNeurons(DeprecatedSampleNeuronSet):
 class InhibitoryNeurons(DeprecatedSampleNeuronSet):
     """All biophysical inhibitory neurons."""
 
-    title: ClassVar[str] = "All Inhibitory Neurons (Deprecated)"
+    title: ClassVar[str] = "All inhibitory neurons (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
@@ -121,7 +121,7 @@ class nbS1VPMInputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-na
     cortical neurons in the nbS1 model.
     """
 
-    title: ClassVar[str] = "Demo: nbS1 VPM Inputs (Deprecated)"
+    title: ClassVar[str] = "Demo: nbS1 VPM inputs (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
@@ -133,7 +133,7 @@ class nbS1POmInputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-na
     cortical neurons in the nbS1 model.
     """
 
-    title: ClassVar[str] = "Demo: nbS1 POm Inputs (Deprecated)"
+    title: ClassVar[str] = "Demo: nbS1 POm inputs (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
@@ -145,7 +145,7 @@ class rCA1CA3Inputs(DeprecatedSampleNeuronSet):  # ruff: ignore[invalid-class-na
     in the rCA1 model.
     """
 
-    title: ClassVar[str] = "Demo: rCA1 CA3 Inputs (Deprecated)"
+    title: ClassVar[str] = "Demo: rCA1 CA3 inputs (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.VIRTUAL
 
@@ -157,7 +157,7 @@ class IDNeuronSet(DeprecatedSampleNeuronSet):
     selecting specific neurons for analysis or manipulation.
     """
 
-    title: ClassVar[str] = "ID Neuron Set (Deprecated)"
+    title: ClassVar[str] = "ID neuron set (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = (
         NeuronSetPopulationType.BIOPHYSICAL
@@ -189,12 +189,12 @@ class PredefinedNeuronSet(DeprecatedSampleNeuronSet):
     the biophysical, point and virtual unions alike -- legacy configs use it in all three.
     """
 
-    title: ClassVar[str] = "Predefined Neuron Set (Deprecated)"
+    title: ClassVar[str] = "Predefined neuron set (deprecated)"
 
     _neuron_set_population_type: ClassVar[NeuronSetPopulationType] = NeuronSetPopulationType.ANY
 
     node_set: NodeSetType = Field(
-        title="Node Set",
+        title="Node set",
         description="Name of the node set to use.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,

@@ -10,7 +10,7 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 class IntDiscreteDistribution(Distribution):
     """Samples explicitly listed integer values using configured probabilities."""
 
-    title: ClassVar[str] = "Discrete Integer"
+    title: ClassVar[str] = "Discrete integer"
 
     # `values` carries the UI element and `probabilities` is hidden because the two are one
     # control: a table of value/probability rows, edited together. Two independent list editors

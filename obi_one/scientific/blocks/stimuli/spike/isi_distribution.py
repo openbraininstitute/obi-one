@@ -23,7 +23,7 @@ from obi_one.scientific.unions_and_references.distributions import AllDistributi
 class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
     """Spike replay generated from an inter-spike interval distribution."""
 
-    title: ClassVar[str] = "Inter-Spike Interval Distribution Spike Replay (Efferent)"
+    title: ClassVar[str] = "Inter-spike interval distribution spike replay (efferent)"
 
     duration: (
         Annotated[NonNegativeFloat, Field(le=MAX_SIMULATION_LENGTH_MILLISECONDS)]
@@ -40,7 +40,7 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
 
     distribution: AllDistributionsReference | None = Field(
         default=None,
-        title="Interval Distribution",
+        title="Interval distribution",
         description=(
             "Distribution used to sample inter-spike intervals in milliseconds. "
             "Default: ExponentialDistribution(scale=50.0), approximately 20 Hz."
@@ -48,12 +48,13 @@ class InterSpikeIntervalDistributionSpikeStimulus(SpikeStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 
     resample_each_repetition: bool = Field(
         default=True,
-        title="Resample Each Repetition",
+        title="Resample each repetition",
         description=(
             "When set to True, the spike train is regenerated for every timestamp "
             "repetition. When False, the same relative spike pattern is reused for "

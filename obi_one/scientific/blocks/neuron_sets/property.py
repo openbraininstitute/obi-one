@@ -94,7 +94,7 @@ class PropertyPopulationBaseNeuronSet(PopulationBaseNeuronSet, abc.ABC):
     property_filter: (
         NeuronPropertyFilter | Annotated[list[NeuronPropertyFilter], Field(min_length=1)]
     ) = Field(
-        title="Neuron Property Filter",
+        title="Neuron property filter",
         description="Neuron property values to use for filtering neuron IDs.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.NEURON_PROPERTY_FILTER,

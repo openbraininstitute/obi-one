@@ -14,7 +14,7 @@ class FullySynchronousSpikeStimulus(SpikeStimulus):
     repetitions of the same stimulus.
     """
 
-    title: ClassVar[str] = "Fully Synchronous Spikes (Efferent)"
+    title: ClassVar[str] = "Fully synchronous spikes (efferent)"
 
     def generate_spikes_by_gid(self, source_gids: list[int]) -> dict[int, list[float]]:
         spike_times = self._offset_timestamps()

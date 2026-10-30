@@ -31,7 +31,7 @@
     "type": "array",
     "minLength": 1
   },
-  "title": "Voltage Levels and Durations",
+  "title": "Voltage levels and durations",
   "description": "A list of duration and voltage combinations for the SEClamp stimulus.",
   "ui_element": "voltage_duration_ui_element"
 }

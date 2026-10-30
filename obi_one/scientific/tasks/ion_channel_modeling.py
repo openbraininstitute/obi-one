@@ -23,6 +23,7 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations import (
     EquationKey,
     equation_schema_extra,
@@ -232,6 +233,7 @@ class IonChannelModelProperties(Block):
         default=None,
         title="Temperature",
         description="Temperature of the model, in °C. Unset: the recordings' temperature.",
+        json_schema_extra={SchemaKey.UNITS: Units.CELSIUS},
     )
     species: SpeciesFromID | None = Field(
         default=None,
@@ -269,7 +271,7 @@ class HodgkinHuxleyIonChannelModel(Block):
     title: ClassVar[str] = "Hodgkin-Huxley ion channel model"
 
     m_power: Annotated[int, Field(ge=1, le=4)] | list[Annotated[int, Field(ge=1, le=4)]] = Field(
-        title="m exponent in channel equation",
+        title=r"$m$ exponent in channel equation",
         default=1,
         description=(
             r"Exponent $p$ of $m$ in the channel equation: "
@@ -278,7 +280,7 @@ class HodgkinHuxleyIonChannelModel(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
     )
     h_power: Annotated[int, Field(ge=0, le=4)] | list[Annotated[int, Field(ge=0, le=4)]] = Field(
-        title="h exponent in channel equation",
+        title=r"$h$ exponent in channel equation",
         default=1,
         description=(
             r"Exponent $q$ of $h$ in the channel equation: "
@@ -288,7 +290,7 @@ class HodgkinHuxleyIonChannelModel(Block):
     )
 
     minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
-        title="m∞ equation",
+        title=r"$m_\infty$ equation",
         description=(
             r"Steady state activation parameter $m_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
@@ -304,7 +306,7 @@ class HodgkinHuxleyIonChannelModel(Block):
         EquationKey.THERMO_FIT_MTAU_V2,
         EquationKey.BELL_FIT_MTAU,
     ] = Field(
-        title="m time constant equation",
+        title=r"$\tau_m$ equation",
         description=(
             r"Activation time constant $\tau_m$ equation. "
             r"This equation will be used for solving the differential equation: "
@@ -315,7 +317,7 @@ class HodgkinHuxleyIonChannelModel(Block):
     )
 
     hinf_eq: Literal[EquationKey.SIG_FIT_HINF] = Field(
-        title="h∞ equation",
+        title=r"$h_\infty$ equation",
         description=(
             r"Steady state inactivation parameter $h_{\infty}$ equation. "
             r"This equation will be used for solving the differential equation: "
@@ -326,7 +328,7 @@ class HodgkinHuxleyIonChannelModel(Block):
     )
 
     htau_eq: Literal[EquationKey.SIG_FIT_HTAU] = Field(
-        title="h time constant equation",
+        title=r"$\tau_h$ equation",
         description=(
             r"Inactivation time constant $\tau_h$ equation. "
             r"This equation will be used for solving the differential equation: "
@@ -390,10 +392,11 @@ class IonChannelFittingScanConfig(InfoScanConfig):
     )
 
     model_type: IonChannelModelUnion = Field(
-        title="Ion Channel Model",
+        title="Ion channel model",
         description=(
             "The Hodgkin-Huxley channel model to fit: an equation per gating variable, and "
-            "the exponents p and q of m and h in the channel equation g = gbar * m^p * h^q."
+            r"the exponents $p$ and $q$ of $m$ and $h$ in the channel equation "
+            r"$g = \bar{g} \cdot m^p \cdot h^q$."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,

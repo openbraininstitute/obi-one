@@ -88,7 +88,7 @@ class PredefinedBaseNeuronSet(NeuronSet, abc.ABC):
     """
 
     node_set: NodeSetType = Field(
-        title="Node Set",
+        title="Node set",
         description="Name of the node set to use.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,

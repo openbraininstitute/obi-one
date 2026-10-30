@@ -57,7 +57,7 @@
       "minItems": 1
     }
   ],
-  "title": "Neuron Ids",
+  "title": "Neuron IDs",
   "description": "description",
   "ui_element": "neuron_ids"
 }

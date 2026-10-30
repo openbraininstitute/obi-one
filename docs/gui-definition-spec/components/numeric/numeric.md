@@ -46,7 +46,7 @@ class Block:
 
     extracellular_calcium_concentration:  NonNegativeFloat | list[NonNegativeFloat] = Field( # The single value must come first in the union
             default=1.1,
-            title="Extracellular Calcium Concentration",
+            title="Extracellular calcium concentration",
             description=(
                 "Extracellular calcium concentration",
             ),

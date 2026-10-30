@@ -55,7 +55,7 @@ The field's own type bounds the selection: `min_length` / `max_length` on the Py
 
 ```py
 cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
-    title="EM Cell Mesh",
+    title="EM cell mesh",
     description="EM cell mesh to use for skeletonization.",
     json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
 )

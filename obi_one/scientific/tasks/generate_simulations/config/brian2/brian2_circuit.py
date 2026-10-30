@@ -85,7 +85,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         )
         node_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Neuron Set",
+            title="Neuron set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -119,6 +119,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     )
 
     neuron_sets: dict[str, Brian2SimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -144,6 +145,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
     )
 
     synaptic_manipulations: dict[str, Brian2SynapticManipulationsUnion] = Field(
+        title="Synaptic manipulations",
         default_factory=dict,
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={

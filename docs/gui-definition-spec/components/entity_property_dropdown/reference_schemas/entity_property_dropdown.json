@@ -12,7 +12,7 @@
       "type": "array"
     }
   ],
-  "title": "predefined neuronset",
+  "title": "Predefined neuron set",
   "description": "the description",
   "property_group": "circuit",
   "property": "NodeSet",

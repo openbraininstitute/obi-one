@@ -62,7 +62,7 @@ That one endpoint is wired into the config in two places, one per property:
 class ProtocolAndFeatureSelection(Block):
     selection: SelectEFeaturesByProtocol = Field(
         default_factory=SelectEFeaturesByProtocol,
-        title="EFeatures by protocol",
+        title="E-features by protocol",
         description="...",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.SELECT_EFEATURES_BY_PROTOCOL,

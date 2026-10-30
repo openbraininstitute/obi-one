@@ -120,7 +120,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
 
     mem_gb_required = 1 + 55e-6 * input_size_neurons
     hint = (
-        "Extract fewer neurons, or turn off Include Virtual Populations."
+        "Extract fewer neurons, or turn off Include virtual populations."
         if single_config.initialize.do_virtual and nvirt  # ty:ignore[unresolved-attribute]
         else "Extract fewer neurons."
     )

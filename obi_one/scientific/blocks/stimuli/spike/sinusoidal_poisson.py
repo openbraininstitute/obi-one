@@ -37,7 +37,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
     neurons in the target neuron set.
     """
 
-    title: ClassVar[str] = "Sinusoidal Poisson Spikes (Efferent)"
+    title: ClassVar[str] = "Sinusoidal Poisson spikes (efferent)"
 
     # --- timing ---
     duration: (
@@ -59,7 +59,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         | list[Annotated[PositiveFloat, Field(ge=0.00001, le=50.0)]]
     ) = Field(
         default=0.00001,
-        title="Minimum Rate",
+        title="Minimum rate",
         description="Minimum rate of the stimulus in Hz.\n Must be less than the Maximum Rate.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -72,7 +72,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         | list[Annotated[PositiveFloat, Field(ge=0.00001, le=50.0)]]
     ) = Field(
         default=10.0,
-        title="Maximum Rate",
+        title="Maximum rate",
         description="Maximum rate of the stimulus in Hz. Must be greater than or equal to "
         "Minimum Rate.",
         json_schema_extra={
@@ -86,7 +86,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
         | list[Annotated[PositiveFloat, Field(ge=0.00001, le=100000.0)]]
     ) = Field(
         default=5.0,
-        title="Modulation Frequency",
+        title="Modulation frequency",
         description="Frequency (Hz) of the sinusoidal modulation of the rate.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -96,7 +96,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
     phase_degrees: float | list[float] = Field(
         default=0.0,
-        title="Phase Offset",
+        title="Phase offset",
         description="Phase offset (degrees) of the sinusoid.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -106,7 +106,7 @@ class SinusoidalPoissonSpikeStimulus(SpikeStimulus):
 
     random_seed: int | list[int] = Field(
         default=0,
-        title="Random Seed",
+        title="Random seed",
         description="Seed for the random number generator to ensure reproducibility.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,

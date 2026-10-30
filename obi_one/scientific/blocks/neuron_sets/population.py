@@ -42,7 +42,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)]
     ) = Field(
         default=100.0,
-        title="Sample (Percentage)",
+        title="Sample",
         description="Percentage of neurons to sample between 0 and 100%",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -52,7 +52,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
 
     sample_seed: int | list[int] = Field(
         default=1,
-        title="Sample Seed",
+        title="Sample seed",
         description="Seed for random sampling.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,

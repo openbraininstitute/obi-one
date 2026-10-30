@@ -20,7 +20,7 @@ The element must specify:
 ```py
 class OptimizationInitialize(Block):
     target_efeatures: TaskResultFromID = Field(
-        title="Target EFeatures",
+        title="Target e-features",
         description="Result of the 01_efeature_extraction stage staged as the optimization target.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.TASK_RESULT_SELECTOR,

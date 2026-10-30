@@ -20,7 +20,7 @@ class NormalDistribution(Distribution):
     )
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0,
-        title="Standard Deviation",
+        title="Standard deviation",
         description="Standard deviation controlling the spread of the samples.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
