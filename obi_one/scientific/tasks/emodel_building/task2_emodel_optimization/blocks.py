@@ -31,6 +31,7 @@ from pydantic import (
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
@@ -1702,7 +1703,10 @@ class EfelSettings(Block):
         default=0.025,
         title="Interpolation step",
         description="Interpolation step (ms) used by eFEL when resampling traces.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
     )
 
     def to_recipe_dict(self) -> dict[str, Any]:
@@ -1735,7 +1739,10 @@ class PhasePlotSettings(Block):
         default=1.5,
         title="Amplitude window",
         description="Time window (ms) around the amplitude used for phase-plot analysis.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
     )
     relative_amp: bool = Field(
         default=True,
@@ -1940,7 +1947,10 @@ class OptimizationSettings(Block):
             "An interrupted response is invalid and its e-feature scores are set to the "
             "maximum (250 by default)."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.SECONDS,
+        },
     )
     optimisation_checkpoint_period: NonNegativeFloat | list[NonNegativeFloat] | None = Field(
         default=None,
@@ -1949,7 +1959,10 @@ class OptimizationSettings(Block):
             "Minimum time in seconds between two optimisation checkpoint saves. Empty saves a "
             "checkpoint every generation regardless of elapsed time."
         ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL},
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+            SchemaKey.UNITS: Units.SECONDS,
+        },
     )
     use_stagnation_criterion: bool = Field(
         default=True,

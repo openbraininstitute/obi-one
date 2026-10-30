@@ -66,7 +66,7 @@ class DeprecatedSampleNeuronSet(DeprecatedNeuronSet):
         | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)]
     ) = Field(
         default=100.0,
-        title="Sample (percentage)",
+        title="Sample",
         description="Percentage of neurons to sample between 0 and 100%",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,

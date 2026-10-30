@@ -6,6 +6,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     SIMULATION_TIMESTEP_MILLISECONDS,
 )
@@ -65,11 +66,12 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
 
     class Initialize(BaseSimulationScanConfig.Initialize):
         temperature: NonNegativeFloat | list[NonNegativeFloat] = Field(
-            title="Temperature (in °C)",
+            title="Temperature",
             description="Temperature of the simulation.",
             default=34.0,
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.CELSIUS,
             },
         )
 

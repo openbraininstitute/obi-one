@@ -58,6 +58,7 @@ class SpikeTimeDistributionSpikeStimulus(SpikeStimulus):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: [AllDistributionsReference.__name__],
+            SchemaKey.UNITS: Units.MILLISECONDS,
         },
     )
 

@@ -1,4 +1,4 @@
-"""Casing and inline-math rules for the titles a UI-enabled form shows.
+"""Casing, unit and inline-math rules for the titles a UI-enabled form shows.
 
 See "Titles" in `docs/gui-definition-spec/gui-definition.md`. The walk visits what the frontend
 labels: group names, root elements, the blocks a block_union or block_dictionary offers, and every
@@ -12,11 +12,15 @@ from collections.abc import Iterator
 import pytest
 
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 
 from .validators.shared import openapi_schema, resolve_ref
 
 VARIANT_ROOTS = {UIElement.BLOCK_UNION, UIElement.BLOCK_DICTIONARY}
 PARENTHESES = re.compile(r"\([^)]*\)")
+UNIT_IN_TITLE = re.compile(
+    r"\s\((?:in\s+)?(?:" + "|".join(re.escape(unit.value) for unit in Units) + r")\)"
+)
 MAX_ACRONYM_LENGTH = 4
 OPTION = "<option>"  # key reported for a `title_by_key` option title
 
@@ -134,6 +138,18 @@ def test_titles_are_written_by_hand(name, form):
     assert not defaults, (
         f"{name}: give these fields an explicit sentence-case title= instead of pydantic's"
         f" default: {defaults}"
+    )
+
+
+@pytest.mark.parametrize(("name", "form"), FORMS, ids=FORM_IDS)
+def test_titles_leave_units_to_the_units_key(name, form):
+    in_title = [
+        (where, title)
+        for where, key, title in form_titles(form)
+        if key != OPTION and title and UNIT_IN_TITLE.search(title)
+    ]
+    assert not in_title, (
+        f"{name}: put the unit in json_schema_extra's `units`, not the title: {in_title}"
     )
 
 

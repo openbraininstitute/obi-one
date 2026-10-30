@@ -23,6 +23,7 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.core.units import Units
 from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations import (
     EquationKey,
     equation_schema_extra,
@@ -232,6 +233,7 @@ class IonChannelModelProperties(Block):
         default=None,
         title="Temperature",
         description="Temperature of the model, in °C. Unset: the recordings' temperature.",
+        json_schema_extra={SchemaKey.UNITS: Units.CELSIUS},
     )
     species: SpeciesFromID | None = Field(
         default=None,
