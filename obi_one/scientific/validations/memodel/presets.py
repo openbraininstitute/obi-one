@@ -6,15 +6,10 @@ an OBI policy decision about what constitutes a valid MEModel.
 
 import math
 
-from bluecellulab.validation import (
-    EfelMeasurement,
-    EqualTo,
-    GreaterThan,
-    IsFalse,
-    ParametricValidation,
-    SequenceProtocol,
-    StepProtocol,
-)
+from bluecellulab.validation.criterion import EqualTo, GreaterThan, IsFalse
+from bluecellulab.validation.measurement import EfelMeasurement
+from bluecellulab.validation.parametric_validation import ParametricValidation
+from bluecellulab.validation.protocol import SequenceProtocol, StepProtocol
 
 from obi_one.scientific.validations.memodel.names import ValidationName
 

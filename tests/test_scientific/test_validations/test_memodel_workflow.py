@@ -5,14 +5,10 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from bluecellulab.simulation.neuron_globals import NeuronGlobals
-from bluecellulab.validation import (
-    EfelMeasurement,
-    GreaterThan,
-    IsFalse,
-    SequenceProtocol,
-    StepProtocol,
-)
 from bluecellulab.validation.base import TestResult
+from bluecellulab.validation.criterion import GreaterThan, IsFalse
+from bluecellulab.validation.measurement import EfelMeasurement
+from bluecellulab.validation.protocol import SequenceProtocol, StepProtocol
 from entitysdk.schemas.memodel import DownloadedMEModel
 
 from obi_one.scientific.validations.base import InvalidValidationContextError
