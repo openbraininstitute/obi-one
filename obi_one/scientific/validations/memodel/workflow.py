@@ -146,17 +146,16 @@ def _resolve_holding_current(
 
 
 def _select_morphology_path(downloaded: DownloadedMEModel, entity_id: str) -> Path:
-    """Return the morphology path a Cell is built from.
+    """Return the single morphology path a Cell is built from.
 
-    ``download_memodel`` downloads a single morphology per model and exposes it
-    as ``morphology_path``. A missing file means the download did not produce a
-    usable morphology.
+    ``download_memodel`` exposes the downloaded morphologies as
+    ``morphology_paths``; the first is used. An empty list means the download
+    produced no morphology.
     """
-    morphology_path = downloaded.morphology_path
-    if not morphology_path.exists():
+    if not downloaded.morphology_paths:
         message = f"No morphology was downloaded for MEModel {entity_id}."
         raise InvalidValidationContextError(message)
-    return morphology_path
+    return downloaded.morphology_paths[0]
 
 
 def _resolve_rheobase(

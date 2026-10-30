@@ -501,13 +501,12 @@ class TestMEModelValidationWorkflow:
 class TestSelectMorphologyPath:
     """Guards the entitysdk DownloadedMEModel contract this workflow depends on.
 
-    ``_select_morphology_path`` reads ``morphology_path`` off the downloaded
-    model. If entitysdk renames or reshapes that field, these fail here rather
-    than only at runtime inside a notebook.
+    ``_select_morphology_path`` reads ``morphology_paths`` (a list) off the
+    downloaded model and uses the first. If entitysdk renames or reshapes that
+    field, these fail here rather than only at runtime inside a notebook.
     """
 
-    def _downloaded(self, tmp_path, morphology_name="morph.asc"):
-        morphology_path = tmp_path / morphology_name
+    def _downloaded(self, tmp_path, morphology_names=("morph.asc",)):
         hoc_path = tmp_path / "model.hoc"
         mechanisms_dir = tmp_path / "mechanisms"
         mechanisms_dir.mkdir()
@@ -516,23 +515,22 @@ class TestSelectMorphologyPath:
             hoc_path=hoc_path,
             mechanisms_dir=mechanisms_dir,
             mechanism_files=[],
-            morphology_path=morphology_path,
+            morphology_paths=[tmp_path / name for name in morphology_names],
         )
 
-    def test_schema_exposes_singular_morphology_path(self):
-        assert "morphology_path" in DownloadedMEModel.model_fields
-        assert "morphology_paths" not in DownloadedMEModel.model_fields
+    def test_schema_exposes_morphology_paths_list(self):
+        assert "morphology_paths" in DownloadedMEModel.model_fields
+        assert "morphology_path" not in DownloadedMEModel.model_fields
 
-    def test_returns_morphology_path_when_present(self, tmp_path):
-        downloaded = self._downloaded(tmp_path)
-        downloaded.morphology_path.write_text("")
+    def test_returns_first_morphology_path(self, tmp_path):
+        downloaded = self._downloaded(tmp_path, morphology_names=("morph.asc", "morph.swc"))
 
         result = _select_morphology_path(downloaded, "ent-123")
 
-        assert result == downloaded.morphology_path
+        assert result == downloaded.morphology_paths[0]
 
-    def test_raises_when_morphology_file_missing(self, tmp_path):
-        downloaded = self._downloaded(tmp_path)
+    def test_raises_when_no_morphology(self, tmp_path):
+        downloaded = self._downloaded(tmp_path, morphology_names=())
 
         with pytest.raises(InvalidValidationContextError, match="ent-123"):
             _select_morphology_path(downloaded, "ent-123")
