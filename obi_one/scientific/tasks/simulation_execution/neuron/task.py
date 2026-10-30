@@ -102,10 +102,14 @@ class SimulationExecutionTask(Task):
         L.info("Circuit staged at %s", staged_circuit.directory)
 
         cache_dir = self.shared_cache.mechanisms_dir if self.shared_cache is not None else None
+        # Compile into a sibling of the staged circuit assets. neurodamus-compile-mods
+        # materializes the shared-cache hit into --output-dir; using the circuit directory
+        # itself would replace circuit_config.json and other staged files.
+        mech_output_dir = create_dir(staged_circuit.directory / "mechanism_build")
         with log_timing("compile_mechanisms"):
             mechanism_build = compile_mechanisms(
                 mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
-                output_dir=staged_circuit.directory.resolve(),
+                output_dir=mech_output_dir.resolve(),
                 simulation_backend=self.simulation_backend,
                 cache_dir=cache_dir,
             )

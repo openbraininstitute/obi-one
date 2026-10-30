@@ -186,7 +186,7 @@ def test_execute_passes_shared_mechanisms_cache_dir(
 
     mock_compile.assert_called_once_with(
         mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
-        output_dir=staged_circuit.directory.resolve(),
+        output_dir=(staged_circuit.directory / "mechanism_build").resolve(),
         simulation_backend=SimulationBackend.neurodamus,
         cache_dir=shared_cache.mechanisms_dir,
     )
