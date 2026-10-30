@@ -14,6 +14,7 @@ from obi_auth.typedef import AuthMode, DeploymentEnvironment
 from obi_one.core.run_tasks import run_task_type
 from obi_one.db_sdk.db_sdk import finalize_activity, update_activity_status
 from obi_one.types import TaskType
+from obi_one.utils.shared_cache import SharedCache, SharedCacheError
 
 L = logging.getLogger(__name__)
 
@@ -71,10 +72,14 @@ def main() -> int:
         PERSISTENT_TOKEN_ID: Persistent authentication token.
         DEPLOYMENT: Deployment environment.
         LOCAL_STORE_PREFIX: Local asset store for file mounting.
+
+    Optional:
+        SHARED_CACHE: Shared cache root (used when the directory exists).
     """
     persistent_token_id = os.getenv("PERSISTENT_TOKEN_ID")
     deployment = os.getenv("DEPLOYMENT")
     local_store_prefix = os.getenv("LOCAL_STORE_PREFIX")
+    shared_cache_path = os.getenv("SHARED_CACHE")
 
     try:
         args = get_parser().parse_args()
@@ -110,6 +115,12 @@ def main() -> int:
         if local_store_prefix is None
         else LocalAssetStore(prefix=Path(local_store_prefix)),
     )
+    shared_cache = None
+    if shared_cache_path:
+        try:
+            shared_cache = SharedCache.from_existing_path(shared_cache_path)
+        except SharedCacheError as error:
+            L.warning("Shared cache unavailable at %s: %s", shared_cache_path, error)
 
     try:
         # TODO: Remove once legacy tasks are moved to generic configs/activities
@@ -127,6 +138,7 @@ def main() -> int:
             db_client=db_client,
             entity_cache=args.entity_cache,
             execution_activity_id=args.execution_activity_id,
+            shared_cache=shared_cache,
         )
     except Exception as e:  # ruff: ignore[blind-except]
         # Catch any error that may occur to make sure that error status is correctly set
