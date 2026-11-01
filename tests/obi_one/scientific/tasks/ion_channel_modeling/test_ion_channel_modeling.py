@@ -18,6 +18,7 @@ from obi_one.scientific.mappings_and_registry.config_task_map import (
 from obi_one.scientific.tasks import ion_channel_modeling
 from obi_one.scientific.tasks.ion_channel_modeling import (
     HodgkinHuxleyIonChannelModel,
+    HyperpolarizationActivatedIonChannelModel,
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
     IonChannelFittingTask,
@@ -102,6 +103,8 @@ THALAMUS = SimpleNamespace(id=uuid4(), name="Thalamus", parent_structure_id=GREY
 HUMAN_ROOT = SimpleNamespace(id=uuid4(), name="root", parent_structure_id=None)
 KV62 = SimpleNamespace(id=uuid4(), name="Kv6.2")
 KV11 = SimpleNamespace(id=uuid4(), name="Kv1.1")
+HCN4 = SimpleNamespace(id=uuid4(), name="HCN4")
+HCN_MODEL = {"type": "HyperpolarizationActivatedIonChannelModel"}
 
 
 def _recording(id_, **overrides):
@@ -317,8 +320,8 @@ def test_generate_rejects_an_unresolved_property_before_registering_anything(tmp
     register.assert_not_called()
 
 
-def _task(tmp_path, model_properties=None):
-    form = _scan_config(model_properties).model_dump(exclude={"type"})
+def _task(tmp_path, model_properties=None, **model_type):
+    form = _scan_config(model_properties, **model_type).model_dump(exclude={"type"})
     return IonChannelFittingTask(
         config=IonChannelFittingSingleConfig.model_validate(
             form | {"idx": 0, "coordinate_output_root": tmp_path}
@@ -349,8 +352,8 @@ def _region():
     )
 
 
-def _save(tmp_path, db_client, *, subject, species):
-    task = _task(tmp_path)
+def _save(tmp_path, db_client, *, subject, species, **model_type):
+    task = _task(tmp_path, **model_type)
     properties = ion_channel_modeling.ResolvedModelProperties(
         ion_channel_name="Kv6_2",
         temperature=25.0,
@@ -457,3 +460,95 @@ def test_the_plotting_process_returns_the_figures_through_its_file(tmp_path, mon
     plot_fitted_model(str(io_path))
 
     assert pickle.loads(io_path.read_bytes()) == {"traces": tmp_path / "kt.pdf"}  # ruff: ignore[suspicious-pickle-usage]
+
+
+def _fit(tmp_path, monkeypatch, **model_type):
+    """Run the task with ion_channel_builder mocked, and return the mocks of its functions."""
+    builder = {
+        "extract_all_equations": Mock(return_value={}),
+        "write_vgate_output": Mock(),
+        "plot_in_fresh_process": Mock(return_value={}),
+        "get_range_params_with_units": Mock(return_value=[]),
+    }
+    for name, mock in builder.items():
+        monkeypatch.setattr(ion_channel_modeling, name, mock)
+    monkeypatch.setattr(ion_channel_modeling, "run_and_log", Mock())
+    builder["save"] = Mock(return_value="model id")
+    monkeypatch.setattr(IonChannelFittingTask, "save", builder["save"])
+    _task(tmp_path, **model_type).execute(db_client=_db_client())
+    return builder
+
+
+def test_a_hodgkin_huxley_fit_is_of_an_inactivating_potassium_channel(tmp_path, monkeypatch):
+    builder = _fit(tmp_path, monkeypatch, m_power=3, h_power=2)
+
+    extract_kwargs = builder["extract_all_equations"].call_args.kwargs
+    assert set(extract_kwargs["eq_names"]) == {"minf", "mtau", "hinf", "htau"}
+    assert "hyperpolarization_activated" not in extract_kwargs
+    write_kwargs = builder["write_vgate_output"].call_args.kwargs
+    assert (write_kwargs["ion"], write_kwargs["m_power"], write_kwargs["h_power"]) == ("k", 3, 2)
+    assert "erev" not in write_kwargs
+    assert builder["plot_in_fresh_process"].call_args.kwargs["mech_current"] == "ik"
+    range_vars = builder["save"].call_args.kwargs["range_vars"]
+    assert {"ik": "mA/cm2"} in range_vars
+    assert {"hTau": "ms"} in range_vars
+
+
+def test_a_hyperpolarization_activated_fit_has_no_inactivation(tmp_path, monkeypatch):
+    builder = _fit(tmp_path, monkeypatch, **HCN_MODEL, m_power=2, reversal_potential=-35.0)
+
+    extract_kwargs = builder["extract_all_equations"].call_args.kwargs
+    assert extract_kwargs["eq_names"] == {"minf": "sig_fit_minf", "mtau": "bell_fit_mtau"}
+    assert extract_kwargs["hyperpolarization_activated"] is True
+    assert extract_kwargs["erev"] == pytest.approx(-35.0)
+    write_kwargs = builder["write_vgate_output"].call_args.kwargs
+    assert (write_kwargs["ion"], write_kwargs["m_power"], write_kwargs["h_power"]) == ("hcn", 2, 0)
+    assert write_kwargs["erev"] == pytest.approx(-35.0)
+    plot_kwargs = builder["plot_in_fresh_process"].call_args.kwargs
+    assert plot_kwargs["mech_current"] == "ihcn"
+    assert plot_kwargs["hyperpolarization_activated"] is True
+    range_vars = builder["save"].call_args.kwargs["range_vars"]
+    assert {"ihcn": "mA/cm2"} in range_vars
+    assert {"mTau": "ms"} in range_vars
+    assert not any("hInf" in var or "hTau" in var for var in range_vars)
+
+
+@pytest.mark.parametrize("mtau_eq", ["sig_fit_mtau", "thermo_fit_mtau_v2"])
+def test_a_hyperpolarization_activated_model_only_takes_mtau_equations_with_a_peak(mtau_eq):
+    with pytest.raises(ValidationError):
+        HyperpolarizationActivatedIonChannelModel(mtau_eq=mtau_eq)
+
+
+def test_hcn_recordings_are_rejected_with_a_hodgkin_huxley_model():
+    db_client = _db_client({"ion_channel": HCN4}, {"ion_channel": HCN4})
+
+    with pytest.raises(ConfigValidationError, match="HCN4, opened by hyperpolarization"):
+        _scan_config().input_entities(db_client=db_client)
+
+    recordings = _scan_config(**HCN_MODEL).input_entities(db_client=db_client)
+    assert len(recordings) == len(RECORDING_IDS)
+
+
+def test_a_hyperpolarization_activated_model_has_a_nonspecific_current(tmp_path):
+    db_client = _db_client()
+    db_client.register_entity.side_effect = lambda entity: entity
+    mouse = _species("Mus musculus", "NCBITaxon:10090")
+    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+
+    (model,) = _save(tmp_path, db_client, subject=subject, species=mouse, **HCN_MODEL)
+
+    assert model.neuron_block.useion == []
+    assert model.neuron_block.nonspecific == [{"ihcn": "mA/cm2"}]
+
+
+def test_a_hodgkin_huxley_model_uses_potassium(tmp_path):
+    db_client = _db_client()
+    db_client.register_entity.side_effect = lambda entity: entity
+    mouse = _species("Mus musculus", "NCBITaxon:10090")
+    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+
+    (model,) = _save(tmp_path, db_client, subject=subject, species=mouse)
+
+    (useion,) = model.neuron_block.useion
+    assert (useion.ion_name, useion.read, useion.write) == ("k", ["ek"], ["ik"])
+    assert model.neuron_block.nonspecific == []

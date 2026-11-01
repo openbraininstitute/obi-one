@@ -58,6 +58,7 @@ except ImportError:
         stim_timings: dict,
         stim_timings_corrections: dict,
         output_folder: Path,
+        **kwargs: Any,
     ) -> None:
         pass
 
@@ -72,6 +73,7 @@ except ImportError:
         m_power: int,
         h_power: int,
         output_name: str,
+        erev: float | None = None,
     ) -> None:
         pass
 
@@ -85,6 +87,7 @@ except ImportError:
         output_folder: Path,
         savefig: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
         show: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
+        **kwargs: Any,
     ) -> None:
         pass
 
@@ -338,10 +341,145 @@ class HodgkinHuxleyIonChannelModel(Block):
         json_schema_extra=equation_schema_extra,
     )
 
+    # The ion of the channel current: the recordings fitted with this model are of potassium
+    # channels.
+    ion: ClassVar[str] = "k"
+    # Keyword arguments of ion_channel_builder's run_ion_channel_model.
+    plot_options: ClassVar[dict[str, Any]] = {}
+    # RANGE variables of the gates, as written by ion_channel_builder's mod template.
+    gating_range_vars: ClassVar[list[dict[str, str | None]]] = [
+        {"mInf": None},
+        {"mTau": "ms"},
+        {"hInf": None},
+        {"hTau": "ms"},
+    ]
 
-# One member, but a discriminated union rather than a bare block: the editor draws it as a
-# block_union, so a second channel formalism becomes another member and nothing else changes.
-IonChannelModelUnion = Annotated[HodgkinHuxleyIonChannelModel, Discriminator("type")]
+    @property
+    def current(self) -> str:
+        return f"i{self.ion}"
+
+    def eq_names(self) -> dict[str, str]:
+        return {
+            "minf": self.minf_eq,
+            "mtau": self.mtau_eq,
+            "hinf": self.hinf_eq,
+            "htau": self.htau_eq,
+        }
+
+    @staticmethod
+    def fitting_options() -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's extract_all_equations."""
+        return {}
+
+    def mod_file_options(self) -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's write_vgate_output."""
+        return {"ion": self.ion, "m_power": self.m_power, "h_power": self.h_power}
+
+    def neuron_block_currents(self) -> dict[str, list]:
+        """The useion and nonspecific entries of the model's NEURON block."""
+        return {
+            "useion": [
+                entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
+                    ion_name=self.ion,
+                    read=[f"e{self.ion}"],
+                    write=[self.current],
+                    valence=1,
+                    main_ion=True,
+                )
+            ],
+            "nonspecific": [],
+        }
+
+
+class HyperpolarizationActivatedIonChannelModel(Block):
+    """A channel opened by hyperpolarization, like HCN: an activation gate only, carrying a mixed
+    cation current, with its reversal potential set rather than read from an ion.
+    """
+
+    title: ClassVar[str] = "Hyperpolarization-activated (HCN) ion channel model"
+
+    m_power: Annotated[int, Field(ge=1, le=4)] | list[Annotated[int, Field(ge=1, le=4)]] = Field(
+        title=r"$m$ exponent in channel equation",
+        default=1,
+        description=(
+            r"Exponent $p$ of $m$ in the channel equation: $g = \bar{g} \cdot m^p$. "
+            "These channels do not inactivate, so there is no $h$."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    reversal_potential: float | list[float] = Field(
+        title="Reversal potential",
+        default=-30.0,
+        description=(
+            "Reversal potential of the channel current. It cannot be measured from the "
+            "activation protocol, where the current is inward at every step, so it is set: "
+            "-30 mV is typical of HCN channels in physiological solutions."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
+    )
+
+    minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
+        title=r"$m_\infty$ equation",
+        description=(
+            r"Steady state activation parameter $m_{\infty}$ equation, decreasing with voltage. "
+            r"This equation will be used for solving the differential equation: "
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
+        ),
+        default=EquationKey.SIG_FIT_MINF,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    mtau_eq: Literal[EquationKey.BELL_FIT_MTAU, EquationKey.THERMO_FIT_MTAU] = Field(
+        title=r"$\tau_m$ equation",
+        description=(
+            r"Activation time constant $\tau_m$ equation. The recordings only give $\tau_m$ "
+            r"below the half-activation voltage, so the equation peaks there, as for a two-state "
+            r"channel. This equation will be used for solving the differential equation: "
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
+        ),
+        default=EquationKey.BELL_FIT_MTAU,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    # The channel current, a NONSPECIFIC_CURRENT rather than the current of one ion.
+    ion: ClassVar[str] = "hcn"
+    # Keyword arguments of ion_channel_builder's run_ion_channel_model.
+    plot_options: ClassVar[dict[str, Any]] = {"hyperpolarization_activated": True}
+    # RANGE variables of the gates, as written by ion_channel_builder's mod template.
+    gating_range_vars: ClassVar[list[dict[str, str | None]]] = [{"mInf": None}, {"mTau": "ms"}]
+
+    @property
+    def current(self) -> str:
+        return f"i{self.ion}"
+
+    def eq_names(self) -> dict[str, str]:
+        return {"minf": self.minf_eq, "mtau": self.mtau_eq}
+
+    def fitting_options(self) -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's extract_all_equations."""
+        return {"hyperpolarization_activated": True, "erev": self.reversal_potential}
+
+    def mod_file_options(self) -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's write_vgate_output."""
+        return {
+            "ion": self.ion,
+            "m_power": self.m_power,
+            "h_power": 0,
+            "erev": self.reversal_potential,
+        }
+
+    def neuron_block_currents(self) -> dict[str, list]:
+        """The useion and nonspecific entries of the model's NEURON block."""
+        return {"useion": [], "nonspecific": [{self.current: "mA/cm2"}]}
+
+
+IonChannelModelUnion = Annotated[
+    HodgkinHuxleyIonChannelModel | HyperpolarizationActivatedIonChannelModel,
+    Discriminator("type"),
+]
 
 
 class IonChannelFittingScanConfig(InfoScanConfig):
@@ -394,9 +532,11 @@ class IonChannelFittingScanConfig(InfoScanConfig):
     model_type: IonChannelModelUnion = Field(
         title="Ion channel model",
         description=(
-            "The Hodgkin-Huxley channel model to fit: an equation per gating variable, and "
-            r"the exponents $p$ and $q$ of $m$ and $h$ in the channel equation "
-            r"$g = \bar{g} \cdot m^p \cdot h^q$."
+            "The channel model to fit: an equation per gating variable, and the exponents of "
+            r"the gates in the channel equation $g = \bar{g} \cdot m^p \cdot h^q$. "
+            "Hodgkin-Huxley for channels opened by depolarization, like Kv channels; "
+            "hyperpolarization-activated for channels opened by hyperpolarization, like HCN "
+            "channels, that have no inactivation gate $h$."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
@@ -410,8 +550,27 @@ class IonChannelFittingScanConfig(InfoScanConfig):
             recording.entity(db_client=db_client) for recording in self.initialize.recordings
         ]
         # Fails at generation, before anything is registered, when a property can't be resolved.
+        self.check_model_type(entities)
         self.resolve_model_properties(entities, db_client=db_client)
         return entities
+
+    def check_model_type(self, recordings: list) -> None:
+        """HCN recordings fitted as a depolarization-activated, inactivating channel would give
+        a model that runs, but is wrong.
+        """
+        hcn_channels = sorted(
+            {
+                recording.ion_channel.name
+                for recording in recordings
+                if recording.ion_channel.name.upper().startswith("HCN")
+            }
+        )
+        if hcn_channels and isinstance(self.model_type, HodgkinHuxleyIonChannelModel):
+            msg = (
+                f"The recordings are of {', '.join(hcn_channels)}, opened by hyperpolarization, "
+                f"so fit them with the {HyperpolarizationActivatedIonChannelModel.title}."
+            )
+            raise ConfigValidationError(msg)
 
     def resolve_model_properties(
         self, recordings: list, db_client: entitysdk.client.Client
@@ -597,18 +756,10 @@ class IonChannelFittingTask(Task):
         properties: ResolvedModelProperties,
     ) -> None:
         # reproduce here what is being done in ion_channel_builder.io.write_output
-        useion = entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
-            ion_name="k",  # TODO: fix this
-            read=["ek"],
-            write=["ik"],
-            valence=1,  # putting 1 for K for now. TODO: fix this
-            main_ion=True,
-        )
         neuron_block = entitysdk.models.NeuronBlock(  # ty:ignore[possibly-missing-submodule]
             **{"global": [{"celsius": "degree C"}]},
             range=range_vars,
-            useion=[useion],
-            nonspecific=[],
+            **self.config.model_type.neuron_block_currents(),
         )
 
         recording_names = ", ".join(
@@ -678,12 +829,7 @@ class IonChannelFittingTask(Task):
             trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
             model = self.config.model_type
-            eq_names: dict[str, str] = {
-                "minf": model.minf_eq,
-                "mtau": model.mtau_eq,
-                "hinf": model.hinf_eq,
-                "htau": model.htau_eq,
-            }
+            eq_names = model.eq_names()
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
@@ -693,6 +839,7 @@ class IonChannelFittingTask(Task):
                 stim_timings=STIM_TIMINGS,
                 stim_timings_corrections=STIM_TIMINGS_CORRECTIONS,
                 output_folder=self.config.coordinate_output_root,
+                **model.fitting_options(),
             )
 
             # create new mod file
@@ -705,10 +852,8 @@ class IonChannelFittingTask(Task):
                 eq_names=eq_names,
                 eq_popt=eq_popt,  # ty:ignore[invalid-argument-type]
                 suffix=properties.ion_channel_name,
-                ion="k",
-                m_power=model.m_power,  # ty:ignore[invalid-argument-type]
-                h_power=model.h_power,  # ty:ignore[invalid-argument-type]
                 output_name=output_name,  # ty:ignore[invalid-argument-type]
+                **model.mod_file_options(),
             )
 
             # Compile into the coordinate folder rather than the process cwd, which concurrent
@@ -725,23 +870,21 @@ class IonChannelFittingTask(Task):
                 mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see
                 # ion_channel_builder.io.write_output
-                mech_current="ik",
+                mech_current=model.current,
                 temperature=properties.temperature,
                 mech_conductance_name=self.conductance_name(mech_suffix),
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
+                **model.plot_options,
             )
 
             # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
             range_vars = [
                 {f"g{mech_suffix}bar": "S/cm2"},
                 {f"g{mech_suffix}": "S/cm2"},
-                {"ik": "mA/cm2"},
-                {"mInf": None},
-                {"mTau": "ms"},
-                {"hInf": None},
-                {"hTau": "ms"},
+                {model.current: "mA/cm2"},
+                *model.gating_range_vars,
             ]
             range_vars += get_range_params_with_units(eq_names)
 
