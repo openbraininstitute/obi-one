@@ -96,8 +96,14 @@ service = [
     "uvicorn",
 ]
 
+# SPIKE SORTING - optional, needed for the AIND ephys spike sorting pipeline tasks
+spike-sorting = ["neuroconv>=0.10.2", "spikeinterface[full]>=0.105.4"]
+
+# KILOSORT - optional, the Kilosort4 sorter for the spike sorting task (pulls in torch)
+kilosort = ["kilosort>=4.1.7"]
+
 # ALL - convenience alias to install all optional dependencies
-all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
+all = ["obi-one[connectivity,emodel,meshing,notebooks,service,spike-sorting]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.

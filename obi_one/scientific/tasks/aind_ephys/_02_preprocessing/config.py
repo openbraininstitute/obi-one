@@ -1,10 +1,10 @@
-"""ScanConfig for the aind-ephys-preprocessing capsule."""
+"""Config for the preprocessing stage of the AIND ephys pipeline."""
 
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar, Literal
 
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
@@ -17,10 +17,10 @@ from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import (
     DetectBadChannels,
     HighpassFilterParams,
     HighpassSpatialFilter,
-    JobKwargs,
     MotionCorrection,
     PhaseShift,
 )
+from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 
 
 class BlockGroup(StrEnum):
@@ -31,18 +31,15 @@ class BlockGroup(StrEnum):
 
 
 class AINDEPhysPreprocessingScanConfig(ScanConfig):
-    """ScanConfig wrapping the aind-ephys-preprocessing CLI.
+    """Filter, denoise and remove the bad channels of each dispatched recording.
 
-    The capsule's ``code/run_capsule.py`` consumes ``job_*.json`` files
-    (produced by the dispatch stage) from ``../data/`` and writes preprocessed
-    recordings + metadata to ``../results/``. The ``initialize.dispatch_output_path``
-    field tells the OBI-side task where to seed those job files from.
+    Port of https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing. Writes, for each job,
+    the preprocessed traces to ``preprocessed_<name>/``, files to reload them (``binary_<name>``
+    and the lazy chain ``preprocessed_<name>``) and the estimated motion to ``motion_<name>/``.
     """
 
     name: ClassVar[str] = "AIND Ephys Preprocessing"
-    description: ClassVar[str] = (
-        "Run the aind-ephys-preprocessing capsule on dispatched ephys job(s)."
-    )
+    description: ClassVar[str] = "Preprocesses dispatched extracellular recordings."
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: False,
@@ -50,44 +47,32 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        """Top-level CLI / control parameters for the preprocessing capsule."""
-
         dispatch_output_path: Path = Field(
-            title="Dispatch output path",
-            description=(
-                "Directory containing one or more ``job_*.json`` files produced by"
-                " the aind-ephys-job-dispatch stage. Every job JSON in this folder"
-                " is copied into the capsule's data folder before the run."
-            ),
+            title="Dispatch output",
+            description="Folder of the dispatch stage's job_*.json files.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
-
         denoising_strategy: Literal["cmr", "destripe"] = Field(
             default="cmr",
             title="Denoising strategy",
-            description="Denoising strategy.",
+            description="Common median reference ('cmr') or spatial highpass ('destripe').",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
         )
         filter_type: Literal["highpass", "bandpass"] = Field(
             default="highpass",
             title="Filter type",
-            description="Whether to apply a highpass or a bandpass filter.",
+            description="Whether to highpass or bandpass filter the traces.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
         )
-
-        min_preprocessing_duration: float | list[float] = Field(
+        min_preprocessing_duration: NonNegativeFloat | list[NonNegativeFloat] = Field(
             default=120.0,
-            title="Minimum preprocessing duration",
-            description=(
-                "Recordings shorter than this duration (in seconds) are skipped"
-                " unless the dispatcher's debug flag is set."
-            ),
+            title="Minimum duration",
+            description="Shorter recordings are skipped, unless dispatched in debug mode.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
                 SchemaKey.UNITS: Units.SECONDS,
             },
         )
-
         remove_out_channels: bool = Field(
             default=True,
             title="Remove out channels",
@@ -97,127 +82,111 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         remove_bad_channels: bool = Field(
             default=True,
             title="Remove bad channels",
-            description="Whether to remove channels detected as bad.",
+            description="Whether to remove channels detected as dead or noisy.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )
         max_bad_channel_fraction: float | list[float] = Field(
             default=0.5,
             title="Max bad channel fraction",
-            description=("Fail the recording if more than this fraction of channels are bad."),
+            description="Recordings with at least this fraction of removed channels are skipped.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
-
-        t_start: float | None = Field(
+        t_start: NonNegativeFloat | None = Field(
             default=None,
-            title="t_start",
-            description="Clip the recording to start at this time (seconds).",
-            json_schema_extra={SchemaKey.UI_HIDDEN: True},
+            title="Start time",
+            description="Clip single-segment recordings to start here. None starts at 0.",
+            json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.SECONDS},
         )
-        t_stop: float | None = Field(
+        t_stop: NonNegativeFloat | None = Field(
             default=None,
-            title="t_stop",
-            description="Clip the recording to stop at this time (seconds).",
-            json_schema_extra={SchemaKey.UI_HIDDEN: True},
-        )
-
-        n_jobs: int = Field(
-            default=1,
-            title="n_jobs",
-            description="Parallel job count (-1 for all cores).",
-            json_schema_extra={SchemaKey.UI_HIDDEN: True},
+            title="Stop time",
+            description="Clip single-segment recordings to stop here. None runs to the end.",
+            json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.SECONDS},
         )
 
     initialize: Initialize = Field(
         title="Initialize",
-        description="Top-level control parameters for the preprocessing run.",
+        description="The dispatched jobs and the preprocessing strategy.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-
     job_kwargs: JobKwargs = Field(
-        default_factory=JobKwargs,
+        default_factory=lambda: JobKwargs(mp_context="spawn"),
         title="Job kwargs",
-        description="SpikeInterface job_kwargs.",
+        description="SpikeInterface job kwargs.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-
     phase_shift: PhaseShift = Field(
         default_factory=PhaseShift,
         title="Phase shift",
-        description="Phase-shift block.",
+        description="Corrects the sampling delay between channels (Neuropixels ADC multiplexing).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
-
     highpass_filter: HighpassFilterParams = Field(
         default_factory=HighpassFilterParams,
         title="Highpass filter",
-        description="Highpass-filter parameters (used when filter_type='highpass').",
+        description="Used when the filter type is 'highpass'.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-
     bandpass_filter: BandpassFilterParams = Field(
         default_factory=BandpassFilterParams,
         title="Bandpass filter",
-        description="Bandpass-filter parameters (used when filter_type='bandpass').",
+        description="Used when the filter type is 'bandpass'.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
             SchemaKey.GROUP_ORDER: 2,
         },
     )
-
     detect_bad_channels: DetectBadChannels = Field(
         default_factory=DetectBadChannels,
         title="Detect bad channels",
-        description="Bad-channel detection parameters.",
+        description="Detection of dead, noisy and outside channels.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
             SchemaKey.GROUP_ORDER: 3,
         },
     )
-
     common_reference: CommonReference = Field(
         default_factory=CommonReference,
         title="Common reference",
-        description="Common-reference parameters.",
+        description="Used by the 'cmr' denoising strategy.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
             SchemaKey.GROUP_ORDER: 4,
         },
     )
-
     highpass_spatial_filter: HighpassSpatialFilter = Field(
         default_factory=HighpassSpatialFilter,
         title="Highpass spatial filter",
-        description="Spatial-filter parameters (used by 'destripe' denoising).",
+        description="Used by the 'destripe' denoising strategy.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
             SchemaKey.GROUP_ORDER: 5,
         },
     )
-
     motion_correction: MotionCorrection = Field(
         default_factory=MotionCorrection,
         title="Motion correction",
-        description="Motion-correction parameters.",
+        description="Estimation, and optionally correction, of the probe's motion.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.PREPROCESSING,
@@ -229,30 +198,22 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
 class AINDEPhysPreprocessingSingleConfig(AINDEPhysPreprocessingScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysPreprocessingScanConfig`."""
 
-    def params_dict(self) -> dict:
-        """Build the params.json payload the capsule expects.
-
-        The capsule nests the ordered preprocessing steps under
-        ``default_preprocessing_pipeline`` (with ``custom_preprocessing_pipeline``
-        as the alternative); ``run_capsule.py`` asserts that at least one of the
-        two is present.
-        """
-        return {
-            "job_kwargs": self.job_kwargs.to_dict(),
-            "denoising_strategy": self.initialize.denoising_strategy,
-            "filter_type": self.initialize.filter_type,
-            "min_preprocessing_duration": self.initialize.min_preprocessing_duration,
-            "remove_out_channels": self.initialize.remove_out_channels,
-            "remove_bad_channels": self.initialize.remove_bad_channels,
-            "max_bad_channel_fraction": self.initialize.max_bad_channel_fraction,
-            "default_preprocessing_pipeline": {
-                "phase_shift": self.phase_shift.to_dict(),
-                "highpass_filter": self.highpass_filter.to_dict(),
-                "bandpass_filter": self.bandpass_filter.to_dict(),
-                "detect_and_remove_bad_channels": self.detect_bad_channels.to_dict(),
-                "common_reference": self.common_reference.to_dict(),
-                "highpass_spatial_filter": self.highpass_spatial_filter.to_dict(),
-            },
-            "custom_preprocessing_pipeline": None,
-            "motion_correction": self.motion_correction.to_dict(),
-        }
+    def preprocessing_pipeline(self, *, has_inter_sample_shift: bool) -> dict[str, dict]:
+        """The ordered steps for ``spikeinterface.preprocessing.apply_preprocessing_pipeline``."""
+        init = self.initialize
+        steps: dict[str, dict] = {}
+        if has_inter_sample_shift:
+            steps["phase_shift"] = self.phase_shift.to_dict()
+        if init.filter_type == "highpass":
+            steps["highpass_filter"] = self.highpass_filter.to_dict()
+        else:
+            steps["bandpass_filter"] = self.bandpass_filter.to_dict()
+        steps["detect_and_remove_bad_channels"] = self.detect_bad_channels.to_dict(
+            remove_out_channels=init.remove_out_channels,
+            remove_bad_channels=init.remove_bad_channels,
+        )
+        if init.denoising_strategy == "cmr":
+            steps["common_reference"] = self.common_reference.to_dict()
+        else:
+            steps["highpass_spatial_filter"] = self.highpass_spatial_filter.to_dict()
+        return steps

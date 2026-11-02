@@ -401,6 +401,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_config_ref=(f"{_AIND_EPHYS}._01_dispatch.config", "AINDEPhysDispatchSingleConfig"),
         scan_config_ref=(f"{_AIND_EPHYS}._01_dispatch.config", "AINDEPhysDispatchScanConfig"),
         asset_label=AssetLabel.task_config,
+        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_preprocessing: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._02_preprocessing.task", "AINDEPhysPreprocessingTask"),
@@ -419,16 +420,17 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.aind_ephys_preprocessing__config,
         single_task_activity_type=TaskActivityType.aind_ephys_preprocessing__execution,
+        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_spikesorting: TaskSpec(
-        task_ref=(f"{_AIND_EPHYS}._03_kilosort4.task", "AINDEPhysSpikesortKilosort4Task"),
+        task_ref=(f"{_AIND_EPHYS}._03_spikesorting.task", "AINDEPhysSpikeSortingTask"),
         single_config_ref=(
-            f"{_AIND_EPHYS}._03_kilosort4.config",
-            "AINDEPhysSpikesortKilosort4SingleConfig",
+            f"{_AIND_EPHYS}._03_spikesorting.config",
+            "AINDEPhysSpikeSortingSingleConfig",
         ),
         scan_config_ref=(
-            f"{_AIND_EPHYS}._03_kilosort4.config",
-            "AINDEPhysSpikesortKilosort4ScanConfig",
+            f"{_AIND_EPHYS}._03_spikesorting.config",
+            "AINDEPhysSpikeSortingScanConfig",
         ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
@@ -437,6 +439,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
         single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
+        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_postprocessing: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._04_postprocessing.task", "AINDEPhysPostprocessingTask"),
@@ -449,12 +452,14 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             "AINDEPhysPostprocessingScanConfig",
         ),
         asset_label=None,
+        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_curation: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._05_curation.task", "AINDEPhysCurationTask"),
         single_config_ref=(f"{_AIND_EPHYS}._05_curation.config", "AINDEPhysCurationSingleConfig"),
         scan_config_ref=(f"{_AIND_EPHYS}._05_curation.config", "AINDEPhysCurationScanConfig"),
         asset_label=None,
+        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_visualization: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._06_visualization.task", "AINDEPhysVisualizationTask"),

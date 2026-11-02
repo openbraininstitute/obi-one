@@ -1,120 +1,95 @@
-import json
-import shlex
-from enum import StrEnum
+"""Config for the dispatch stage of the AIND ephys pipeline."""
+
+from pathlib import Path
 from typing import ClassVar
 
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat, PositiveFloat
 
+from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.tasks.aind_ephys._01_dispatch.blocks import (
-    DispatchBasic,
-    DispatchDataDependent,
-    DispatchDebug,
-)
-
-# Job Dispatch
-# https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch/
-
-# Preprocessing
-# https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing
-# https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing/blob/main/code/params.json
-
-
-class BlockGroup(StrEnum):
-    """SpikeSorting Block Group."""
-
-    SETUP = "Setup"
-    PREPROCESSING = "Preprocessing"
-    SPIKE_SORTING = "Spike sorting"
+from obi_one.core.units import Units
 
 
 class AINDEPhysDispatchScanConfig(ScanConfig):
-    """ScanConfig wrapping the aind-ephys-job-dispatch CLI."""
+    """Split the raw recordings of an NWB file into the jobs the later stages process.
 
-    name: ClassVar[str] = "Multi Electrode Recording Postprocessing"
-    description: ClassVar[str] = "Spike sorting preprocessing configuration."
+    Port of https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch for NWB input: one job
+    per ElectricalSeries in ``acquisition``, split further by segment and probe group.
+    """
 
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: False,
-        SchemaKey.GROUP_ORDER: [
-            BlockGroup.SETUP,
-            BlockGroup.PREPROCESSING,
-            BlockGroup.SPIKE_SORTING,
-        ],
-    }
-
-    dispatch_basic: DispatchBasic = Field(
-        title="Recording setup",
-        description="Top-level dispatch flags applied to every recording.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
+    name: ClassVar[str] = "AIND Ephys Job Dispatch"
+    description: ClassVar[str] = (
+        "Splits the extracellular recordings of an NWB file into per-probe spike sorting jobs."
     )
 
-    dispatch_data_dependent: DispatchDataDependent = Field(
-        title="Data dependent options",
-        description="Input-format-dependent dispatch options.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
+    json_schema_extra_additions: ClassVar[dict] = {SchemaKey.UI_ENABLED: False}
 
-    dispatch_debug: DispatchDebug = Field(
-        title="Debug setup",
-        description="Debug-mode dispatch options.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 2,
-        },
+    class Initialize(Block):
+        nwb_path: Path = Field(
+            title="NWB file",
+            description="NWB file whose acquisition holds the raw extracellular recording.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+        )
+        electrical_series_path: str | None = Field(
+            default=None,
+            title="Electrical series",
+            description=(
+                "Path of the one ElectricalSeries to process, such as"
+                " 'acquisition/ElectricalSeriesAP'. None processes every series in acquisition."
+            ),
+            json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        )
+        split_segments: bool = Field(
+            default=True,
+            title="Split segments",
+            description="Whether each recording segment becomes its own job.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+        split_groups: bool = Field(
+            default=True,
+            title="Split groups",
+            description="Whether each channel group (probe or shank) becomes its own job.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+        skip_timestamps_check: bool = Field(
+            default=False,
+            title="Skip timestamps check",
+            description="Skip the check that resets timestamps with gaps or reversals.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+        min_recording_duration: NonNegativeFloat | None = Field(
+            default=None,
+            title="Minimum recording duration",
+            description="Recordings shorter than this are not dispatched. None keeps them all.",
+            json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.SECONDS},
+        )
+        min_sampling_frequency: PositiveFloat = Field(
+            default=10_000.0,
+            title="Minimum sampling frequency",
+            description="Series sampled below this are taken to be LFP and skipped.",
+            json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.HERTZ},
+        )
+        debug: bool = Field(
+            default=False,
+            title="Debug",
+            description="Clip each segment to the debug duration, and keep short recordings.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+        debug_duration: PositiveFloat = Field(
+            default=30.0,
+            title="Debug duration",
+            description="Duration each segment is clipped to in debug mode.",
+            json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.SECONDS},
+        )
+
+    initialize: Initialize = Field(
+        title="Initialize",
+        description="The NWB input and how its recordings are split into jobs.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE},
     )
 
 
 class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysDispatchScanConfig`."""
-
-    def command_line_representation(self) -> str:
-        """Build the dispatch CLI invocation for this single coordinate.
-
-        See https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch/blob/main/code/run_capsule.py
-        for the meaning of each flag.
-        """
-        parts: list[str] = ["python", "-u", "code/run_capsule.py"]
-
-        parts += ["--input", self.dispatch_data_dependent.input_format]
-
-        if not self.dispatch_basic.split_segments:
-            parts.append("--no-split-segments")
-        if not self.dispatch_basic.split_groups:
-            parts.append("--no-split-groups")
-        if self.dispatch_basic.skip_timestamps_check:
-            parts.append("--skip-timestamps-check")
-        parts += ["--min-recording-duration", str(self.dispatch_basic.min_recording_duration)]
-
-        if self.dispatch_debug.debug_mode:
-            parts.append("--debug")
-            parts += ["--debug-duration", str(self.dispatch_debug.debug_duration)]
-
-        if self.dispatch_data_dependent.multi_session_data:
-            parts.append("--multi-session")
-
-        if self.dispatch_data_dependent.input_format == "spikeinterface":
-            info = self.dispatch_data_dependent.spikeinterface_info
-            if info is None:
-                msg = "spikeinterface_info is required when input_format == 'spikeinterface'."
-                raise ValueError(msg)
-            parts += ["--spikeinterface-info", json.dumps(info.to_dict())]
-
-        if (
-            self.dispatch_data_dependent.input_format == "nwb"
-            and self.dispatch_data_dependent.nwb_files is not None
-        ):
-            parts += ["--nwb-files", self.dispatch_data_dependent.nwb_files]
-
-        return shlex.join(parts)

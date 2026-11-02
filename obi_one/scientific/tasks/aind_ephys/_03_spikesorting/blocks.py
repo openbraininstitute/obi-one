@@ -1,46 +1,26 @@
-"""Building blocks for the aind-ephys-spikesort-kilosort4 capsule.
+"""Sorter blocks for the spike sorting stage of the AIND ephys pipeline.
 
-The fields below mirror the keys read from the capsule's ``params.json``
-(https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4/blob/main/code/params.json).
-Each block has a ``to_dict`` returning the JSON fragment the capsule expects
-for that section.
+Each block's ``to_dict`` gives parameters that override spikeinterface's defaults for its sorter.
+Defaults are those of the AIND pipeline's ``default_params.json``.
 """
 
-from typing import Literal
+from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic import Discriminator, Field, NonNegativeInt, PositiveFloat, PositiveInt
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 
 
-class Kilosort4JobKwargs(Block):
-    """SpikeInterface job_kwargs for the Kilosort4 capsule."""
-
-    chunk_duration: str = Field(
-        default="1s",
-        title="Chunk duration",
-        description="Chunk size as a string ('1s', '500ms', etc.).",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
-    )
-    progress_bar: bool = Field(
-        default=False,
-        title="Progress bar",
-        description="Whether to show a progress bar in spikeinterface jobs.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-
-    def to_dict(self) -> dict:
-        return {"chunk_duration": self.chunk_duration, "progress_bar": self.progress_bar}
-
-
 class Kilosort4Sorter(Block):
-    """Kilosort4 sorter parameters (the ``sorter`` section of params.json).
+    """Kilosort4, the AIND pipeline's default sorter; needs obi-one's ``kilosort`` extra.
 
-    See `kilosort.run_kilosort.default_settings` and the upstream
-    `params.json` for the meaning of every flag.
+    See ``kilosort.parameters`` for the meaning of each parameter.
     """
+
+    sorter_name: ClassVar[str] = "kilosort4"
+    motion_correction_parameter: ClassVar[str] = "do_correction"
 
     # --- Universal / batching -------------------------------------------------
     batch_size: PositiveInt | list[PositiveInt] = Field(
@@ -329,7 +309,6 @@ class Kilosort4Sorter(Block):
     )
 
     def to_dict(self) -> dict:
-        """Serialise to the dict expected under the params.json ``sorter`` key."""
         return {
             "batch_size": self.batch_size,
             "nblocks": self.nblocks,
@@ -375,3 +354,157 @@ class Kilosort4Sorter(Block):
             "use_binary_file": self.use_binary_file,
             "delete_recording_dat": self.delete_recording_dat,
         }
+
+
+class SpykingCircus2Sorter(Block):
+    """SpykingCircus2, which ships with spikeinterface."""
+
+    sorter_name: ClassVar[str] = "spykingcircus2"
+    motion_correction_parameter: ClassVar[str] = "apply_motion_correction"
+
+    apply_preprocessing: bool = Field(
+        default=False,
+        title="Apply preprocessing",
+        description="Whether the sorter filters, references and whitens the recording again.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    apply_motion_correction: bool = Field(
+        default=True,
+        title="Apply motion correction",
+        description="Whether the sorter corrects motion (dense probes only).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    motion_correction_preset: Literal["dredge_fast", "dredge", "rigid_fast"] = Field(
+        default="dredge_fast",
+        title="Motion preset",
+        description="Motion correction preset.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    radius_um: PositiveFloat | list[PositiveFloat] = Field(
+        default=100.0,
+        title="Radius",
+        description="Radius of the channels used around each spike.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MICROMETERS,
+        },
+    )
+    detect_threshold: PositiveFloat | list[PositiveFloat] = Field(
+        default=5.0,
+        title="Detection threshold",
+        description="Peak detection threshold, in multiples of the noise level.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    peak_sign: Literal["neg", "pos", "both"] = Field(
+        default="neg",
+        title="Peak sign",
+        description="Sign of the peaks to detect.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    cache_preprocessing_mode: Literal["no-cache", "memory", "zarr"] = Field(
+        default="no-cache",
+        title="Cache mode",
+        description="Where the sorter caches its preprocessed recording.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    seed: NonNegativeInt | list[NonNegativeInt] = Field(
+        default=42,
+        title="Random seed",
+        description="Seed of the chunk shuffling during peak detection.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "apply_preprocessing": self.apply_preprocessing,
+            "apply_motion_correction": self.apply_motion_correction,
+            "motion_correction": {"preset": self.motion_correction_preset},
+            "general": {"radius_um": self.radius_um},
+            "detection": {
+                "method_kwargs": {
+                    "peak_sign": self.peak_sign,
+                    "detect_threshold": self.detect_threshold,
+                }
+            },
+            "cache_preprocessing": {"mode": self.cache_preprocessing_mode},
+            "seed": self.seed,
+        }
+
+
+class LupinSorter(Block):
+    """Lupin, which ships with spikeinterface."""
+
+    sorter_name: ClassVar[str] = "lupin"
+    motion_correction_parameter: ClassVar[str] = "apply_motion_correction"
+
+    apply_preprocessing: bool = Field(
+        default=True,
+        title="Apply preprocessing",
+        description="Whether the sorter applies its own preprocessing.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    apply_motion_correction: bool = Field(
+        default=True,
+        title="Apply motion correction",
+        description="Whether the sorter corrects motion; needs its own preprocessing on.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+    )
+    motion_correction_preset: Literal["dredge_fast", "dredge", "rigid_fast"] = Field(
+        default="dredge_fast",
+        title="Motion preset",
+        description="Motion correction preset.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    detect_threshold: PositiveFloat | list[PositiveFloat] = Field(
+        default=5.0,
+        title="Detection threshold",
+        description="Peak detection threshold, in multiples of the noise level.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    peak_sign: Literal["neg", "pos", "both"] = Field(
+        default="neg",
+        title="Peak sign",
+        description="Sign of the peaks to detect.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    template_sparsify_threshold: PositiveFloat | list[PositiveFloat] = Field(
+        default=1.5,
+        title="Template sparsify threshold",
+        description="Threshold for sparsifying templates before template matching.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    template_matching_engine: Literal["circus-omp", "wobble"] = Field(
+        default="circus-omp",
+        title="Template matching engine",
+        description="Template matching method.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    cache_preprocessing_mode: Literal["no-cache", "auto", "memory", "zarr"] = Field(
+        default="no-cache",
+        title="Cache mode",
+        description="Where the sorter caches its preprocessed recording.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    seed: NonNegativeInt | None = Field(
+        default=None,
+        title="Random seed",
+        description="Seed of the sorter's random steps. None draws one.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "apply_preprocessing": self.apply_preprocessing,
+            "apply_motion_correction": self.apply_motion_correction,
+            "motion_correction_preset": self.motion_correction_preset,
+            "detect_threshold": self.detect_threshold,
+            "peak_sign": self.peak_sign,
+            "template_sparsify_threshold": self.template_sparsify_threshold,
+            "template_matching_engine": self.template_matching_engine,
+            "cache_preprocessing_mode": self.cache_preprocessing_mode,
+            "preprocessing_dict": {},
+            "seed": self.seed,
+        }
+
+
+SorterUnion = Annotated[Kilosort4Sorter | SpykingCircus2Sorter | LupinSorter, Discriminator("type")]

@@ -1,25 +1,28 @@
 # AIND Ephys Pipeline Demo
 
-End-to-end walk-through of the [AIND ephys pipeline](https://github.com/AllenNeuralDynamics) (job dispatch → preprocessing → spike sorting → postprocessing → curation → visualization → results collection → QC → NWB export) running locally against a tiny synthetic SpikeInterface recording.
+End-to-end walk-through of the [AIND ephys pipeline](https://github.com/AllenNeuralDynamics/aind-ephys-pipeline) (job dispatch → preprocessing → spike sorting → postprocessing → curation → visualization → results collection → QC → NWB export) running locally on a small synthetic recording stored as NWB.
 
-Each notebook builds an `AINDE…ScanConfig`, expands it via `GridScanGenerationTask`, and runs the corresponding `AINDE…Task` for each coordinate. The task itself clones the upstream AllenNeuralDynamics capsule into `/tmp/`, seeds its `data/` from the previous stage's `obi-output/<NN>_…/grid_scan/0/` directory, runs the capsule's `code/run_capsule.py`, and writes results into the single config's `coordinate_output_root`. Every stage's output lives under `obi-output/` (outside the repo).
+Each notebook builds an `AINDE…ScanConfig`, expands it via `GridScanGenerationTask`, and runs the corresponding `AINDE…Task` for each coordinate. Every stage's output lives under `obi-output/` (outside the repo). Every grid scan uses `coordinate_directory_option="ZERO_INDEX"` so coord 0 is always at `<output_root>/0/`.
 
-Every grid scan uses `coordinate_directory_option="ZERO_INDEX"` so coord 0 is always at `<output_root>/0/`. With sweep dimensions you'd see `1/`, `2/`, … alongside it.
+The stages come in two kinds:
+
+- **01–05 run in obi-one's own environment.** Their code is ported from the AIND repositories at the commits of pipeline release 1.5.0, with the defaults of its `default_params.json`, and calls spikeinterface 0.105 directly. They need obi-one's `spike-sorting` extra (`uv sync --extra spike-sorting`), and Kilosort4 also needs the `kilosort` extra. AIND-specific parts are left out: aind-data-schema metadata (each stage writes a plain `data_process_<stage>_<name>.json` instead), Code Ocean environment variables and the non-NWB input formats.
+- **06–11 still wrap the upstream capsules.** Each task clones its capsule into `/tmp/`, runs `code/run_capsule.py` in an isolated virtual environment, and copies the results into `coordinate_output_root`. They are next to be ported: the capsules now read their parameters from `../params.json`, which these wrappers predate.
 
 ## Run order
 
-Run the notebooks in numerical order (00 → 11). Each stage reads `obi-output/<NN-1>_…/grid_scan/0/` (or sibling) directly — no intermediate copying.
+Run the notebooks in numerical order (00 → 11). Each stage reads the previous stages' `obi-output/<NN>_…/grid_scan/0/` folders directly.
 
 ## Notebooks
 
 | # | Notebook | What it does | Reads from | Writes to |
 |---|---|---|---|---|
-| 00 | `00_generate_toy_recording.ipynb` | Installs `spikeinterface` and generates a 10 s, 70-channel, 10-unit ground-truth `BinaryFolderRecording`. | — | `obi-output/00_toy_example_recording/` |
-| 01 | `01_aind_ephys_dispatch.ipynb` | Runs [aind-ephys-job-dispatch](https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch). Builds `AINDEPhysDispatchScanConfig` + `GridScanGenerationTask`; the task invokes the dispatch CLI with `--input spikeinterface --spikeinterface-info '{...}'`. | `obi-output/00_toy_example_recording/` | `obi-output/01_aind_ephys_dispatch/grid_scan/0/job_0.json` |
-| 02 | `02_aind_ephys_preprocessing.ipynb` | Runs [aind-ephys-preprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing) on a 9-second clip (`t_start=0`, `t_stop=9`). Applies CMR denoising + highpass filter; disables motion correction. | `obi-output/01_aind_ephys_dispatch/grid_scan/0/` | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/preprocessed_<name>/`, `binary_<name>.json`, … |
-| 03 | `03_aind_ephys_spikesort_kilosort4.ipynb` | Runs [aind-ephys-spikesort-kilosort4](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4) directly on notebook 02's 9-second preprocessed binary (no extra preprocessing here). Tunes `whitening_range`, `nskip`, `nearest_chans`, `nearest_templates`; pins `torch_device="cpu"`; disables drift correction. | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/` | `obi-output/03_aind_ephys_spikesort_kilosort4/grid_scan/0/spikesorted_<name>/` (~14 KS4 units) |
-| 04 | `04_aind_ephys_postprocessing.ipynb` | Runs [aind-ephys-postprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-postprocessing). | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/`, `obi-output/03_…/grid_scan/0/` | `obi-output/04_aind_ephys_postprocessing/grid_scan/0/postprocessed_<name>.zarr` (10 deduplicated units, 26 quality metrics) |
-| 05 | `05_aind_ephys_curation.ipynb` | Runs [aind-ephys-curation](https://github.com/AllenNeuralDynamics/aind-ephys-curation). Default QC query plus the HuggingFace `SpikeInterface/UnitRefine_*` noise-neural & SUA/MUA classifiers. | `obi-output/04_aind_ephys_postprocessing/grid_scan/0/` | `obi-output/05_aind_ephys_curation/grid_scan/0/qc_<name>.npy`, `unit_classifier_<name>.csv` |
+| 00 | `00_generate_toy_recording.ipynb` | Writes a 10 s, 32-channel, 10-unit ground-truth recording of one probe as NWB, with the probe geometry in the electrodes table, and saves the ground-truth sorting beside it. | — | `obi-output/00_toy_example_recording/toy_recording.nwb`, `ground_truth_sorting/` |
+| 01 | `01_aind_ephys_dispatch.ipynb` | Port of [aind-ephys-job-dispatch](https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch) for NWB input: one job per ElectricalSeries in acquisition, split by segment and probe group. | `obi-output/00_toy_example_recording/` | `obi-output/01_aind_ephys_dispatch/grid_scan/0/job_0.json` |
+| 02 | `02_aind_ephys_preprocessing.ipynb` | Port of [aind-ephys-preprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing) on a 9 s clip: highpass filter, bad-channel removal and common median reference, then motion estimation. | `obi-output/01_aind_ephys_dispatch/grid_scan/0/` | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/preprocessed_<name>/`, `binary_<name>.json`, `motion_<name>/`, … |
+| 03 | `03_aind_ephys_spikesorting.ipynb` | Port of the AIND sorter steps ([kilosort4](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4), [spykingcircus2](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-spykingcircus2), [lupin](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-lupin)), with the sorter chosen by a block. Sorts notebook 02's output with Kilosort4 on CPU and scores it against the ground truth. | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/` | `obi-output/03_aind_ephys_spikesorting/grid_scan/0/spikesorted_<name>/` |
+| 04 | `04_aind_ephys_postprocessing.ipynb` | Port of [aind-ephys-postprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-postprocessing): duplicate removal, then a `SortingAnalyzer` with its extensions and quality metrics. | `obi-output/02_…/grid_scan/0/`, `obi-output/03_…/grid_scan/0/` | `obi-output/04_aind_ephys_postprocessing/grid_scan/0/postprocessed_<name>.zarr` |
+| 05 | `05_aind_ephys_curation.ipynb` | Port of [aind-ephys-curation](https://github.com/AllenNeuralDynamics/aind-ephys-curation): default QC, UnitRefine and Bombcell labels, noise flagging and SLAy merge proposals. | `obi-output/04_aind_ephys_postprocessing/grid_scan/0/` | `obi-output/05_aind_ephys_curation/grid_scan/0/unit_labels_<name>.csv`, `unit_merges_<name>.json`, `curation_<name>.json` |
 | 06 | `06_aind_ephys_visualization.ipynb` | Runs [aind-ephys-visualization](https://github.com/AllenNeuralDynamics/aind-ephys-visualization). Without a `KACHERY_API_KEY`, only emits local PNGs (drift map, raw + preprocessed traces). | `obi-output/01_…/grid_scan/0/`, `obi-output/02_…/grid_scan/0/`, `obi-output/04_…/grid_scan/0/`, `obi-output/05_…/grid_scan/0/` | `obi-output/06_aind_ephys_visualization/grid_scan/0/visualization_<name>/*.png` |
 | 07 | `07_aind_ephys_results_collector.ipynb` | Runs [aind-ephys-results-collector](https://github.com/AllenNeuralDynamics/aind-ephys-results-collector). Aggregates the previous stages into `{preprocessed,spikesorted,postprocessed,curated,visualization}/` plus the AIND-data-schema `processing.json` / `data_description.json`. The task synthesises a minimal `ecephys_<session>/` folder so the capsule's `assert len(ecephys_sessions) == 1` passes. | `obi-output/01_…`, `obi-output/02_…`, `obi-output/03_…`, `obi-output/04_…`, `obi-output/05_…`, `obi-output/06_…` | `obi-output/07_aind_ephys_results_collector/grid_scan/0/{preprocessed,spikesorted,postprocessed,curated,visualization}/` + `processing.json` + `data_description.json` + `subject.json` |
 | 08 | `08_aind_ephys_processing_qc.ipynb` | Runs [aind-ephys-processing-qc](https://github.com/AllenNeuralDynamics/aind-ephys-processing-qc) on the collected layout. | `obi-output/07_…/grid_scan/0/`, `obi-output/01_…/grid_scan/0/` | `obi-output/08_aind_ephys_processing_qc/grid_scan/0/quality_control_<name>.json` (5 metrics) + 5 PNGs |
@@ -29,63 +32,46 @@ Run the notebooks in numerical order (00 → 11). Each stage reads `obi-output/<
 
 ## What each output actually contains
 
-The OBI framework always writes two metadata files alongside whatever the wrapped capsule produces:
+The OBI framework always writes two metadata files alongside a stage's own output:
 
 - **`obi_one_scan.json`** at `<output_root>/` — the serialised `ScanConfig` (every parameter the user set).
 - **`obi_one_coordinate.json`** at `<output_root>/<idx>/` — the serialised `SingleConfig` for that one coordinate (concrete values for sweep dims).
 
-Everything else listed below is what the upstream capsule itself produces.
+A recording a stage skips (too short, too many bad channels, failed sorting) gets its output folder with only an `error.txt` inside, and later stages skip it too. Each ported stage also writes `data_process_<stage>_<name>.json`: the parameters it used, its outputs (such as channel labels or unit counts) and notes.
 
 ### 00 — Toy recording (`obi-output/00_toy_example_recording/`)
 
-A SpikeInterface `BinaryFolderRecording` written by `recording.save(folder=…)`:
-
-- `binary.json` — `BinaryFolderRecording` reader recipe (sample rate, dtype, segment offsets).
-- `traces_cached_seg0.raw` — the raw float32 voltage samples (70 ch × 300 000 samples = 80.1 MiB).
-- `probe.json` — ProbeInterface description (electrode locations, contact vector, shank groups).
-- `provenance.pkl` — pickle of how this recording was constructed (the `generate_ground_truth_recording` call).
-- `properties/` — npy files for per-channel properties (`gain_to_uV`, `offset_to_uV`, `location`, `group`, `contact_vector`).
-- `si_folder.json` — SpikeInterface folder metadata.
-
-Loadable with `spikeinterface.full.load("…")`.
+- **`toy_recording.nwb`** — one raw `ElectricalSeries` in acquisition, with one `Device` and `ElectrodeGroup` (`ToyProbe`) and the contact positions as `rel_x`/`rel_y` in the electrodes table.
+- **`ground_truth_sorting/`** — the spikes the recording was generated from, as a SpikeInterface `NumpyFolderSorting`.
 
 ### 01 — Job dispatch (`obi-output/01_aind_ephys_dispatch/grid_scan/0/`)
 
-- **`job_0.json`** — the dispatcher's serialised job recipe. Top-level keys: `session_name`, `recording_name`, `recording_dict` (a serialised SpikeInterface recording with paths relative to the capsule's `data/` so it absolute-resolves to the toy recording on disk), `skip_times`, `duration`, `input_folder`, `debug`, `multi_input`. Every downstream stage that needs the raw recording (02, 06, 08, 10, 11) re-loads it via `si.load(job["recording_dict"], base_folder=…)`.
+- **`job_0.json`** — top-level keys `session_name`, `recording_name`, `recording_dict` (the recording serialised relative to `input_folder`), `input_folder` (the NWB file's folder), `skip_times`, `duration` and `debug`. The recording's probe carries the NWB device's name and description.
 
 ### 02 — Preprocessing (`obi-output/02_aind_ephys_preprocessing/grid_scan/0/`)
 
-For each recording (`<name> = block0_None_recording1`):
+For each recording (`<name> = block0_acquisition-ElectricalSeriesRaw_recording1`):
 
-- **`preprocessed_<name>/`** — a SpikeInterface `BinaryFolderRecording` with the CMR-denoised, highpass-filtered, bad-channel-removed traces. `binary.json`, `traces_cached_seg0.raw`, `probe.json`, `provenance.json`, `properties/`, `si_folder.json` (same layout as 00 but with the preprocessing chain baked in).
-- **`binary_<name>.json`** — a stand-alone "lazy" SpikeInterface JSON that reconstructs the same preprocessed recording (without copying samples) for downstream code that needs to chain its own steps.
-- **`preprocessed_<name>.json`** — a "deep" SpikeInterface JSON describing the full preprocessing graph (load → filter → denoise → bad-channel removal). Used by visualization & QC capsules to reconstruct the lazy chain.
-- **`preprocessedviz_<name>.json`** — pre-computed values the visualization capsule reuses for the drift map (peak detection / localization on the preprocessed recording).
-- **`data_process_preprocessing_<name>.json`** — AIND-data-schema `DataProcess` provenance record (capsule version, parameters, runtime, software versions).
+- **`preprocessed_<name>/`** — the preprocessed traces, as a SpikeInterface `BinaryFolderRecording`.
+- **`binary_<name>.json`** — reloads that binary folder (paths relative to this folder); what the later stages read.
+- **`preprocessed_<name>.json`** — the lazy preprocessing chain over the raw NWB recording (absolute paths).
+- **`motion_<name>/`** — the motion estimate, loadable with `spikeinterface.preprocessing.load_motion_info`, and **`motioncorrected_<name>.json`** when motion is applied.
 
-### 03 — Spike sorting / Kilosort4 (`obi-output/03_aind_ephys_spikesort_kilosort4/grid_scan/0/`)
+### 03 — Spike sorting (`obi-output/03_aind_ephys_spikesorting/grid_scan/0/`)
 
-- **`spikesorted_<name>/`** — a SpikeInterface `NumpyFolderSorting` produced by Kilosort4. Contains:
-  - `spikes.npy` — structured array with `(sample_index, unit_index, segment_index)` per spike.
-  - `numpysorting_info.json` — frame range + sampling frequency.
-  - `properties/` — per-unit npy properties (`Amplitude`, `ContamPct`, `KSLabel` ('good'/'mua'), `original_cluster_id`, …).
-  - `provenance.json`, `si_folder.json`, `spikeinterface_log.json` — reconstruction info + sorter runtime log.
-- **`data_process_spikesorting_<name>.json`** — AIND DataProcess provenance.
-
-Loadable with `si.load(spikesorted_…)` → `NumpyFolderSorting`.
+- **`spikesorted_<name>/`** — the sorting as a SpikeInterface `NumpyFolderSorting`, without empty units or spikes beyond the recording, plus the sorter's `spikeinterface_log.json`.
+- **`spikesortedmotion_<name>/`** — Kilosort4's own motion estimate, when it corrected drift (probes with at least `min_drift_channels` channels).
 
 ### 04 — Postprocessing (`obi-output/04_aind_ephys_postprocessing/grid_scan/0/`)
 
-- **`postprocessed_<name>.zarr/`** — a SpikeInterface `SortingAnalyzer` (zarr format) with the recording, sorting, and 13 computed extensions: `random_spikes`, `noise_levels`, `templates`, `waveforms`, `spike_amplitudes`, `template_similarity`, `correlograms`, `isi_histograms`, `unit_locations`, `spike_locations`, `template_metrics`, `principal_components`, `quality_metrics`. The `quality_metrics` extension contains a 26-column dataframe (firing_rate, presence_ratio, snr, isi_violations_ratio, amplitude_cutoff, drift_*, sliding_rp_violation, amplitude_cv_*, sync_spike_*, mahalanobis, …).
-- **`data_process_postprocessing_<name>.json`** — AIND DataProcess provenance.
-
-Loadable with `si.load_sorting_analyzer("postprocessed_….zarr")`.
+- **`postprocessed_<name>.zarr/`** — a SpikeInterface `SortingAnalyzer` with `random_spikes`, `noise_levels`, `waveforms`, `templates`, `spike_amplitudes`, `template_similarity`, `correlograms`, `isi_histograms`, `unit_locations`, `spike_locations`, `template_metrics`, `principal_components`, `amplitude_scalings`, `valid_unit_periods` and `quality_metrics`.
+- Load it with `obi_one.scientific.tasks.aind_ephys.utils.load_analyzer`, which skips `principal_components`: its fitted PCA models are pickled, and numcodecs refuses to decode pickles since 0.15.2.
 
 ### 05 — Curation (`obi-output/05_aind_ephys_curation/grid_scan/0/`)
 
-- **`qc_<name>.npy`** — boolean numpy array, one entry per unit. `True` = unit passes the default QC pandas-query (`isi_violations_ratio < 0.5 and presence_ratio > 0.8 and amplitude_cutoff < 0.1`), `False` otherwise.
-- **`unit_classifier_<name>.csv`** — per-unit `decoder_label` (`noise` / `sua` / `mua`) and `decoder_probability`, produced by chaining the HuggingFace `UnitRefine_noise_neural_classifier` and `UnitRefine_sua_mua_classifier` skops models.
-- **`data_process_curation_<name>.json`** — AIND DataProcess provenance.
+- **`unit_labels_<name>.csv`** — one row per unit (`unit_id`) with `default_qc` (pass/fail of the QC thresholds), `unitrefine_label` and `unitrefine_probability` (noise/sua/mua) and `bombcell_label` (good/mua/noise/non_soma).
+- **`unit_merges_<name>.json`** — the groups of neural units SLAy proposes to merge.
+- **`curation_<name>.json`** — the noise units and proposed merges as a spikeinterface `Curation` (format 2), which `spikeinterface.curation.apply_curation` applies.
 
 ### 06 — Visualization (`obi-output/06_aind_ephys_visualization/grid_scan/0/`)
 
@@ -137,32 +123,25 @@ A unified AIND-data-schema layout aggregating every previous stage:
 
 ## In-place patches applied to upstream capsules
 
-Several capsules were authored against an older spikeinterface (≤ 0.103) or older neuroconv. The OBI tasks patch the cloned `/tmp/aind-*/code/` files in place on first run so the capsules work against current `spikeinterface==0.104.x` and current `neuroconv`. The original GitHub repos are untouched.
+The capsule-based stages (06–11) patch the cloned `/tmp/aind-*/code/` files in place on first run so the capsules work against current `spikeinterface` and `neuroconv`. The original GitHub repos are untouched.
 
 | # | Capsule | Patches applied by the task | Why |
 |---|---|---|---|
-| 04 | aind-ephys-postprocessing | `qm_params=quality_metrics_params` → `metric_params=quality_metrics_params` in `code/run_capsule.py` | Newer spikeinterface renamed the kwarg of `SortingAnalyzer.compute("quality_metrics", …)`. |
-| 04 | aind-ephys-postprocessing (config-side, applied via `params_dict()` rather than as a code patch) | `template_metrics.sparsity` is **not** emitted; `quality_metrics_names` swaps `l_ratio` / `isolation_distance` → `mahalanobis`; per-metric configs filtered to only the still-valid metric names. | Newer `ComputeTemplateMetrics` rejects `sparsity`; `l_ratio` / `isolation_distance` were merged into `mahalanobis`; deprecated `nn_isolation` / `nn_noise_overlap` blocks would fail validation. |
-| 05 | aind-ephys-curation | `scikit-learn==1.5.2` pinned in the install cell. | The HuggingFace `SpikeInterface/UnitRefine_*` skops models were trained against sklearn 1.5; loading them under 1.8 fails with `'SimpleImputer' object has no attribute '_fill_dtype'`. |
 | 08 | aind-ephys-processing-qc | In `code/qc_utils.py`: `spre.bandpass_filter(recording, freq_min=0.1, freq_max=freq_lfp)` → `…, ignore_low_freq_error=True)`. | Newer spikeinterface guards against sub-Hz bandpass cutoffs. |
 | 08 | aind-ephys-processing-qc | In `code/qc_utils.py`: `template_metrics['half_width']` → `template_metrics['trough_half_width']`. | Newer spikeinterface renamed the column. |
 | 10 | aind-ecephys-nwb | In `code/run_capsule.py`: `add_electrodes_info_to_nwbfile` → `add_electrodes_to_nwbfile`. | Renamed in newer neuroconv. |
 | 11 | aind-units-nwb | In `code/utils.py`: `add_electrodes_info_to_nwbfile` → `add_electrodes_to_nwbfile`; `add_units_table_to_nwbfile` → `_add_units_table_to_nwbfile` (now private). Both rewrites are guarded so re-runs don't compound underscores. | Renamed / privatised in newer neuroconv. |
 
-## Where `job_0.json` is used
-
-`obi-output/01_aind_ephys_dispatch/grid_scan/0/job_0.json` is the dispatcher's serialised `recording_dict` — it encodes which raw data each downstream stage should load. Notebooks that consume it directly: **02** (preprocessing), **06** (visualization — for trace snippets), **07** (results-collector — copies it into the layout), **08** (processing-qc — for raw-data metrics), **10** (ecephys-nwb — for the raw `ElectricalSeries`), **11** (units-nwb — for waveforms / electrodes lookup). Notebooks that don't touch it: 00, 03 (uses notebook 02's preprocessed binary), 04 (uses preprocessed binary + sorting), 05 (uses postprocessed zarr only), 09 (operates on QC JSON files only).
-
 ## Output layout
 
 ```
 obi-output/
-├── 00_toy_example_recording/                                 # SpikeInterface BinaryFolderRecording
+├── 00_toy_example_recording/                                 # toy_recording.nwb + ground_truth_sorting/
 ├── 01_aind_ephys_dispatch/grid_scan/0/                       # job_0.json
-├── 02_aind_ephys_preprocessing/grid_scan/0/                  # preprocessed_<name>/, binary_<name>.json, …
-├── 03_aind_ephys_spikesort_kilosort4/grid_scan/0/            # spikesorted_<name>/
+├── 02_aind_ephys_preprocessing/grid_scan/0/                  # preprocessed_<name>/, binary_<name>.json, motion_<name>/, …
+├── 03_aind_ephys_spikesorting/grid_scan/0/                   # spikesorted_<name>/
 ├── 04_aind_ephys_postprocessing/grid_scan/0/                 # postprocessed_<name>.zarr (SortingAnalyzer)
-├── 05_aind_ephys_curation/grid_scan/0/                       # qc_<name>.npy, unit_classifier_<name>.csv
+├── 05_aind_ephys_curation/grid_scan/0/                       # unit_labels_<name>.csv, unit_merges_<name>.json, curation_<name>.json
 ├── 06_aind_ephys_visualization/grid_scan/0/                  # visualization_<name>/{drift_map,traces_*}.png
 ├── 07_aind_ephys_results_collector/grid_scan/0/              # AIND layout + processing.json + data_description.json
 ├── 08_aind_ephys_processing_qc/grid_scan/0/                  # quality_control_<name>.json + 5 PNGs
@@ -173,7 +152,7 @@ obi-output/
 
 ## Notes on running locally
 
-- All capsules are cloned to `/tmp/aind-*` on first run; subsequent runs reuse the clone (and its applied patches).
-- KS4 runs on CPU here (no CUDA). For the toy data this takes ~10–15 s.
-- The HuggingFace classifiers in 05 download a few MB on first run; subsequent runs are cached.
-- No `KACHERY_API_KEY` is set, so 06 only writes local PNGs.
+- Kilosort4 runs on CPU here (no CUDA); on the toy data it takes about 10 s. SpykingCircus2 and Lupin need no extra install.
+- UnitRefine downloads its classifiers from Hugging Face on first run. They were trained with scikit-learn 1.4, so loading them under obi-one's newer scikit-learn prints `InconsistentVersionWarning`; they still predict. Set both classifiers to `None` in the `UnitRefine` block to skip it.
+- On the 9 s toy recording the default QC fails every unit, because its presence-ratio and amplitude-cutoff thresholds assume long recordings.
+- Capsules of the stages 06–11 are cloned to `/tmp/aind-*` on first run; subsequent runs reuse the clone (and its applied patches).

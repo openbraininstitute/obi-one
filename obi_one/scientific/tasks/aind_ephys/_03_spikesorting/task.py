@@ -1,112 +1,76 @@
-"""Task wrapper for the aind-ephys-spikesort-kilosort4 capsule."""
+"""Spike sorting stage: sort the spikes of each preprocessed recording."""
 
-import json
+import copy
 import logging
 import shutil
-import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
+import numpy as np
+import spikeinterface as si
+import spikeinterface.curation as scur
+import spikeinterface.sorters as ss
 
 from obi_one.core.task import Task
-from obi_one.scientific.tasks.aind_ephys._03_kilosort4.config import (
-    AINDEPhysSpikesortKilosort4SingleConfig,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
+    AINDEPhysSpikeSortingSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_kilosort4.materialize import (
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.materialize import (
     materialize_preprocessing_output,
 )
-from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_python
+from obi_one.scientific.tasks.aind_ephys.utils import (
+    global_job_kwargs,
+    load_dumped_recording,
+    remove_outputs,
+    stage_output_names,
+    was_skipped,
+    write_data_process,
+    write_skip,
+)
 
 L = logging.getLogger(__name__)
 
-KS4_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4.git"
-KS4_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-spikesort-kilosort4")  # ruff: ignore[hardcoded-temp-file]
-
-# macOS-installable subset of the capsule's environment/Dockerfile, sufficient for a
-# local toy run. The capsule's FROM ...kilosort4-base image ships kilosort + torch
-# (not in the Dockerfile pip block), so add kilosort here; it pulls a CPU torch.
-CAPSULE_DEPS = [
-    "aind-data-schema==2.8.1",
-    "spikeinterface==0.104.7",
-    "scikit-learn",
-    "scipy==1.17.1",
-    "kilosort==4.0.30",
-    "pandas",  # spikeinterface's Phy/Kilosort result extractor needs it (in [full] on Linux)
-]
+SORTER_LOG_FILE_NAME = "spikeinterface_log.json"
 
 
-def _ensure_ks4_repo(repo_path: Path = KS4_REPO_DEFAULT_PATH) -> Path:
-    """Clone the Kilosort4 capsule on first use; reuse the existing clone afterwards."""
-    if not repo_path.exists():
-        L.info("Cloning %s -> %s", KS4_REPO_URL, repo_path)
-        subprocess.run(
-            ["git", "clone", "--depth=1", KS4_REPO_URL, str(repo_path)],
-            check=True,
-        )
-    return repo_path
+def deep_merge(defaults: dict, overrides: dict) -> dict:
+    """``defaults`` with ``overrides`` applied, merging nested dicts key by key."""
+    merged = copy.deepcopy(defaults)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
-def _seed_data_dir(data_dir: Path, source: Path) -> int:
-    """Seed the capsule's ``data/`` with ``preprocessed_*`` dirs and ``binary_*.json``.
-
-    Returns the number of preprocessed recordings copied.
-    """
-    n = 0
-    for entry in source.iterdir():
-        if (
-            entry.is_dir()
-            and entry.name.startswith("preprocessed_")
-            and not entry.name.endswith(".json")
-        ):
-            shutil.copytree(entry, data_dir / entry.name)
-            n += 1
-        elif (
-            entry.is_file()
-            and entry.suffix == ".json"
-            and entry.name.startswith(("binary_", "preprocessed_"))
-        ):
-            shutil.copy2(entry, data_dir / entry.name)
-    return n
+def read_kilosort4_motion(sorter_output_folder: Path, recording: si.BaseRecording) -> si.Motion:
+    """The motion Kilosort4 estimated, from its ``ops.npy``."""
+    ops = np.load(sorter_output_folder / "ops.npy", allow_pickle=True).item()
+    displacement = ops["dshift"]
+    t_bin = ops["batch_size"] / ops["fs"]
+    temporal_bins_s = np.linspace(
+        recording.get_start_time() + t_bin / 2,
+        recording.get_end_time() - t_bin / 2,
+        displacement.shape[0],
+    )
+    return si.Motion(
+        displacement=displacement, temporal_bins_s=temporal_bins_s, spatial_bins_um=ops["yblk"]
+    )
 
 
-def _resolve_preprocessing_source(config: AINDEPhysSpikesortKilosort4SingleConfig) -> Path:
-    """Return the directory of preprocessed recordings to seed the capsule from.
+class AINDEPhysSpikeSortingTask(Task):
+    """Sort every recording of the preprocessing stage into this config's output folder.
 
-    When ``preprocessing_output_path`` is ``None`` the inputs are materialized on
-    the fly; otherwise the provided path is used (and must exist).
-    """
-    source_path = config.initialize.preprocessing_output_path
-    if source_path is None:
-        L.info("No preprocessing_output_path given; materializing inputs on the fly.")
-        return materialize_preprocessing_output()
-    source = Path(source_path)
-    if not source.exists():
-        msg = f"preprocessing_output_path does not exist: {source}"
-        raise FileNotFoundError(msg)
-    return source
-
-
-class AINDEPhysSpikesortKilosort4Task(Task):
-    """Run the aind-ephys-spikesort-kilosort4 capsule on preprocessed ephys recordings.
-
-    For each single config:
-      1. Ensure the capsule is cloned to ``/tmp/aind-ephys-spikesort-kilosort4``.
-      2. Seed its ``data/`` folder with every ``preprocessed_<name>/`` directory
-         and matching ``binary_<name>.json`` from
-         ``initialize.preprocessing_output_path``.
-      3. Serialise this config to a ``params_obi.json`` next to the script.
-      4. Invoke ``python -u code/run_capsule.py --params params_obi.json``
-         (plus ``--skip-motion-correction`` / ``--clear-cache`` /
-         ``--min-drift-channels`` / ``--n-jobs`` flags) from the capsule's
-         ``code/`` cwd.
-      5. Copy everything under ``../results/`` into ``coordinate_output_root``.
+    Sorting runs in ``sorter_scratch/<name>/``, which is removed once the sorting is saved.
     """
 
-    name: ClassVar[str] = "AIND Ephys Spikesort Kilosort4"
-    description: ClassVar[str] = "Run the aind-ephys-spikesort-kilosort4 capsule."
+    name: ClassVar[str] = "AIND Ephys Spike Sorting"
+    description: ClassVar[str] = "Sorts the spikes of preprocessed extracellular recordings."
 
-    config: AINDEPhysSpikesortKilosort4SingleConfig
+    config: AINDEPhysSpikeSortingSingleConfig
 
     def execute(
         self,
@@ -115,68 +79,83 @@ class AINDEPhysSpikesortKilosort4Task(Task):
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
-        repo = _ensure_ks4_repo()
-        capsule_python = ensure_capsule_python(repo, CAPSULE_DEPS)
-        code_dir = repo / "code"
-        data_dir = repo / "data"
-        results_dir = repo / "results"
-        data_dir.mkdir(exist_ok=True)
-        results_dir.mkdir(exist_ok=True)
-
-        for stale in list(data_dir.iterdir()) + list(results_dir.iterdir()):
-            shutil.rmtree(stale) if stale.is_dir() else stale.unlink()
-
-        source = _resolve_preprocessing_source(self.config)
-        n_recordings = _seed_data_dir(data_dir, source)
-        if n_recordings == 0:
-            msg = f"No preprocessed_<name>/ directories found in {source}"
+        output_folder = Path(self.config.coordinate_output_root)
+        output_folder.mkdir(parents=True, exist_ok=True)
+        source = self.config.initialize.preprocessing_output_path
+        if source is None:
+            source = materialize_preprocessing_output(output_folder / "toy_input")
+        source = Path(source)
+        names = stage_output_names(source, "preprocessed_")
+        if not names:
+            msg = f"No preprocessed_<name>/ folders in {source}; run the preprocessing stage first."
             raise FileNotFoundError(msg)
-        L.info("Seeded %d preprocessed recording(s) into %s", n_recordings, data_dir)
 
-        params_path = code_dir / "params_obi.json"
-        params_path.write_text(json.dumps(self.config.params_dict(), indent=2))
+        with global_job_kwargs(self.config.job_kwargs.to_dict()):
+            for name in names:
+                self.sort(source, name, output_folder)
+        shutil.rmtree(output_folder / "sorter_scratch", ignore_errors=True)
+        return output_folder
 
-        argv: list[str] = [
-            capsule_python,
-            "-u",
-            "run_capsule.py",
-            "--params",
-            params_path.name,
-            "--n-jobs",
-            str(self.config.initialize.n_jobs),
-            "--min-drift-channels",
-            str(self.config.initialize.min_drift_channels),
-        ]
-        if self.config.initialize.skip_motion_correction:
-            argv.append("--skip-motion-correction")
-        if self.config.initialize.clear_cache:
-            argv.append("--clear-cache")
-        if self.config.initialize.raise_if_fails:
-            argv.append("--raise-if-fails")
+    def sort(self, source: Path, name: str, output_folder: Path) -> None:
+        """Sort one preprocessed recording."""
+        start = datetime.now(UTC)
+        init = self.config.initialize
+        sorter = self.config.sorter
+        sorting_folder = output_folder / f"spikesorted_{name}"
+        remove_outputs(sorting_folder, output_folder / f"spikesortedmotion_{name}")
+        if was_skipped(source / f"preprocessed_{name}"):
+            write_skip(sorting_folder, "Preprocessing skipped this recording")
+            return
 
-        L.info("Running %s", " ".join(argv))
-        result = subprocess.run(
-            argv,
-            cwd=code_dir,
-            capture_output=True,
-            text=True,
-            check=False,
+        recording = load_dumped_recording(source, f"binary_{name}")
+        concatenated = recording.get_num_segments() > 1
+        if concatenated:
+            recording = si.concatenate_recordings([recording])
+
+        params = deep_merge(ss.get_default_sorter_params(sorter.sorter_name), sorter.to_dict())
+        if init.skip_motion_correction or recording.get_num_channels() < init.min_drift_channels:
+            L.info("Sorting %s without motion correction.", name)
+            params[sorter.motion_correction_parameter] = False
+
+        work_folder = output_folder / "sorter_scratch" / name
+        L.info("Sorting %s with %s.", name, sorter.sorter_name)
+        try:
+            sorting = ss.run_sorter(
+                sorter.sorter_name,
+                recording,
+                folder=str(work_folder),
+                remove_existing_folder=True,
+                delete_output_folder=False,
+                verbose=False,
+                **params,
+            )
+        except Exception:
+            if init.raise_if_fails:
+                raise
+            L.exception("Sorting %s failed; skipping it.", name)
+            write_skip(sorting_folder, f"{sorter.sorter_name} failed")
+            shutil.copy2(work_folder / SORTER_LOG_FILE_NAME, sorting_folder)
+            return
+
+        num_units = len(sorting.unit_ids)
+        sorting = scur.remove_excess_spikes(sorting.remove_empty_units(), recording)
+        if concatenated:
+            sorting = si.split_sorting(sorting, recording)
+        sorting.save(folder=sorting_folder)
+        shutil.copy2(work_folder / SORTER_LOG_FILE_NAME, sorting_folder)
+        if sorter.sorter_name == "kilosort4" and params["do_correction"]:
+            read_kilosort4_motion(work_folder / "sorter_output", recording).save(
+                output_folder / f"spikesortedmotion_{name}"
+            )
+
+        write_data_process(
+            output_folder / f"data_process_spikesorting_{name}.json",
+            name="Spike sorting",
+            parameters={"sorter_name": sorter.sorter_name, "sorter_params": params},
+            outputs={
+                "num_units": len(sorting.unit_ids),
+                "empty_units": num_units - len(sorting.unit_ids),
+            },
+            notes=f"{sorter.sorter_name} found {num_units} units.",
+            start=start,
         )
-        L.info(result.stdout)
-        if result.returncode != 0:
-            L.error(result.stderr)
-            msg = f"aind-ephys-spikesort-kilosort4 failed with code {result.returncode}"
-            raise RuntimeError(msg)
-
-        target = Path(self.config.coordinate_output_root)
-        target.mkdir(parents=True, exist_ok=True)
-        for entry in results_dir.iterdir():
-            dest = target / entry.name
-            if dest.exists():
-                shutil.rmtree(dest) if dest.is_dir() else dest.unlink()
-            if entry.is_dir():
-                shutil.copytree(entry, dest)
-            else:
-                shutil.copy2(entry, dest)
-
-        return target

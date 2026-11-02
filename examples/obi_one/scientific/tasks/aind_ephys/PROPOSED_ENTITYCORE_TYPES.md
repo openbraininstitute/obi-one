@@ -79,7 +79,7 @@ class TaskActivityType(StrEnum):
 |---|---|---|---|---|---|
 | 01 | `01_aind_ephys_dispatch.ipynb` | `aind_ephys_dispatch` | `AINDEPhysDispatchScanConfig` | `AINDEPhysDispatchTask` | [aind-ephys-job-dispatch](https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch) |
 | 02 | `02_aind_ephys_preprocessing.ipynb` | `aind_ephys_preprocessing` | `AINDEPhysPreprocessingScanConfig` | `AINDEPhysPreprocessingTask` | [aind-ephys-preprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing) |
-| 03 | `03_aind_ephys_spikesort_kilosort4.ipynb` | `aind_ephys_spikesorting` | `AINDEPhysSpikesortKilosort4ScanConfig` | `AINDEPhysSpikesortKilosort4Task` | [aind-ephys-spikesort-kilosort4](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4) |
+| 03 | `03_aind_ephys_spikesorting.ipynb` | `aind_ephys_spikesorting` | `AINDEPhysSpikeSortingScanConfig` | `AINDEPhysSpikeSortingTask` | [aind-ephys-spikesort-kilosort4](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4) |
 | 04 | `04_aind_ephys_postprocessing.ipynb` | `aind_ephys_postprocessing` | `AINDEPhysPostprocessingScanConfig` | `AINDEPhysPostprocessingTask` | [aind-ephys-postprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-postprocessing) |
 | 05 | `05_aind_ephys_curation.ipynb` | `aind_ephys_curation` | `AINDEPhysCurationScanConfig` | `AINDEPhysCurationTask` | [aind-ephys-curation](https://github.com/AllenNeuralDynamics/aind-ephys-curation) |
 | 06 | `06_aind_ephys_visualization.ipynb` | `aind_ephys_visualization` | `AINDEPhysVisualizationScanConfig` | `AINDEPhysVisualizationTask` | [aind-ephys-visualization](https://github.com/AllenNeuralDynamics/aind-ephys-visualization) |
