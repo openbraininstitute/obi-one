@@ -5,6 +5,10 @@ module is the single place that guards the import: consumers elsewhere in the
 app endpoints and tests import from here directly instead of each repeating their own
 ``try/except ImportError``. When ``bluepyemodel`` is not installed, the names
 below are ``None`` and ``HAS_EMODEL_OPTIMIZATION`` is ``False``.
+
+Only a missing ``bluepyemodel`` is treated as "feature unavailable". Any other
+``ImportError`` (for example a genuine bug in an internal Task 2 submodule) is
+re-raised so it is not silently reported as an absent optional dependency.
 """
 
 from collections.abc import Callable
@@ -40,7 +44,12 @@ try:  # ruff: ignore[non-empty-init-module]
     )
 
     HAS_EMODEL_OPTIMIZATION = True
-except ImportError:
+except ImportError as error:
+    # Only an absent optional dependency (bluepyemodel) means "feature unavailable".
+    # Re-raise anything else so an internal import bug is not masked as a missing extra.
+    _missing = error.name or ""
+    if not (_missing == "bluepyemodel" or _missing.startswith("bluepyemodel.")):
+        raise
     CustomDistanceDependentDistribution: type | None = None
     DistanceDependentDistribution: type | None = None
     DistributionParameter: type | None = None
