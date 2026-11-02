@@ -202,7 +202,7 @@ def _derive_profile_holding_current(
     """Return the holding current for a profile that pre-holds the cell.
 
     Profiles that hold the cell at a target voltage (a defined experimental
-    condition, e.g. the thalamic -65 mV hold that inactivates T-type Ca) get the
+    condition, e.g. the thalamic -60 mV hold that inactivates T-type Ca) get the
     current that reaches that voltage. The current is found with BlueCelluLab's
     binary search over steady-state voltage, which mirrors how the holding
     current is set experimentally. Returns None for profiles that step from rest.

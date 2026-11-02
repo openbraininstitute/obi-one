@@ -115,7 +115,7 @@ class MEModelValidationProfile(ABC):
         Default None: protocols step from the cell's resting potential, which is
         correct for cells that fire tonically from rest. Override to a target
         voltage for cell classes that must be held depolarized before the step
-        (e.g. thalamic neurons held at ~-65 mV to inactivate T-type Ca so the
+        (e.g. thalamic neurons held at ~-60 mV to inactivate T-type Ca so the
         step produces tonic firing rather than a rebound burst). When set, setup
         derives the holding current that reaches this voltage and stores it on
         the context for the profile's pre-held protocols.
@@ -168,6 +168,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         rebound_holding_current: float | None = None,
         rebound_hyperpolarization_amplitude: float | None = None,
         rebound_hyperpolarization_duration_ms: float = 500.0,
+        tonic_step_current: float = 0.4,
     ) -> None:
         """Configure optional model-specific BPAP and rebound settings.
 
@@ -201,6 +202,12 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         ``rebound_hyperpolarization_duration_ms`` controls only the rebound
         hyperpolarization phase. It defaults to 500 ms to preserve the
         established thalamic protocol.
+
+        ``tonic_step_current`` is the depolarizing step for the tonic-firing
+        test, in nA. It defaults to 0.4 nA (the paper's 400 pA, used for Ecel1
+        to avoid depolarization block). It is per-e-type: Spp and Spp_runaway
+        have higher input resistance and need ~0.8 nA to show sustained tonic
+        firing rather than an initial rebound burst.
         """
         if not isinstance(bpap_trace_diagnostics, bool):
             message = "bpap_trace_diagnostics must be a boolean."
@@ -220,6 +227,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         self.rebound_hyperpolarization_duration_ms = _positive_finite(
             "rebound_hyperpolarization_duration_ms", rebound_hyperpolarization_duration_ms
         )
+        self.tonic_step_current = _positive_finite("tonic_step_current", tonic_step_current)
 
     @property
     def requires_rin(self) -> bool:
@@ -240,10 +248,11 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
     def holding_voltage(self) -> float:
         # Thalamic neurons are held at -60 mV before the step to inactivate
         # T-type Ca, so the spiking and depolarization-block steps produce
-        # regular tonic firing rather than a rebound burst. -60 mV and the
-        # 0.4 nA tonic step match the source ephys protocol (Hartley et al.,
-        # Cell Reports 2024, Figure 2O-R: neurons held at -60 mV, tonic firing
-        # characterized with depolarizing steps, representative traces at 400 pA).
+        # regular tonic firing rather than a rebound burst. -60 mV matches the
+        # source ephys protocol (Hartley et al., Cell Reports 2024, Figure
+        # 2O-R: neurons held at -60 mV, tonic firing characterized with
+        # depolarizing steps, representative traces at 400 pA). The step
+        # amplitude itself is per-e-type (see tonic_step_current).
         return -60.0
 
     def build_tests(self, context: MEModelWorkflowContext) -> list[ValidationTest]:
@@ -270,10 +279,12 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             raise InvalidValidationContextError(message)
         return [
             # Tonic firing uses a depolarized hold to inactivate T-type Ca,
-            # then a 0.4 nA (400 pA) step, matching the source ephys protocol.
+            # then a depolarizing step. The step is per-e-type (0.4 nA for
+            # Ecel1 per the source protocol; ~0.8 nA for the higher-Rin Spp
+            # cells to show sustained tonic firing without a rebound burst).
             tonic_firing_preset(
                 holding_current=holding_current,
-                step_current=0.4,
+                step_current=self.tonic_step_current,
             ),
             # Depolarization block uses the same depolarized hold so the step
             # produces tonic firing rather than a rebound burst.

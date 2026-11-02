@@ -172,6 +172,36 @@ class TestMEModelValidationWorkflow:
         assert bpap.holding_current == pytest.approx(0.065)
         assert bpap.stim_duration == pytest.approx(2.0)
 
+    def _thalamic_context(self, tmp_path):
+        return MEModelWorkflowContext(
+            entity_id="test-id",
+            template_params=MagicMock(),
+            rheobase=1.0,
+            rin=100.0,
+            holding_current=-0.03,
+            out_dir=tmp_path,
+            simulator_config=SimulatorConfig(celsius=34.0, v_init=-70.0),
+        )
+
+    def test_thalamic_tonic_step_defaults_to_paper_value(self, tmp_path):
+        profile = ThalamicMEModelValidationProfile()
+        context = self._thalamic_context(tmp_path)
+
+        tonic = profile.build_tests(context)[0]
+
+        # The step phase amplitude is holding_current + step_current.
+        step_amplitude = tonic.protocol.phases[1][1]
+        assert step_amplitude == pytest.approx(context.holding_current + 0.4)
+
+    def test_thalamic_tonic_step_is_configurable_per_etype(self, tmp_path):
+        profile = ThalamicMEModelValidationProfile(tonic_step_current=0.8)
+        context = self._thalamic_context(tmp_path)
+
+        tonic = profile.build_tests(context)[0]
+
+        step_amplitude = tonic.protocol.phases[1][1]
+        assert step_amplitude == pytest.approx(context.holding_current + 0.8)
+
     def test_extracts_simulator_configuration_from_hoc(self, tmp_path):
         hoc_path = tmp_path / "model.hoc"
         hoc_path.write_text(

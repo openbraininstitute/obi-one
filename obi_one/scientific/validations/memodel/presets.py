@@ -65,7 +65,7 @@ def thalamic_depolarization_block_preset(
 ) -> ParametricValidation:
     """Depolarization block for intrinsic bursters, with a depolarized pre-hold.
 
-    Holding the cell at a depolarized potential (~-65 mV) before the step keeps
+    Holding the cell at a depolarized potential (~-60 mV) before the step keeps
     the T-type Ca2+ channels inactivated, so the step produces regular tonic
     firing rather than a rebound burst. Without the pre-hold, the burst rides on
     a slow plateau that eFEL's ``depol_block_bool`` misreads as block. With it,
@@ -228,9 +228,9 @@ def tonic_firing_preset(
 
     Holding the cell at a depolarized potential (~-60 mV) before the step keeps
     the T-type Ca2+ channels inactivated, so the depolarizing step produces regular
-    tonic firing from the start rather than an onset burst. The -60 mV hold and
-    0.4 nA (400 pA) step match the source ephys protocol (Hartley et al.,
-    Cell Reports 2024, Figure 2O-R).
+    tonic firing from the start rather than an onset burst. The -60 mV hold matches
+    the source ephys protocol (Hartley et al., Cell Reports 2024, Figure 2O-R); the
+    step defaults to 0.4 nA (400 pA) but is set per-e-type by the caller.
 
     Protocol:
         1. Hold at holding_current (derived by setup to reach the target voltage)
@@ -266,7 +266,7 @@ def tonic_firing_preset(
 
     return ParametricValidation(
         # Same name as spiking_preset() — this is the thalamic variant of the
-        # spiking validation (holds at -65 mV first). A given cell runs one or
+        # spiking validation (holds at -60 mV first). A given cell runs one or
         # the other, so the platform sees a single "Spiking Validation" result.
         validation_name=ValidationName.SPIKING,
         protocol=protocol,
