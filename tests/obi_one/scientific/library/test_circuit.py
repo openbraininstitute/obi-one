@@ -174,7 +174,8 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch, tmp_path)
         "get_node_population_names",
         staticmethod(fake_get_node_pop_names),
     )
-    assert fake_snap_circuit.Circuit._default_population_name(c) is None
+    with pytest.raises(ValueError, match="no biophysical or point node population"):
+        fake_snap_circuit.Circuit._default_population_name(c)
     with pytest.raises(ValueError, match="no biophysical or point node population"):
         _ = circuit.default_population_name
 

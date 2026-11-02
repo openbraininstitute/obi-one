@@ -115,14 +115,20 @@ class Circuit(OBIBaseModel):
         return popul_names
 
     @staticmethod
-    def _default_population_name(c: snap.Circuit) -> str | None:
-        """Returns the default node population name of a SONATA circuit c."""
+    def _default_population_name(c: snap.Circuit) -> str:
+        """Returns the default node population name of a SONATA circuit c.
+
+        Raises:
+            ValueError: If the circuit has no biophysical or point node population
+                to use as the default, or if the default is ambiguous.
+        """
         popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=False)
         if len(popul_names) == 0:
             # Include point neurons
             popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=True)
         if len(popul_names) == 0:
-            return None  # No biophysical/point neurons
+            msg = "Circuit has no biophysical or point node population."
+            raise ValueError(msg)
         if len(popul_names) != 1:
             msg = "Default node population unknown!"
             raise ValueError(msg)
@@ -132,15 +138,10 @@ class Circuit(OBIBaseModel):
     def default_population_name(self) -> str:
         """The default node population name.
 
-        Raises:
-            ValueError: If the circuit has no biophysical or point node population
-                to use as the default.
+        See ``_default_population_name`` for the ``ValueError`` raised when no
+        unambiguous default node population exists.
         """
-        name = self._default_population_name(self.sonata_circuit)
-        if name is None:
-            msg = "Circuit has no biophysical or point node population."
-            raise ValueError(msg)
-        return name
+        return self._default_population_name(self.sonata_circuit)
 
     @staticmethod
     def get_edge_population_names(
@@ -180,8 +181,6 @@ class Circuit(OBIBaseModel):
         except ValueError as e:
             msg = f"Cannot determine default edge population: {e}"
             raise ValueError(msg) from e
-        if default_npop is None:
-            return None
         epop_names = Circuit.get_edge_population_names(c, incl_virtual=False, incl_point=True)
         intrinsic_epops = [
             epop
