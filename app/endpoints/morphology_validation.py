@@ -57,12 +57,8 @@ def validate_neuron_file(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail={"code": "INVALID_REQUEST", "detail": str(err)},
         ) from err
-    except OSError as err:
-        # Server-side failure during conversion (a full disk, say), not the file's fault.
-        raise HTTPException(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            detail={"code": "INTERNAL_ERROR", "detail": str(err)},
-        ) from err
+    # Server-side failures during conversion (OSError, e.g. a full disk) propagate to the
+    # application catch-all and become a structured 500.
 
     zip_file = temp_dir / "morph_archive.zip"
     file_service.create_zip_file(

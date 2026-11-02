@@ -58,7 +58,7 @@ def test_get_not_found(client, ephys_json, monkeypatch):
     response = client.get(f"{ROUTE}/{entity_id}")
     assert response.status_code == 500
     assert (
-        "No asset with content type 'application/nwb' found for trace" in response.json()["detail"]
+        "No asset with content type 'application/nwb' found for trace" in response.json()["details"]
     )
     assert entitysdk_client_mock.get_entity.call_count == 2
     assert entitysdk_client_mock.download_content.call_count == 0
