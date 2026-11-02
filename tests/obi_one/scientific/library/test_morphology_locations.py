@@ -11,7 +11,7 @@ import morphio
 import numpy as np
 import pandas as pd
 import pytest
-from conntility.subcellular import MorphologyPathDistanceCalculator
+from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 
 from obi_one.scientific.library.morphology_locations import (
     _SEC_ID,
@@ -36,7 +36,7 @@ def morphology():
 def test_segment_table_matches_morphology_structure(morphology):
     """Each section contributes exactly ``n_points - 1`` rows, in section order."""
     result = path_distance_all_segments_from(
-        _soma_ref(), morphology, MorphologyPathDistanceCalculator(morphology)
+        _soma_ref(), morphology, OptimizedMorphologyPathDistanceCalculator(morphology)
     ).loc[0]
 
     sections = list(morphology.sections)
@@ -55,7 +55,7 @@ def test_segment_table_matches_morphology_structure(morphology):
 def test_segment_table_dtypes_are_stable(morphology):
     """Downstream merges rely on integer ids/types and float lengths."""
     result = path_distance_all_segments_from(
-        _soma_ref(), morphology, MorphologyPathDistanceCalculator(morphology)
+        _soma_ref(), morphology, OptimizedMorphologyPathDistanceCalculator(morphology)
     ).loc[0]
 
     assert result[_SEG_ID].dtype == np.dtype("int64")
@@ -74,7 +74,7 @@ def test_section_type_filter_keeps_only_requested_types(morphology):
     result = path_distance_all_segments_from(
         _soma_ref(),
         morphology,
-        MorphologyPathDistanceCalculator(morphology),
+        OptimizedMorphologyPathDistanceCalculator(morphology),
         lst_sec_types=[kept_type],
     ).loc[0]
 
@@ -87,6 +87,6 @@ def test_no_matching_section_types_raises(morphology):
         path_distance_all_segments_from(
             _soma_ref(),
             morphology,
-            MorphologyPathDistanceCalculator(morphology),
+            OptimizedMorphologyPathDistanceCalculator(morphology),
             lst_sec_types=[999],
         )
