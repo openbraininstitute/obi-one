@@ -5,7 +5,7 @@
 obi-one[bluerecording]==2026.10.26
 # Pinned by neurodamus_image.override, not resolved:
 neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
-neurodamus==4.2.9
+neurodamus==4.2.11
 h5py==3.16.0
 libsonata==0.2.2
 mpi4py==4.1.2
