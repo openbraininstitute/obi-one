@@ -474,7 +474,75 @@ class CircuitMetricsOutput(BaseModel, Mapping):
         return self.number_of_biophys_node_populations + self.number_of_virtual_node_populations
 
 
-def get_circuit_metrics(  # ruff: ignore[too-many-locals, complex-structure]
+def _build_node_populations(
+    names: list[str],
+    node_props: dict,
+    population_type: NodePopulationType,
+    *,
+    include_dynamics_params: bool,
+) -> list[CircuitMetricsNodePopulation | None]:
+    """Build node-population response models for the named populations.
+
+    A name with no entry in ``node_props`` yields ``None`` in its slot, preserving
+    the parallel-list contract of ``CircuitMetricsOutput``. ``dynamics_param_names``
+    is only populated for biophysical populations (``include_dynamics_params``).
+    """
+    populations: list[CircuitMetricsNodePopulation | None] = []
+    for name in names:
+        props = node_props.get(name)
+        if props is None:
+            populations.append(None)
+            continue
+        populations.append(
+            CircuitMetricsNodePopulation(
+                number_of_nodes=props["population_length"],
+                name=name,
+                population_type=population_type,
+                property_names=props["property_list"],
+                property_unique_values=props["property_unique_values"],
+                property_value_counts=props["property_value_counts"],
+                dynamics_param_names=(
+                    props["dynamics_param_names"] if include_dynamics_params else None
+                ),
+                # node_location_info is only added when level_of_detail > basic
+                node_location_info=props.get("node_location_info"),
+            )
+        )
+    return populations
+
+
+def _build_edge_populations(
+    names: list[str],
+    edge_props: dict,
+    population_type: EdgePopulationType,
+) -> list[CircuitMetricsEdgePopulation | None]:
+    """Build edge-population response models for the named populations.
+
+    A name with no entry in ``edge_props`` yields ``None`` in its slot, preserving
+    the parallel-list contract of ``CircuitMetricsOutput``.
+    """
+    populations: list[CircuitMetricsEdgePopulation | None] = []
+    for name in names:
+        props = edge_props.get(name)
+        if props is None:
+            populations.append(None)
+            continue
+        populations.append(
+            CircuitMetricsEdgePopulation(
+                number_of_edges=props["number_of_edges"],
+                name=name,
+                population_type=population_type,
+                source_name=props["source_name"],
+                target_name=props["target_name"],
+                property_names=props["property_list"],
+                property_stats=props["property_stats"],
+                degree_stats=props["degrees"],
+            )
+        )
+    return populations
+
+
+def get_circuit_metrics(  # ruff: ignore[too-many-locals]
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,
@@ -525,82 +593,34 @@ def get_circuit_metrics(  # ruff: ignore[too-many-locals, complex-structure]
         circ, temp_dir, node_props, db_client, circuit_id, asset_id, level_of_detail_edges
     )
 
-    biophys_pops = []
-    for nodepop in dict_props["names_of_biophys_node_populations"]:
-        pop = None
-        if nodepop in node_props:
-            pop = CircuitMetricsNodePopulation(
-                number_of_nodes=node_props[nodepop]["population_length"],
-                name=nodepop,
-                population_type=NodePopulationType.biophysical,
-                property_names=node_props[nodepop]["property_list"],
-                property_unique_values=node_props[nodepop]["property_unique_values"],
-                property_value_counts=node_props[nodepop]["property_value_counts"],
-                dynamics_param_names=node_props[nodepop]["dynamics_param_names"],
-                # Use .get() because node_location_info is only added when level_of_detail > basic
-                node_location_info=node_props[nodepop].get("node_location_info"),
-            )
-        biophys_pops.append(pop)
-    point_pops = []
-    for nodepop in dict_props["names_of_point_node_populations"]:
-        pop = None
-        if nodepop in node_props:
-            pop = CircuitMetricsNodePopulation(
-                number_of_nodes=node_props[nodepop]["population_length"],
-                name=nodepop,
-                population_type=NodePopulationType.point,
-                property_names=node_props[nodepop]["property_list"],
-                property_unique_values=node_props[nodepop]["property_unique_values"],
-                property_value_counts=node_props[nodepop]["property_value_counts"],
-                # Use .get() because node_location_info is only added when level_of_detail > basic
-                node_location_info=node_props[nodepop].get("node_location_info"),
-            )
-        point_pops.append(pop)
-    virtual_pops = []
-    for nodepop in dict_props["names_of_virtual_node_populations"]:
-        pop = None
-        if nodepop in node_props:
-            pop = CircuitMetricsNodePopulation(
-                number_of_nodes=node_props[nodepop]["population_length"],
-                name=nodepop,
-                population_type=NodePopulationType.virtual,
-                property_names=node_props[nodepop]["property_list"],
-                property_unique_values=node_props[nodepop]["property_unique_values"],
-                property_value_counts=node_props[nodepop]["property_value_counts"],
-                # Use .get() because node_location_info is only added when level_of_detail > basic
-                node_location_info=node_props[nodepop].get("node_location_info"),
-            )
-        virtual_pops.append(pop)
-    chemical_pops = []
-    for edgepop in dict_props["names_of_chemical_edge_populations"]:
-        pop = None
-        if edgepop in edge_props:
-            pop = CircuitMetricsEdgePopulation(
-                number_of_edges=edge_props[edgepop]["number_of_edges"],
-                name=edgepop,
-                population_type=EdgePopulationType.chemical,
-                source_name=edge_props[edgepop]["source_name"],
-                target_name=edge_props[edgepop]["target_name"],
-                property_names=edge_props[edgepop]["property_list"],
-                property_stats=edge_props[edgepop]["property_stats"],
-                degree_stats=edge_props[edgepop]["degrees"],
-            )
-        chemical_pops.append(pop)
-    electrical_pops = []
-    for edgepop in dict_props["names_of_electrical_edge_populations"]:
-        pop = None
-        if edgepop in edge_props:
-            pop = CircuitMetricsEdgePopulation(
-                number_of_edges=edge_props[edgepop]["number_of_edges"],
-                name=edgepop,
-                population_type=EdgePopulationType.electrical,
-                source_name=edge_props[edgepop]["source_name"],
-                target_name=edge_props[edgepop]["target_name"],
-                property_names=edge_props[edgepop]["property_list"],
-                property_stats=edge_props[edgepop]["property_stats"],
-                degree_stats=edge_props[edgepop]["degrees"],
-            )
-        electrical_pops.append(pop)
+    biophys_pops = _build_node_populations(
+        dict_props["names_of_biophys_node_populations"],
+        node_props,
+        NodePopulationType.biophysical,
+        include_dynamics_params=True,
+    )
+    point_pops = _build_node_populations(
+        dict_props["names_of_point_node_populations"],
+        node_props,
+        NodePopulationType.point,
+        include_dynamics_params=False,
+    )
+    virtual_pops = _build_node_populations(
+        dict_props["names_of_virtual_node_populations"],
+        node_props,
+        NodePopulationType.virtual,
+        include_dynamics_params=False,
+    )
+    chemical_pops = _build_edge_populations(
+        dict_props["names_of_chemical_edge_populations"],
+        edge_props,
+        EdgePopulationType.chemical,
+    )
+    electrical_pops = _build_edge_populations(
+        dict_props["names_of_electrical_edge_populations"],
+        edge_props,
+        EdgePopulationType.electrical,
+    )
 
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=dict_props["number_of_biophys_node_populations"],
