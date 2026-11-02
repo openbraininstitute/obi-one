@@ -1057,42 +1057,6 @@ def test_select_simulation_task_closed_loop():
     )
 
 
-@pytest.mark.parametrize(
-    ("requested", "config", "expected"),
-    [
-        (
-            TaskType.circuit_simulation_brian2_machine,
-            {"neuromechfly": {}},
-            TaskType.circuit_simulation_neuromechfly_machine,
-        ),
-        (
-            TaskType.circuit_simulation_brian2_machine,
-            {},
-            TaskType.circuit_simulation_brian2_machine,
-        ),
-    ],
-)
-def test_route_closed_loop(requested, config, expected):
-    """A Brian2 launch runs the closed loop when, and only when, its config has the section."""
-    db_client = Mock()
-    with patch.object(test_module.db_sdk, "select_asset_content", return_value=json.dumps(config)):
-        task_type = test_module.route_closed_loop(
-            db_client=db_client, task_type=requested, config_id=uuid4()
-        )
-    assert task_type == expected
-
-
-def test_route_closed_loop_leaves_other_tasks_alone():
-    db_client = Mock()
-    task_type = test_module.route_closed_loop(
-        db_client=db_client,
-        task_type=TaskType.circuit_simulation_neurodamus_machine,
-        config_id=uuid4(),
-    )
-    assert task_type == TaskType.circuit_simulation_neurodamus_machine
-    db_client.get_entity.assert_not_called()
-
-
 def test_select_simulation_task_falls_back_to_circuit_target_simulator():
     db_client = Mock()
     config_id = uuid4()

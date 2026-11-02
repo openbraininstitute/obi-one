@@ -434,30 +434,6 @@ def estimate_task_resources(
     return apply_placement_type(resources, compute_cell)
 
 
-def route_closed_loop(
-    *, db_client: entitysdk.Client, task_type: TaskType, config_id: UUID
-) -> TaskType:
-    """Send a Brian2 machine launch of a config with a ``neuromechfly`` section to the closed loop.
-
-    The web app names the Brian2 task for any Brian2 circuit, and only the config tells a
-    closed-loop simulation from a plain one.
-    """
-    if task_type != TaskType.circuit_simulation_brian2_machine:
-        return task_type
-    simulation = db_client.get_entity(entity_id=config_id, entity_type=models.Simulation)
-    content = db_sdk.select_asset_content(
-        client=db_client,
-        entity=simulation,
-        selection={
-            "label": AssetLabel.sonata_simulation_config,
-            "content_type": ContentType.application_json,
-        },
-    )
-    if NEUROMECHFLY_SECTION in json.loads(content):
-        return TaskType.circuit_simulation_neuromechfly_machine
-    return task_type
-
-
 def select_simulation_task(
     *, db_client: entitysdk.Client, config_id: UUID, config_type: models.Entity
 ) -> TaskType:

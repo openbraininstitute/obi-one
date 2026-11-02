@@ -86,14 +86,6 @@ def task_launch_endpoint(
         json_model = json_model.model_copy(update={"task_type": task_type})
         msg = f"Mapped circuit_simulation -> {task_type}"
         L.info(msg)
-    else:
-        task_type = task_service.route_closed_loop(
-            db_client=db_client, task_type=json_model.task_type, config_id=json_model.config_id
-        )
-        if task_type != json_model.task_type:
-            msg = f"Mapped {json_model.task_type} -> {task_type}: the config is a closed loop"
-            L.info(msg)
-            json_model = json_model.model_copy(update={"task_type": task_type})
 
     task_definition = get_launchable_task_definition(json_model.task_type)
 
@@ -187,14 +179,6 @@ def estimate_endpoint(
         json_model = json_model.model_copy(update={"task_type": task_type})
         msg = f"Mapped circuit_simulation -> {task_type}"
         L.info(msg)
-    else:
-        task_type = task_service.route_closed_loop(
-            db_client=db_client, task_type=json_model.task_type, config_id=json_model.config_id
-        )
-        if task_type != json_model.task_type:
-            msg = f"Mapped {json_model.task_type} -> {task_type}: the config is a closed loop"
-            L.info(msg)
-            json_model = json_model.model_copy(update={"task_type": task_type})
 
     return accounting_service.estimate_task_cost(
         db_client=db_client,
