@@ -4,9 +4,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
-from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field, PositiveInt
 
 from obi_one.core.block import Block
@@ -31,7 +28,6 @@ class AINDUnitsNWBScanConfig(ScanConfig):
     ``waveform_mean`` / ``waveform_sd``.
     """
 
-    single_coord_class_name: ClassVar[str] = "AINDUnitsNWBSingleConfig"
     name: ClassVar[str] = "AIND Units NWB Export"
     description: ClassVar[str] = (
         "Append the curated sorting + waveforms to a base NWB via the aind-units-nwb capsule."
@@ -41,12 +37,6 @@ class AINDUnitsNWBScanConfig(ScanConfig):
         SchemaKey.UI_ENABLED: False,
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP],
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
-
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
-        return []
 
     class Initialize(Block):
         """Top-level CLI / control parameters for the units-NWB capsule."""
@@ -109,28 +99,6 @@ class AINDUnitsNWBScanConfig(ScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,  # noqa: ARG002
-        multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,  # noqa: ARG002
-    ) -> None:
-        return None
-
-    def create_campaign_generation_entity(
-        self,
-        generated: list,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
-
 
 class AINDUnitsNWBSingleConfig(AINDUnitsNWBScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDUnitsNWBScanConfig`."""
-
-    def create_single_entity_with_config(
-        self,
-        campaign: TaskConfig,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None

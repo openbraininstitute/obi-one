@@ -8,14 +8,14 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 
 
 class FloatConstantDistribution(Distribution):
-    """A constant float value."""
+    """Produces the same floating-point value for every sample."""
 
-    title: ClassVar[str] = "Constant Float"
+    title: ClassVar[str] = "Constant float"
 
     value: float | list[float] = Field(
         default=1.0,
         title="Value",
-        description="The constant value of the distribution.",
+        description="Value returned for each sample.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
         },
@@ -24,7 +24,7 @@ class FloatConstantDistribution(Distribution):
     def _sample_generator(
         self,
         n: int = 1,
-        rng: np.random.Generator | None = None,  # noqa: ARG002
+        rng: np.random.Generator | None = None,  # ruff: ignore[unused-method-argument]
     ) -> list[float]:
         if isinstance(self.value, list):
             return [float(v) for v in self.value][:n]
@@ -32,14 +32,14 @@ class FloatConstantDistribution(Distribution):
 
 
 class IntConstantDistribution(Distribution):
-    """A constant integer value."""
+    """Produces the same integer value for every sample."""
 
-    title: ClassVar[str] = "Constant Integer"
+    title: ClassVar[str] = "Constant integer"
 
     value: int | list[int] = Field(
         default=1,
         title="Value",
-        description="The constant value of the distribution.",
+        description="Value returned for each sample.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
@@ -48,7 +48,7 @@ class IntConstantDistribution(Distribution):
     def _sample_generator(
         self,
         n: int = 1,
-        rng: np.random.Generator | None = None,  # noqa: ARG002
+        rng: np.random.Generator | None = None,  # ruff: ignore[unused-method-argument]
     ) -> list[float]:
         if isinstance(self.value, list):
             return [float(v) for v in self.value][:n]

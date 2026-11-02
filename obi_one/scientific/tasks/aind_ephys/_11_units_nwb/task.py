@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.aind_ephys._11_units_nwb.config import (
 L = logging.getLogger(__name__)
 
 UNITS_NWB_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-units-nwb.git"
-UNITS_NWB_REPO_DEFAULT_PATH = Path("/tmp/aind-units-nwb")  # noqa: S108
+UNITS_NWB_REPO_DEFAULT_PATH = Path("/tmp/aind-units-nwb")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_units_nwb_repo(repo_path: Path = UNITS_NWB_REPO_DEFAULT_PATH) -> Path:
@@ -66,12 +66,12 @@ class AINDUnitsNWBTask(Task):
 
     config: AINDUnitsNWBSingleConfig
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_units_nwb_repo()
         code_dir = repo / "code"
@@ -129,7 +129,7 @@ class AINDUnitsNWBTask(Task):
             argv += ["--stub", "--stub-units", str(self.config.initialize.stub_units)]
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

@@ -2,35 +2,22 @@ import json
 import logging
 import os
 import tempfile
-from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar
 
 import bluepysnap as snap
-import bluepysnap.circuit_validation
 from brainbuilder.utils.sonata import split_population
 from entitysdk import Client, models, types
-from entitysdk.types import TaskActivityType, TaskConfigType
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 
 from obi_one.config import settings
-from obi_one.core.block import Block
-from obi_one.core.info import Info
-from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk import circuit as circuit_db_sdk
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.entity_property_types import (
-    MappedPropertiesGroup,
-)
-from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
-from obi_one.scientific.unions.unions_neuron_sets import CircuitExtractionNeuronSetUnion
-from obi_one.utils import circuit as circuit_utils, circuit_registration, db_sdk
+from obi_one.scientific.tasks.circuit_extraction.config import CircuitExtractionSingleConfig
+from obi_one.utils import circuit as circuit_utils
 from obi_one.utils.benchmark import BenchmarkTracker
 
 if settings.circuit_extraction.benchmarking_enabled:
@@ -39,121 +26,6 @@ else:
     BenchmarkTracker.disable()
 
 L = logging.getLogger(__name__)
-
-
-class BlockGroup(StrEnum):
-    """Block Groups."""
-
-    SETUP = "Setup"
-    EXTRACTION_TARGET = "Extraction Target"
-
-
-class CircuitExtractionScanConfig(InfoScanConfig):
-    """ScanConfig for extracting sub-circuits from larger circuits."""
-
-    single_coord_class_name: ClassVar[str] = "CircuitExtractionSingleConfig"
-    name: ClassVar[str] = "Circuit Extraction"
-    description: ClassVar[str] = (
-        "Extracts a sub-circuit from a SONATA circuit as defined by a neuron set. The output"
-        " circuit will contain all morphologies, hoc files, and mod files that are required"
-        " to simulate the extracted circuit."
-    )
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: True,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.EXTRACTION_TARGET],
-        SchemaKey.PROPERTY_ENDPOINTS: {
-            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
-        },
-    }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = (
-        TaskConfigType.circuit_extraction__campaign
-    )
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_extraction__config_generation
-    )
-
-    def input_entities(self, db_client: Client) -> list[models.Entity]:
-        input_entities = []
-        if isinstance(self.initialize.circuit, CircuitFromID):
-            input_entities.extend([self.initialize.circuit.entity(db_client=db_client)])
-        elif isinstance(self.initialize.circuit, list):
-            for circuit in self.initialize.circuit:
-                if isinstance(circuit, CircuitFromID):
-                    input_entities.extend([circuit.entity(db_client=db_client)])
-        return input_entities
-
-    class Initialize(Block):
-        circuit: CircuitDiscriminator | list[CircuitDiscriminator] = Field(
-            title="Circuit",
-            description="Parent circuit to extract a sub-circuit from.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
-            },
-        )
-        do_virtual: bool = Field(
-            default=True,
-            title="Include Virtual Populations",
-            description="Include virtual neurons which target the cells contained in the specified"
-            " neuron set (together with their connectivity onto the specified neuron set) in the"
-            " extracted sub-circuit.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
-            },
-        )
-        create_external: bool = Field(
-            default=True,
-            title="Create External Population",
-            description="Convert (non-virtual) neurons which are outside of the specified neuron"
-            " set, but which target the cells contained therein, into a new external population"
-            " of virtual neurons (together with their connectivity onto the specified neuron set).",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
-            },
-        )
-
-    info: Info = Field(
-        title="Info",
-        description="Information about the circuit extraction campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-    initialize: Initialize = Field(
-        title="Initialization",
-        description="Parameters for initializing the circuit extraction campaign.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
-    )
-    neuron_set: CircuitExtractionNeuronSetUnion = Field(
-        title="Neuron Set",
-        description="Set of neurons to be extracted from the parent circuit, including their"
-        " connectivity.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
-            SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
-
-
-class CircuitExtractionSingleConfig(CircuitExtractionScanConfig, SingleConfigMixin):
-    """Extracts a sub-circuit of a SONATA circuit as defined by a node set.
-
-    The output circuit will contain all morphologies, hoc files, and mod files
-    that are required to simulate the extracted circuit.
-    """
-
-    _single_task_config_type: ClassVar[TaskConfigType] = TaskConfigType.circuit_extraction__config
-    _single_task_activity_type: ClassVar[TaskActivityType] = (
-        TaskActivityType.circuit_extraction__execution
-    )
 
 
 class CircuitExtractionTask(Task):
@@ -217,7 +89,7 @@ class CircuitExtractionTask(Task):
             derivation_type=types.DerivationType.circuit_extraction,
         )
 
-    def execute(  # noqa: C901, PLR0915
+    def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
         self,
         *,
         db_client: Client = None,  # ty:ignore[invalid-parameter-default]
@@ -232,9 +104,13 @@ class CircuitExtractionTask(Task):
             db_client=db_client, execution_activity_id=execution_activity_id
         )
 
+        # Ensure neuron set reference is set (use default if None)
+        self.config.ensure_extraction_target_neuron_set()
+        self.config.ensure_combined_neuron_sets_have_references()
+
         # Resolve parent circuit (local path or staging from ID)
         with BenchmarkTracker.section("resolve_circuit"):
-            self._circuit, self._circuit_entity = db_sdk.resolve_circuit(
+            self._circuit, self._circuit_entity = circuit_db_sdk.resolve_circuit(
                 self.config.initialize.circuit,  # ty:ignore[invalid-argument-type]
                 db_client=db_client,
                 entity_cache=entity_cache,
@@ -245,14 +121,16 @@ class CircuitExtractionTask(Task):
         # Add neuron set to SONATA circuit object
         # (will raise an error in case already existing)
         with BenchmarkTracker.section("add_node_set"):
-            nset_name = self.config.neuron_set.__class__.__name__
-            nset_def = self.config.neuron_set.get_node_set_definition(
+            neuron_set = self.config.initialize.neuron_set.block  # ty:ignore[unresolved-attribute]
+            nset_name = neuron_set.__class__.__name__
+            nset_def, nset_combined = neuron_set.get_node_set_definition(
                 self._circuit,
-                self._circuit.default_population_name,
             )
             sonata_circuit = self._circuit.sonata_circuit
             add_node_set_to_circuit(
-                sonata_circuit, {nset_name: nset_def}, overwrite_if_exists=False
+                sonata_circuit,
+                nset_combined | {nset_name: nset_def},
+                overwrite_if_exists=False,
             )
 
         # Create subcircuit using "brainbuilder"
@@ -318,8 +196,12 @@ class CircuitExtractionTask(Task):
 
         # Run circuit validation
         if settings.circuit_extraction.run_validation:
+            from obi_one.utils.circuit_validation import (  # ruff: ignore[import-outside-top-level]
+                run_validation,
+            )
+
             with BenchmarkTracker.section("run_validation"):
-                circuit_utils.run_validation(new_circuit_path)
+                run_validation(new_circuit_path)
 
         L.info("Extraction DONE")
 

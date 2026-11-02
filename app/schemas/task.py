@@ -12,6 +12,7 @@ from app.types import (
     BuiltinScript,
     CodeType,
     MachineExecutorImageType,
+    MachinePlacementType,
     ResourcesConfigType,
     TaskType,
 )
@@ -19,7 +20,7 @@ from app.types import (
 
 class Capabilities(Schema):
     private_packages: bool = False
-    env_secrets: list[str] = []  # noqa: RUF012
+    env_secrets: list[str] = []  # ruff: ignore[mutable-class-default]
 
 
 class PythonRepositoryCode(Schema):
@@ -29,7 +30,7 @@ class PythonRepositoryCode(Schema):
     path: str
     dependencies: str
     capabilities: Capabilities = Capabilities()
-    staged_directories: list[str] = []  # noqa: RUF012
+    staged_directories: list[str] = []  # ruff: ignore[mutable-class-default]
 
 
 class BuiltinCode(Schema):
@@ -52,6 +53,16 @@ class MachineResources(Schema):
     compute_cell: str
     timelimit: str | None = None
     image_type: MachineExecutorImageType = MachineExecutorImageType.python_3_12_compiler
+    # Placement the launch-system should pin, resolved from placement_type_map for the compute cell
+    # the request runs on. Left unset, the launch-system resolves it from the cell's executors.
+    placement_type: MachinePlacementType | None = None
+    # Per-compute-cell placement declared by the task definition. Internal to obi-one: excluded
+    # from the payload, since the launch-system only accepts the single resolved placement_type.
+    placement_type_map: Annotated[
+        dict[str, MachinePlacementType],
+        Field(exclude=True),
+    ] = {}  # ruff: ignore[mutable-class-default]
+    ephemeral_storage: int | None = None
 
 
 class ClusterResources(Schema):
@@ -79,7 +90,7 @@ class TaskLaunchSubmit(Schema):
     @field_validator("task_type")
     @classmethod
     def task_type_must_be_launchable(cls, v: TaskType) -> TaskType:
-        from app.mappings import TASK_DEFINITIONS  # noqa: PLC0415
+        from app.mappings import TASK_DEFINITIONS  # ruff: ignore[import-outside-top-level]
 
         if v not in TASK_DEFINITIONS:
             msg = f"Task type '{v}' is not launchable. Valid types: {list(TASK_DEFINITIONS.keys())}"
@@ -120,12 +131,12 @@ class TaskDefinition(Schema):
 
     @property
     def config_type_name(self) -> str:
-        """Return the name of the config class."""
+        """The name of the config class."""
         return self.config_type
 
     @property
     def activity_type_name(self) -> str:
-        """Return the name of the activity class."""
+        """The name of the activity class."""
         return self.activity_type
 
 
@@ -140,13 +151,20 @@ class TaskDefinitionLegacy(Schema):
 
     @property
     def config_type_name(self) -> str:
-        """Return the name of the config class."""
+        """The name of the config class."""
         return self.config_type.__name__
 
     @property
     def activity_type_name(self) -> str:
-        """Return the name of the activity class."""
+        """The name of the activity class."""
         return self.activity_type.__name__
+
+
+# Every entry in TASK_DEFINITIONS is one of these three shapes.
+AnyTaskDefinition = TaskDefinition | TaskDefinitionLegacy | TaskGroupLegacyDefinition
+
+# Launchable entries carry code and resources; TaskGroupLegacyDefinition is only a selector.
+LaunchableTaskDefinition = TaskDefinition | TaskDefinitionLegacy
 
 
 class TaskCallBackSuccessRequest(Schema):

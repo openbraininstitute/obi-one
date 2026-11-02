@@ -11,8 +11,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+    BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -97,35 +98,32 @@ class ByNeuronModification(ComplexVariableHolder):
 class BySectionListMechanismVariableNeuronalManipulation(Block):
     """Set values for an ion channel variable in each section list where the ion channel exists.
 
-
-    Example section lists: axonal, apical, basal and somatic.
-
-
-    These correspond to `section lists` in the NEURON simulator nomenclature:
-    https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology/seclist.html#sectionlist.
+    Example section lists: axonal, apical, basal and somatic. These correspond to `section lists`
+    in the NEURON simulator nomenclature. See
+    [SectionList](https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology.html)
     """
 
-    title: ClassVar[str] = "Variable Modification by Section List"
+    title: ClassVar[str] = "Variable modification by section list"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
     modification: BySectionListModification = Field(
-        title="Ion channel variable manipulations by section type",
+        title="Ion channel variable manipulations by section list",
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
             SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict]:
+    def config(self, default_node_set: str) -> list[dict]:
         """Generate SONATA conditions.modifications entries for each section list.
 
         Returns:
@@ -148,7 +146,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 
             modifications.extend(
                 {
-                    "name": f"modify_{self.modification.variable_name}_{expanded_section_list}",
+                    "name": (f"modify_{self.modification.variable_name}_{expanded_section_list}"),
                     "node_set": node_set,
                     "type": "section_list",
                     "section_configure": (
@@ -164,11 +162,11 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 class ByNeuronMechanismVariableNeuronalManipulation(Block):
     """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
-    title: ClassVar[str] = "Full Neuron Variable Modification"
+    title: ClassVar[str] = "Full neuron variable modification"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
@@ -179,12 +177,12 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
         description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
             SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )
 
-    def config(self, _default_population_name: str, default_node_set: str) -> list[dict] | dict:
+    def config(self, default_node_set: str) -> list[dict] | dict:
         """Generate SONATA config entry.
 
         Returns:
@@ -232,3 +230,66 @@ class ByNeuronMechanismVariableNeuronalManipulation(Block):
                 ),
             }
         ]
+
+
+class CircuitBySectionListMechanismVariableNeuronalManipulation(
+    BySectionListMechanismVariableNeuronalManipulation,
+):
+    """Set values for an ion channel variable in each section list where the ion channel exists.
+
+    Example section lists: axonal, apical, basal and somatic. These correspond to `section lists`
+    in the NEURON simulator nomenclature. See
+    [SectionList](https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology.html)
+    """
+
+    title: ClassVar[str] = "Variable modification by section list"
+
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
+        default=None,
+        title="Neuron set (target)",
+        description="Neuron set to which modification is applied.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    modification: BySectionListModification = Field(
+        title="Ion channel variable manipulations by section list",
+        description="Ion channel RANGE variable modification by section list.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.PROPERTY_SOURCE_FIELD: "neuron_set",
+        },
+    )
+
+
+class CircuitByNeuronMechanismVariableNeuronalManipulation(
+    ByNeuronMechanismVariableNeuronalManipulation,
+):
+    """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
+
+    title: ClassVar[str] = "Full neuron variable modification"
+
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
+        default=None,
+        title="Neuron set (target)",
+        description="Neuron set to which modification is applied.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+            SchemaKey.REFERENCE_TYPES: BIOPHYSICAL_NEURON_SETS_REFERENCE_TYPES,
+        },
+    )
+
+    modification: ByNeuronModification = Field(
+        title="Ion channel variable manipulations by neuron",
+        description="Ion channel variable modification (RANGE or GLOBAL) by neuron.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
+            SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
+            SchemaKey.PROPERTY_SOURCE_FIELD: "neuron_set",
+        },
+    )

@@ -13,7 +13,7 @@ capsules' venvs), so obi-one's ``.venv`` is never touched.
 """
 
 import logging
-import subprocess  # noqa: S404
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -35,10 +35,10 @@ from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_p
 L = logging.getLogger(__name__)
 
 # Cached isolated env used only to synthesise the toy recording (needs spikeinterface).
-_TOY_RECORDING_ENV_PATH = Path("/tmp/aind-ephys-ks4-toygen")  # noqa: S108
+_TOY_RECORDING_ENV_PATH = Path("/tmp/aind-ephys-ks4-toygen")  # ruff: ignore[hardcoded-temp-file]
 _TOY_RECORDING_ENV_DEPS = ["spikeinterface==0.104.7"]
 
-# Mirrors examples/K_extracellular/00_generate_toy_recording.ipynb.
+# Mirrors examples/obi_one/scientific/tasks/aind_ephys/00_generate_toy_recording.ipynb.
 _TOY_RECORDING_GEN_SCRIPT = """\
 import sys
 
@@ -80,7 +80,7 @@ def _generate_toy_recording(out_dir: Path) -> Path:
     script = out_dir.parent / "_generate_toy_recording.py"
     script.write_text(_TOY_RECORDING_GEN_SCRIPT, encoding="utf-8")
     L.info("Generating toy recording -> %s", out_dir)
-    subprocess.run([python, str(script), str(out_dir)], check=True)  # noqa: S603
+    subprocess.run([python, str(script), str(out_dir)], check=True)
     return out_dir
 
 
@@ -103,7 +103,7 @@ def _run_dispatch(recording_dir: Path, out_dir: Path) -> Path:
         ),
         dispatch_debug=DispatchDebug(debug_mode=False, debug_duration=10.0),
     )
-    config.coordinate_output_root = str(out_dir)
+    config.coordinate_output_root = out_dir
     AINDEPhysDispatchTask(config=config).execute()
     return out_dir
 
@@ -125,6 +125,6 @@ def _run_preprocessing(dispatch_dir: Path, out_dir: Path) -> Path:
         ),
         motion_correction=MotionCorrection(compute=False, apply=False),
     )
-    config.coordinate_output_root = str(out_dir)
+    config.coordinate_output_root = out_dir
     AINDEPhysPreprocessingTask(config=config).execute()
     return out_dir

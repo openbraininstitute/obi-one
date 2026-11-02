@@ -14,11 +14,15 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BaseSimulationScanConfig,
     BlockGroup,
 )
-from obi_one.scientific.unions.unions_recordings import (
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+    MorphologyLocationUnion,
+)
+from obi_one.scientific.unions_and_references.recordings import (
     RecordingReference,
     RecordingUnion,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
@@ -36,9 +40,25 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         description="Recordings for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
             SchemaKey.SINGULAR_NAME: "Recording",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology locations",
+        description=(
+            "Reusable rules for selecting precise locations on neuronal morphologies. "
+            "Stimuli can reference these locations to target compartments instead of whole cells."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
         },
     )
@@ -49,7 +69,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         description="Timestamps for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
             SchemaKey.SINGULAR_NAME: "Timestamps",
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -59,7 +79,7 @@ class NeuronSimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
     class Initialize(BaseSimulationScanConfig.Initialize):
         extracellular_calcium_concentration: NonNegativeFloat | list[NonNegativeFloat] = Field(
             default=1.1,
-            title="Extracellular Calcium Concentration",
+            title="Extracellular calcium concentration",
             description=(
                 "Extracellular calcium concentration around the synapse in millimoles (mM). "
                 "Increasing this value increases the probability of synaptic vesicle release, "

@@ -31,7 +31,7 @@ class Block(OBIBaseModel, extra="forbid"):
     _block_name = None
 
     @classmethod
-    def __get_pydantic_json_schema__(  # noqa: PLW3201
+    def __get_pydantic_json_schema__(  # ruff: ignore[bad-dunder-method-name]
         cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
         """Order the schema properties by priority when generating the JSON schema."""
@@ -41,7 +41,7 @@ class Block(OBIBaseModel, extra="forbid"):
 
     @property
     def block_name(self) -> str:
-        """Returns the block name."""
+        """The block name."""
         if self._block_name is None:
             msg = "Block name has not been set. Please add the block to a form and validate."
             raise ValueError(msg)
@@ -91,7 +91,7 @@ class Block(OBIBaseModel, extra="forbid"):
                 if len(value) > 0 and isinstance(value[0], ComplexVariableHolder):
                     for i, complex_variable_holder in enumerate(value):
                         self._multiple_value_parameters.extend(
-                            complex_variable_holder.multiple_value_parameters(  # ty:ignore[unresolved-attribute]
+                            complex_variable_holder.multiple_value_parameters(
                                 base_location_list=[category_name, block_key, key, i]
                                 if block_key
                                 else [category_name, key, i]

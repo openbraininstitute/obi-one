@@ -3,23 +3,29 @@ import tempfile
 from typing import Annotated
 
 import entitysdk.client
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.errors import internal_error, invalid_config_error
 from app.logger import L
-from obi_one import run_tasks_for_generated_scan
+from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
-from obi_one.scientific.tasks.contribute import (
-    ContributeMorphologyScanConfig,
-    ContributeSubjectScanConfig,
-)
+from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingScanConfig
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.config import (
+    EModelEFeatureExtractionScanConfig,
+)
+from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+    EModelOptimizationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
@@ -35,10 +41,11 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_chan
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
     MEModelSimulationScanConfig,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # noqa: E501
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
 from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
@@ -49,6 +56,25 @@ from obi_one.scientific.tasks.synapse_parameterization.config import (
 )
 
 router = APIRouter(prefix="/generated", tags=["generated"], dependencies=[Depends(user_verified)])
+
+
+def _error_detail(exc: Exception) -> str:
+    """The most informative message the exception carries."""
+    if len(exc.args) == 1:
+        return str(exc.args[0])
+    if len(exc.args) > 1:
+        return str(exc.args)
+    return str(exc)
+
+
+def _delete_registered_entities(
+    grid_scan: GridScanGenerationTask, db_client: entitysdk.client.Client
+) -> None:
+    """Take back what a failed generation registered, without masking why it failed."""
+    try:
+        grid_scan.delete_registered_entities(db_client=db_client)
+    except OBIONEError:
+        L.exception("Failed generation left entities behind")
 
 
 def create_endpoint_for_scan_config(
@@ -79,65 +105,87 @@ def create_endpoint_for_scan_config(
         L.info(db_client)
 
         if model is SchemaExampleScanConfig:
-            error_msg = "SchemaExampleScanConfig endpoint is non-functional."
-            raise HTTPException(status_code=500, detail=error_msg)
+            error_msg = f"{model.__name__} endpoint is non-functional."
+            raise internal_error(error_msg)
 
         campaign = None
-        try:
-            with tempfile.TemporaryDirectory() as tdir:
-                grid_scan = GridScanGenerationTask(
-                    form=form,
-                    # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
-                    #        / "grid_scan", => ERA001 Found commented-out code
-                    output_root=tdir,  # ty:ignore[invalid-argument-type]
-                    coordinate_directory_option="ZERO_INDEX",
-                )
+        with tempfile.TemporaryDirectory() as tdir:
+            grid_scan = GridScanGenerationTask(
+                form=form,
+                # TODO: output_root=settings.OUTPUT_DIR / "fastapi_test" / model_name
+                #        / "grid_scan", => ERA001 Found commented-out code
+                output_root=tdir,
+                coordinate_directory_option="ZERO_INDEX",
+            )
+            try:
                 grid_scan.execute(db_client=db_client)
                 campaign = grid_scan.form.campaign
                 if execute_single_config_task:
                     run_tasks_for_generated_scan(grid_scan, db_client=db_client, entity_cache=True)
 
-        except Exception as e:
-            error_msg = str(e)
+            except ConfigValidationError as e:
+                L.info("Rejected unrunnable config: %s", e)
 
-            if len(e.args) == 1:
-                error_msg = str(e.args[0])
-            elif len(e.args) > 1:
-                error_msg = str(e.args)
+                _delete_registered_entities(grid_scan, db_client)
+                raise invalid_config_error(str(e)) from e
 
-            L.error(error_msg)
+            except Exception as e:
+                error_msg = _error_detail(e)
 
-            raise HTTPException(status_code=500, detail=error_msg) from e
+                L.error(error_msg)
 
-        else:
-            L.info("Grid scan generated successfully")
-            if campaign is not None:
-                return str(campaign.id)
+                _delete_registered_entities(grid_scan, db_client)
+                raise internal_error(error_msg) from e
 
-            L.info("No campaign generated")
-            return ""
+            else:
+                L.info("Grid scan generated successfully")
+                if campaign is not None:
+                    return str(campaign.id)
+
+                L.info("No campaign generated")
+                return ""
 
 
 def activate_scan_config_endpoints() -> None:
     # Create endpoints for each OBI ScanConfig subclass.
-    for form, processing_method, data_postprocessing_method, execute_single_config_task in [
+    scan_configs: list[tuple[type[ScanConfig], str, str, bool]] = [
         (CircuitSimulationScanConfig, "generate", "", True),
         (Brian2CircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
         (MorphologyMetricsScanConfig, "run", "", True),
-        (ContributeMorphologyScanConfig, "generate", "", True),
-        (ContributeSubjectScanConfig, "generate", "", True),
         (IonChannelModelSimulationScanConfig, "generate", "", True),
         (IonChannelFittingScanConfig, "generate", "", False),
+        (MEModelBuildScanConfig, "generate", "", False),
         (CircuitExtractionScanConfig, "generate", "", False),
+        (CircuitSimplificationScanConfig, "generate", "", False),
         (SkeletonizationScanConfig, "generate", "", False),
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
+        (EModelEFeatureExtractionScanConfig, "generate", "", False),
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
-    ]:
+        (MEModelSynapticModelPlacementScanConfig, "generate", "", False),
+    ]
+    # EModel Optimization (Task 2) requires the optional `emodel` dependency group
+    # (bluepyemodel). Skip registering its endpoint rather than making `import
+    # app.application` fail entirely when the extra is not installed. See the
+    # corresponding guard in obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.
+    if EModelOptimizationScanConfig is not None:
+        scan_configs.append((EModelOptimizationScanConfig, "generate", "", False))
+        from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config import (  # ruff: ignore[import-outside-top-level]
+            EModelValidationScanConfig,
+        )
+
+        scan_configs.append((EModelValidationScanConfig, "generate", "", False))
+
+    for (
+        form,
+        processing_method,
+        data_postprocessing_method,
+        execute_single_config_task,
+    ) in scan_configs:
         create_endpoint_for_scan_config(
             form,
             processing_method=processing_method,

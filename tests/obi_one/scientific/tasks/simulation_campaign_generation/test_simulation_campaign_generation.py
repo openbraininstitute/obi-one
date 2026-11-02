@@ -3,50 +3,95 @@ import re
 
 import h5py
 import numpy as np
+import pandas as pd
 import pytest
 from bluepysnap import Simulation
 
-import obi_one as obi
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import (
+    CoupledScanGenerationTask,
+    GridScanGenerationTask,
+)
+from obi_one.core.schema import SchemaKey
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
+from obi_one.scientific.blocks.neuron_sets.deprecated import IDNeuronSet
+from obi_one.scientific.blocks.neuron_sets.id import (
+    BiophysicalPopulationIDNeuronSet,
+    VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.recordings.soma import (
+    SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
+)
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
+    materialize_locations_to_compartment_sets,
+)
+from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
 
 from tests.utils import CIRCUIT_DIR
 
 
 def _setup_sim():
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         ),
-        obi.Circuit(
+        Circuit(
             name="N_10__top_rc_nodes_dim2_rc",
             path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc" / "circuit_config.json"),
         ),
     ]
 
     sim_duration = 3000.0
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="Test", campaign_description="Test description")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
-    sim_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
+    sim_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(10)),
+        population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="ID10")
 
-    sync_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet2", elements=range(3))
+    sync_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=NamedTuple(name="IDNeuronSet2", elements=range(3)),
+        population="S1nonbarrel_neurons",
     )
     sim_conf.add(sync_neuron_set, name="ID3")
 
-    replay_neuron_set = obi.nbS1VPMInputs(sample_percentage=25)
+    replay_neuron_set = VirtualPopulationIDNeuronSet(
+        neuron_ids=NamedTuple(name="VPMInputs", elements=range(50)),
+        population="VPM",
+    )
     sim_conf.add(replay_neuron_set, name="VPM_input")
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=3, interval=1000.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=1000.0)
     sim_conf.add(regular_timestamps, name="RegularTimestamps")
 
-    poisson_input = obi.PoissonSpikeStimulus(
+    poisson_input = PoissonSpikeStimulus(
         duration=800.0,
         timestamps=regular_timestamps.ref,
         frequency=20,
@@ -55,24 +100,24 @@ def _setup_sim():
     )
     sim_conf.add(poisson_input, name="PoissonInputStimulus")
 
-    sync_input = obi.FullySynchronousSpikeStimulus(
+    sync_input = FullySynchronousSpikeStimulus(
         timestamps=regular_timestamps.ref,
         source_neuron_set=sync_neuron_set.ref,
         targeted_neuron_set=sim_neuron_set.ref,
     )
     sim_conf.add(sync_input, name="SynchronousInputStimulus")
 
-    voltage_recording = obi.TimeWindowSomaVoltageRecording(
+    voltage_recording = TimeWindowSomaVoltageRecording(
         neuron_set=sim_neuron_set.ref, start_time=0.0, end_time=sim_duration
     )
     sim_conf.add(voltage_recording, name="VoltageRecording")
 
-    syn_manip_mg = obi.SynapticMgManipulation(magnesium_value=[2.0, 2.4])
-    syn_manip_use = obi.ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.7050728631217412)
+    syn_manip_mg = SynapticMgManipulation(magnesium_value=[2.0, 2.4])
+    syn_manip_use = ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.7050728631217412)
     sim_conf.add(syn_manip_mg, name="SynapticMgManipulation")
     sim_conf.add(syn_manip_use, name="ScaleAcetylcholineUSESynapticManipulation")
 
-    simulations_initialize = obi.CircuitSimulationScanConfig.Initialize(
+    simulations_initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=sim_duration
     )
 
@@ -100,7 +145,7 @@ def _check_generated_sims(tmp_path, scan):
             src = getattr(instance, stim.source_neuron_set.block_dict_name)[
                 stim.source_neuron_set.block_name
             ]
-            pop = src.get_population(instance.initialize.circuit.default_population_name)
+            pop = src.population
             with h5py.File(
                 tmp_path / scan.output_root / str(instance.idx) / (key + "_spikes.h5"), "r"
             ) as h5:
@@ -127,7 +172,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         with cfg_file.open("r") as f:
             cfg = json.load(f)
 
-        assert cfg.pop("version") == 2.4  # noqa: RUF069
+        assert cfg.pop("version") == 2.4  # ruff: ignore[float-equality-comparison]
         assert cfg.pop("target_simulator") == "NEURON"
         assert cfg.pop("run") == {"dt": 0.025, "random_seed": 1, "tstop": 3000.0}
         mech_dict = {
@@ -194,7 +239,7 @@ def _check_generated_sonata_configs(tmp_path, scan):
         assert len(cfg) == 0  # No additional entries
 
 
-def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
+def _check_generated_obi_config(tmp_path, scan):  # ruff: ignore[too-many-locals]
     cfg_file = tmp_path / scan.output_root / "obi_one_scan.json"
     with cfg_file.open("r") as f:
         cfg = json.load(f)
@@ -216,13 +261,17 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     vpm_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "VPM_input",
-        "type": "NeuronSetReference",
+        "type": "VirtualNeuronSetReference",
     }
-    id3_ref = {"block_dict_name": "neuron_sets", "block_name": "ID3", "type": "NeuronSetReference"}
+    id3_ref = {
+        "block_dict_name": "neuron_sets",
+        "block_name": "ID3",
+        "type": "BiophysicalNeuronSetReference",
+    }
     id10_ref = {
         "block_dict_name": "neuron_sets",
         "block_name": "ID10",
-        "type": "NeuronSetReference",
+        "type": "BiophysicalNeuronSetReference",
     }
     poisson_dict = {
         "type": "PoissonSpikeStimulus",
@@ -250,19 +299,28 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
     }
     id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
     id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
+    vpm_ids = {"name": "VPMInputs", "elements": list(range(50)), "type": "NamedTuple"}
     id10_dict = {
-        "type": "IDNeuronSet",
+        "type": "BiophysicalPopulationIDNeuronSet",
+        "population": "S1nonbarrel_neurons",
         "sample_percentage": 100.0,
         "sample_seed": 1,
         "neuron_ids": id10,
     }
     id3_dict = {
-        "type": "IDNeuronSet",
+        "type": "BiophysicalPopulationIDNeuronSet",
+        "population": "S1nonbarrel_neurons",
         "sample_percentage": 100.0,
         "sample_seed": 1,
         "neuron_ids": id3,
     }
-    vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
+    vpm_dict = {
+        "type": "VirtualPopulationIDNeuronSet",
+        "population": "VPM",
+        "sample_percentage": 100.0,
+        "sample_seed": 1,
+        "neuron_ids": vpm_ids,
+    }
     mg = scan.form.synaptic_manipulations["SynapticMgManipulation"].magnesium_value
     mg_dict = {
         "type": "SynapticMgManipulation",
@@ -289,6 +347,7 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
         "type": "CircuitSimulationScanConfig.Initialize",
         "circuit": circuit_list,
         "node_set": id10_ref,
+        "simulator": "NEURON",
         "simulation_length": 3000.0,
         "extracellular_calcium_concentration": 1.1,
         "v_init": -80.0,
@@ -314,15 +373,17 @@ def _check_generated_obi_config(tmp_path, scan):  # noqa: PLR0914
             "SynapticMgManipulation": mg_dict,
             "ScaleAcetylcholineUSESynapticManipulation": use_dict,
         },
+        "neuronal_manipulations": {},
         "initialize": init_dict,
         "info": info_dict,
+        "morphology_locations": {},
     }
     assert cfg.pop("form") == form_dict
     assert cfg.pop("coordinate_directory_option") == "ZERO_INDEX"
     assert len(cfg) == 0  # No additional entries
 
 
-def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
+def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-locals]
     for instance in scan.single_configs:
         cfg_file = tmp_path / scan.output_root / str(instance.idx) / "obi_one_coordinate.json"
         with cfg_file.open("r") as f:
@@ -378,17 +439,17 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         vpm_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "VPM_input",
-            "type": "NeuronSetReference",
+            "type": "VirtualNeuronSetReference",
         }
         id3_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "ID3",
-            "type": "NeuronSetReference",
+            "type": "BiophysicalNeuronSetReference",
         }
         id10_ref = {
             "block_dict_name": "neuron_sets",
             "block_name": "ID10",
-            "type": "NeuronSetReference",
+            "type": "BiophysicalNeuronSetReference",
         }
         poisson_dict = {
             "type": "PoissonSpikeStimulus",
@@ -421,19 +482,28 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         assert cfg.pop("recordings") == {"VoltageRecording": volt_dict}
         id10 = {"name": "IDNeuronSet1", "elements": list(range(10)), "type": "NamedTuple"}
         id3 = {"name": "IDNeuronSet2", "elements": list(range(3)), "type": "NamedTuple"}
+        vpm_ids = {"name": "VPMInputs", "elements": list(range(50)), "type": "NamedTuple"}
         id10_dict = {
-            "type": "IDNeuronSet",
+            "type": "BiophysicalPopulationIDNeuronSet",
+            "population": "S1nonbarrel_neurons",
             "sample_percentage": 100.0,
             "sample_seed": 1,
             "neuron_ids": id10,
         }
         id3_dict = {
-            "type": "IDNeuronSet",
+            "type": "BiophysicalPopulationIDNeuronSet",
+            "population": "S1nonbarrel_neurons",
             "sample_percentage": 100.0,
             "sample_seed": 1,
             "neuron_ids": id3,
         }
-        vpm_dict = {"type": "nbS1VPMInputs", "sample_percentage": 25.0, "sample_seed": 1}
+        vpm_dict = {
+            "type": "VirtualPopulationIDNeuronSet",
+            "population": "VPM",
+            "sample_percentage": 100.0,
+            "sample_seed": 1,
+            "neuron_ids": vpm_ids,
+        }
         assert cfg.pop("neuron_sets") == {
             "ID10": id10_dict,
             "ID3": id3_dict,
@@ -459,6 +529,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
             "type": "CircuitSimulationScanConfig.Initialize",
             "circuit": circuit_dict,
             "node_set": id10_ref,
+            "simulator": "NEURON",
             "simulation_length": 3000.0,
             "extracellular_calcium_concentration": 1.1,
             "v_init": -80.0,
@@ -472,6 +543,8 @@ def _check_generated_instance_configs(tmp_path, scan):  # noqa: PLR0914
         }
         assert cfg.pop("info") == info_dict
         assert cfg.pop("distributions") == {}
+        assert cfg.pop("neuronal_manipulations") == {}
+        assert cfg.pop("morphology_locations") == {}
         assert len(cfg) == 0  # No additional entries
 
 
@@ -483,7 +556,7 @@ def test_simulation_campaign_generation(tmp_path):
     validated_sim_conf = sim_conf.validated_config()
 
     # Generate a grid scan
-    grid_scan = obi.GridScanGenerationTask(
+    grid_scan = GridScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "grid_scan",
         coordinate_directory_option="ZERO_INDEX",
@@ -491,7 +564,7 @@ def test_simulation_campaign_generation(tmp_path):
     assert len(grid_scan.multiple_value_parameters()) == 2
     assert len(grid_scan.coordinate_parameters()) == 4
     grid_scan.execute()
-    obi.run_tasks_for_generated_scan(grid_scan)
+    run_tasks_for_generated_scan(grid_scan)
 
     _check_generated_sims(tmp_path, grid_scan)
     _check_generated_sonata_configs(tmp_path, grid_scan)
@@ -502,10 +575,10 @@ def test_simulation_campaign_generation(tmp_path):
     with pytest.raises(
         ValueError, match=r"Output file '.*' already exists! Delete or choose to overwrite."
     ):
-        obi.run_tasks_for_generated_scan(grid_scan)
+        run_tasks_for_generated_scan(grid_scan)
 
     # Generate a coupled coordinate scan
-    coupled_scan = obi.CoupledScanGenerationTask(
+    coupled_scan = CoupledScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "coupled_scan",
         coordinate_directory_option="ZERO_INDEX",
@@ -513,7 +586,7 @@ def test_simulation_campaign_generation(tmp_path):
     assert len(coupled_scan.multiple_value_parameters()) == 2
     assert len(coupled_scan.coordinate_parameters()) == 2
     coupled_scan.execute()
-    obi.run_tasks_for_generated_scan(coupled_scan)
+    run_tasks_for_generated_scan(coupled_scan)
 
     _check_generated_sims(tmp_path, coupled_scan)
     _check_generated_sonata_configs(tmp_path, coupled_scan)
@@ -524,25 +597,23 @@ def test_simulation_campaign_generation(tmp_path):
     with pytest.raises(
         ValueError, match=r"Output file '.*' already exists! Delete or choose to overwrite."
     ):
-        obi.run_tasks_for_generated_scan(coupled_scan)
+        run_tasks_for_generated_scan(coupled_scan)
 
     # Use a neuron set reference without adding it to the simulation config --> Error
-    sim_neuron_set2 = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet3", elements=range(5))
-    )
+    sim_neuron_set2 = IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet3", elements=range(5)))
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
-        _ = obi.TimeWindowSomaVoltageRecording(
+        _ = TimeWindowSomaVoltageRecording(
             neuron_set=sim_neuron_set2.ref,
             start_time=0.0,
             end_time=sim_conf.initialize.simulation_length,
         )
 
     # Use a time stamp reference without adding it to the simulation config --> Error
-    regular_timestamps2 = obi.RegularTimestamps(
+    regular_timestamps2 = RegularTimestamps(
         start_time=0.0, number_of_repetitions=5, interval=1000.0
     )
     with pytest.raises(ValueError, match=re.escape("Block reference has not been set.")):
-        _ = obi.FullySynchronousSpikeStimulus(
+        _ = FullySynchronousSpikeStimulus(
             timestamps=regular_timestamps2.ref,
             source_neuron_set=sync_neuron_set.ref,
             targeted_neuron_set=sim_neuron_set.ref,
@@ -551,7 +622,7 @@ def test_simulation_campaign_generation(tmp_path):
     # Use different numbers of coordinates in coupled scan --> Error
     sim_conf.synaptic_manipulations["SynapticMgManipulation"].magnesium_value = [2.0, 2.4, 2.8]
     validated_sim_conf = sim_conf.validated_config()
-    coupled_scan2 = obi.CoupledScanGenerationTask(
+    coupled_scan2 = CoupledScanGenerationTask(
         form=validated_sim_conf,
         output_root=tmp_path / "coupled_scan_err",
         coordinate_directory_option="ZERO_INDEX",
@@ -564,27 +635,25 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     """Test that CircuitSimulationScanConfig can include distribution blocks
     and InterSpikeIntervalDistributionSpikeStimulus."""
     # Create config
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="Test", campaign_description="Test description")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="Test", campaign_description="Test description")
     sim_conf.set(info, name="info")
 
     # Add neuron sets
-    sim_neuron_set = obi.IDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="IDNeuronSet1", elements=range(10))
-    )
+    sim_neuron_set = IDNeuronSet(neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(10)))
     sim_conf.add(sim_neuron_set, name="ID10")
 
     # Add distribution blocks via sim_conf.add
-    constant_dist = obi.FloatConstantDistribution(value=10.0)
+    constant_dist = FloatConstantDistribution(value=10.0)
     sim_conf.add(constant_dist, name="constant_dist")
 
     # Add timestamps
-    timestamps = obi.SingleTimestamp(start_time=0.0)
+    timestamps = SingleTimestamp(start_time=0.0)
     sim_conf.add(timestamps, name="timestamps")
 
     # Add distribution-based stimulus that references the distribution
-    dist_stimulus = obi.InterSpikeIntervalDistributionSpikeStimulus(
-        distribution=obi.AllDistributionsReference(
+    dist_stimulus = InterSpikeIntervalDistributionSpikeStimulus(
+        distribution=AllDistributionsReference(
             block_dict_name="distributions", block_name="constant_dist"
         ),
         source_neuron_set=sim_neuron_set.ref,
@@ -596,13 +665,13 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
 
     # Set up simulation initialize with a real circuit
     circuit_list = [
-        obi.Circuit(
+        Circuit(
             name="N_10__top_nodes_dim6",
             path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
         )
     ]
     sim_conf.set(
-        obi.CircuitSimulationScanConfig.Initialize(
+        CircuitSimulationScanConfig.Initialize(
             circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=100.0
         ),
         name="initialize",
@@ -622,3 +691,221 @@ def test_circuit_simulation_scan_config_with_distribution_stimuli():
     assert hasattr(dist_stim, "distribution")
     assert dist_stim.distribution.block_dict_name == "distributions"
     assert dist_stim.distribution.block_name == "constant_dist"
+
+
+def test_simulation_campaign_generation_with_morphology_locations(tmp_path):  # ruff: ignore[too-many-locals]
+    sim_duration = 3000.0
+
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(
+        campaign_name="Test morphology locations",
+        campaign_description="Test morphology location materialization",
+    )
+    sim_conf.set(info, name="info")
+
+    sim_neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=NamedTuple(name="IDNeuronSet1", elements=range(1)),
+        population="S1nonbarrel_neurons",
+    )
+    sim_conf.add(sim_neuron_set, name="ID1")
+
+    timestamps = SingleTimestamp(start_time=0.0)
+    sim_conf.add(timestamps, name="Start")
+
+    locations = RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=2,
+        section_types=(3, 4),
+        neuron_set=sim_neuron_set.ref,
+    )
+    sim_conf.add(locations, name="ClampLocations")
+
+    clamp = ConstantCurrentClampSomaticStimulus(
+        timestamps=timestamps.ref,
+        duration=500.0,
+        amplitude=0.5,
+        neuron_set=locations.ref,
+    )
+    sim_conf.add(clamp, name="LocationCurrentClamp")
+
+    recording = SomaVoltageRecording(neuron_set=sim_neuron_set.ref)
+    sim_conf.add(recording, name="SomaVoltage")
+
+    circuit = Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+    sim_conf.set(
+        CircuitSimulationScanConfig.Initialize(
+            circuit=circuit,
+            node_set=sim_neuron_set.ref,
+            simulation_length=sim_duration,
+        ),
+        name="initialize",
+    )
+
+    validated_sim_conf = sim_conf.validated_config()
+
+    grid_scan = GridScanGenerationTask(
+        form=validated_sim_conf,
+        output_root=tmp_path / "morphology_locations_grid_scan",
+        coordinate_directory_option="ZERO_INDEX",
+    )
+
+    grid_scan.execute()
+    run_tasks_for_generated_scan(grid_scan)
+
+    coordinate_root = tmp_path / grid_scan.output_root / "0"
+
+    simulation_config_path = coordinate_root / "simulation_config.json"
+    compartment_sets_path = coordinate_root / "compartment_sets.json"
+
+    assert compartment_sets_path.exists()
+
+    with simulation_config_path.open("r") as f:
+        simulation_config = json.load(f)
+
+    assert simulation_config["compartment_sets_file"] == "compartment_sets.json"
+
+    input_config = simulation_config["inputs"]["LocationCurrentClamp_0"]
+    assert input_config["compartment_set"] == "ClampLocations"
+    assert "locations" not in input_config
+    assert "node_set" not in input_config
+
+    with compartment_sets_path.open("r") as f:
+        compartment_sets = json.load(f)
+
+    assert set(compartment_sets) == {"ClampLocations"}
+
+    generated_set = compartment_sets["ClampLocations"]
+    assert generated_set["population"] == circuit.default_population_name
+    assert len(generated_set["compartment_set"]) == 2
+
+    for node_id, section_id, offset in generated_set["compartment_set"]:
+        assert node_id == 0
+        assert isinstance(section_id, int)
+        assert 0.0 <= offset <= 1.0
+
+
+def test_morphology_locations_materialize_to_matching_compartment_set():
+    form = CircuitSimulationScanConfig.empty_config()
+
+    neuron_set = BiophysicalPopulationIDNeuronSet(
+        neuron_ids=NamedTuple(name="IDNeuronSet1", elements=[0]),
+        population="S1nonbarrel_neurons",
+    )
+    form.add(neuron_set, name="ID1")
+
+    locations = RandomMorphologyLocations(
+        random_seed=0,
+        number_of_locations=5,
+        section_types=(3, 4),
+        neuron_set=neuron_set.ref,
+    )
+    form.add(locations, name="ClampLocations")
+
+    stimulus = ConstantCurrentClampSomaticStimulus(
+        neuron_set=locations.ref,
+    )
+    form.add(stimulus, name="LocationCurrentClamp")
+
+    circuit = Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    morph = circuit.load_morphology(
+        node_id=0,
+        population=circuit.default_population_name,
+    )
+
+    form.set(
+        Info(
+            campaign_name="Test morphology locations",
+            campaign_description="Test morphology location materialization",
+        ),
+        name="info",
+    )
+
+    form.set(
+        CircuitSimulationScanConfig.Initialize(
+            circuit=circuit,
+            node_set=neuron_set.ref,
+            simulation_length=100.0,
+        ),
+        name="initialize",
+    )
+
+    form = form.validated_config()
+    locations = form.morphology_locations["ClampLocations"]
+
+    expected_df = locations.points_on(morph)
+
+    materialized = materialize_locations_to_compartment_sets(
+        single_config=form,
+        circuit=circuit,
+        node_population=circuit.default_population_name,
+        population=circuit.default_population_name,
+    )
+
+    comp_set = materialized["ClampLocations"]
+    materialized_target = form.stimuli["LocationCurrentClamp"].neuron_set
+
+    assert isinstance(materialized_target, MorphologyLocationsReference)
+
+    actual_rows = comp_set.to_sonata_dict()["ClampLocations"]["compartment_set"]
+
+    actual_df = pd.DataFrame(
+        actual_rows,
+        columns=["node_id", "section_id", "offset"],
+    )
+
+    # to_sonata_dict emits entries in canonical SONATA order (sorted by node_id, section_id,
+    # offset, then deduplicated), which is not the order the locations were generated in.
+    expected = (
+        pd.DataFrame(
+            {
+                "node_id": 0,
+                "section_id": expected_df["section_id"].astype(int),
+                "offset": expected_df["normalized_section_offset"].astype(float),
+            }
+        )
+        .sort_values(["node_id", "section_id", "offset"])
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+    actual = actual_df.astype(
+        {
+            "node_id": int,
+            "section_id": int,
+            "offset": float,
+        }
+    ).reset_index(drop=True)
+
+    pd.testing.assert_frame_equal(actual, expected)
+
+
+def test_continuous_stimulus_exposes_single_target_field():
+    fields = ConstantCurrentClampSomaticStimulus.model_fields
+    reference_types = fields["neuron_set"].json_schema_extra[SchemaKey.REFERENCE_TYPES]
+    morphology_locations_ref_schema = MorphologyLocationsReference.model_json_schema()
+
+    assert fields["neuron_set"].title == "Target"
+    assert "MorphologyLocationsReference" in reference_types
+    assert "RandomMorphologyLocations" in morphology_locations_ref_schema["allowed_block_types"]
+    assert "locations" not in fields
+    assert "compartment_set" not in fields
+
+
+def test_continuous_stimulus_infers_morphology_locations_target_reference_type():
+    stimulus = ConstantCurrentClampSomaticStimulus.model_validate(
+        {
+            "neuron_set": {
+                "block_dict_name": "morphology_locations",
+                "block_name": "Location Target",
+            }
+        }
+    )
+
+    assert isinstance(stimulus.neuron_set, MorphologyLocationsReference)

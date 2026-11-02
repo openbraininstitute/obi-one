@@ -29,7 +29,7 @@ class FileTooLargeError(Exception):
 
 def inspect_nwb_file_contents(nwb_file_path: str) -> dict[str, Any]:
     """Inspect an NWB file using BluePyEfe's automatic reader detection."""
-    from bluepyefe.reader import inspect_nwb  # noqa: PLC0415
+    from bluepyefe.reader import inspect_nwb  # ruff: ignore[import-outside-top-level]
 
     return inspect_nwb(nwb_file_path)
 
@@ -87,7 +87,7 @@ def _save_upload_to_tempfile(file: UploadFile, suffix: str) -> str:
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_path = temp_file.name
 
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause]
             file.file.seek(0)  # Reset pointer
             while True:
                 # Use chunk_size

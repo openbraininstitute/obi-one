@@ -6,11 +6,14 @@ from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    ALL_NEURON_SETS_REFERENCE_UNION,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     resolve_timestamps_ref_to_timestamps_block,
 )
@@ -24,25 +27,25 @@ _NEURON_SET_DESCRIPTION = (
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
 
-    presynaptic_neuron_set: NeuronSetReference | None = Field(
+    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Presynaptic Neuron Set",
+        title="Presynaptic neuron set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.SUPPORTS_VIRTUAL: True,
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
-    postsynaptic_neuron_set: NeuronSetReference | None = Field(
+    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Postsynaptic Neuron Set",
+        title="Postsynaptic neuron set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
-            SchemaKey.SUPPORTS_VIRTUAL: False,
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
 
@@ -109,13 +112,13 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
         description="Timestamps at which the manipulation is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
         },
     )
 
     timestamp_offset: float | list[float] | None = Field(
         default=0.0,
-        title="Timestamp Offset",
+        title="Timestamp offset",
         description="An optional offset of the manipulation relative to each "
         "timestamp in milliseconds (ms).",
         json_schema_extra={
@@ -131,6 +134,9 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
     """Base class for synaptic manipulations with a weight change parameter."""
 
     _weight: float = PrivateAttr(default=0.0)
+
+    def _get_weight(self) -> float:
+        return self._weight
 
     def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
@@ -149,7 +155,7 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
             new_manipulation = manipulation.copy()
             new_manipulation["name"] = f"{name}_{t_ind}" if n_timestamps > 1 else name
             new_manipulation["delay"] = timestamp + self.timestamp_offset
-            new_manipulation["weight"] = self._weight
+            new_manipulation["weight"] = self._get_weight()
             manipulations_list.append(new_manipulation)
 
         return manipulations_list

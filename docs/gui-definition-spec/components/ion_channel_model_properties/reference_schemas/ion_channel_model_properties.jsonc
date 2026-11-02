@@ -1,0 +1,86 @@
+{
+  "model_properties": {
+    "$ref": "#/components/schemas/IonChannelModelProperties",
+    "title": "Model properties",
+    "description": "The channel name, temperature, species, strain and brain region the model is registered with. Each defaults to the recordings' value; set it when they differ, or to change it.",
+    "default": {
+      "type": "IonChannelModelProperties"
+    },
+    "ui_element": "ion_channel_model_properties"
+  },
+  "IonChannelModelProperties": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "const": "IonChannelModelProperties",
+        "title": "Type",
+        "default": "IonChannelModelProperties"
+      },
+      "ion_channel_name": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Ion channel name",
+        "description": "SUFFIX of the mod file. Unset: the recordings' channel, so Kv6.2 gives Kv6_2. Must start with a letter or underscore, and contain only letters, numbers and underscores."
+      },
+      "temperature": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Temperature",
+        "description": "Temperature of the model, in °C. Unset: the recordings' temperature."
+      },
+      "species": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/SpeciesFromID"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Species",
+        "description": "Species of the model. Unset: the recordings' species."
+      },
+      "strain": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/StrainFromID"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Strain",
+        "description": "Strain of the model, of its species. Unset: the strain of the recordings of that species, if any."
+      },
+      "brain_region": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/BrainRegionFromID"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Brain region",
+        "description": "Brain region of the model. Unset: the deepest region containing all the recordings' regions."
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "IonChannelModelProperties",
+    "description": "What the fitted model is registered with. An unset property comes from the recordings."
+  }
+}

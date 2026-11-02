@@ -115,7 +115,7 @@ class ElectrophysiologyMetricsOutput(BaseModel):
         return cls(feature_dict=raw)
 
 
-def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
+def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-locals, too-many-statements, complex-structure]
     trace_id: str,
     entity_client: entitysdk.client.Client,
     calculated_feature: CALCULATED_FEATURES | None = None,
@@ -298,7 +298,7 @@ def get_electrophysiology_metrics(  # noqa: PLR0912, PLR0914, PLR0915, C901
             )
             raise ProtocolNotFoundError(msg)  # ty:ignore[invalid-argument-type]
 
-        output_features = {}
+        output_features: dict[str, dict[str, Any]] = {}
         logger.debug("Efeatures: %s", efeatures)
         # Format the extracted features into a readable dict for the model
         for protocol_name in protocol_definitions:

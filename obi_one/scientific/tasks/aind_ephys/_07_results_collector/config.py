@@ -5,9 +5,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
-from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -32,7 +29,6 @@ class AINDEPhysResultsCollectorScanConfig(ScanConfig):
     ``data_description.json`` files.
     """
 
-    single_coord_class_name: ClassVar[str] = "AINDEPhysResultsCollectorSingleConfig"
     name: ClassVar[str] = "AIND Ephys Results Collector"
     description: ClassVar[str] = (
         "Aggregate ephys-pipeline outputs into a single AIND-data-schema layout."
@@ -42,12 +38,6 @@ class AINDEPhysResultsCollectorScanConfig(ScanConfig):
         SchemaKey.UI_ENABLED: False,
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP],
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
-
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
-        return []
 
     class Initialize(Block):
         """Top-level CLI / control parameters for the results-collector capsule."""
@@ -116,31 +106,9 @@ class AINDEPhysResultsCollectorScanConfig(ScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,  # noqa: ARG002
-        multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,  # noqa: ARG002
-    ) -> None:
-        return None
-
-    def create_campaign_generation_entity(
-        self,
-        generated: list,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
-
 
 class AINDEPhysResultsCollectorSingleConfig(AINDEPhysResultsCollectorScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysResultsCollectorScanConfig`."""
-
-    def create_single_entity_with_config(
-        self,
-        campaign: TaskConfig,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
 
     def synthetic_data_description(self) -> dict:
         """Build a minimal ``data_description.json`` payload."""

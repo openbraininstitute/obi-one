@@ -1,0 +1,2968 @@
+"""Tests for circuit registration utility functions."""
+
+import json as json_module
+import shutil
+from datetime import datetime
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+import pytest
+from entitysdk.types import DerivationType
+
+from obi_one.db_sdk.registration.circuit import (
+    check_hierarchy_species,
+    check_if_circuit_exists,
+    find_agent,
+    find_role,
+    get_brain_region,
+    get_brain_region_hierarchy,
+    get_circuit,
+    get_contributions,
+    get_exp_date,
+    get_license,
+    get_parent_circuit,
+    get_publications,
+    get_root_circuit,
+    get_subject,
+    register_circuit,
+    register_circuit_from_metadata,
+    register_contributions,
+    register_derivation,
+    register_publication_links,
+    register_sonata_circuit_asset,
+)
+from obi_one.db_sdk.registration.circuit.assets import (
+    COMPRESSED_CIRCUIT_FILENAME,
+    _check_matrix_folder,
+    _check_required_contents,
+)
+from obi_one.db_sdk.registration.circuit.generate import (
+    generate_additional_circuit_assets,
+    generate_compressed_circuit_asset,
+    generate_overview_image_asset,
+    generate_sim_designer_image_asset,
+)
+from obi_one.db_sdk.registration.circuit.register import (
+    _get_biophysical_model_templates,
+    _register_parent_emodel_derivations,
+    _resolve_target_simulator,
+)
+
+from tests.utils import CIRCUIT_DIR
+
+# --- get_exp_date ---
+
+
+def test_get_exp_date_none():
+    """Test that None is returned when no date is provided."""
+    assert get_exp_date({}) is None
+    assert get_exp_date({"experiment_date": None}) is None
+
+
+def test_get_exp_date_day_month_year():
+    """Test parsing of dd.mm.YYYY format."""
+    result = get_exp_date({"experiment_date": "27.03.2024"})
+    assert result == datetime(2024, 3, 27)  # ruff: ignore[call-datetime-without-tzinfo]
+
+
+def test_get_exp_date_month_year():
+    """Test parsing of 'Month, YYYY' format."""
+    result = get_exp_date({"experiment_date": "November, 2024"})
+    assert result == datetime(2024, 11, 1)  # ruff: ignore[call-datetime-without-tzinfo]
+
+
+def test_get_exp_date_unsupported_format():
+    """Test that unsupported format raises."""
+    with pytest.raises(ValueError, match="not supported"):
+        get_exp_date({"experiment_date": "2024-03-27"})
+
+
+def test_get_exp_date_invalid_string():
+    """Test that invalid date string raises."""
+    with pytest.raises(ValueError, match="not supported"):
+        get_exp_date({"experiment_date": "not a date"})
+
+
+# --- _check_required_contents ---
+
+
+def test_check_required_contents_empty_list(tmp_path):
+    """Test that empty contents list passes without checking."""
+    _check_required_contents(tmp_path, [], is_directory=True)
+
+
+def test_check_required_contents_directory_valid(tmp_path):
+    """Test that required files in a directory pass."""
+    (tmp_path / "file_a.txt").write_text("a")
+    (tmp_path / "file_b.txt").write_text("b")
+
+    _check_required_contents(tmp_path, ["file_a.txt", "file_b.txt"], is_directory=True)
+
+
+def test_check_required_contents_directory_missing(tmp_path):
+    """Test that missing file in directory raises."""
+    (tmp_path / "file_a.txt").write_text("a")
+
+    with pytest.raises(ValueError, match="not found in"):
+        _check_required_contents(tmp_path, ["file_a.txt", "missing.txt"], is_directory=True)
+
+
+def test_check_required_contents_file_valid(tmp_path):
+    """Test that file name matches for non-directory check."""
+    f = tmp_path / COMPRESSED_CIRCUIT_FILENAME
+    f.write_text("data")
+
+    _check_required_contents(f, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
+
+
+def test_check_required_contents_file_mismatch(tmp_path):
+    """Test that file name mismatch raises for non-directory check."""
+    f = tmp_path / "other.gz"
+    f.write_text("data")
+
+    with pytest.raises(ValueError, match="does not match"):
+        _check_required_contents(f, [COMPRESSED_CIRCUIT_FILENAME], is_directory=False)
+
+
+# --- _check_matrix_folder ---
+
+
+def test_check_matrix_folder_valid(tmp_path):
+    """Test that a valid matrix folder passes."""
+
+    (tmp_path / "connectivity_matrix.h5").write_text("data")
+    (tmp_path / "matrix_config.json").write_text(
+        json_module.dumps({"pop1": {"single": {"path": "connectivity_matrix.h5"}}})
+    )
+
+    _check_matrix_folder(tmp_path)  # Should not raise
+
+
+def test_check_matrix_folder_missing_config(tmp_path):
+    """Test that missing matrix_config.json raises."""
+    (tmp_path / "connectivity_matrix.h5").write_text("data")
+
+    with pytest.raises(ValueError, match=r"matrix_config\.json missing"):
+        _check_matrix_folder(tmp_path)
+
+
+def test_check_matrix_folder_missing_referenced_file(tmp_path):
+    """Test that a referenced matrix file not found raises."""
+
+    (tmp_path / "matrix_config.json").write_text(
+        json_module.dumps({"pop1": {"single": {"path": "missing.h5"}}})
+    )
+
+    with pytest.raises(ValueError, match="referenced in config but not found"):
+        _check_matrix_folder(tmp_path)
+
+
+def test_check_matrix_folder_nested_structure(tmp_path):
+    """Test that a valid matrix folder with nested paths passes."""
+
+    (tmp_path / "pop1" / "single").mkdir(parents=True)
+    (tmp_path / "pop1" / "single" / "connectivity_matrix.h5").write_text("data")
+    (tmp_path / "matrix_config.json").write_text(
+        json_module.dumps({"pop1": {"single": {"path": "pop1/single/connectivity_matrix.h5"}}})
+    )
+
+    _check_matrix_folder(tmp_path)  # Should not raise
+
+
+def _mock_client_search(results):
+    """Create a mock client whose search_entity returns the given results."""
+    client = MagicMock()
+    client.search_entity.return_value.all.return_value = results
+    return client
+
+
+# --- get_circuit ---
+
+
+def test_get_circuit_none_name():
+    """Test that None name returns None."""
+    client = MagicMock()
+    assert get_circuit(client, None) is None
+
+
+def test_get_circuit_found():
+    """Test that a single match is returned."""
+    circuit = MagicMock(id="abc-123")
+    client = _mock_client_search([circuit])
+
+    result = get_circuit(client, "my_circuit")
+    assert result is circuit
+
+
+def test_get_circuit_not_found():
+    """Test that missing circuit returns None when must_exist=False."""
+    client = _mock_client_search([])
+    assert get_circuit(client, "missing", must_exist=False) is None
+
+
+def test_get_circuit_not_found_must_exist():
+    """Test that missing circuit raises when must_exist=True."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_circuit(client, "missing", must_exist=True)
+
+
+def test_get_circuit_multiple():
+    """Test that multiple matches raises."""
+    client = _mock_client_search([MagicMock(id="1"), MagicMock(id="2")])
+    with pytest.raises(ValueError, match="Multiple circuits"):
+        get_circuit(client, "duplicate")
+
+
+# --- check_if_circuit_exists ---
+
+
+def test_check_if_circuit_exists_missing_name():
+    """Test that missing name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Circuit name missing"):
+        check_if_circuit_exists(client, {})
+
+
+def test_check_if_circuit_exists_already_registered():
+    """Test that existing circuit raises."""
+    circuit = MagicMock()
+    client = _mock_client_search([circuit])
+    with pytest.raises(ValueError, match="already exists"):
+        check_if_circuit_exists(client, {"name": "existing"})
+
+
+def test_check_if_circuit_exists_not_registered():
+    """Test that non-existing circuit passes."""
+    client = _mock_client_search([])
+    check_if_circuit_exists(client, {"name": "new_circuit"})  # Should not raise
+
+
+# --- get_root_circuit ---
+
+
+def test_get_root_circuit_none():
+    """Test that no root specified returns None."""
+    client = _mock_client_search([])
+    result = get_root_circuit(client, {"root": None})
+    assert result is None
+
+
+def test_get_root_circuit_found():
+    """Test that root circuit is resolved."""
+    circuit = MagicMock(name="root_circuit", id="root-id")
+    client = _mock_client_search([circuit])
+    result = get_root_circuit(client, {"root": "root_circuit"})
+    assert result is circuit
+
+
+# --- get_parent_circuit ---
+
+
+def test_get_parent_circuit_none_no_derivation():
+    """Test that no parent with no derivation type passes."""
+    client = _mock_client_search([])
+    result = get_parent_circuit(client, {"parent": None, "derivation_type": None})
+    assert result is None
+
+
+def test_get_parent_circuit_none_with_derivation_type():
+    """Test that no parent with derivation type raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="requires a parent circuit"):
+        get_parent_circuit(client, {"parent": None, "derivation_type": "circuit_extraction"})
+
+
+def test_get_parent_circuit_found_valid_derivation():
+    """Test that parent with valid derivation type passes."""
+    circuit = MagicMock(name="parent_circuit", id="parent-id")
+    client = _mock_client_search([circuit])
+    result = get_parent_circuit(
+        client, {"parent": "parent_circuit", "derivation_type": "circuit_extraction"}
+    )
+    assert result is circuit
+
+
+def test_get_parent_circuit_found_invalid_derivation():
+    """Test that parent with invalid derivation type raises."""
+    circuit = MagicMock(name="parent_circuit", id="parent-id")
+    client = _mock_client_search([circuit])
+    with pytest.raises(ValueError, match="valid derivation type is required"):
+        get_parent_circuit(client, {"parent": "parent_circuit", "derivation_type": "invalid_type"})
+
+
+# --- find_agent ---
+
+
+def test_find_agent_found():
+    """Test that agent is found."""
+    agent = MagicMock(pref_label="John Doe")
+    client = _mock_client_search([agent])
+    result = find_agent(client, "John Doe", "person")
+    assert result is agent
+
+
+def test_find_agent_not_found():
+    """Test that missing agent raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        find_agent(client, "Unknown", "person")
+
+
+def test_find_agent_multiple_returns_first():
+    """Test that multiple matches returns first with warning."""
+    agent1 = MagicMock(pref_label="John Doe")
+    agent2 = MagicMock(pref_label="John Doe")
+    client = _mock_client_search([agent1, agent2])
+    result = find_agent(client, "John Doe", "person")
+    assert result is agent1
+
+
+# --- find_role ---
+
+
+def test_find_role_found():
+    """Test that role is found."""
+    role = MagicMock()
+    role.name = "unspecified"
+    client = _mock_client_search([role])
+    result = find_role(client, "unspecified")
+    assert result is role
+
+
+def test_find_role_not_found():
+    """Test that missing role raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found or multiple"):
+        find_role(client, "nonexistent")
+
+
+def test_find_role_multiple():
+    """Test that multiple roles raises."""
+    role1 = MagicMock()
+    role1.name = "unspecified"
+    role2 = MagicMock()
+    role2.name = "unspecified"
+    client = _mock_client_search([role1, role2])
+    with pytest.raises(ValueError, match="not found or multiple"):
+        find_role(client, "unspecified")
+
+
+# --- get_subject ---
+
+
+def test_get_subject_found():
+    """Test that subject is resolved with matching species."""
+    subject = MagicMock(name="Average rat P14", id="subj-id")
+    subject.species.name = "Rattus norvegicus"
+    client = _mock_client_search([subject])
+    result = get_subject(client, {"subject": "Average rat P14", "species": "Rattus norvegicus"})
+    assert result is subject
+
+
+def test_get_subject_missing_name():
+    """Test that missing subject name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Subject must be provided"):
+        get_subject(client, {"subject": None})
+
+
+def test_get_subject_not_found():
+    """Test that missing subject raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_subject(client, {"subject": "Unknown", "species": "Rattus norvegicus"})
+
+
+def test_get_subject_species_mismatch():
+    """Test that species mismatch raises."""
+    subject = MagicMock(name="Average rat P14")
+    subject.species.name = "Mus musculus"
+    client = _mock_client_search([subject])
+    with pytest.raises(ValueError, match="inconsistent"):
+        get_subject(client, {"subject": "Average rat P14", "species": "Rattus norvegicus"})
+
+
+def test_get_subject_no_species_provided():
+    """Test that missing species in metadata raises inconsistency."""
+    subject = MagicMock(name="Average rat P14")
+    subject.species.name = "Rattus norvegicus"
+    client = _mock_client_search([subject])
+    with pytest.raises(ValueError, match="inconsistent"):
+        get_subject(client, {"subject": "Average rat P14"})
+
+
+# --- get_brain_region ---
+
+
+def test_get_brain_region_found():
+    """Test that brain region is resolved."""
+    region = MagicMock(name="Primary somatosensory area", id="region-id")
+    client = _mock_client_search([region])
+    hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
+    result = get_brain_region(client, {"brain_region": "Primary somatosensory area"}, hierarchy)
+    assert result is region
+
+
+def test_get_brain_region_missing_name():
+    """Test that missing brain region name raises."""
+    client = MagicMock()
+    hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
+    with pytest.raises(ValueError, match="Brain region must be provided"):
+        get_brain_region(client, {"brain_region": None}, hierarchy)
+
+
+def test_get_brain_region_not_found():
+    """Test that missing brain region raises."""
+    client = _mock_client_search([])
+    hierarchy = MagicMock(id="hierarchy-id", name="Mouse CCFv3")
+    with pytest.raises(ValueError, match="not found"):
+        get_brain_region(client, {"brain_region": "Unknown"}, hierarchy)
+
+
+# --- get_brain_region_hierarchy ---
+
+
+def test_get_brain_region_hierarchy_found():
+    """Test that brain region hierarchy is resolved."""
+    hierarchy = MagicMock(name="Mouse CCFv3", id="hierarchy-id")
+    client = _mock_client_search([hierarchy])
+    result = get_brain_region_hierarchy(client, {"brain_region_hierarchy": "Mouse CCFv3"})
+    assert result is hierarchy
+
+
+def test_get_brain_region_hierarchy_missing_name():
+    """Test that missing hierarchy name raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="Brain region hierarchy must be provided"):
+        get_brain_region_hierarchy(client, {"brain_region_hierarchy": None})
+
+
+def test_get_brain_region_hierarchy_not_found():
+    """Test that missing hierarchy raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_brain_region_hierarchy(client, {"brain_region_hierarchy": "Unknown"})
+
+
+# --- check_hierarchy_species ---
+
+
+def test_check_hierarchy_species_matching():
+    """Test that matching species passes without error."""
+    species = MagicMock(id="species-id", name="Mus musculus")
+    hierarchy = MagicMock(species=species, name="Mouse CCFv3")
+    subject = MagicMock(species=species)
+    check_hierarchy_species(hierarchy, subject)  # Should not raise
+
+
+def test_check_hierarchy_species_mismatch():
+    """Test that mismatched species raises."""
+    hierarchy = MagicMock(
+        species=MagicMock(id="species-mouse", name="Mus musculus"),
+        name="Mouse CCFv3",
+    )
+    subject = MagicMock(
+        species=MagicMock(id="species-rat", name="Rattus norvegicus"),
+    )
+    with pytest.raises(ValueError, match="Species mismatch"):
+        check_hierarchy_species(hierarchy, subject)
+
+
+# --- get_license ---
+
+
+def test_get_license_found():
+    """Test that license is resolved."""
+    lic = MagicMock(label="CC BY 4.0", name="Creative Commons", id="lic-id")
+    client = _mock_client_search([lic])
+    result = get_license(client, {"license": "CC BY 4.0"})
+    assert result is lic
+
+
+def test_get_license_none():
+    """Test that no license returns None."""
+    client = MagicMock()
+    result = get_license(client, {"license": None})
+    assert result is None
+
+
+def test_get_license_not_found():
+    """Test that missing license raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_license(client, {"license": "Unknown License"})
+
+
+# --- get_contributions ---
+
+
+def test_get_contributions_resolves_agents_and_roles():
+    """Test that contributions are resolved."""
+    agent = MagicMock(type="person", pref_label="John Doe", id="agent-id")
+    role = MagicMock(id="role-id")
+    role.name = "unspecified"
+
+    client = MagicMock()
+    # find_agent call, then find_role call
+    client.search_entity.return_value.all.side_effect = [
+        [agent],  # find_agent
+        [role],  # find_role
+    ]
+
+    result = get_contributions(client, {"John Doe": {"type": "person", "role": "unspecified"}})
+    assert "John Doe" in result
+    assert result["John Doe"]["agent"] is agent
+    assert result["John Doe"]["role"] is role
+
+
+# --- get_publications ---
+
+
+def test_get_publications_resolves():
+    """Test that publications are resolved."""
+    pub = MagicMock(id="pub-id", DOI="10.1234/test")
+    client = _mock_client_search([pub])
+
+    result = get_publications(client, {"10.1234/test": {"type": "entity_source"}})
+    assert "10.1234/test" in result
+    assert result["10.1234/test"]["entity"] is pub
+    assert result["10.1234/test"]["type"] == "entity_source"
+
+
+def test_get_publications_unknown_type():
+    """Test that unknown publication type raises."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="unknown"):
+        get_publications(client, {"10.1234/test": {"type": "invalid_type"}})
+
+
+def test_get_publications_not_found():
+    """Test that missing publication raises."""
+    client = _mock_client_search([])
+    with pytest.raises(ValueError, match="not found"):
+        get_publications(client, {"10.1234/test": {"type": "entity_source"}})
+
+
+# --- register_derivation ---
+
+
+def test_register_derivation_none_parent():
+    """Test that None parent skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    result = register_derivation(
+        client=client,
+        from_entity=None,
+        derivation_type="circuit_extraction",
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is None
+    client.register_entity.assert_not_called()
+
+
+def test_register_derivation_invalid_type():
+    """Test that None derivation type raises when parent is provided."""
+    client = MagicMock()
+    with pytest.raises(ValueError, match="derivation_type is required"):
+        register_derivation(
+            client=client,
+            from_entity=MagicMock(),
+            derivation_type=None,
+            registered_circuit=MagicMock(),
+            dry_run=False,
+        )
+
+
+def test_register_derivation_dry_run():
+    """Test that dry_run skips registration."""
+    client = MagicMock()
+    result = register_derivation(
+        client=client,
+        from_entity=MagicMock(),
+        derivation_type="circuit_extraction",
+        registered_circuit=MagicMock(),
+        dry_run=True,
+    )
+    assert result is None
+    client.register_entity.assert_not_called()
+
+
+def test_register_derivation_success():
+    """Test successful derivation registration."""
+    client = MagicMock()
+    registered_derivation = MagicMock()
+    client.register_entity.return_value = registered_derivation
+
+    parent = MagicMock()
+    circuit = MagicMock()
+
+    with patch("obi_one.db_sdk.registration.circuit.links.models.Derivation"):
+        result = register_derivation(
+            client=client,
+            from_entity=parent,
+            derivation_type="circuit_extraction",
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert result is registered_derivation
+    client.register_entity.assert_called_once()
+
+
+# --- register_contributions ---
+
+
+def test_register_contributions_dry_run():
+    """Test that dry_run skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    contribution_dict = {"John Doe": {"agent": MagicMock(), "role": MagicMock()}}
+
+    result = register_contributions(
+        client=client,
+        contribution_dict=contribution_dict,
+        registered_circuit=circuit,
+        dry_run=True,
+    )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+def test_register_contributions_new():
+    """Test that new contributions are registered."""
+    client = MagicMock()
+    circuit = MagicMock()
+    registered_contr = MagicMock()
+    client.register_entity.return_value = registered_contr
+    # _contribution_exists returns None (not existing)
+    client.search_entity.return_value.all.return_value = []
+
+    agent = MagicMock(pref_label="John Doe", type="person")
+    role = MagicMock()
+    role.name = "unspecified"
+
+    with patch("obi_one.db_sdk.registration.circuit.links.models.Contribution"):
+        result = register_contributions(
+            client=client,
+            contribution_dict={"John Doe": {"agent": agent, "role": role}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert len(result) == 1
+    assert result[0] is registered_contr
+
+
+def test_register_contributions_already_exists():
+    """Test that existing contributions are skipped."""
+    client = MagicMock()
+    circuit = MagicMock(id="circuit-id")
+
+    agent = MagicMock(pref_label="John Doe", type="person")
+    role = MagicMock()
+    role.name = "unspecified"
+
+    # _contribution_exists finds a match
+    existing = MagicMock()
+    existing.agent.pref_label = "John Doe"
+    existing.agent.type = "person"
+    existing.role.name = "unspecified"
+
+    # Mock: models.Contribution() returns a mock that matches the existing contribution
+    mock_contr_model = MagicMock()
+    mock_contr_model.entity.id = "circuit-id"
+    mock_contr_model.agent.pref_label = "John Doe"
+    mock_contr_model.agent.type = "person"
+    mock_contr_model.role.name = "unspecified"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.links.models.Contribution",
+        return_value=mock_contr_model,
+    ):
+        # search_entity for _contribution_exists returns the existing match
+        client.search_entity.return_value.all.return_value = [existing]
+
+        result = register_contributions(
+            client=client,
+            contribution_dict={"John Doe": {"agent": agent, "role": role}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+# --- register_publication_links ---
+
+
+def test_register_publication_links_dry_run():
+    """Test that dry_run skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    publication_dict = {"10.1234/test": {"entity": MagicMock(), "type": "entity_source"}}
+
+    result = register_publication_links(
+        client=client,
+        publication_dict=publication_dict,
+        registered_circuit=circuit,
+        dry_run=True,
+    )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+def test_register_publication_links_new():
+    """Test that new publication links are registered."""
+    client = MagicMock()
+    circuit = MagicMock(id="circuit-id")
+    registered_link = MagicMock()
+    client.register_entity.return_value = registered_link
+    # No existing links found
+    client.search_entity.return_value.all.return_value = []
+
+    pub_entity = MagicMock(DOI="10.1234/test")
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.links.models.ScientificArtifactPublicationLink"
+    ):
+        result = register_publication_links(
+            client=client,
+            publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert len(result) == 1
+    assert result[0] is registered_link
+
+
+def test_register_publication_links_already_exists():
+    """Test that existing publication links are skipped."""
+    client = MagicMock()
+    circuit = MagicMock(id="circuit-id")
+    # Existing link found
+    client.search_entity.return_value.all.return_value = [MagicMock()]
+
+    pub_entity = MagicMock(DOI="10.1234/test")
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.links.models.ScientificArtifactPublicationLink"
+    ):
+        result = register_publication_links(
+            client=client,
+            publication_dict={"10.1234/test": {"entity": pub_entity, "type": "entity_source"}},
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+    assert result == []
+    client.register_entity.assert_not_called()
+
+
+# --- register_sonata_circuit_asset ---
+
+
+def _make_sonata_circuit_dir(path: Path) -> None:
+    """Create a minimal valid SONATA circuit folder."""
+    (path / "circuit_config.json").write_text("{}")
+    (path / "node_sets.json").write_text("{}")
+
+
+def test_register_sonata_circuit_asset_none_path():
+    """Test that None file_path skips registration."""
+    client = MagicMock()
+    circuit = MagicMock()
+    result = register_sonata_circuit_asset(
+        client=client,
+        file_path=None,
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is None
+
+
+def test_register_sonata_circuit_asset_dry_run(tmp_path):
+    """Test that dry_run skips registration after validation."""
+    _make_sonata_circuit_dir(tmp_path)
+
+    client = MagicMock()
+    circuit = MagicMock()
+    result = register_sonata_circuit_asset(
+        client=client,
+        file_path=tmp_path,
+        registered_circuit=circuit,
+        dry_run=True,
+    )
+    assert result is None
+    client.upload_directory.assert_not_called()
+
+
+def test_register_sonata_circuit_asset_uploads_directory(tmp_path):
+    """Test uploading the SONATA circuit folder."""
+    _make_sonata_circuit_dir(tmp_path)
+
+    client = MagicMock()
+    uploaded_asset = MagicMock(id="asset-123")
+    client.upload_directory.return_value = uploaded_asset
+    circuit = MagicMock(id="circuit-id")
+
+    result = register_sonata_circuit_asset(
+        client=client,
+        file_path=tmp_path,
+        registered_circuit=circuit,
+        dry_run=False,
+    )
+    assert result is uploaded_asset
+    client.upload_directory.assert_called_once()
+
+
+def test_register_sonata_circuit_asset_nonexistent_path():
+    """Test that a non-existent local path raises."""
+    client = MagicMock()
+    circuit = MagicMock()
+    with pytest.raises(ValueError, match="does not exist"):
+        register_sonata_circuit_asset(
+            client=client,
+            file_path=Path("/nonexistent/path"),
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+
+
+def test_register_sonata_circuit_asset_missing_required_contents(tmp_path):
+    """Test that a folder missing the required SONATA files raises."""
+    (tmp_path / "some_file.txt").write_text("hello")
+
+    client = MagicMock()
+    circuit = MagicMock()
+    with pytest.raises(ValueError, match="not found in"):
+        register_sonata_circuit_asset(
+            client=client,
+            file_path=tmp_path,
+            registered_circuit=circuit,
+            dry_run=False,
+        )
+
+
+# --- register_circuit ---
+
+
+class _FakeCircuit:
+    """Fake Circuit class that accepts any kwargs and supports isinstance."""
+
+    id = None
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+class _FakeEModel:
+    """Fake EModel class that accepts any kwargs and supports isinstance."""
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+_patch_models_circuit = patch(
+    "obi_one.db_sdk.registration.circuit.register.models.Circuit", _FakeCircuit
+)
+_patch_models_emodel = patch(
+    "obi_one.db_sdk.registration.circuit.register.models.EModel", _FakeEModel
+)
+
+
+def _mock_brain_region_and_subject():
+    """Create brain_region and subject mocks with matching species."""
+    species = MagicMock(id="species-id", name="Mus musculus")
+    brain_region = MagicMock(species=species, name="SSp")
+    subject = MagicMock(species=species, name="mouse-subject")
+    return brain_region, subject
+
+
+def test_register_circuit_dry_run():
+    """Test that dry_run computes properties but does not register."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with _patch_models_circuit:
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_additional_assets=True,
+            dry_run=True,
+        )
+
+    assert result is not None
+    assert result.name == "test_circuit"
+    assert result.id is None
+    client.register_entity.assert_not_called()
+
+
+def test_register_circuit_registers_entity():
+    """Test that register_circuit registers the entity and returns it."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            dry_run=False,
+        )
+
+    assert result is registered
+    client.register_entity.assert_called_once()
+
+
+def test_register_circuit_sets_lifecycle_status_draft():
+    """Draft registration passes lifecycle_status through to the Circuit model."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validate,
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            lifecycle_status="draft",
+            skip_additional_assets=True,
+        )
+
+    mock_validate.assert_not_called()
+    circuit_model = client.register_entity.call_args[0][0]
+    assert circuit_model.lifecycle_status == "draft"
+
+
+def test_register_circuit_derives_root_from_parent():
+    """When root is omitted, use parent.root_circuit_id or parent.id."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_derivation") as mock_deriv,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+    circuit_model = client.register_entity.call_args[0][0]
+    assert circuit_model.root_circuit_id == "root-id"
+    mock_deriv.assert_called_once()
+
+
+def test_register_circuit_passes_include_overview_images():
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch("obi_one.utils.circuit_validation.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            include_overview_images=False,
+            skip_validation=True,
+        )
+
+    assert mock_gen.call_args.kwargs["include_overview_images"] is False
+
+
+def _tmp_circuit_config(tmp_path):
+    """Copy the tiny circuit so the sibling __CIRCUIT_VIZ__ dir is created under tmp_path."""
+    circuit_dir = tmp_path / "circuits" / "N_10__top_nodes_dim6"
+    shutil.copytree(CIRCUIT_DIR / "N_10__top_nodes_dim6", circuit_dir)
+    return circuit_dir / "circuit_config.json"
+
+
+def test_register_circuit_attaches_uploaded_image_even_when_skipping_generated_assets(tmp_path):
+    """A user-uploaded image is registered synchronously even with skip_additional_assets=True.
+
+    The draft path skips generated assets (deferred to the post-validation job) but must still
+    attach the image the user supplied, so it is present before that job runs.
+    """
+    circuit_path = _tmp_circuit_config(tmp_path)
+    overview = tmp_path / "overview.png"
+    overview.write_bytes(b"fake png")
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
+        ) as mock_sim,
+        patch("obi_one.utils.circuit_validation.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            overview_image_path=overview,
+        )
+
+    # Generated assets are skipped, but the uploaded overview image is attached synchronously.
+    mock_gen.assert_not_called()
+    mock_overview.assert_called_once()
+    assert mock_overview.call_args.kwargs["image_path"] == overview
+    mock_sim.assert_not_called()
+
+
+def test_register_circuit_attaches_both_uploaded_images_when_skipping_generated_assets(tmp_path):
+    """Both a provided overview and sim-designer image are attached synchronously.
+
+    The real image helpers run (only add_image_assets is mocked) so the viz_dir derivation and
+    the file copy are exercised end-to-end.
+    """
+    circuit_path = _tmp_circuit_config(tmp_path)
+    overview = tmp_path / "overview.png"
+    overview.write_bytes(b"fake overview")
+    sim_designer = tmp_path / "sim.png"
+    sim_designer.write_bytes(b"fake sim")
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+        patch("obi_one.utils.circuit_validation.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            overview_image_path=overview,
+            sim_designer_image_path=sim_designer,
+        )
+
+    mock_gen.assert_not_called()
+    # Both images are copied into a sibling __CIRCUIT_VIZ__ dir and registered.
+    registered_files = {call.kwargs["plot_files"][0] for call in mock_add.call_args_list}
+    assert registered_files == {"circuit_visualization.png", "simulation_designer_image.png"}
+    viz_dir = circuit_path.parents[1] / (circuit_path.parent.name + "__CIRCUIT_VIZ__")
+    assert (viz_dir / "circuit_visualization.png").exists()
+    assert (viz_dir / "simulation_designer_image.png").exists()
+
+
+def test_register_circuit_attaches_only_sim_designer_image(tmp_path):
+    """When only a sim-designer image is provided, it is attached and the overview one is not."""
+    circuit_path = _tmp_circuit_config(tmp_path)
+    sim_designer = tmp_path / "sim.png"
+    sim_designer.write_bytes(b"fake sim")
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
+        ) as mock_sim,
+        patch("obi_one.utils.circuit_validation.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            sim_designer_image_path=sim_designer,
+        )
+
+    mock_gen.assert_not_called()
+    mock_overview.assert_not_called()
+    mock_sim.assert_called_once()
+    assert mock_sim.call_args.kwargs["image_path"] == sim_designer
+
+
+def test_register_circuit_dry_run_skips_uploaded_image(tmp_path):
+    """A dry run registers nothing, so a provided image is not attached."""
+    circuit_path = _tmp_circuit_config(tmp_path)
+    overview = tmp_path / "overview.png"
+    overview.write_bytes(b"fake png")
+    client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_sim_designer_image_asset"
+        ) as mock_sim,
+        patch("obi_one.utils.circuit_validation.run_validation"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            skip_additional_assets=True,
+            overview_image_path=overview,
+            dry_run=True,
+        )
+
+    mock_overview.assert_not_called()
+    mock_sim.assert_not_called()
+
+
+def test_register_circuit_with_derivation():
+    """Test that derivation link is created when parent is provided."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="parent-id")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            dry_run=False,
+        )
+
+    mock_derivation.assert_called_once()
+
+
+def test_register_circuit_skip_additional_assets():
+    """Test that skip_additional_assets prevents asset generation."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_additional_assets=True,
+            dry_run=False,
+        )
+
+    mock_gen.assert_not_called()
+
+
+def test_register_circuit_skip_validation():
+    """Test that skip_validation=True skips run_validation."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_validation=True,
+            dry_run=False,
+        )
+
+    mock_validation.assert_not_called()
+
+
+def test_register_circuit_runs_validation_by_default():
+    """Test that run_validation is called when skip_validation is not set."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            dry_run=False,
+        )
+
+    mock_validation.assert_called_once()
+
+
+def test_register_circuit_invalid_path():
+    """Test that non-existent circuit path raises."""
+    client = MagicMock()
+    brain_region = MagicMock(species=None)
+    subject = MagicMock(species=None)
+    with pytest.raises(ValueError, match="Circuit config not found"):
+        register_circuit(
+            client=client,
+            circuit_path="/nonexistent/path",
+            name="test",
+            description="test",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+        )
+
+
+def test_register_circuit_species_mismatch():
+    """Test that mismatched species between brain_region and subject raises."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    brain_region = MagicMock(
+        species=MagicMock(id="species-mouse", name="Mus musculus"),
+        name="SSp",
+    )
+    subject = MagicMock(
+        species=MagicMock(id="species-rat", name="Rattus norvegicus"),
+    )
+
+    with pytest.raises(ValueError, match="Species mismatch"):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test",
+            description="test",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+        )
+
+
+# --- .gz compressed circuit support ---
+
+
+COMPRESSED_CIRCUIT_PATH = CIRCUIT_DIR / "N_10__top_nodes_dim6.gz"
+
+
+def test_register_circuit_from_compressed_gz(tmp_path):
+    """Test that register_circuit accepts a .gz archive and extracts it."""
+    # Copy the compressed circuit to tmp_path so extraction doesn't pollute the repo
+    archive = tmp_path / "circuit.gz"
+    shutil.copy(COMPRESSED_CIRCUIT_PATH, archive)
+
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"
+        ) as mock_gen,
+    ):
+        result = register_circuit(
+            client=client,
+            circuit_path=str(archive),
+            name="test_circuit",
+            description="A compressed test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            dry_run=False,
+        )
+
+    assert result is registered
+    client.register_entity.assert_called_once()
+    # Verify that circuit_path_compressed was passed to generate_additional_circuit_assets
+    mock_gen.assert_called_once()
+    call_kwargs = mock_gen.call_args[1]
+    assert call_kwargs["circuit_path_compressed"] == archive
+
+
+def test_register_circuit_from_compressed_gz_dry_run(tmp_path):
+    """Test that dry_run works with a .gz archive."""
+    archive = tmp_path / "circuit.gz"
+    shutil.copy(COMPRESSED_CIRCUIT_PATH, archive)
+
+    client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with _patch_models_circuit:
+        result = register_circuit(
+            client=client,
+            circuit_path=str(archive),
+            name="test_circuit",
+            description="A compressed test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_additional_assets=True,
+            dry_run=True,
+        )
+
+    assert result is not None
+    assert result.name == "test_circuit"
+    assert result.id is None
+    client.register_entity.assert_not_called()
+
+
+def test_generate_compressed_circuit_asset_with_gz_file(tmp_path):
+    """Test that generate_compressed_circuit_asset skips compression for .gz files."""
+    gz_file = tmp_path / "circuit.gz"
+    gz_file.write_bytes(b"fake")  # Content doesn't matter for this test
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.add_compressed_circuit_asset"
+    ) as mock_add:
+        generate_compressed_circuit_asset(
+            circuit_path=gz_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_add.assert_called_once_with(
+        client=client,
+        compressed_file=gz_file,
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_compressed_circuit_asset_non_gz_requires_output_dir():
+    """Test that a non-.gz circuit_path without output_dir raises ValueError."""
+    with pytest.raises(ValueError, match="output_dir is required"):
+        generate_compressed_circuit_asset(
+            circuit_path=Path("/some/circuit_config.json"),
+            output_dir=None,
+        )
+
+
+# --- overview / sim designer image path support ---
+
+
+def test_generate_overview_image_asset_with_provided_image(tmp_path):
+    """Test that generate_overview_image_asset uses provided image and skips generation."""
+    image_file = tmp_path / "my_overview.png"
+    image_file.write_bytes(b"fake png data")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    # File should be copied with the expected name
+    assert (output_dir / "circuit_visualization.png").exists()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["circuit_visualization.png"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_sim_designer_image_asset_with_provided_image(tmp_path):
+    """Test that generate_sim_designer_image_asset uses provided image and skips generation."""
+    image_file = tmp_path / "my_sim_image.png"
+    image_file.write_bytes(b"fake png data")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
+        generate_sim_designer_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    # File should be copied with the expected name
+    assert (output_dir / "simulation_designer_image.png").exists()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["simulation_designer_image.png"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_sim_designer_image_asset_skips_when_no_figure(tmp_path):
+    """When no figure can be generated, registration is skipped (no template fallback)."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with (
+        patch("obi_one.utils.circuit.generate_overview_figure", return_value=None) as mock_figure,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+    ):
+        generate_sim_designer_image_asset(
+            plot_dir=tmp_path / "empty_plots",
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_figure.assert_called_once()
+    mock_add.assert_not_called()
+    assert not (output_dir / "simulation_designer_image.png").exists()
+
+
+def test_generate_overview_image_asset_webp_format(tmp_path):
+    """Test that a .webp overview image is copied with the correct name."""
+    image_file = tmp_path / "overview.webp"
+    image_file.write_bytes(b"fake webp data")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    assert (output_dir / "circuit_visualization.webp").exists()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["circuit_visualization.webp"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_overview_image_asset_no_registration_without_client(tmp_path):
+    """Test that no registration happens when client is None."""
+    image_file = tmp_path / "overview.png"
+    image_file.write_bytes(b"fake")
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    with patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add:
+        generate_overview_image_asset(
+            plot_dir=None,
+            output_dir=output_dir,
+            image_path=image_file,
+            client=None,
+            circuit_entity=None,
+        )
+
+    mock_add.assert_not_called()
+    assert (output_dir / "circuit_visualization.png").exists()
+
+
+# --- authorized_public + license check ---
+
+
+def test_register_circuit_public_without_license():
+    """Test that registering a public circuit without a license raises."""
+    client = MagicMock()
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with pytest.raises(ValueError, match="license is required"):
+        register_circuit(
+            client=client,
+            circuit_path="/nonexistent/path",
+            name="test",
+            description="test",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            authorized_public=True,
+            license=None,
+        )
+
+
+# --- _resolve_target_simulator ---
+
+
+def test_resolve_target_simulator_no_config():
+    """Test that target_simulator is returned as-is when config has no target_simulator."""
+    circuit = MagicMock()
+    circuit.sonata_circuit.config.get.return_value = None
+
+    result = _resolve_target_simulator("NEURON", circuit)
+    assert result == "NEURON"
+
+
+def test_resolve_target_simulator_config_matches():
+    """Test that target_simulator is returned when config matches the provided value."""
+    circuit = MagicMock()
+    circuit.sonata_circuit.config.get.return_value = "NEURON"
+
+    result = _resolve_target_simulator("NEURON", circuit)
+    assert result == "NEURON"
+
+
+def test_resolve_target_simulator_config_mismatch():
+    """Test that a mismatch between provided and config target_simulator raises."""
+    circuit = MagicMock()
+    circuit.sonata_circuit.config.get.return_value = "CORENEURON"
+
+    with pytest.raises(ValueError, match="does not match"):
+        _resolve_target_simulator("NEURON", circuit)
+
+
+# --- register_circuit_from_metadata (target_simulator required) ---
+
+
+def test_register_circuit_from_metadata_missing_target_simulator():
+    """Test that missing target_simulator key in metadata raises a KeyError."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        # "target_simulator" intentionally missing
+    }
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.register.check_if_circuit_exists"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_subject"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region_hierarchy"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_hierarchy_species"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_license"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_root_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_parent_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_exp_date"),
+        pytest.raises(KeyError, match="target_simulator"),
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
+        )
+
+
+def test_register_circuit_from_metadata_forwards_include_overview_images():
+    """include_overview_images is passed through to register_circuit."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        "target_simulator": "NEURON",
+    }
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.register.check_if_circuit_exists"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_subject"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region_hierarchy"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_hierarchy_species"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_license"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_root_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_parent_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_exp_date"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_circuit") as mock_register,
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
+            include_overview_images=False,
+        )
+
+    assert mock_register.call_args.kwargs["include_overview_images"] is False
+
+
+def test_register_circuit_neurodamus_validation_runs_in_process():
+    """neurodamus_validation registers as draft, skips SONATA, runs in-process checks."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = uuid4()
+    refreshed = MagicMock()
+    refreshed.id = registered.id
+    refreshed.lifecycle_status = "active"
+    client.register_entity.return_value = registered
+    client.get_entity.return_value = refreshed
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+        patch("obi_one.utils.circuit_validation.run_validation") as mock_validate,
+        patch(
+            "obi_one.scientific.tasks.circuit_validation.task.run_circuit_validation"
+        ) as mock_neurodamus,
+    ):
+        mock_neurodamus.return_value = {"valid": True, "errors": [], "warnings": []}
+        result = register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            skip_additional_assets=True,
+            neurodamus_validation=True,
+        )
+
+    mock_validate.assert_not_called()
+    circuit_model = client.register_entity.call_args[0][0]
+    assert circuit_model.lifecycle_status == "draft"
+    mock_neurodamus.assert_called_once_with(
+        db_client=client,
+        circuit_id=registered.id,
+    )
+    assert result is refreshed
+
+
+def test_register_circuit_neurodamus_validation_raises_on_failure():
+    """Failed in-process neurodamus validation raises ValueError."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock()
+    registered.name = "test_circuit"
+    registered.id = uuid4()
+    client.register_entity.return_value = registered
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+        patch("obi_one.utils.circuit_validation.run_validation"),
+        patch(
+            "obi_one.scientific.tasks.circuit_validation.task.run_circuit_validation"
+        ) as mock_neurodamus,
+    ):
+        mock_neurodamus.return_value = {
+            "valid": False,
+            "errors": ["MOD compile failed"],
+            "warnings": [],
+        }
+        with pytest.raises(ValueError, match="Neurodamus validation failed"):
+            register_circuit(
+                client=client,
+                circuit_path=str(circuit_path),
+                name="test_circuit",
+                description="A test circuit",
+                build_category="computational_model",
+                brain_region=brain_region,
+                subject=subject,
+                target_simulator="NEURON",
+                skip_additional_assets=True,
+                neurodamus_validation=True,
+            )
+
+
+def test_register_circuit_from_metadata_forwards_neurodamus_validation():
+    """neurodamus_validation is forwarded to register_circuit."""
+    client = MagicMock()
+    metadata = {
+        "name": "test",
+        "description": "test",
+        "build_category": "computational_model",
+        "species": "Mus musculus",
+        "subject": "mouse-subject",
+        "brain_region": "SSp",
+        "brain_region_hierarchy": "test-hierarchy",
+        "target_simulator": "NEURON",
+    }
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.register.check_if_circuit_exists"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_subject"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region_hierarchy"),
+        patch("obi_one.db_sdk.registration.circuit.register.check_hierarchy_species"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_brain_region"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_license"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_root_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_parent_circuit"),
+        patch("obi_one.db_sdk.registration.circuit.register.get_exp_date"),
+        patch("obi_one.db_sdk.registration.circuit.register.register_circuit") as mock_register,
+    ):
+        register_circuit_from_metadata(
+            client=client,
+            circuit_metadata=metadata,
+            circuit_path="/some/path",
+            neurodamus_validation=True,
+        )
+
+    assert mock_register.call_args.kwargs["neurodamus_validation"] is True
+
+
+# --- generate_additional_circuit_assets: compressed skip / force ---
+
+
+def test_generate_additional_skips_compressed_when_already_present(tmp_path):
+    """Skip compression when compressed_sonata_circuit exists and force is False."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    asset = MagicMock()
+    asset.label = "compressed_sonata_circuit"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [asset]
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=False,
+        )
+
+    mock_compress.assert_not_called()
+
+
+def test_generate_additional_force_regenerates_compressed(tmp_path):
+    """With force=True, regenerate compressed even if the asset already exists."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    asset = MagicMock()
+    asset.label = "compressed_sonata_circuit"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [asset]
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=True,
+        )
+
+    mock_compress.assert_called_once()
+
+
+def test_generate_additional_compresses_when_missing(tmp_path):
+    """Compress when the entity has no compressed_sonata_circuit asset."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=False,
+        )
+
+    mock_compress.assert_called_once()
+
+
+def test_generate_additional_skips_compressed_when_not_requested(tmp_path):
+    """include_compressed=False skips compression even when the asset is missing."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+    ) as mock_compress:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            circuit_entity=circuit_entity,
+            force=True,
+            include_compressed=False,
+        )
+
+    mock_compress.assert_not_called()
+
+
+def test_generate_additional_generates_plots_but_skips_overview_images(tmp_path):
+    """include_overview_images=False still (re)generates plots with the matrix, only the
+    overview / sim-designer images are skipped."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"
+        ) as mock_compress,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=False,
+        )
+
+    mock_compress.assert_called_once()
+    mock_matrix.assert_called_once()
+    mock_plots.assert_called_once()
+    mock_overview.assert_not_called()
+    mock_sim.assert_not_called()
+
+
+def test_generate_additional_skips_matrices_when_already_present(tmp_path):
+    """Skip matrices when circuit_connectivity_matrices exists and force is False."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    asset = MagicMock()
+    asset.label = "circuit_connectivity_matrices"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [asset]
+    circuit_entity.name = "my_circuit"
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset"
+    ) as mock_matrix:
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=False,
+            include_overview_images=False,
+        )
+
+    mock_matrix.assert_not_called()
+
+
+def test_generate_additional_regenerates_plots_with_the_matrix(tmp_path):
+    """Connectivity plots are coupled to the matrix: when the matrix is (re)generated the
+    plots are too, regardless of include_overview_images."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=True,
+        )
+
+    mock_matrix.assert_called_once()
+    mock_plots.assert_called_once()
+
+
+def test_generate_additional_skips_an_image_already_present(tmp_path):
+    """An image already attached (e.g. a user-uploaded one) is not regenerated/overwritten."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    overview_asset = MagicMock()
+    overview_asset.label = "circuit_visualization"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [overview_asset]
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ),
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=False,
+            include_overview_images=True,
+        )
+
+    # The overview image is already present, so it is skipped; the sim-designer image is not.
+    mock_overview.assert_not_called()
+    mock_sim.assert_called_once()
+
+
+def test_generate_additional_image_failures_do_not_abort(tmp_path):
+    """Overview and sim-designer image failures are logged as warnings without aborting."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ),
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset",
+            side_effect=RuntimeError("overview boom"),
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset",
+            side_effect=RuntimeError("sim boom"),
+        ) as mock_sim,
+    ):
+        # Should not raise despite both image helpers failing.
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=True,
+        )
+
+    mock_overview.assert_called_once()
+    mock_sim.assert_called_once()
+
+
+def test_generate_additional_skips_sim_designer_image_already_present(tmp_path):
+    """A sim-designer image already attached is not regenerated; the overview one still is."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    sim_asset = MagicMock()
+    sim_asset.label = "simulation_designer_image"
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = [sim_asset]
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ),
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=False,
+            include_overview_images=True,
+        )
+
+    # The sim-designer image is already present, so it is skipped; the overview one is not.
+    mock_sim.assert_not_called()
+    mock_overview.assert_called_once()
+
+
+def test_generate_additional_without_edge_population_skips_matrix_and_plots(tmp_path):
+    """With no edge_population (e.g. single-cell circuits) the matrix and its plots are skipped."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset"
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population=None,
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=False,
+        )
+
+    mock_matrix.assert_not_called()
+    mock_plots.assert_not_called()
+
+
+def test_generate_additional_skips_plots_when_matrix_generation_fails(tmp_path):
+    """If matrix generation raises, matrix_config stays None so the coupled plots are skipped,
+    and the failure does not abort the run."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            side_effect=RuntimeError("extraction boom"),
+        ) as mock_matrix,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"
+        ) as mock_plots,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=False,
+        )
+
+    mock_matrix.assert_called_once()
+    mock_plots.assert_not_called()
+
+
+def test_generate_additional_step_failure_does_not_abort_remaining_steps(tmp_path):
+    """Each step is independent: a failing compression is logged but images still generate."""
+    circuit_dir = tmp_path / "my_circuit"
+    circuit_dir.mkdir()
+    config = circuit_dir / "circuit_config.json"
+    config.write_text("{}")
+
+    circuit_entity = MagicMock()
+    circuit_entity.id = "circuit-1"
+    circuit_entity.assets = []
+    circuit_entity.name = "my_circuit"
+
+    with (
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_compressed_circuit_asset",
+            side_effect=RuntimeError("compress boom"),
+        ) as mock_compress,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_connectivity_matrix_asset",
+            return_value=(MagicMock(), MagicMock(), "edges"),
+        ),
+        patch("obi_one.db_sdk.registration.circuit.generate.generate_connectivity_plot_assets"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_overview_image_asset"
+        ) as mock_overview,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.generate_sim_designer_image_asset"
+        ) as mock_sim,
+    ):
+        generate_additional_circuit_assets(
+            circuit_path=config,
+            edge_population="edges",
+            circuit_entity=circuit_entity,
+            force=True,
+            include_overview_images=True,
+        )
+
+    mock_compress.assert_called_once()
+    mock_overview.assert_called_once()
+    mock_sim.assert_called_once()
+
+
+def test_generate_overview_image_asset_generates_figure_when_no_image_provided(tmp_path):
+    """Without a provided image, the overview figure is generated from the plots and registered."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    generated = output_dir / "circuit_visualization.png"
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with (
+        patch(
+            "obi_one.utils.circuit.generate_overview_figure", return_value=generated
+        ) as mock_figure,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+    ):
+        generate_overview_image_asset(
+            plot_dir=tmp_path / "plots",
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_figure.assert_called_once()
+    mock_add.assert_called_once_with(
+        client=client,
+        plot_dir=output_dir,
+        plot_files=["circuit_visualization.png"],
+        registered_circuit=circuit_entity,
+    )
+
+
+def test_generate_overview_image_asset_skips_when_no_figure(tmp_path):
+    """When no figure can be generated, the overview registration is skipped."""
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+
+    with (
+        patch("obi_one.utils.circuit.generate_overview_figure", return_value=None) as mock_figure,
+        patch("obi_one.db_sdk.registration.circuit.generate.add_image_assets") as mock_add,
+    ):
+        generate_overview_image_asset(
+            plot_dir=tmp_path / "empty_plots",
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_figure.assert_called_once()
+    mock_add.assert_not_called()
+
+
+def test_register_circuit_preserves_parent_and_inherited_emodel_derivations():
+    """A child circuit keeps the parent link and inherits the parent's EModel link."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    emodel = MagicMock(name="emodel")
+    emodel.id = "emodel-id"
+    parent_derivation = MagicMock(name="parent_derivation")
+    parent_derivation.used = emodel
+    parent_derivation.label = "hoc:cADpyr_L5TPC"
+    client.search_entity.return_value.all.return_value = [parent_derivation]
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+        )
+
+    assert mock_derivation.call_count == 2
+    assert mock_derivation.call_args_list[0].kwargs["from_entity"] is parent
+    assert mock_derivation.call_args_list[1].kwargs["from_entity"] is emodel
+    assert (
+        mock_derivation.call_args_list[1].kwargs["derivation_type"] == DerivationType.emodel_circuit
+    )
+    assert mock_derivation.call_args_list[1].kwargs["label"] == "hoc:cADpyr_L5TPC"
+    assert client.search_entity.call_args.kwargs["query"] == {
+        "generated__id": "parent-id",
+        "derivation_type": DerivationType.emodel_circuit,
+    }
+
+
+def test_register_circuit_dry_run_with_parent_queries_inherited_derivations():
+    """Dry runs query inherited parent derivations but do not register them."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+            dry_run=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["dry_run"] is True
+    client.search_entity.assert_called_once()
+
+
+def test_register_circuit_ignores_parent_derivation_without_source():
+    """Parent derivations without a source do not create an inherited link."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    parent_derivation = MagicMock(name="parent_derivation")
+    parent_derivation.used = None
+    client.search_entity.return_value.all.return_value = [parent_derivation]
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=parent,
+            derivation_type="circuit_extraction",
+            skip_additional_assets=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is parent
+
+
+def test_register_circuit_registers_explicit_derivation_source():
+    """An explicit derivation source is registered when no parent circuit is provided."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    emodel = _FakeEModel(id="emodel-id")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:cADpyr_L5TPC"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=emodel,
+            derivation_label="hoc:cADpyr_L5TPC",
+            skip_additional_assets=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is emodel
+    assert mock_derivation.call_args.kwargs["label"] == "hoc:cADpyr_L5TPC"
+
+
+def test_register_circuit_registers_multiple_emodel_derivations():
+    """A list of EModels registers one labelled derivation per EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    client = MagicMock()
+    registered = MagicMock(name="registered_circuit")
+    registered.name = "test_circuit"
+    registered.id = "new-id"
+    client.register_entity.return_value = registered
+    emodel_a = _FakeEModel(id="emodel-a")
+    emodel_b = _FakeEModel(id="emodel-b")
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch("obi_one.db_sdk.registration.circuit.register.register_sonata_circuit_asset"),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:mdl_a", "hoc:mdl_b"},
+        ),
+        patch(
+            "obi_one.db_sdk.registration.circuit.register.register_derivation"
+        ) as mock_derivation,
+        patch("obi_one.db_sdk.registration.circuit.register.generate_additional_circuit_assets"),
+    ):
+        register_circuit(
+            client=client,
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[emodel_a, emodel_b],
+            derivation_label=["hoc:mdl_a", "hoc:mdl_b"],
+            skip_additional_assets=True,
+        )
+
+    assert mock_derivation.call_count == 2
+    calls = mock_derivation.call_args_list
+    assert calls[0].kwargs["from_entity"] is emodel_a
+    assert calls[0].kwargs["label"] == "hoc:mdl_a"
+    assert calls[0].kwargs["derivation_type"].value == "emodel_circuit"
+    assert calls[1].kwargs["from_entity"] is emodel_b
+    assert calls[1].kwargs["label"] == "hoc:mdl_b"
+
+
+def test_register_circuit_rejects_mismatched_emodel_label_lists():
+    """List-valued provenance requires one label per EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(ValueError, match="same length"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[_FakeEModel(id="a"), _FakeEModel(id="b")],
+            derivation_label=["hoc:mdl_a"],
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_non_emodel_in_list():
+    """Every element of a list-valued source must be an EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(TypeError, match="derived_from_emodel must be an EModel"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[_FakeEModel(id="a"), MagicMock()],
+            derivation_label=["hoc:mdl_a", "hoc:mdl_b"],
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_unmatched_label_in_list():
+    """Every label of a list-valued source must match a circuit model_template."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:mdl_a"},
+        ),
+        pytest.raises(ValueError, match="derivation_label must match"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=[_FakeEModel(id="a"), _FakeEModel(id="b")],
+            derivation_label=["hoc:mdl_a", "hoc:missing"],
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+@pytest.mark.parametrize(
+    "parent_derivation_type",
+    [DerivationType.circuit_customization, DerivationType.circuit_simplification],
+)
+def test_parent_emodel_derivations_are_skipped_for_modified_circuit_types(
+    parent_derivation_type,
+):
+    """Customization and simplification may replace the parent's EModels."""
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.register.register_derivation"
+    ) as mock_derivation:
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=MagicMock(),
+            parent_derivation_type=parent_derivation_type,
+            model_templates={"hoc:Cell"},
+            dry_run=False,
+        )
+
+    client.search_entity.assert_not_called()
+    mock_derivation.assert_not_called()
+
+
+def test_parent_emodel_derivations_filter_by_new_circuit_templates():
+    """Only EModels still referenced by the new circuit are copied."""
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    retained = MagicMock(used=MagicMock(), label="hoc:Retained")
+    removed = MagicMock(used=MagicMock(), label="hoc:Removed")
+    client.search_entity.return_value.all.return_value = [retained, removed]
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.register.register_derivation"
+    ) as mock_derivation:
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=MagicMock(),
+            parent_derivation_type=DerivationType.circuit_extraction,
+            model_templates={"hoc:Retained"},
+            dry_run=False,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["from_entity"] is retained.used
+    assert mock_derivation.call_args.kwargs["label"] == "hoc:Retained"
+
+
+def test_parent_emodel_derivations_are_registered_in_dry_run():
+    """Dry runs query inherited sources but delegate registration skipping to the helper."""
+    client = MagicMock()
+    parent = _FakeCircuit(id="parent-id", root_circuit_id="root-id")
+    derivation = MagicMock(used=MagicMock(), label="hoc:Cell")
+    client.search_entity.return_value.all.return_value = [derivation]
+
+    with patch(
+        "obi_one.db_sdk.registration.circuit.register.register_derivation"
+    ) as mock_derivation:
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=None,
+            parent_derivation_type=DerivationType.circuit_extraction,
+            model_templates={"hoc:Cell"},
+            dry_run=True,
+        )
+
+    mock_derivation.assert_called_once()
+    assert mock_derivation.call_args.kwargs["dry_run"] is True
+
+
+def test_register_circuit_rejects_parent_and_explicit_emodel():
+    """Parent and explicit EModel provenance are mutually exclusive."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(ValueError, match="cannot both be provided"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=_FakeCircuit(id="parent-id", root_circuit_id="root-id"),
+            derived_from_emodel=_FakeEModel(id="emodel-id"),
+            derivation_type=DerivationType.emodel_circuit,
+            derivation_label="hoc:Cell",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_requires_label_for_explicit_emodel():
+    """Explicit EModel provenance requires the model-template label."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        pytest.raises(ValueError, match="derivation_label is required"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=_FakeEModel(id="emodel-id"),
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_get_biophysical_model_templates_skips_missing_property():
+    """Populations without model_template do not contribute inherited EModel labels."""
+    population = SimpleNamespace(type="biophysical", property_names=[])
+    nodes = MagicMock(population_names=["biophysical"])
+    nodes.__getitem__.return_value = population
+    circuit = SimpleNamespace(sonata_circuit=SimpleNamespace(nodes=nodes))
+
+    assert _get_biophysical_model_templates(circuit) == set()
+
+
+def test_register_circuit_rejects_non_circuit_parent():
+    """A parent source must be a Circuit after UUID resolution."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with pytest.raises(TypeError, match="parent must be a Circuit"):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=MagicMock(),
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_parent_label():
+    """Parent Circuit derivations cannot carry an EModel label."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        pytest.raises(ValueError, match="derivation_label must be None"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            parent=_FakeCircuit(id="parent-id", root_circuit_id="root-id"),
+            derivation_label="hoc:Cell",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+def test_register_circuit_rejects_non_emodel_source():
+    """An explicit source must be an EModel."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        pytest.raises(TypeError, match="derived_from_emodel must be an EModel"),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=MagicMock(),
+            derivation_label="hoc:Cell",
+            skip_additional_assets=True,
+            skip_validation=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("derivation_type", "label", "message"),
+    [
+        (
+            DerivationType.circuit_extraction,
+            "hoc:Cell",
+            "derivation_type must be None",
+        ),
+        (None, "hoc:Missing", "derivation_label must match"),
+    ],
+)
+def test_register_circuit_validates_explicit_emodel_metadata(
+    derivation_type,
+    label,
+    message,
+):
+    """Explicit EModel links require fixed type metadata and a matching template."""
+    circuit_path = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"
+    brain_region, subject = _mock_brain_region_and_subject()
+
+    with (
+        _patch_models_circuit,
+        _patch_models_emodel,
+        patch(
+            "obi_one.db_sdk.registration.circuit.register._get_biophysical_model_templates",
+            return_value={"hoc:Cell"},
+        ),
+        pytest.raises(ValueError, match=message),
+    ):
+        register_circuit(
+            client=MagicMock(),
+            circuit_path=str(circuit_path),
+            name="test_circuit",
+            description="A test circuit",
+            build_category="computational_model",
+            brain_region=brain_region,
+            subject=subject,
+            target_simulator="NEURON",
+            derived_from_emodel=_FakeEModel(id="emodel-id"),
+            derivation_type=derivation_type,
+            derivation_label=label,
+            skip_additional_assets=True,
+            skip_validation=True,
+        )

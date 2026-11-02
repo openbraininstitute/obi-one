@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
 L = logging.getLogger(__name__)
 
 RC_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-results-collector.git"
-RC_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-results-collector")  # noqa: S108
+RC_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-results-collector")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_rc_repo(repo_path: Path = RC_REPO_DEFAULT_PATH) -> Path:
@@ -49,12 +49,12 @@ class AINDEPhysResultsCollectorTask(Task):
 
     config: AINDEPhysResultsCollectorSingleConfig
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure, too-many-branches]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_rc_repo()
         code_dir = repo / "code"
@@ -112,7 +112,7 @@ class AINDEPhysResultsCollectorTask(Task):
             self.config.initialize.process_name,
         ]
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

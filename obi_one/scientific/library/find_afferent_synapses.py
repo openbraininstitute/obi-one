@@ -2,8 +2,8 @@ import warnings
 
 import bluepysnap as snap
 import morphio
-import numpy  # noqa: ICN001
-import pandas  # noqa: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 from scipy import stats
 
 try:
@@ -28,7 +28,7 @@ def morphology_and_pathdistance_calculator(
     except Exception as err:
         msg = f"Error loading hdf5 morphology for {node_population} - {node_id}"
         raise RuntimeError(msg) from err
-    PD = MorphologyPathDistanceCalculator(morph)  # noqa: N806
+    PD = MorphologyPathDistanceCalculator(morph)  # ruff: ignore[non-lowercase-variable-in-function]
     return morph, PD
 
 
@@ -58,7 +58,7 @@ def all_syns_on(
         "@source_node",
         "@target_node",
     ]
-    reserved_props = syn_props + ["source_population", "edge_population", "edge_id"]  # noqa: RUF005
+    reserved_props = syn_props + ["source_population", "edge_population", "edge_id"]  # ruff: ignore[collection-literal-concatenation]
     int_props = [
         "afferent_section_id",
         "afferent_segment_id",
@@ -144,13 +144,13 @@ def apply_filters(
             raise ValueError(msg)  # This cannot happen! We check for it earlier.
         v_ = syns[k].isin(v) if isinstance(v, list) else syns[k] == v
         if not drop_nan:
-            v_ = v_ | syns[k].isna()  # noqa: PLR6104
+            v_ = v_ | syns[k].isna()  # ruff: ignore[non-augmented-assignment]
         syns = syns.loc[v_]
     return syns
 
 
 def relevant_path_distances(
-    PD: MorphologyPathDistanceCalculator,  # noqa: N803
+    PD: MorphologyPathDistanceCalculator,  # ruff: ignore[invalid-argument-name]
     syns: pandas.DataFrame,
 ) -> tuple[numpy.ndarray, numpy.ndarray]:
     """Calculates and return path distances to the soma and all pairwise path distances for
@@ -192,12 +192,12 @@ def select_randomly(
         if raise_insufficient and (n > len(syns)):
             msg = f"Fewer than the requested count of {n} found!"
             raise RuntimeError(msg)
-        return syns.iloc[numpy.random.choice(len(syns), numpy.minimum(n, len(syns)), replace=False)]  # noqa: NPY002
+        return syns.iloc[numpy.random.choice(len(syns), numpy.minimum(n, len(syns)), replace=False)]  # ruff: ignore[numpy-legacy-random]
     if p is not None:
         if p < 0.0 or p > 1.0:
             msg = f"p: {p}, but must be between 0 and 1!"
             raise ValueError(msg)
-        picked = numpy.random.rand(len(syns)) < p  # noqa: NPY002
+        picked = numpy.random.rand(len(syns)) < p  # ruff: ignore[numpy-legacy-random]
         return syns.loc[picked]
     msg = "Must specify number or fraction of synapses!"
     raise ValueError(msg)
@@ -287,7 +287,7 @@ def _pd_gaussian_selector(
         raise RuntimeError(msg)
 
     distr = stats.norm(soma_pd_mean, soma_pd_sd).pdf(soma_pds)
-    sel_idx = numpy.random.choice(  # noqa: NPY002
+    sel_idx = numpy.random.choice(  # ruff: ignore[numpy-legacy-random]
         range(len(soma_pds)), numpy.minimum(n, len(soma_pds)), p=distr / distr.sum()
     )
     return sel_idx
@@ -378,7 +378,7 @@ def select_clusters_by_max_distance(
                 soma_pds, soma_pd_mean, soma_pd_sd, 1, raise_insufficient=True
             )[0]
         else:
-            ctr = numpy.random.choice(len(syns))  # noqa: NPY002
+            ctr = numpy.random.choice(len(syns))  # ruff: ignore[numpy-legacy-random]
         clstr_ids = pw_pds[ctr] < cluster_max_distance
         syns_out.append(syns.loc[clstr_ids])
         syns = syns.loc[~clstr_ids]
@@ -436,7 +436,7 @@ def select_clusters_by_count(
                 soma_pds, soma_pd_mean, soma_pd_sd, 1, raise_insufficient=True
             )[0]
         else:
-            ctr = numpy.random.choice(len(syns))  # noqa: NPY002
+            ctr = numpy.random.choice(len(syns))  # ruff: ignore[numpy-legacy-random]
         clstr_ids = numpy.argsort(pw_pds[ctr])[:n_per_cluster]
         other_ids = numpy.setdiff1d(range(len(syns)), clstr_ids)
         syns_out.append(syns.iloc[clstr_ids])

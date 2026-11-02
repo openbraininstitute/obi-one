@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.aind_ephys._08_processing_qc.config import (
 L = logging.getLogger(__name__)
 
 QC_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-processing-qc.git"
-QC_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-processing-qc")  # noqa: S108
+QC_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-processing-qc")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_qc_repo(repo_path: Path = QC_REPO_DEFAULT_PATH) -> Path:
@@ -67,12 +67,12 @@ class AINDEPhysProcessingQCTask(Task):
 
     config: AINDEPhysProcessingQCSingleConfig
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_qc_repo()
         code_dir = repo / "code"
@@ -127,7 +127,7 @@ class AINDEPhysProcessingQCTask(Task):
             argv.append("--no-event-metrics")
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

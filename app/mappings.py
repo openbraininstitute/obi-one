@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 
 from entitysdk import models
@@ -6,70 +7,108 @@ from entitysdk.types import TaskActivityType, TaskConfigType
 from app.config import settings
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import (
+    AnyTaskDefinition,
     BuiltinCode,
     Capabilities,
     ClusterResources,
+    LaunchableTaskDefinition,
     MachineResources,
     PythonRepositoryCode,
     TaskDefinition,
     TaskDefinitionLegacy,
     TaskGroupLegacyDefinition,
 )
-from app.types import BuiltinScript, MachineExecutorImageType, TaskType
+from app.types import BuiltinScript, MachineExecutorImageType, MachinePlacementType, TaskType
 from obi_one.config import settings as obi_settings
+from obi_one.utils.versions import release_tag_ref
 
-APP_TAG = f"tag:{(settings.APP_VERSION or '0.0.0').split('-')[0]}"
 OBI_ONE_CODE_PATH = str(Path(settings.OBI_ONE_LAUNCH_PATH) / "main.py")
 OBI_ONE_DEPS_DIR = Path(settings.OBI_ONE_LAUNCH_PATH) / "dependencies"
 
 
-TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
-    TaskType.circuit_extraction: TaskDefinition(
+def _obi_one_code(
+    deps_name: str,
+    *,
+    capabilities: Capabilities | None = None,
+) -> PythonRepositoryCode:
+    """Standard obi-one launch code: the obi-one repo at the service's release tag, running main.py.
+
+    Legacy tasks with a different repo/entrypoint build ``PythonRepositoryCode`` directly.
+    """
+    return PythonRepositoryCode(
+        location=settings.OBI_ONE_REPO,
+        ref=release_tag_ref(settings.APP_VERSION),
+        path=OBI_ONE_CODE_PATH,
+        dependencies=str(OBI_ONE_DEPS_DIR / deps_name),
+        capabilities=capabilities or Capabilities(),
+    )
+
+
+def _neurodamus_image_code() -> PythonRepositoryCode:
+    """Launch code for tasks that run on the neurodamus executor image."""
+    return _obi_one_code("neurodamus_image.txt", capabilities=Capabilities(private_packages=True))
+
+
+def _build_task_definitions(
+    definitions: Iterable[AnyTaskDefinition],
+) -> dict[TaskType, AnyTaskDefinition]:
+    """Index ``definitions`` by their own ``task_type``, rejecting duplicates.
+
+    Keying by ``task_type`` means each task type is written once per definition.
+    """
+    result: dict[TaskType, AnyTaskDefinition] = {}
+    for definition in definitions:
+        if definition.task_type in result:
+            msg = f"Duplicate task definition for {definition.task_type!r}"
+            raise ValueError(msg)
+        result[definition.task_type] = definition
+    return result
+
+
+_TASK_DEFINITIONS: list[AnyTaskDefinition] = [
+    TaskDefinition(
         task_type=TaskType.circuit_extraction,
         config_type=TaskConfigType.circuit_extraction__config,
         activity_type=TaskActivityType.circuit_extraction__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "circuit_extraction.txt"),
-        ),
+        code=_obi_one_code("circuit_extraction.txt"),
         resources=MachineResources(
             cores=1,
             memory=2,
             timelimit="00:10",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
-    TaskType.morphology_skeletonization: TaskDefinition(
-        task_type=TaskType.morphology_skeletonization,
-        config_type=TaskConfigType.skeletonization__config,
-        activity_type=TaskActivityType.skeletonization__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "skeletonization.txt"),
-            capabilities=Capabilities(private_packages=True),
-        ),
+    TaskDefinition(
+        task_type=TaskType.circuit_single_build,
+        config_type=TaskConfigType.circuit_single_build__config,
+        activity_type=TaskActivityType.circuit_single_build__execution,
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
-            cores=16,
-            memory=32,
-            timelimit="02:00",
+            cores=1,
+            memory=8,
+            timelimit="00:30",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
-    TaskType.circuit_simulation: TaskGroupLegacyDefinition(
+    TaskGroupLegacyDefinition(
         task_type=TaskType.circuit_simulation,
         config_type=models.Simulation,
     ),
-    TaskType.circuit_simulation_inait_machine: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_inait_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location="https://github.com/openbraininstitute-partners/inait",
-            ref="commit:96b339f48bf460bcd9cb8070349476479b20226d",
+            ref="commit:62a6257b91872483ee6ffd6d5f61ba8642ffe67f",
             path="scripts/simulate-circuits/run.py",
             dependencies="scripts/simulate-circuits/requirements.txt",
             staged_directories=["wheels", "scripts/simulate-circuits/"],
@@ -79,18 +118,22 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
             image_type=MachineExecutorImageType.python_3_12_inait,
         ),
     ),
-    TaskType.circuit_simulation_brian2_machine: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_brian2_machine,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
         code=PythonRepositoryCode(
             location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
+            ref=release_tag_ref(settings.APP_VERSION),
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            dependencies="obi_one/scientific/library/simulation/brian2/requirements.txt",
+            dependencies="launch_scripts/launch_brian2_simulation/dependencies/default.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
@@ -98,26 +141,47 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="02:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
-    TaskType.circuit_simulation_neuron: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=1,
             memory=8,
             timelimit="00:10",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.circuit_simulation_neurodamus_cluster: TaskDefinitionLegacy(
+    TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neurodamus_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=_neurodamus_image_code(),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neurodamus_cluster,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
@@ -131,32 +195,112 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             compute_cell="local",
         ),
     ),
-    TaskType.ion_channel_model_simulation_execution: TaskDefinitionLegacy(
+    TaskDefinition(
+        task_type=TaskType.ion_channel_fitting,
+        config_type=TaskConfigType.ion_channel_modeling__config,
+        activity_type=TaskActivityType.ion_channel_modeling__execution,
+        code=_neurodamus_image_code(),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_ec2,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.memodel_build,
+        config_type=TaskConfigType.memodel_build__config,
+        activity_type=TaskActivityType.memodel_build__execution,
+        code=_obi_one_code("default.txt"),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="00:30",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinitionLegacy(
         task_type=TaskType.ion_channel_model_simulation_execution,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
-        ),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
-            cores=1,
-            memory=2,
-            timelimit="00:10",
+            cores=4,
+            memory=8,
+            timelimit="01:00",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_ec2,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
-    TaskType.em_synapse_mapping: TaskDefinition(
+    TaskDefinitionLegacy(
+        task_type=TaskType.single_neuron_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=_neurodamus_image_code(),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_ec2,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinitionLegacy(
+        task_type=TaskType.single_neuron_synaptome_simulation_execution,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=_neurodamus_image_code(),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.ecs_ec2,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.circuit_synaptic_physiology_assignment,
+        config_type=TaskConfigType.circuit_synaptic_physiology_assignment__config,
+        activity_type=TaskActivityType.circuit_synaptic_physiology_assignment__execution,
+        code=_obi_one_code("synapse_parameterization.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
         task_type=TaskType.em_synapse_mapping,
         config_type=TaskConfigType.em_synapse_mapping__config,
         activity_type=TaskActivityType.em_synapse_mapping__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "default.txt"),
+        code=_obi_one_code(
+            "default.txt",
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),
@@ -166,27 +310,124 @@ TASK_DEFINITIONS: dict[TaskType, TaskDefinition] = {
             memory=8,
             timelimit="00:30",
             compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
-    TaskType.extracellular_recording_weights_calculation: TaskDefinition(
+    TaskDefinition(
+        task_type=TaskType.efeature_extraction,
+        config_type=TaskConfigType.efeature_extraction__config,
+        activity_type=TaskActivityType.efeature_extraction__execution,
+        code=_obi_one_code("emodel_building.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=4,
+            timelimit="00:30",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.emodel_optimization,
+        config_type=TaskConfigType.emodel_optimization__config,
+        activity_type=TaskActivityType.emodel_optimization__execution,
+        code=BuiltinCode(script=BuiltinScript.emodel_optimisation),
+        resources=ClusterResources(
+            instances=1,
+            instance_type="large",
+            timelimit="02:00",
+            compute_cell="cell_a",
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.emodel_validation,
+        config_type=TaskConfigType.optimized_emodel_analysis_validation__config,
+        activity_type=TaskActivityType.optimized_emodel_analysis_validation__execution,
+        code=_obi_one_code("emodel_building.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
         task_type=TaskType.extracellular_recording_weights_calculation,
         config_type=TaskConfigType.extracellular_recording_weights_calculation__config,
         activity_type=TaskActivityType.extracellular_recording_weights_calculation__execution,
-        code=PythonRepositoryCode(
-            location=settings.OBI_ONE_REPO,
-            ref=APP_TAG,
-            path=OBI_ONE_CODE_PATH,
-            dependencies=str(OBI_ONE_DEPS_DIR / "extracellular_recording_weights_calculation.txt"),
+        code=_neurodamus_image_code(),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.morphology_skeletonization,
+        config_type=TaskConfigType.skeletonization__config,
+        activity_type=TaskActivityType.skeletonization__execution,
+        code=_obi_one_code("skeletonization.txt", capabilities=Capabilities(private_packages=True)),
+        resources=MachineResources(
+            cores=16,
+            memory=32,
+            timelimit="02:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.circuit_simplification,
+        config_type=TaskConfigType.circuit_simplification__config,
+        activity_type=TaskActivityType.circuit_simplification__execution,
+        code=_obi_one_code(
+            "circuit_simplification.txt", capabilities=Capabilities(private_packages=True)
         ),
         resources=MachineResources(
             cores=1,
             memory=8,
             timelimit="02:00",
             compute_cell="local",
-            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
-}  # ty:ignore[invalid-assignment]
+]
+
+TASK_DEFINITIONS: dict[TaskType, AnyTaskDefinition] = _build_task_definitions(_TASK_DEFINITIONS)
+
+
+def get_launchable_task_definition(task_type: TaskType) -> LaunchableTaskDefinition:
+    """Return a launchable task definition (with code and resources).
+
+    ``TaskGroupLegacyDefinition`` entries are selectors only and must be resolved to a concrete
+    task type before calling this.
+    """
+    task_definition = TASK_DEFINITIONS[task_type]
+    if isinstance(task_definition, TaskGroupLegacyDefinition):
+        msg = f"Task type '{task_type}' is a task group, not a launchable task"
+        raise TypeError(msg)
+    return task_definition
+
 
 CLUSTER_INSTANCES_INFO = {
     "cell_a": [

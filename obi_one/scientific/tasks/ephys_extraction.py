@@ -3,10 +3,10 @@
 from typing import ClassVar
 
 import entitysdk.client
-from fastapi import HTTPException
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -23,7 +23,6 @@ from obi_one.scientific.library.ephys_extraction import (
 class ElectrophysiologyMetricsScanConfig(ScanConfig):
     """ScanConfig for extracting electrophysiological metrics from a trace."""
 
-    single_coord_class_name: ClassVar[str] = "ElectrophysiologyMetricsSingleConfig"
     name: ClassVar[str] = "Electrophysiology Metrics"
     description: ClassVar[str] = "Calculates ephys metrics for a given trace."
 
@@ -74,8 +73,8 @@ class ElectrophysiologyMetricsTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> ElectrophysiologyMetricsOutput:
         try:
             ephys_metrics = get_electrophysiology_metrics(
@@ -86,6 +85,7 @@ class ElectrophysiologyMetricsTask(Task):
                 stimuli_types=self.config.initialize.protocols,
             )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            message = f"Internal Server Error: {e}"
+            raise OBIONEError(message) from e
         else:
             return ephys_metrics

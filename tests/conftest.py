@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from uuid import UUID
 
 import pytest
@@ -9,6 +10,7 @@ from app.application import app
 from app.dependencies import auth
 from app.schemas.auth import UserContext
 
+from tests.httpx_mock import HTTPXMock, mock_httpx
 from tests.utils import (
     AUTH_HEADER_ADMIN,
     AUTH_HEADER_USER_1,
@@ -24,6 +26,12 @@ from tests.utils import (
     VIRTUAL_LAB_ID,
     ClientProxy,
 )
+
+
+@pytest.fixture
+def httpx_mock() -> Generator[HTTPXMock, None, None]:
+    with mock_httpx() as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -102,7 +110,7 @@ def _override_check_user_info(
         (TOKEN_USER_2, UUID(UNRELATED_PROJECT_ID)): user_context_user_2,
     }
 
-    def mock_check_user_info(*, project_context, token, http_client):  # noqa: ARG001
+    def mock_check_user_info(*, project_context, token, http_client):  # ruff: ignore[unused-function-argument]
         return mapping[token.credentials, project_context.project_id]
 
     monkeypatch.setattr(auth, "_check_user_info", mock_check_user_info)

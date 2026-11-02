@@ -18,7 +18,7 @@ from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_p
 L = logging.getLogger(__name__)
 
 PREPROCESSING_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing.git"
-PREPROCESSING_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-preprocessing")  # noqa: S108
+PREPROCESSING_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-preprocessing")  # ruff: ignore[hardcoded-temp-file]
 
 # macOS-installable subset of the capsule's environment/Dockerfile, sufficient for a
 # local toy run. Omits Linux-only/native (wavpack-numcodecs), cloud (s3fs), and the
@@ -61,12 +61,12 @@ class AINDEPhysPreprocessingTask(Task):
 
     config: AINDEPhysPreprocessingSingleConfig
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure, too-many-branches]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_preprocessing_repo()
         capsule_python = ensure_capsule_python(repo, CAPSULE_DEPS)
@@ -119,7 +119,7 @@ class AINDEPhysPreprocessingTask(Task):
             argv += ["--t-stop", str(self.config.initialize.t_stop)]
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

@@ -16,20 +16,40 @@ from entitysdk.types import (
 )
 
 import app.services.resource_estimation.circuit_extraction
+import app.services.resource_estimation.circuit_simplification
 import app.services.resource_estimation.circuit_simulation
+import app.services.resource_estimation.extracellular_weights
+import app.services.resource_estimation.synapse_parameterization
 from app.config import settings
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
+from app.schemas.accounting import AccountingParameters
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import (
+    AnyTaskDefinition,
+    LaunchableTaskDefinition,
+    MachineResources,
     Resources,
-    TaskDefinition,
     TaskDefinitionLegacy,
     TaskLaunchInfo,
     TaskLaunchSubmit,
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
-from obi_one.utils import db_sdk
+from obi_one.db_sdk import db_sdk
+
+
+def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
+    """Pick the placement the task definition declares for this compute cell.
+
+    Cells absent from ``placement_type_map`` get no pinned placement, leaving the launch-system to
+    resolve one from the executors the cell offers. Pinning a placement a cell does not provide
+    would be rejected.
+    """
+    if not isinstance(resources, MachineResources):
+        return resources
+    return resources.model_copy(
+        update={"placement_type": resources.placement_type_map.get(compute_cell)}
+    )
 
 
 def submit_task_job(
@@ -37,7 +57,7 @@ def submit_task_job(
     db_client: entitysdk.Client,
     ls_client: httpx.Client,
     config_id: UUID,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     project_context: entitysdk.ProjectContext,
     callback_url: str,
     callbacks: list[CallBack],
@@ -66,7 +86,7 @@ def submit_task_job(
         ).id
 
     failure_callback = _generate_failure_callback(
-        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
+        activity_id=activity_id,
         task_type=task_definition.task_type,
         callback_url=callback_url,
         project_context=project_context,
@@ -78,7 +98,7 @@ def submit_task_job(
             executor_type = ExecutorType.single_node_job
             job_data = _brian2_job_data(
                 simulation_id=config_id,
-                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
+                simulation_execution_id=activity_id,
                 project_id=project_context.project_id,
                 virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
                 callbacks=all_callbacks,
@@ -88,7 +108,7 @@ def submit_task_job(
             executor_type = ExecutorType.single_node_job
             job_data = _inait_job_data(
                 simulation_id=config_id,
-                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
+                simulation_execution_id=activity_id,
                 project_id=project_context.project_id,
                 virtual_lab_id=project_context.virtual_lab_id,  # ty:ignore[invalid-argument-type]
                 callbacks=all_callbacks,
@@ -98,7 +118,16 @@ def submit_task_job(
             executor_type = ExecutorType.distributed_job
             job_data = _circuit_simulation_job_data(
                 simulation_id=config_id,
-                simulation_execution_id=activity_id,  # ty:ignore[invalid-argument-type]
+                simulation_execution_id=activity_id,
+                project_id=project_context.project_id,
+                callbacks=all_callbacks,
+                task_definition=task_definition,
+            )
+        case TaskType.emodel_optimization:
+            executor_type = ExecutorType.distributed_job
+            job_data = _emodel_optimization_job_data(
+                config_id=config_id,
+                execution_activity_id=activity_id,
                 project_id=project_context.project_id,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
@@ -108,7 +137,7 @@ def submit_task_job(
             job_data = _generic_job_data(
                 entity_cache=True,
                 config_id=config_id,
-                activity_id=activity_id,  # ty:ignore[invalid-argument-type]
+                activity_id=activity_id,
                 callbacks=all_callbacks,
                 task_definition=task_definition,
                 project_id=project_context.project_id,
@@ -121,7 +150,7 @@ def submit_task_job(
     if not response.is_success:
         db_sdk.update_activity_status(
             client=db_client,
-            activity_id=activity_id,  # ty:ignore[invalid-argument-type]
+            activity_id=activity_id,
             activity_type=activity_type,
             status=ActivityStatus.error,
         )
@@ -133,7 +162,7 @@ def submit_task_job(
 
     db_sdk.update_activity_executor(
         client=db_client,
-        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
+        activity_id=activity_id,
         activity_type=activity_type,
         execution_id=job_id,
         executor=executor_type,
@@ -141,7 +170,7 @@ def submit_task_job(
     return TaskLaunchInfo(
         task_type=task_definition.task_type,
         config_id=config_id,
-        activity_id=activity_id,  # ty:ignore[invalid-argument-type]
+        activity_id=activity_id,
         job_id=job_id,
     )
 
@@ -152,7 +181,7 @@ def _circuit_simulation_job_data(
     simulation_execution_id: UUID,
     project_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -169,6 +198,29 @@ def _circuit_simulation_job_data(
     }
 
 
+def _emodel_optimization_job_data(
+    *,
+    config_id: UUID,
+    execution_activity_id: UUID,
+    project_id: UUID,
+    callbacks: list[CallBack],
+    task_definition: LaunchableTaskDefinition,
+) -> dict:
+    resources = task_definition.resources.model_dump(mode="json")
+    return {
+        "code": task_definition.code.model_dump(mode="json"),
+        "resources": resources,
+        "inputs": [
+            "--config-id",
+            str(config_id),
+            "--execution-id",
+            str(execution_activity_id),
+        ],
+        "project_id": str(project_id),
+        "callbacks": [c.model_dump(mode="json") for c in callbacks],
+    }
+
+
 def _brian2_job_data(
     *,
     simulation_id: UUID,
@@ -176,7 +228,7 @@ def _brian2_job_data(
     project_id: UUID,
     virtual_lab_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -201,7 +253,7 @@ def _inait_job_data(
     project_id: UUID,
     virtual_lab_id: UUID,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
     return {
@@ -228,7 +280,7 @@ def _generic_job_data(
     entity_cache: bool,
     output_root: str,
     callbacks: list[CallBack],
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> dict:
     resources = task_definition.resources.model_dump(mode="json")
 
@@ -295,7 +347,7 @@ def handle_task_failure_callback(
     *,
     activity_id: UUID,
     db_client: entitysdk.Client,
-    task_definition: TaskDefinition,
+    task_definition: AnyTaskDefinition,
 ) -> None:
     # TODO: Remove once simulations are migrated to generic configs
     if isinstance(task_definition, TaskDefinitionLegacy):
@@ -319,27 +371,61 @@ def handle_task_failure_callback(
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     compute_cell: str,
+    accounting_parameters: AccountingParameters | None = None,
 ) -> Resources:
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
         case TaskType.circuit_extraction:
-            return app.services.resource_estimation.circuit_extraction.estimate_task_resources(
+            resources = app.services.resource_estimation.circuit_extraction.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,
                 compute_cell=compute_cell,
+                accounting_parameters=accounting_parameters,
             )
         case TaskType.circuit_simulation_neurodamus_cluster:
-            return app.services.resource_estimation.circuit_simulation.estimate_task_resources(
+            resources = app.services.resource_estimation.circuit_simulation.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,
                 task_definition=task_definition,
                 compute_cell=compute_cell,
             )
+        case TaskType.circuit_simplification:
+            resources = (
+                app.services.resource_estimation.circuit_simplification.estimate_task_resources(
+                    json_model=json_model,
+                    db_client=db_client,
+                    task_definition=task_definition,
+                    compute_cell=compute_cell,
+                    accounting_parameters=accounting_parameters,
+                )
+            )
+        case TaskType.circuit_synaptic_physiology_assignment:
+            resources = (
+                app.services.resource_estimation.synapse_parameterization.estimate_task_resources(
+                    json_model=json_model,
+                    db_client=db_client,
+                    task_definition=task_definition,
+                    compute_cell=compute_cell,
+                    accounting_parameters=accounting_parameters,
+                )
+            )
+        case TaskType.extracellular_recording_weights_calculation:
+            resources = (
+                app.services.resource_estimation.extracellular_weights.estimate_task_resources(
+                    json_model=json_model,
+                    db_client=db_client,
+                    task_definition=task_definition,
+                    compute_cell=compute_cell,
+                    accounting_parameters=accounting_parameters,
+                )
+            )
         case _:
-            return task_definition.resources.model_copy(update={"compute_cell": compute_cell})
+            resources = task_definition.resources.model_copy(update={"compute_cell": compute_cell})
+
+    return apply_placement_type(resources, compute_cell)
 
 
 def select_simulation_task(
@@ -398,7 +484,7 @@ def select_simulation_task(
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:
             match circuit.scale:
                 case CircuitScale.single | CircuitScale.pair | CircuitScale.small:
-                    return TaskType.circuit_simulation_neuron
+                    return TaskType.circuit_simulation_neurodamus_machine
                 case _:
                     return TaskType.circuit_simulation_neurodamus_cluster
         case _:

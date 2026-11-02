@@ -1,5 +1,5 @@
-import numpy  # NOQA: ICN001
-import pandas  # NOQA: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 from matplotlib import pyplot as plt
 
 

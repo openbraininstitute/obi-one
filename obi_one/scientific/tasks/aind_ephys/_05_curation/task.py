@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.aind_ephys._05_curation.config import (
 L = logging.getLogger(__name__)
 
 CURATION_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-curation.git"
-CURATION_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-curation")  # noqa: S108
+CURATION_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-curation")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_curation_repo(repo_path: Path = CURATION_REPO_DEFAULT_PATH) -> Path:
@@ -65,9 +65,9 @@ class AINDEPhysCurationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_curation_repo()
         code_dir = repo / "code"
@@ -103,7 +103,7 @@ class AINDEPhysCurationTask(Task):
         ]
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

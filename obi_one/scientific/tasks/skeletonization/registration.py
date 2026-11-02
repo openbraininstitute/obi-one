@@ -7,10 +7,10 @@ from entitysdk.models.cell_morphology_protocol import DigitalReconstructionCellM
 from entitysdk.types import AssetLabel, CellMorphologyProtocolDesign, DerivationType, StainingType
 
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.library.morphology_registration import (
+from obi_one.db_sdk.registration.morphology import (
     register_morphology_with_assets_and_metrics,
 )
-from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL, ROLE_NAME
+from obi_one.scientific.tasks.skeletonization.constants import LICENSE_LABEL
 from obi_one.scientific.tasks.skeletonization.schemas import Metadata, SkeletonizationOutputs
 
 L = logging.getLogger(__name__)
@@ -74,16 +74,20 @@ def register_output_resource(
     """Register the generated cell morphology and upload associated assets.
 
     This function:
-    - Retrieves required Role and License entities.
+    - Retrieves the required License entity.
     - Creates (if needed) a DigitalReconstructionCellMorphologyProtocol
       based on EM dataset metadata.
     - Registers a new CellMorphology entity via the shared registration service.
-    - Creates a Contribution linking the morphology to its creator.
     - Uploads SWC, ASC, and HDF5 morphology files as assets.
-    - Uploads the combined H5 morphology (with spines) as an extra asset.
+    - Uploads the combined H5 morphology (with spines) as an extra asset, if spines were segmented.
     - Computes and registers morphometric measurements.
-    - Attempts to generate and upload a GLB surface mesh.
     - Creates a Derivation linking EMDenseReconstructionDataset to Morphology.
+
+    Note:
+        A scientific ``Contribution`` is not created here. After entitycore's
+        PlatformUser split, ``created_by`` is a platform user (Keycloak subject),
+        not a ``Person``/``Organization``/``Consortium`` agent suitable for
+        ``Contribution.agent``.
 
     Args:
         client: Authenticated EntitySDK client used for entity registration.
@@ -94,10 +98,6 @@ def register_output_resource(
     Returns:
         The registered CellMorphology entity.
     """
-    role = client.search_entity(
-        entity_type=models.Role,
-        query={"name": ROLE_NAME},
-    ).one()
     license = client.search_entity(
         entity_type=models.License,
         query={"label": LICENSE_LABEL},
@@ -108,8 +108,8 @@ def register_output_resource(
     morphology = models.CellMorphology(
         name=metadata.cell_morphology_name,
         description=metadata.cell_morphology_description,
-        has_segmented_spines=True,
-        cell_morphology_protocol=protocol,  # ty:ignore[invalid-argument-type]
+        has_segmented_spines=outputs.h5_combined_morphology_file is not None,
+        cell_morphology_protocol=protocol,
         brain_region=metadata.brain_region,
         subject=metadata.subject,
         license=license,
@@ -121,27 +121,18 @@ def register_output_resource(
         ".asc": outputs.asc_morphology_file,
     }
 
-    extra_assets = {
-        AssetLabel.morphology_with_spines: outputs.h5_combined_morphology_file,
-    }
+    extra_assets = {}
+    if outputs.h5_combined_morphology_file is not None:
+        extra_assets[AssetLabel.morphology_with_spines] = outputs.h5_combined_morphology_file
 
-    registered_morphology, _measurement, _mesh = register_morphology_with_assets_and_metrics(
+    registered_morphology = register_morphology_with_assets_and_metrics(
         client=client,
         morphology=morphology,
         morphology_files=morphology_files,
         metrics_source_path=outputs.h5_morphology_file,
-        generate_mesh=True,
         extra_assets=extra_assets,
     )
 
-    # Create contribution linking morphology to its creator
-    client.register_entity(
-        entity=models.Contribution(
-            entity=registered_morphology,
-            role=role,
-            agent=registered_morphology.created_by,  # ty:ignore[invalid-argument-type]
-        )
-    )
     client.register_entity(
         entity=models.Derivation(
             generated=registered_morphology,

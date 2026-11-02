@@ -8,10 +8,8 @@ from uuid import uuid4
 import pytest
 from entitysdk.types import FetchFileStrategy
 
-from obi_one.scientific.library.circuit_metrics import (
-    CircuitStatsLevelOfDetail,
-    get_circuit_metrics,
-)
+from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
+from obi_one.scientific.library.circuit_metrics import get_circuit_metrics
 
 TINY_CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
 

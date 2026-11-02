@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 from pydantic import Field, NonNegativeFloat
 
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.blocks.stimuli.stimulus import (
@@ -15,41 +15,44 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import SONATA
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    ALL_NEURON_SETS_REFERENCE_UNION,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_neuron_set,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
 )
 
 
 class SpikeStimulus(StimulusWithTimestamps):
-    source_neuron_set: NeuronSetReference | None = Field(
+    source_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Source)",
+        title="Neuron set (source)",
         description="Source neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: True,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
 
-    targeted_neuron_set: NeuronSetReference | None = Field(
+    targeted_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Target neuron set to simulate",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: True,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
         },
     )
 
     timestamp_offset: float | list[float] = _TIMESTAMPS_OFFSET_FIELD
 
-    def _single_timestamp_stimulus_config(self, stim_dict: dict) -> dict:  # noqa: PLR6301
+    def _single_timestamp_stimulus_config(self, stim_dict: dict) -> dict:  # ruff: ignore[no-self-use]
         return stim_dict
 
     def config(
@@ -58,10 +61,8 @@ class SpikeStimulus(StimulusWithTimestamps):
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
         default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
-        source_node_population: str | None = None,
-        target_node_population: str | None = None,
-        default_source_neuron_set_reference: NeuronSetReference | None = None,
-        default_target_neuron_set_reference: NeuronSetReference | None = None,
+        default_source_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
+        default_target_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
     ) -> dict:
         if default_timestamps is None:
             default_timestamps = SingleTimestamp(start_time=0.0)
@@ -75,15 +76,17 @@ class SpikeStimulus(StimulusWithTimestamps):
             self.targeted_neuron_set, default_target_neuron_set_reference
         )
 
-        if target_neuron_set.is_biophysical(circuit, target_node_population) is False:  # ty:ignore[unresolved-attribute]
-            msg = "Target Neuron Set of Spike Stimulus must be biophysical."
-            raise OBIONEError(msg)
+        if (
+            not target_neuron_set.has_biophysical_neurons(circuit)  # ty:ignore[unresolved-attribute]
+            and not target_neuron_set.has_point_neurons(circuit)  # ty:ignore[unresolved-attribute]
+        ):
+            msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
+            raise ConfigValidationError(msg)
 
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
             source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
-            source_node_population=source_node_population,
         )
 
         sonata_config = self._generate_config(
@@ -100,13 +103,19 @@ class SpikeStimulus(StimulusWithTimestamps):
         circuit: Circuit,
         spike_file_directory: Path,
         source_neuron_set: NeuronSet,
-        source_node_population: str | None = None,
     ) -> Path:
-        source_gids = source_neuron_set.get_neuron_ids(circuit, source_node_population)
-        source_node_population = source_neuron_set.get_population(source_node_population)
+        populations = source_neuron_set.get_populations(circuit)
+        if len(populations) != 1:
+            msg = (
+                "Spike stimulus only supports source neuron sets with one population. "
+                f"Got {len(populations)} populations: {populations}"
+            )
+            raise NotImplementedError(msg)
+        source_node_population = populations[0]
+        source_gids = source_neuron_set.get_neuron_ids(circuit)[source_node_population]
 
         # Generate spikes
-        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)  # ty:ignore[invalid-argument-type]
+        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
 
         # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"

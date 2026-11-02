@@ -1,26 +1,29 @@
+from http import HTTPStatus
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
 import entitysdk
 import pytest
+from obp_accounting_sdk.constants import ServiceSubtype
 
+from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
+from app.schemas.accounting import AccountingParameters
 from app.schemas.task import TaskLaunchSubmit, TaskType
 from app.services.resource_estimation import circuit_extraction as test_module
+from obi_one.scientific.library.circuit_constants import EdgePopulationType, NodePopulationType
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsEdgePopulation,
     CircuitMetricsNodePopulation,
     CircuitMetricsOutput,
-    EdgePopulationType,
-    NodePopulationType,
 )
 
 
 @pytest.fixture
 def db_client():
     """Database client."""
-    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # noqa: S106
+    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # ruff: ignore[hardcoded-password-func-arg]
 
 
 @pytest.mark.parametrize(
@@ -35,21 +38,61 @@ def db_client():
     ],
 )
 def test_get_required_cpu_memory_combo(mem_required, expected):
-    assert test_module._get_required_cpu_memory_combo(mem_required) == expected
+    assert test_module.get_required_cpu_memory_combo(mem_required) == expected
+
+
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        (1, 2, (2, 4)),
+        (5, 4, (4, 8)),
+        (10, 4, (4, 16)),
+        (59, 16, (16, 64)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_min_cpus(mem_required, min_cpus, expected):
+    assert test_module.get_required_cpu_memory_combo(mem_required, min_cpus=min_cpus) == expected
+
+
+@pytest.mark.parametrize(
+    ("mem_required", "min_cpus", "expected"),
+    [
+        # 4 CPUs: 5 + 4 * 0.5 = 7 GB
+        (5, 4, (4, 8)),
+        # 4 CPUs: 29.2 + 2 = 31.2 GB is over their 30 GB, and 8 CPUs need 29.2 + 4 = 33.2 GB
+        (29.2, 4, (8, 48)),
+    ],
+)
+def test_get_required_cpu_memory_combo_with_memory_per_cpu(mem_required, min_cpus, expected):
+    assert (
+        test_module.get_required_cpu_memory_combo(
+            mem_required, min_cpus=min_cpus, mem_gb_per_cpu=0.5
+        )
+        == expected
+    )
 
 
 def test_get_required_cpu_memory_combo_too_large():
     with pytest.raises(ValueError, match="No CPU/memory combination found"):
-        test_module._get_required_cpu_memory_combo(200)
+        test_module.get_required_cpu_memory_combo(200)
 
 
-def test_check_available_disk_space_ok():
-    test_module._check_available_disk_space(10.0)
+def test_get_required_extra_storage_space_default():
+    # Under 20 GB -> no extra storage needed
+    assert test_module.get_required_extra_storage_space(10.0) is None
 
 
-def test_check_available_disk_space_too_large():
+def test_get_required_extra_storage_space_extra():
+    # Between 20 and 200 GB -> allocate extra storage (ceiling)
+    assert test_module.get_required_extra_storage_space(25.0) == 25
+    assert test_module.get_required_extra_storage_space(25.3) == 26
+    # A numpy integer would compare equal but fail the launch's JSON serialization
+    assert type(test_module.get_required_extra_storage_space(25.3)) is int
+
+
+def test_get_required_extra_storage_space_too_large():
     with pytest.raises(ValueError, match="Not enough disk space"):
-        test_module._check_available_disk_space(25.0)
+        test_module.get_required_extra_storage_space(250.0)
 
 
 def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
@@ -115,7 +158,9 @@ def _make_circuit_metrics(nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges):
     )
 
 
-def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
+def _run_estimate_task_resources(
+    db_client, circuit_metrics, do_virtual, accounting_parameters=None
+):
     """Run estimate_task_resources for circuit_extraction with mocked dependencies."""
     task_definition = TASK_DEFINITIONS[TaskType.circuit_extraction]
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_extraction, config_id=uuid4())
@@ -135,8 +180,8 @@ def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
             return_value=fake_config,
         ),
         patch(
-            "app.services.resource_estimation.circuit_extraction.task_registry.get_task_type_config_asset_label",
-            return_value="circuit_extraction_config",
+            "app.services.resource_estimation.circuit_extraction.get_task_spec_for_task_type",
+            return_value=SimpleNamespace(asset_label="circuit_extraction_config"),
         ),
         patch(
             "app.services.resource_estimation.circuit_extraction.db_sdk.get_entity_asset_by_label"
@@ -148,6 +193,7 @@ def _run_estimate_task_resources(db_client, circuit_metrics, do_virtual):
             db_client=db_client,
             task_definition=task_definition,
             compute_cell="cell_b",
+            accounting_parameters=accounting_parameters,
         )
 
 
@@ -204,19 +250,40 @@ def test_estimate_task_resources_allocation(
 @pytest.mark.parametrize(
     ("sbio", "svirt", "do_virtual"),
     [
-        # do_virtual=True: total = 60M + 50M = 110M synapses
-        #   disk = 1 + 110e6 * 1.85e-7 = 21.35 GB > 20 GB limit
-        (60_000_000, 50_000_000, True),
-        # do_virtual=False: only bio = 110M synapses
-        #   disk = 1 + 110e6 * 1.85e-7 = 21.35 GB > 20 GB limit
-        (110_000_000, 50_000_000, False),
+        # do_virtual=True: total = 600M + 500M = 1100M synapses
+        #   disk = 1 + 1100e6 * 1.85e-7 = 204.5 GB > 200 GB limit
+        (600_000_000, 500_000_000, True),
+        # do_virtual=False: only bio = 1100M synapses
+        #   disk = 1 + 1100e6 * 1.85e-7 = 204.5 GB > 200 GB limit
+        (1_100_000_000, 500_000_000, False),
     ],
     ids=["too_many_synapses_with_virtual", "too_many_synapses_without_virtual"],
 )
 def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_virtual):
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
-    with pytest.raises(ValueError, match="Not enough disk space"):
+    with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual)
+
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert "about 1,100,000,000 synapses" in exc_info.value.message
+    assert "more than the 200 GB of storage a task can have" in exc_info.value.message
+    # Leaving out virtual neurons is only suggested when they were included.
+    assert ("turn off Include virtual populations" in exc_info.value.message) == do_virtual
+
+
+def test_estimate_task_resources_memory_limit(db_client):
+    """3M input neurons need 1 + 55e-6 * 3e6 = 166 GB, more than the largest machine."""
+    metrics = _make_circuit_metrics(3_000_000, 0, 1000, 0)
+    with pytest.raises(ApiError) as exc_info:
+        _run_estimate_task_resources(db_client, metrics, do_virtual=False)
+
+    assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
+    assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert exc_info.value.message == (
+        "Extracting 3,000,000 neurons needs about 166 GB of memory, more than the largest"
+        " machine has (120 GB). Extract fewer neurons."
+    )
 
 
 @pytest.mark.parametrize(
@@ -232,3 +299,57 @@ def test_estimate_task_resources_disk_ok_without_virtual(db_client, sbio, svirt,
     metrics = _make_circuit_metrics(1000, 500, sbio, svirt)
     result = _run_estimate_task_resources(db_client, metrics, do_virtual)
     assert result.cores >= 1
+
+
+def test_estimate_task_resources_with_accounting_parameters_reduces_disk(db_client):
+    """When accounting_parameters.count < nbio, output_fraction scales down disk estimate."""
+    # nbio=100_000, sbio=500M synapses
+    # Without accounting_parameters: output_fraction=1.0
+    #   disk = 1 + 500e6 * 1.85e-7 = 93.5 GB -> extra storage = 94
+    # With count=10_000 (10% of nbio): output_fraction=0.1
+    #   disk = 1 + 500e6 * 0.1 * 1.85e-7 = 10.25 GB -> no extra storage (None)
+    metrics = _make_circuit_metrics(100_000, 0, 500_000_000, 0)
+
+    result_without = _run_estimate_task_resources(db_client, metrics, do_virtual=False)
+    assert result_without.model_dump(mode="json")["ephemeral_storage"] == 94
+
+    accounting_params = AccountingParameters(
+        count=10_000,
+        service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
+    )
+    result_with = _run_estimate_task_resources(
+        db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
+    )
+    assert result_with.ephemeral_storage is None
+
+
+def test_estimate_task_resources_with_accounting_parameters_full_extraction(db_client):
+    """When accounting_parameters.count == nbio, output_fraction is 1.0 (same as None)."""
+    # nbio=100_000, sbio=500M synapses, count=100_000 -> fraction=1.0
+    #   disk = 1 + 500e6 * 1.85e-7 = 93.5 GB -> extra storage = 94
+    metrics = _make_circuit_metrics(100_000, 0, 500_000_000, 0)
+
+    accounting_params = AccountingParameters(
+        count=100_000,
+        service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
+    )
+    result = _run_estimate_task_resources(
+        db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
+    )
+    assert result.model_dump(mode="json")["ephemeral_storage"] == 94
+
+
+def test_estimate_task_resources_with_accounting_parameters_disk_limit(db_client):
+    """Even with accounting_parameters, large extractions can exceed the disk limit."""
+    # nbio=100_000, sbio=2000M synapses, count=100_000 -> fraction=1.0
+    #   disk = 1 + 2000e6 * 1.85e-7 = 371 GB > 200 GB limit
+    metrics = _make_circuit_metrics(100_000, 0, 2_000_000_000, 0)
+
+    accounting_params = AccountingParameters(
+        count=100_000,
+        service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION,
+    )
+    with pytest.raises(ApiError, match="more than the 200 GB of storage a task can have"):
+        _run_estimate_task_resources(
+            db_client, metrics, do_virtual=False, accounting_parameters=accounting_params
+        )

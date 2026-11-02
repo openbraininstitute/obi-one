@@ -1,92 +1,71 @@
-"""Registries for task dispatch and block reference lookup.
+"""Task spec declarations for ``config_task_map``.
 
-Scientific modules populate these registries at import time.
-Core modules consume them at runtime.
-
-Registries:
-    - TaskRegistry: maps config classes to task classes, and TaskType enums
-      to task classes, single configs, and asset labels.
-    - BlockReferenceRegistry: maps BlockReference subclass names to their
-      classes for use in ScanConfig.add().
+Task dispatch maps live in ``config_task_map`` (declarative, resolved on use).
+Block reference lookup lives in ``scientific.mappings_and_registry.block_reference_registry``.
 """
 
-from __future__ import annotations
+from dataclasses import dataclass
 
-from typing import TYPE_CHECKING
+from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
-if TYPE_CHECKING:
-    from entitysdk.types import AssetLabel
-
-    from obi_one.types import TaskType
+from obi_one.core.base import OBIBaseModel
+from obi_one.utils.lazy_import import ClassRef, import_class
 
 
-class TaskRegistry:
-    """Maps config classes to task classes, and TaskType enums to task/config/label."""
-
-    def __init__(self) -> None:
-        """Initialize empty registry maps."""
-        # SingleConfig class -> Task class (used to dispatch execution)
-        self._config_task_map: dict[type, type] = {}
-        # TaskType -> (Task class, SingleConfig class, AssetLabel | None)
-        self._task_type_map: dict[TaskType, tuple[type, type, AssetLabel | None]] = {}
-
-    def register_task(
-        self,
-        *,
-        task_type: TaskType,
-        task_cls: type,
-        single_config_cls: type,
-        asset_label: AssetLabel | None = None,
-    ) -> None:
-        """Register a task with all its associated mappings in one call."""
-        self._config_task_map[single_config_cls] = task_cls
-        self._task_type_map[task_type] = (task_cls, single_config_cls, asset_label)
-
-    def get_configs_task_type(self, config: object) -> type:
-        """Return the Task class for a given config instance."""
-        return self._config_task_map[config.__class__]
-
-    def get_task_type(self, task_type: TaskType) -> type:
-        """Return the Task class for a given TaskType enum."""
-        return self._task_type_map[task_type][0]
-
-    def get_task_type_single_config(self, task_type: TaskType) -> type:
-        """Return the SingleConfig class for a given TaskType enum."""
-        return self._task_type_map[task_type][1]
-
-    def get_task_type_config_asset_label(self, task_type: TaskType) -> AssetLabel | None:
-        """Return the config asset label for a given TaskType enum.
-
-        Returns None if the task type does not use a config asset (e.g., tasks that receive their
-        config inline rather than as a stored asset).
-        """
-        entry = self._task_type_map.get(task_type)
-        return entry[2] if entry is not None else None
+def _import_config_class(class_ref: ClassRef) -> type[OBIBaseModel]:
+    """Import a config class by reference, rejecting refs that do not name an OBIBaseModel."""
+    cls = import_class(class_ref)
+    if not issubclass(cls, OBIBaseModel):
+        msg = f"{class_ref!r} does not name an OBIBaseModel subclass"
+        raise TypeError(msg)
+    return cls
 
 
-# Module-level singleton
-task_registry = TaskRegistry()
+@dataclass(frozen=True, eq=False, order=False)
+class TaskSpec:
+    """Everything the framework needs to dispatch and register one task type.
 
+    Classes are declared as ``(module path, class name)`` references and imported by the
+    ``*_cls`` properties on first access, so holding a spec costs no task imports.
 
-class BlockReferenceRegistry:
-    """Maps BlockReference subclass names to their classes.
+    The `*_task_config_type` and `*_task_activity_type` fields name the entitycore
+    entities created when a campaign or a single config is registered. They are
+    None for tasks that are not registered against the database.
 
-    Used by ScanConfig.add() to resolve a reference type by name
-    when adding a block to a scan configuration.
+    ``requires_package`` names an optional dependency the task needs; task types whose
+    dependency is missing are reported as unavailable instead of failing on import.
     """
 
-    def __init__(self) -> None:
-        """Initialize empty registry."""
-        self._by_name: dict[str, type] = {}
+    task_ref: ClassRef
+    single_config_ref: ClassRef
+    scan_config_ref: ClassRef | None = None
+    asset_label: AssetLabel | None = None
+    campaign_task_config_type: TaskConfigType | None = None
+    campaign_generation_task_activity_type: TaskActivityType | None = None
+    single_task_config_type: TaskConfigType | None = None
+    single_task_activity_type: TaskActivityType | None = None
+    requires_package: str | None = None
 
-    def register(self, cls: type) -> None:
-        """Register a BlockReference subclass."""
-        self._by_name[cls.__name__] = cls
+    @property
+    def task_cls(self) -> type:
+        """The task class, imported on first access."""
+        return import_class(self.task_ref)
 
-    def get_by_name(self, name: str) -> type | None:
-        """Return the BlockReference subclass with the given name, or None."""
-        return self._by_name.get(name)
+    @property
+    def single_config_cls(self) -> type[OBIBaseModel]:
+        """The SingleConfig class, imported on first access."""
+        return _import_config_class(self.single_config_ref)
 
+    @property
+    def scan_config_cls(self) -> type[OBIBaseModel] | None:
+        """The ScanConfig class, imported on first access, or None if the task has none."""
+        if self.scan_config_ref is None:
+            return None
+        return _import_config_class(self.scan_config_ref)
 
-# Module-level singleton
-block_ref_registry = BlockReferenceRegistry()
+    @property
+    def config_refs(self) -> tuple[ClassRef, ...]:
+        """The deserializable config class references declared by this spec."""
+        if self.scan_config_ref is None:
+            return (self.single_config_ref,)
+        return (self.single_config_ref, self.scan_config_ref)

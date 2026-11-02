@@ -9,15 +9,25 @@ import entitysdk
 import httpx
 import libsonata
 import pytest
+from entitysdk.common import ProjectContext
 from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
+from app.config import settings
 from app.errors import ApiError, ApiErrorCode
-from app.mappings import APP_TAG, TASK_DEFINITIONS
+from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.callback import CallBack, CallBackAction, CallBackEvent, HttpRequestCallBackConfig
 from app.schemas.cluster import ClusterInstanceInfo
-from app.schemas.task import MachineResources, TaskLaunchSubmit, TaskType
+from app.schemas.task import (
+    ClusterResources,
+    LaunchableTaskDefinition,
+    MachineResources,
+    TaskGroupLegacyDefinition,
+    TaskLaunchSubmit,
+)
 from app.services import task as test_module
+from app.types import BuiltinScript, MachinePlacementType, TaskType
+from obi_one.utils.versions import release_tag_ref
 
 from tests.utils import PROJECT_ID, VIRTUAL_LAB_ID
 
@@ -27,11 +37,49 @@ TASK_TYPES = [
     task_type for task_type in TASK_DEFINITIONS if task_type != TaskType.circuit_simulation
 ]
 
+MACHINE_TASK_TYPES = [
+    task_type
+    for task_type in TASK_TYPES
+    if isinstance(TASK_DEFINITIONS[task_type].resources, MachineResources)
+]
+
+CLUSTER_TASK_TYPES = [
+    task_type
+    for task_type in TASK_TYPES
+    if isinstance(TASK_DEFINITIONS[task_type].resources, ClusterResources)
+]
+
+# Tasks routed to ECS EC2. Everything else keeps the pre-existing behaviour of
+# running on Fargate on the AWS cell.
+ECS_EC2_TASK_TYPES = {
+    TaskType.ion_channel_fitting,
+    TaskType.ion_channel_model_simulation_execution,
+    TaskType.single_neuron_simulation_execution,
+    TaskType.single_neuron_synaptome_simulation_execution,
+}
+
+# Fields the launch-system accepts for machine resources. Guards against an obi-one-internal
+# field (such as the per-cell placement map) leaking into the payload.
+MACHINE_PAYLOAD_FIELDS = {
+    "type",
+    "cores",
+    "memory",
+    "compute_cell",
+    "timelimit",
+    "image_type",
+    "placement_type",
+    "ephemeral_storage",
+}
+
 
 @pytest.fixture
 def db_client():
     """Database client."""
-    return entitysdk.Client(api_url="http://my-url", token_manager="my-token")  # noqa: S106
+    return entitysdk.Client(
+        api_url="http://my-url",
+        token_manager="my-token",  # ruff: ignore[hardcoded-password-func-arg]
+        project_context=ProjectContext(virtual_lab_id=VIRTUAL_LAB_ID, project_id=PROJECT_ID),
+    )
 
 
 @pytest.fixture
@@ -108,6 +156,7 @@ def callbacks(activity_id):
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -119,6 +168,7 @@ def callbacks(activity_id):
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -227,6 +277,7 @@ def test_submit_task_job__success(
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -238,6 +289,7 @@ def test_submit_task_job__success(
             {
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
+                "number_neurons": 1000,
                 "scan_parameters": {},
             },
             "simulation-execution",
@@ -338,6 +390,8 @@ def test_inait_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_inait",
+            "placement_type": None,
+            "ephemeral_storage": None,
         },
         "inputs": [
             "sonata-simulation-task",
@@ -386,9 +440,9 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
         "code": {
             "type": "python_repository",
             "location": task_definition.code.location,
-            "ref": APP_TAG,
+            "ref": release_tag_ref(settings.APP_VERSION),
             "path": "obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            "dependencies": "obi_one/scientific/library/simulation/brian2/requirements.txt",
+            "dependencies": "launch_scripts/launch_brian2_simulation/dependencies/default.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
         },
@@ -399,6 +453,8 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "compute_cell": "local",
             "timelimit": "02:00",
             "image_type": "python_3_12_compiler",
+            "placement_type": None,
+            "ephemeral_storage": None,
         },
         "inputs": [
             "sonata-simulation-task",
@@ -506,6 +562,8 @@ def test_generic_job_data(config_id, activity_id, callbacks):
             "timelimit": "00:10",
             "compute_cell": "local",
             "image_type": "python_3_12_compiler",
+            "placement_type": None,
+            "ephemeral_storage": None,
         },
         "code": {
             "type": "python_repository",
@@ -661,6 +719,133 @@ def test_handle_task_failure_callback__do_nothing(
     )
 
 
+@pytest.mark.parametrize(
+    ("compute_cell", "expected"),
+    [
+        ("cell_a", MachinePlacementType.fargate),
+        ("cell_b", MachinePlacementType.azure_container_apps),
+        ("local", None),
+    ],
+)
+def test_apply_placement_type_per_cell(compute_cell, expected):
+    """The placement declared for the cell is pinned; cells without one are left unset."""
+    resources = TASK_DEFINITIONS[TaskType.circuit_extraction].resources
+
+    result = test_module.apply_placement_type(resources, compute_cell)
+
+    assert result.placement_type == expected
+    # The per-cell map is internal and must never reach the launch-system payload.
+    assert "placement_type_map" not in result.model_dump(mode="json")
+
+
+@pytest.mark.parametrize("task_type", sorted(ECS_EC2_TASK_TYPES))
+def test_apply_placement_type_pinned_to_ecs_ec2(task_type):
+    """Simulation execution tasks are routed to ECS EC2 on cell_a."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    result = test_module.apply_placement_type(resources, "cell_a")
+
+    assert result.placement_type == MachinePlacementType.ecs_ec2
+
+
+def test_apply_placement_type_leaves_cluster_resources_untouched():
+    """Cluster jobs have no placement concept."""
+    resources = TASK_DEFINITIONS[TaskType.emodel_optimization].resources
+
+    assert test_module.apply_placement_type(resources, "cell_a") is resources
+
+
+def test_ecs_ec2_declared_by_expected_tasks():
+    """Only the expected tasks opt into ECS EC2, on any cell."""
+    declared = {
+        task_type
+        for task_type in MACHINE_TASK_TYPES
+        if MachinePlacementType.ecs_ec2
+        in TASK_DEFINITIONS[task_type].resources.placement_type_map.values()
+    }
+
+    assert declared == ECS_EC2_TASK_TYPES
+
+
+def test_ecs_ec2_declared_only_for_cell_a():
+    """ECS EC2 exists only on the AWS cell, so no other cell may pin it."""
+    for task_type in MACHINE_TASK_TYPES:
+        for cell, placement in TASK_DEFINITIONS[task_type].resources.placement_type_map.items():
+            if placement == MachinePlacementType.ecs_ec2:
+                assert cell == "cell_a", f"{task_type} pins ecs_ec2 on {cell}"
+
+
+@pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
+def test_cell_a_placement_preserves_previous_behaviour(task_type):
+    """On the AWS cell tasks stay on Fargate, apart from those pinned to ECS EC2."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    result = test_module.apply_placement_type(resources, "cell_a")
+
+    expected = (
+        MachinePlacementType.ecs_ec2
+        if task_type in ECS_EC2_TASK_TYPES
+        else MachinePlacementType.fargate
+    )
+    assert result.placement_type == expected
+
+
+@pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
+def test_cell_b_never_receives_an_aws_placement(task_type):
+    """The Azure cell resolves to azure_container_apps, or is left for the launch-system."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    result = test_module.apply_placement_type(resources, "cell_b")
+
+    assert result.placement_type in {None, MachinePlacementType.azure_container_apps}
+
+
+@pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
+def test_machine_payload_fields_unchanged(task_type):
+    """placement_type is the only field added to the payload; the per-cell map stays internal."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    payload = test_module.apply_placement_type(resources, "cell_a").model_dump(mode="json")
+
+    assert set(payload) == MACHINE_PAYLOAD_FIELDS
+
+
+def test_get_launchable_task_definition_returns_launchable_entry():
+    """Concrete task types resolve to a definition with code and resources."""
+    task_definition = get_launchable_task_definition(TaskType.circuit_extraction)
+
+    assert isinstance(task_definition, LaunchableTaskDefinition)
+    assert not isinstance(task_definition, TaskGroupLegacyDefinition)
+    assert task_definition.task_type == TaskType.circuit_extraction
+
+
+def test_get_launchable_task_definition_rejects_task_group():
+    """Task groups must be remapped before they can be launched."""
+    assert isinstance(TASK_DEFINITIONS[TaskType.circuit_simulation], TaskGroupLegacyDefinition)
+
+    with pytest.raises(TypeError, match="task group"):
+        get_launchable_task_definition(TaskType.circuit_simulation)
+
+
+def test_task_definition_type_name_properties():
+    """Modern task definitions expose config/activity type names for launch payloads."""
+    task_definition = get_launchable_task_definition(TaskType.circuit_extraction)
+
+    assert task_definition.config_type_name == TaskConfigType.circuit_extraction__config
+    assert task_definition.activity_type_name == TaskActivityType.circuit_extraction__execution
+
+
+@pytest.mark.parametrize("task_type", CLUSTER_TASK_TYPES)
+def test_cluster_payload_has_no_placement(task_type):
+    """Cluster resources are unaffected by the placement work."""
+    resources = TASK_DEFINITIONS[task_type].resources
+
+    payload = test_module.apply_placement_type(resources, "cell_a").model_dump(mode="json")
+
+    assert "placement_type" not in payload
+    assert "placement_type_map" not in payload
+
+
 def test_estimate_task_resources_passthrough(db_client):
     """Non-circuit_extraction tasks should return resources unchanged."""
     task_definition = TASK_DEFINITIONS[TaskType.morphology_skeletonization]
@@ -675,7 +860,12 @@ def test_estimate_task_resources_passthrough(db_client):
         task_definition=task_definition,
         compute_cell="cell_b",
     )
-    assert result == task_definition.resources.model_copy(update={"compute_cell": "cell_b"})
+    assert result == task_definition.resources.model_copy(
+        update={
+            "compute_cell": "cell_b",
+            "placement_type": task_definition.resources.placement_type_map["cell_b"],
+        }
+    )
 
 
 def test_estimate_task_resources_circuit_extraction(db_client):
@@ -696,12 +886,76 @@ def test_estimate_task_resources_circuit_extraction(db_client):
             compute_cell="cell_b",
         )
 
-    assert result is expected
+    # estimate_task_resources returns a placement-resolved copy, so compare by value.
+    assert result == expected
     mock_estimate.assert_called_once_with(
         json_model=json_model,
         db_client=db_client,
         task_definition=task_definition,
         compute_cell="cell_b",
+        accounting_parameters=None,
+    )
+
+
+def test_estimate_task_resources_synapse_parameterization(db_client):
+    """Synapse parameterization delegates to its own estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_synaptic_physiology_assignment]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.circuit_synaptic_physiology_assignment, config_id=uuid4()
+    )
+    expected = MachineResources(cores=1, memory=8, timelimit="01:00", compute_cell="local")
+
+    with patch(
+        "app.services.resource_estimation.synapse_parameterization.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    # estimate_task_resources returns a placement-resolved copy, so compare by value.
+    assert result == expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
+        accounting_parameters=None,
+    )
+
+
+def test_estimate_task_resources_extracellular_recording_weights(db_client):
+    """The weights calculation delegates to its own estimate_task_resources."""
+    task_definition = TASK_DEFINITIONS[TaskType.extracellular_recording_weights_calculation]
+    json_model = TaskLaunchSubmit(
+        task_type=TaskType.extracellular_recording_weights_calculation, config_id=uuid4()
+    )
+    expected = MachineResources(cores=8, memory=60, timelimit="02:00", compute_cell="local")
+
+    with patch(
+        "app.services.resource_estimation.extracellular_weights.estimate_task_resources",
+        return_value=expected,
+        autospec=True,
+    ) as mock_estimate:
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_b",
+        )
+
+    # estimate_task_resources returns a placement-resolved copy, so compare by value.
+    assert result == expected
+    mock_estimate.assert_called_once_with(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell="cell_b",
+        accounting_parameters=None,
     )
 
 
@@ -751,7 +1005,10 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
     ("target_simulator_name", "circuit_scale", "expected_task"),
     [
         ("LearningEngine", "system", TaskType.circuit_simulation_inait_machine),
-        ("NEURON", "small", TaskType.circuit_simulation_neuron),
+        ("NEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
+        ("NEURON", "single", TaskType.circuit_simulation_neurodamus_machine),
+        ("NEURON", "pair", TaskType.circuit_simulation_neurodamus_machine),
+        ("CORENEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
         ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
         ("Brian2", "small", TaskType.circuit_simulation_brian2_machine),
     ],
@@ -817,7 +1074,7 @@ def test_select_simulation_task_falls_back_to_circuit_target_simulator():
             config_type=entitysdk.models.Simulation,
         )
 
-    assert task_type == TaskType.circuit_simulation_neuron
+    assert task_type == TaskType.circuit_simulation_neurodamus_machine
 
 
 def test_select_simulation_task_raises_for_unsupported_target_simulator():
@@ -872,3 +1129,49 @@ def test_select_simulation_task_raises_api_error_for_invalid_config_format():
     assert exc_info.value.http_status_code == HTTPStatus.BAD_REQUEST
     assert exc_info.value.details == "invalid simulation config"
     assert str(config_id) in exc_info.value.message
+
+
+def test_emodel_optimization_definition_uses_builtin_cluster_profile():
+    task_definition = TASK_DEFINITIONS[TaskType.emodel_optimization]
+
+    assert task_definition.code.script == BuiltinScript.emodel_optimisation
+    assert isinstance(task_definition.resources, ClusterResources)
+    assert task_definition.resources.model_dump(mode="json") == {
+        "type": "cluster",
+        "instances": 1,
+        "instance_type": "large",
+        "timelimit": "02:00",
+        "compute_cell": "cell_a",
+    }
+
+
+def test_emodel_optimization_job_data(config_id, activity_id, callbacks):
+    task_definition = TASK_DEFINITIONS[TaskType.emodel_optimization]
+
+    result = test_module._emodel_optimization_job_data(
+        config_id=config_id,
+        execution_activity_id=activity_id,
+        project_id=UUID(PROJECT_ID),
+        callbacks=callbacks,
+        task_definition=task_definition,
+    )
+
+    assert result["code"] == {
+        "type": "builtin",
+        "script": "emodel_optimisation",
+    }
+    assert result["resources"] == {
+        "type": "cluster",
+        "instances": 1,
+        "instance_type": "large",
+        "timelimit": "02:00",
+        "compute_cell": "cell_a",
+    }
+    assert result["inputs"] == [
+        "--config-id",
+        str(config_id),
+        "--execution-id",
+        str(activity_id),
+    ]
+    assert result["project_id"] == PROJECT_ID
+    assert result["callbacks"]

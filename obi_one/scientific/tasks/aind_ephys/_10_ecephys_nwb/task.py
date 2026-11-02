@@ -16,7 +16,7 @@ from obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config import (
 L = logging.getLogger(__name__)
 
 NWB_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ecephys-nwb.git"
-NWB_REPO_DEFAULT_PATH = Path("/tmp/aind-ecephys-nwb")  # noqa: S108
+NWB_REPO_DEFAULT_PATH = Path("/tmp/aind-ecephys-nwb")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_nwb_repo(repo_path: Path = NWB_REPO_DEFAULT_PATH) -> Path:
@@ -33,9 +33,7 @@ def _ensure_nwb_repo(repo_path: Path = NWB_REPO_DEFAULT_PATH) -> Path:
         patched = src.replace("add_electrodes_info_to_nwbfile", "add_electrodes_to_nwbfile")
         if patched != src:
             capsule_py.write_text(patched)
-            L.info(
-                "Patched run_capsule.py: add_electrodes_info_to_nwbfile -> add_electrodes_to_nwbfile"
-            )
+            L.info("Patched run_capsule.py to call add_electrodes_to_nwbfile")
     return repo_path
 
 
@@ -58,12 +56,12 @@ class AINDEcephysNWBTask(Task):
 
     config: AINDEcephysNWBSingleConfig
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure, too-many-branches]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_nwb_repo()
         code_dir = repo / "code"
@@ -110,7 +108,7 @@ class AINDEcephysNWBTask(Task):
             argv += ["--stub", "--stub-seconds", str(self.config.initialize.stub_seconds)]
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

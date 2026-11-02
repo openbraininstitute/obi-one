@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
 L = logging.getLogger(__name__)
 
 VIZ_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-visualization.git"
-VIZ_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-visualization")  # noqa: S108
+VIZ_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-visualization")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_viz_repo(repo_path: Path = VIZ_REPO_DEFAULT_PATH) -> Path:
@@ -73,9 +73,9 @@ class AINDEPhysVisualizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_viz_repo()
         code_dir = repo / "code"
@@ -116,7 +116,7 @@ class AINDEPhysVisualizationTask(Task):
         ]
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

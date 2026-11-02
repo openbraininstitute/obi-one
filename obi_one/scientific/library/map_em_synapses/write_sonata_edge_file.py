@@ -3,12 +3,11 @@ from pathlib import Path
 
 import h5py
 import libsonata
-import numpy  # NOQA: ICN001
-import pandas  # NOQA: ICN001
+import numpy  # ruff: ignore[unconventional-import-alias]
+import pandas  # ruff: ignore[unconventional-import-alias]
 from h5py._hl.group import Group as H5Group
 
-_STR_PRE_NODE = "pre_node_id"
-_STR_POST_NODE = "post_node_id"
+from obi_one.scientific.library.map_em_synapses.constants import STR_POST_NODE, STR_PRE_NODE
 
 
 def _write_indexes(
@@ -44,7 +43,7 @@ def adjust_edge_index_groups(grp_root: str, n_edges: int) -> None:
     create_or_resize_dataset(grp_root, "edge_type_id", -numpy.ones(n_edges, dtype=int), dtype="i8")  # ty:ignore[invalid-argument-type]
     create_or_resize_dataset(grp_root, "edge_group_id", numpy.zeros(n_edges, dtype=int), dtype="i8")  # ty:ignore[invalid-argument-type]
     start = 0
-    if "edge_group_index" in grp_root:  # NOQA: SIM102
+    if "edge_group_index" in grp_root:  # ruff: ignore[collapsible-if]
         if len(grp_root["edge_group_index"]) > 0:  # ty:ignore[invalid-argument-type]
             start = grp_root["edge_group_index"][-1] + 1  # ty:ignore[invalid-argument-type]
     edge_group_index = numpy.arange(start, start + n_edges, dtype=int)
@@ -66,9 +65,9 @@ def write_edges(
     grp_root = h5.require_group(f"edges/{population_name}")
     grp_0 = grp_root.require_group("0")
 
-    create_or_resize_dataset(grp_root, "source_node_id", syn_pre_post[_STR_PRE_NODE].values)
+    create_or_resize_dataset(grp_root, "source_node_id", syn_pre_post[STR_PRE_NODE].values)
     grp_root["source_node_id"].attrs["node_population"] = source_pop_name
-    create_or_resize_dataset(grp_root, "target_node_id", syn_pre_post[_STR_POST_NODE].values)
+    create_or_resize_dataset(grp_root, "target_node_id", syn_pre_post[STR_POST_NODE].values)
     grp_root["target_node_id"].attrs["node_population"] = tgt_pop_name
 
     for col in syn_data.columns:
@@ -77,7 +76,7 @@ def write_edges(
 
     h5.close()
     if n_src is None:
-        n_src = int(syn_pre_post[_STR_PRE_NODE].max() + 1)
+        n_src = int(syn_pre_post[STR_PRE_NODE].max() + 1)
     if n_tgt is None:
-        n_tgt = int(syn_pre_post[_STR_POST_NODE].max() + 1)
+        n_tgt = int(syn_pre_post[STR_POST_NODE].max() + 1)
     _write_indexes(str(fn_out), population_name, n_src, n_tgt)

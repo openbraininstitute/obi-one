@@ -67,7 +67,7 @@ class Kilosort4Sorter(Block):
         description="Learned-template detection threshold.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
-    do_CAR: bool = Field(
+    do_CAR: bool = Field(  # ruff: ignore[mixed-case-variable-in-class-scope]
         default=True,
         title="Do CAR",
         description="Apply common-average referencing inside Kilosort.",

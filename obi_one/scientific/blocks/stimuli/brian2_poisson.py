@@ -1,8 +1,12 @@
 """Brian2-specific direct-injection Poisson stimulus block.
 
 Drives each neuron in ``neuron_set`` with its own independent Poisson spike
-train, kicking the target membrane potential directly — equivalent to one
-``brian2.PoissonInput`` per target neuron.
+train, kicking the target membrane potential directly.
+
+The runner builds one ``brian2.PoissonInput`` per contiguous range of node IDs
+in the target, each with ``N=1`` so that every neuron it covers still gets an
+independent train. How many objects that is depends on how the target's IDs
+happen to fall: ``[0, 1, 2, 3, 4]`` is a single one, ``[0, 2, 4, 6]`` is four.
 
 Unlike :class:`PoissonSpikeStimulus`, which emits a SONATA ``synapse_replay``
 entry backed by a pre-generated spike file and propagates the replayed spikes
@@ -21,43 +25,40 @@ from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.constants import (
     DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
     MAX_SIMULATION_LENGTH_MILLISECONDS,
-    MIN_NON_NEGATIVE_FLOAT_VALUE,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
-    resolve_neuron_set_ref_to_neuron_set,
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    POINT_NEURON_SETS_REFERENCE_TYPES,
+    POINT_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
-from obi_one.scientific.unions.unions_timestamps import TimestampsReference
+from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 
 class Brian2DirectPoissonStimulus(Block):
     """Independent Poisson drive injected directly into the soma.
 
-    Each neuron receives its own Poisson Input directly into the soma
-    firing. Each spike adds a weight to the membrane potential.
+    Each target neuron receives its own spike train, and every spike steps that
+    neuron's membrane potential by the weight.
     """
 
-    title: ClassVar[str] = "Direct Poisson Input"
+    title: ClassVar[str] = "Direct Poisson input"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Neurons that receive the Poisson drive.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.REFERENCE_TYPES: POINT_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
     frequency: (
-        Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]
-        | list[Annotated[NonNegativeFloat, Field(ge=MIN_NON_NEGATIVE_FLOAT_VALUE)]]
+        Annotated[NonNegativeFloat, Field(le=150.0)]
+        | list[Annotated[NonNegativeFloat, Field(le=150.0)]]
     ) = Field(
         default=150.0,
         title="Frequency",
@@ -72,8 +73,8 @@ class Brian2DirectPoissonStimulus(Block):
         default=68.75,
         title="Weight",
         description=(
-            "Amplitude of each injection, in millivolts. The default value is taken "
-            "from the original Shui et al. (2024) LIF FlyWire model simulations."
+            "How much each spike adds to the membrane potential, in millivolts (mV). "
+            "The default is the value used by Shui et al. (2024)."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -87,9 +88,11 @@ class Brian2DirectPoissonStimulus(Block):
     ) = Field(
         default=DEFAULT_STIMULUS_LENGTH_MILLISECONDS,
         title="Duration",
+        # Recorded in the generated config for forward compatibility, but the runner's
+        # PoissonInput is always-on, so the value has no effect on the simulation yet.
         description=(
-            "Informational only; Brian2 PoissonInput is always-on for the whole "
-            "simulation. Recorded in the SONATA entry for forward compatibility."
+            "How long the drive lasts, in milliseconds (ms). It currently runs for the "
+            "whole simulation whatever this is set to."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -101,9 +104,7 @@ class Brian2DirectPoissonStimulus(Block):
 
     def config(
         self,
-        circuit: Circuit,
-        population: str | None = None,
-        default_node_set: str = "sugar",
+        default_node_set: str = "All",
         default_timestamps: TimestampsReference | None = None,
     ) -> dict:
         """Return the SONATA inputs entry for this block.
@@ -116,30 +117,10 @@ class Brian2DirectPoissonStimulus(Block):
         self._default_node_set = default_node_set
         _ = default_timestamps or SingleTimestamp(start_time=0.0)
 
-        if self.neuron_set.block_name != "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
-            neuron_set = resolve_neuron_set_ref_to_neuron_set(
-                self.neuron_set,
-                self._default_node_set,  # ty:ignore[invalid-argument-type]
-            )
-            max_n_neurons = 100
-            if (
-                len(neuron_set.get_neuron_ids(circuit=circuit, population=population))  # ty:ignore[unresolved-attribute]
-                > max_n_neurons
-            ):
-                msg = (
-                    f"Number of neurons used with the {self.title} exceeds the maximum "
-                    f"allowed: {max_n_neurons}."
-                )
-                raise ValueError(msg)
-
         return self._generate_config()
 
     def _generate_config(self) -> dict:
-
-        if self.neuron_set.block_name == "Default: All Biophysical Neurons":  # ty:ignore[unresolved-attribute]
-            node_set = "sugar"
-        else:
-            node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
+        node_set = resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set)
 
         return {
             self.block_name: {

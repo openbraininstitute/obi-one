@@ -1,3 +1,31 @@
+## Float input
+
+ui_element: `float_input`
+
+- A single required (non-nullable, non-swept) floating-point value.
+- The value must be a single `number` (and nothing else — not `null`, not an array).
+- Optional `minimum` and `maximum` and `default`.
+- Optional `units` string.
+
+Reference schema [float_input](reference_schemas/float_input.jsonc)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    soma_ref_location: float = Field(
+            default=0.5,
+            ge=0.0,
+            le=1.0,
+            title="Soma reference location",
+            description="Reference location of the soma along the morphology.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT})
+```
+
+### UI design
+
+(To be specified.)
+
 ## Float parameter sweep
 
 ui_element: `float_parameter_sweep`
@@ -18,7 +46,7 @@ class Block:
 
     extracellular_calcium_concentration:  NonNegativeFloat | list[NonNegativeFloat] = Field( # The single value must come first in the union
             default=1.1,
-            title="Extracellular Calcium Concentration",
+            title="Extracellular calcium concentration",
             description=(
                 "Extracellular calcium concentration",
             ),
@@ -54,4 +82,30 @@ class Block:
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP})
         )
 
+```
+
+## Float optional
+
+ui_element: `float_optional`
+
+- Should have an `anyOf` property.
+- Should accept a `number` and `null` (a nullable float — **not** swept).
+- _The single `number` value must come first, `null` second._
+- `null` means the value is unset — e.g. "inherit from the level above".
+- Optional `minimum` and `maximum` on the `number` and an optional `units` string.
+
+Reference schema [float_optional](reference_schemas/float_optional.jsonc)
+
+### Example Pydantic implementation
+
+```py
+class Block:
+    spike_detection_threshold: float | None = Field(  # single value first, then None
+            default=None,
+            title="Spike detection threshold",
+            description="eFEL Threshold. Leave unset to inherit from the level above.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+                SchemaKey.UNITS: Units.MILLIVOLTS,
+            })
 ```

@@ -6,6 +6,7 @@ from pydantic import Field, NonNegativeFloat, PositiveFloat, model_validator
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.core.units import Units
 from obi_one.scientific.library.constants import (
     SIMULATION_TIMESTEP_MILLISECONDS,
 )
@@ -19,19 +20,19 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
     BlockGroup,
     SimulationSingleConfigMixin,
 )
-from obi_one.scientific.unions.unions_ion_channel_model import (
+from obi_one.scientific.unions_and_references.ion_channel_model import (
     IonChannelModelReference,
     IonChannelModelUnion,
 )
-from obi_one.scientific.unions.unions_recordings import (
+from obi_one.scientific.unions_and_references.recordings import (
     IonChannelModelRecordingUnion,
     RecordingReference,
 )
-from obi_one.scientific.unions.unions_stimuli import (
+from obi_one.scientific.unions_and_references.stimuli import (
     IonChannelModelStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
     TimestampsUnion,
 )
@@ -42,7 +43,6 @@ L = logging.getLogger(__name__)
 class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     """Form for simulating ion channel model(s)."""
 
-    single_coord_class_name: ClassVar[str] = "IonChannelModelSimulationSingleConfig"
     name: ClassVar[str] = "Ion Channel Model Simulation Campaign"
     description: ClassVar[str] = "Ion Channel Model SONATA simulation campaign"
 
@@ -66,11 +66,12 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
 
     class Initialize(BaseSimulationScanConfig.Initialize):
         temperature: NonNegativeFloat | list[NonNegativeFloat] = Field(
-            title="Temperature (in °C)",
+            title="Temperature",
             description="Temperature of the simulation.",
             default=34.0,
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+                SchemaKey.UNITS: Units.CELSIUS,
             },
         )
 
@@ -88,14 +89,14 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
     ion_channel_models: dict[str, IonChannelModelUnion] = Field(
         default_factory=dict,
         min_length=1,
-        title="Ion Channel Models",
+        title="Ion channel models",
         description="Ion channel models and their conductance / max permeability.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Ion Channel Model",
-            SchemaKey.REFERENCE_TYPE: IonChannelModelReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [IonChannelModelReference.__name__],
         },
     )
 
@@ -110,7 +111,7 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
             SchemaKey.SINGULAR_NAME: "Stimulus",
-            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [StimulusReference.__name__],
         },
     )
     # can we have recording union depending on what model we choose?
@@ -126,7 +127,7 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 1,
             SchemaKey.SINGULAR_NAME: "Recording",
-            SchemaKey.REFERENCE_TYPE: RecordingReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
         },
     )
 
@@ -136,10 +137,10 @@ class IonChannelModelSimulationScanConfig(BaseSimulationScanConfig):
         description="Timestamps for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: TimestampsReference.__name__,
-            SchemaKey.SINGULAR_NAME: "Timestamps",
             SchemaKey.GROUP: BlockGroup.EVENTS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.SINGULAR_NAME: "Timestamps",
+            SchemaKey.REFERENCE_TYPES: [TimestampsReference.__name__],
         },
     )
 

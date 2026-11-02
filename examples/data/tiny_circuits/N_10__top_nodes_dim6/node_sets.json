@@ -798,5 +798,16 @@
     "layer": [
       "6"
     ]
-  }
+  },
+  "AllBiophysical": {
+    "population": "S1nonbarrel_neurons"
+  },
+  "AllVirtual": [
+    "proj_Thalamocortical_VPM_Source",
+    "proj_Thalamocortical_POM_Source"
+  ],
+  "AllPopulations": [
+    "AllBiophysical",
+    "AllVirtual"
+  ]
 }

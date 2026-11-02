@@ -21,7 +21,7 @@ class ScanParam(OBIBaseModel):
 
     @property
     def location_str(self) -> str:
-        """Return a string representation of the location list."""
+        """String representation of the location list."""
         return nested_param_short(self.location_list)
 
 

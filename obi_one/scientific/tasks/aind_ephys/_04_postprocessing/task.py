@@ -17,7 +17,7 @@ from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
 L = logging.getLogger(__name__)
 
 POSTPROCESSING_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-postprocessing.git"
-POSTPROCESSING_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-postprocessing")  # noqa: S108
+POSTPROCESSING_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-postprocessing")  # ruff: ignore[hardcoded-temp-file]
 
 
 def _ensure_postprocessing_repo(repo_path: Path = POSTPROCESSING_REPO_DEFAULT_PATH) -> Path:
@@ -96,12 +96,12 @@ class AINDEPhysPostprocessingTask(Task):
 
     config: AINDEPhysPostprocessingSingleConfig
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_postprocessing_repo()
         code_dir = repo / "code"
@@ -152,7 +152,7 @@ class AINDEPhysPostprocessingTask(Task):
             argv.append("--use-motion-corrected")
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

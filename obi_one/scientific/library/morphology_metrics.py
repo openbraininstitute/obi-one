@@ -237,7 +237,7 @@ def get_morphology_metrics(
                 msg = "Asset must have an id"
                 raise ValueError(msg)
             content = db_client.download_content(
-                entity_id=morphology.id,  # ty:ignore[invalid-argument-type]
+                entity_id=morphology.id,
                 entity_type=CellMorphology,
                 asset_id=asset.id,
             ).decode(encoding="utf-8")

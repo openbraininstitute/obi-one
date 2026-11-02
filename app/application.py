@@ -1,12 +1,14 @@
 import asyncio
+import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Any
 
 import httpx
 from entitysdk.exception import EntitySDKError
+from entitysdk.utils.http import HTTPClient as EntitySDKHTTPClient
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -17,19 +19,29 @@ from starlette.responses import Response
 from app.config import settings
 from app.endpoints import (
     circuit_connectivity,
+    circuit_customization,
     circuit_properties,
+    circuit_registration,
     circuit_visualization,
     config_validation,
-    convert_morphology_to_registered_mesh,
+    contributor,
     count_scan_coordinates,
+    distance_function_validation,
+    electrical_cell_recording_properties,
     ephys_metrics,
+    extracellular_locations,
     ion_channel_properties,
+    mesh_registration,
     mesh_validation,
+    morphology_locations,
     morphology_metrics,
     morphology_metrics_calculation,
+    morphology_section_types,
     morphology_validation,
     multi_values,
+    publication,
     scan_config,
+    subject,
     task,
     validate_electrophysiology_protocol_nwb,
 )
@@ -38,9 +50,14 @@ from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
 
+# Configure logging here (not only in app/__main__) so the level applies in the uvicorn worker
+# process too: under --reload the app runs in a spawned worker where __main__'s basicConfig never
+# executed, leaving the root logger at WARNING and dropping DEBUG logs.
+logging.basicConfig(level=settings.LOG_LEVEL, force=True)
+
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[dict[str, Any], None]:
     """Execute actions on server startup and shutdown."""
     L.info(
         "Starting application [PID=%s, CPU_COUNT=%s, ENVIRONMENT=%s]",
@@ -49,15 +66,18 @@ async def lifespan(_: FastAPI) -> AsyncIterator[dict[str, Any]]:
         settings.ENVIRONMENT,
     )
     http_client = httpx.Client()
+    entitysdk_http_client = EntitySDKHTTPClient()
     try:
         yield {
             "http_client": http_client,
+            "entitysdk_http_client": entitysdk_http_client,
         }
     except asyncio.CancelledError as err:
         # this can happen if the task is cancelled without sending SIGINT
         L.info("Ignored %s in lifespan", err)
     finally:
-        http_client.close()  # noqa: ASYNC212
+        entitysdk_http_client.close()
+        http_client.close()  # ruff: ignore[blocking-http-call-httpx-in-async-function]
         L.info("Stopping application")
 
 
@@ -166,18 +186,29 @@ async def version() -> dict:
 
 app.include_router(circuit_visualization.router)
 app.include_router(circuit_connectivity.router)
+app.include_router(circuit_customization.router)
+app.include_router(circuit_registration.router)
 app.include_router(circuit_properties.router)
 app.include_router(config_validation.router)
-app.include_router(convert_morphology_to_registered_mesh.router)
+app.include_router(distance_function_validation.router)
 app.include_router(count_scan_coordinates.router)
+app.include_router(electrical_cell_recording_properties.router)
 app.include_router(ephys_metrics.router)
+app.include_router(extracellular_locations.router)
 app.include_router(ion_channel_properties.router)
+app.include_router(circuit_visualization.memodel_router)
+app.include_router(mesh_registration.router)
 app.include_router(mesh_validation.router)
+app.include_router(morphology_locations.router)
 app.include_router(morphology_metrics.router)
+app.include_router(morphology_section_types.router)
 app.include_router(morphology_validation.router)
 app.include_router(morphology_metrics_calculation.router)
 app.include_router(multi_values.router)
 app.include_router(validate_electrophysiology_protocol_nwb.router)
 activate_scan_config_endpoints()
 app.include_router(scan_config.router)
+app.include_router(subject.router)
 app.include_router(task.router)
+app.include_router(publication.router)
+app.include_router(contributor.router)

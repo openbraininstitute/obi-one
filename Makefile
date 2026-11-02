@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -29,6 +29,9 @@ install:  ## Default installation (for running tasks and local scripts)
 
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
+
+install-simplification:  ## Install with private circuit simplification dependencies (Requires AWS auth)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra simplification
 
 install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
@@ -63,23 +66,36 @@ compile-deps:  ## Create or update the lock file, without upgrading the version 
 upgrade-deps:  ## Create or update the lock file, using the latest version of the dependencies
 	uv lock --upgrade
 
-check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version
+check-deps:  ## Check that the dependencies in the existing lock file are valid, and that entitysdk is at the latest version.
 	uv lock --locked --upgrade-package entitysdk
 
+compile-launch-deps:  ## Compile launch-script requirements (.in -> pinned .txt), preserving existing pins. Optional: FILE=<path to .in or dir>
+	uv run python launch_scripts/tools/launch_deps_compile.py $(FILE)
+
+upgrade-launch-deps:  ## Compile launch-script requirements, upgrading the transitive closure to latest. Optional: FILE=<path to .in or dir>
+	uv run python launch_scripts/tools/launch_deps_compile.py --upgrade $(FILE)
+
+check-launch-deps:  ## Verify committed launch-script .txt files are consistent with their .in sources
+	uv run python launch_scripts/tools/launch_deps_compile.py --check $(FILE)
+
+pin-launch-deps:  ## Pin obi-one==VERSION in launch-script .txt files (used by the release-pin workflow). Required: VERSION=<calver>. Optional: FILE=<path to .txt or dir>
+	python3 launch_scripts/tools/launch_deps_pin.py --version "$(VERSION)" $(FILE)
+
 format:  ## Run formatters
-	uv run -m ruff format $(FILE)
-	uv run -m ruff check --fix $(FILE)
+	uv run ruff format $(FILE)
+	uv run ruff check --fix $(FILE)
+	uv run ty check --fix $(FILE)
 
 lint:  ## Run linters
-	uv run -m ruff format --check
-	uv run -m ruff check
-	uv run --with ty ty check app obi_one
+	uv run ruff format --check
+	uv run ruff check
+	uv run ty check --error-on-warning
 
 format_count: ## Count the number of errors by file
-	uv run -m ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
+	uv run ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
 
 format_types: ## Count the number of errors by type
-	uv run -m ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
+	uv run ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
 build:  ## Build the Docker image
 	docker compose --profile "*" --progress=plain build app
@@ -99,11 +115,11 @@ test-file: ## Run tests in a single test file locally. Usage: make test-file FIL
 
 test-schema: ## Run schema tests locally.
 	@$(call load_env,test-local)
-	uv run -m pytest tests/ui_schema/test_schema.py --no-cov --disable-warnings
+	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings
 
 test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
-	uv run -m pytest tests/ui_schema/test_schema.py --no-cov --disable-warnings --log-cli-level=INFO
+	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test

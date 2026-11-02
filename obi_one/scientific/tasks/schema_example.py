@@ -11,13 +11,10 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
-from obi_one.scientific.unions.unions_neuron_sets import (
-    CircuitExtractionNeuronSetUnion,
-    NeuronSetReference,
-    SimulationNeuronSetUnion,
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    ALL_NEURON_SETS_REFERENCE_TYPES,
+    NEURONSimulationNeuronSetUnion,
 )
 
 
@@ -25,7 +22,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    EXTRACTION_TARGET = "Extraction Target"
+    EXTRACTION_TARGET = "Extraction target"
 
 
 class EntityDependentBlockExample(Block):
@@ -45,7 +42,6 @@ class EntityDependentBlockExample(Block):
 class SchemaExampleScanConfig(ScanConfig):
     """ScanConfig for extracting sub-circuits from larger circuits."""
 
-    single_coord_class_name: ClassVar[str] = ""
     name: ClassVar[str] = "Schema Example"
     description: ClassVar[str] = "Useful for testing and generating example schema."
 
@@ -70,7 +66,7 @@ class SchemaExampleScanConfig(ScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
             },
             default=True,
-            title="Include Virtual Populations",
+            title="Include virtual populations",
             description="Include virtual neurons which target the cells contained in the specified"
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
@@ -148,8 +144,8 @@ class SchemaExampleScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    neuron_set: CircuitExtractionNeuronSetUnion = Field(
-        title="Neuron Set",
+    neuron_set: NEURONSimulationNeuronSetUnion = Field(
+        title="Neuron set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
         json_schema_extra={
@@ -159,20 +155,21 @@ class SchemaExampleScanConfig(ScanConfig):
         },
     )
 
-    neuron_sets: dict[str, SimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.SINGULAR_NAME: "Neuron Set",
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
+            SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
             SchemaKey.GROUP: BlockGroup.EXTRACTION_TARGET,
             SchemaKey.GROUP_ORDER: 1,
         },
     )
 
     entity_dependent_block_example: EntityDependentBlockExample = Field(
-        title="Entity Dependent Block Example",
+        title="Entity dependent block example",
         description="Example block which is only usable for certain circuits based on the value of"
         " the CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI property for that circuit.",
         json_schema_extra={

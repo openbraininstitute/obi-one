@@ -5,8 +5,10 @@ from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.tasks.generate_simulations.config.base import (
+    DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
     SimulationSingleConfigMixin,
@@ -14,15 +16,18 @@ from obi_one.scientific.tasks.generate_simulations.config.base import (
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
-from obi_one.scientific.unions.unions_neuronal_manipulations import (
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    MorphologyLocationsReference,
+)
+from obi_one.scientific.unions_and_references.neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
 )
-from obi_one.scientific.unions.unions_stimuli import (
+from obi_one.scientific.unions_and_references.stimuli import (
     MEModelStimulusUnion,
     StimulusReference,
 )
-from obi_one.scientific.unions.unions_timestamps import (
+from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
 )
 
@@ -34,13 +39,12 @@ MEModelDiscriminator = Annotated[MEModelCircuit | MEModelFromID, Field(discrimin
 class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
     """MEModelSimulationScanConfig."""
 
-    single_coord_class_name: ClassVar[str] = "MEModelSimulationSingleConfig"
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
     class Initialize(NeuronSimulationScanConfig.Initialize):
         circuit: MEModelDiscriminator | list[MEModelDiscriminator] = Field(
-            title="ME Model",
+            title="ME-model",
             description="ME Model to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
@@ -64,7 +68,7 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         description="Stimuli for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: StimulusReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [StimulusReference.__name__],
             SchemaKey.SINGULAR_NAME: "Stimulus",
             SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -73,11 +77,11 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
 
     neuronal_manipulations: dict[str, NeuronalManipulationUnion] = Field(
         default_factory=dict,
-        title="Neuronal Manipulations",
+        title="Neuronal manipulations",
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.REFERENCE_TYPE: NeuronalManipulationReference.__name__,
+            SchemaKey.REFERENCE_TYPES: [NeuronalManipulationReference.__name__],
             SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 0,
@@ -88,12 +92,21 @@ class MEModelSimulationScanConfig(NeuronSimulationScanConfig):
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.SETUP_BLOCK_GROUP,
+            BlockGroup.TARGETING_BLOCK_GROUP,
             BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
             BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             BlockGroup.EVENTS_GROUP,
         ],
         SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: {
             TimestampsReference.__name__: DEFAULT_TIMESTAMPS_NAME,
+            MorphologyLocationsReference.__name__: DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
+        },
+        SchemaKey.PROPERTY_ENDPOINTS: {
+            MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/memodel-neuronal-manipulation-properties"
+            ),
         },
     }
 

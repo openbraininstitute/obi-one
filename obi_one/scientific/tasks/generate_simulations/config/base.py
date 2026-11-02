@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 import entitysdk
 from libsonata import SimulatorType
@@ -18,6 +18,11 @@ from obi_one.core.serialization_constants import (
 )
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
+from obi_one.scientific.blocks.neuron_sets.specific import (
+    AllBiophysicalNeurons,
+    AllPointNeurons,
+    AllVirtualNeurons,
+)
 from obi_one.scientific.from_id.circuit_from_id import (
     CircuitFromID,
     MEModelWithSynapsesCircuitFromID,
@@ -33,24 +38,33 @@ from obi_one.scientific.library.entity_property_types import (
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
+from obi_one.scientific.unions_and_references.neuron_sets import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
+)
+
+if TYPE_CHECKING:
+    from obi_one.scientific.library.circuit import Circuit
 
 SONATA_VERSION = 2.4
 
 L = logging.getLogger(__name__)
 
 
-DEFAULT_NODE_SET_NAME = "Default: All Biophysical Neurons"
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
+DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: Soma (no explicit compartment)"
 
 
 class BlockGroup(StrEnum):
     """Enumeration of block groups for simulation configuration."""
 
     SETUP_BLOCK_GROUP = "Setup"
-    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & recordings"
+    TARGETING_BLOCK_GROUP = "Targets"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
-    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
 
@@ -58,7 +72,6 @@ class BlockGroup(StrEnum):
 class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     """Abstract base class for simulation scan configurations."""
 
-    single_coord_class_name: ClassVar[str]
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
@@ -66,10 +79,62 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     _sonata_version: ClassVar[float] = SONATA_VERSION
     _target_simulator: ClassVar[SimulatorType] = None
     _timestep: ClassVar[None] = None
+    default_node_set_name: ClassVar[str] = "Default: All Biophysical Neurons"
+    default_neuron_set_type: ClassVar[type[AllBiophysicalNeurons]] = AllBiophysicalNeurons
+
+    # A neuron set reference left unset is filled in with the default for its own population
+    # type, which may differ from the simulation-wide default. Every simulation config needs all
+    # three, whatever its own default is: a point-only config can still hold a virtual set, and a
+    # biophysical one can hold both.
+    default_virtual_node_set_name: ClassVar[str] = "Default: All Virtual Neurons"
+    default_point_node_set_name: ClassVar[str] = "Default: All Point Neurons"
+    default_virtual_neuron_set_type: ClassVar[type[AllVirtualNeurons]] = AllVirtualNeurons
+    default_point_neuron_set_type: ClassVar[type[AllPointNeurons]] = AllPointNeurons
+
+    @property
+    def default_neuron_set_reference(
+        self,
+    ) -> BiophysicalNeuronSetReference:
+        """The default neuron set reference for the simulation."""
+        default_neuron_set_block_reference = BiophysicalNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_node_set_name
+        )
+
+        default_neuron_set_block_reference.block = self.default_neuron_set_type()
+        default_neuron_set_block_reference.block.set_block_name(self.default_node_set_name)
+
+        return default_neuron_set_block_reference
+
+    @property
+    def default_virtual_neuron_set_reference(
+        self,
+    ) -> VirtualNeuronSetReference:
+        """The default virtual neuron set reference for the simulation."""
+        ref = VirtualNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_virtual_node_set_name
+        )
+        ref.block = self.default_virtual_neuron_set_type()
+        ref.block.set_block_name(self.default_virtual_node_set_name)
+        return ref
+
+    @property
+    def default_point_neuron_set_reference(
+        self,
+    ) -> PointNeuronSetReference:
+        """The default point neuron set reference for the simulation."""
+        ref = PointNeuronSetReference(
+            block_dict_name="neuron_sets", block_name=self.default_point_node_set_name
+        )
+        ref.block = self.default_point_neuron_set_type()
+        ref.block.set_block_name(self.default_point_node_set_name)
+        return ref
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 
@@ -103,7 +168,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
         v_init: float | list[float] = Field(
             default=-80.0,
-            title="Initial Voltage",
+            title="Initial voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -112,7 +177,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
         random_seed: int | list[int] = Field(
             default=1,
-            title="Random Seed",
+            title="Random seed",
             description="Random seed for the simulation.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -120,6 +185,21 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
+
+    def validate_circuit(self, circuit: "Circuit | None") -> None:
+        """Check the resolved circuit can be simulated by this configuration's simulator.
+
+        Called by the generation task once the circuit is staged. The default accepts anything;
+        simulators with structural requirements override it to fail early with a clear message.
+        """
+
+    def validate_recordings(self, circuit: "Circuit") -> None:
+        """Check the simulator's job can hold every recording this configuration asks for.
+
+        Called by the generation task once every recording has a neuron set, so the recorded
+        neurons can be counted. The default accepts anything; simulators whose recordings are
+        bounded by the job's memory override it to fail before anything is launched.
+        """
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
@@ -148,7 +228,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @property
     def target_simulator(self) -> SimulatorType:
-        """Returns the target simulator for the simulation campaign."""
+        """The target simulator for the simulation campaign."""
         if self._target_simulator is None:
             msg = "Target simulator not specified for simulation campaign."
             raise NotImplementedError(msg)
@@ -156,7 +236,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     @property
     def timestep(self) -> PositiveFloat:
-        """Returns the simulation timestep."""
+        """The simulation timestep."""
         if self._timestep is None:
             msg = "Timestep not specified for simulation campaign."
             raise NotImplementedError(msg)
@@ -216,11 +296,11 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         self,
         simulations: list[entitysdk.models.Simulation],  # ty:ignore[possibly-missing-submodule]
         db_client: entitysdk.client.Client,
-    ) -> None:  # ty:ignore[invalid-method-override]
+    ) -> entitysdk.models.SimulationGeneration:  # ty:ignore[invalid-method-override, possibly-missing-submodule]
         L.info("3. Saving completed simulation campaign generation")
 
         L.info("-- Register SimulationGeneration Entity")
-        db_client.register_entity(
+        return db_client.register_entity(
             entitysdk.models.SimulationGeneration(  # ty:ignore[possibly-missing-submodule]
                 start_time=datetime.now(UTC),
                 used=[self._campaign],
@@ -278,7 +358,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Upload simulation_generation_config")
         _ = db_client.upload_file(
-            entity_id=self.single_entity.id,  # ty:ignore[invalid-argument-type]
+            entity_id=self.single_entity.id,
             entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]

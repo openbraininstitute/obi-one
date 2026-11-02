@@ -1,99 +1,68 @@
-"""Explicit mapping of type names to their module paths.
+"""Mapping of serialized ``type`` values to the classes that implement them.
 
-Used by core/deserialize.py to resolve the concrete class for a given
-'type' field in serialized JSON without importing all scientific modules
-eagerly. All deserializable types must have an entry in this dictionary.
+Used by core/deserialize.py to resolve the concrete class for a given 'type' field in
+serialized JSON without importing all scientific modules eagerly.
 
-The key is the class name (matching the 'type' field in JSON), and the
-value is the module where that class is defined.
+Task config classes are not listed here: they are derived from the ``TaskSpec`` references
+in ``config_task_map``, so registering a task type also makes its configs deserializable.
+Only framework classes and ``__init__``/alias re-exports, which no task spec declares,
+are listed explicitly. ``SimulationsForm`` comes from ``SCAN_CONFIG_EXTRA_REFS``.
 """
 
-# ruff: noqa: E501 — long lines are unavoidable in a path mapping dict
+from obi_one.core.registry import TaskSpec
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    SCAN_CONFIG_EXTRA_REFS,
+    TASK_SPECS,
+)
+from obi_one.types import TaskType
+from obi_one.utils.lazy_import import ClassRef, class_name, import_class
 
-from importlib import import_module
+_SIMULATION_ALIASES = "obi_one.scientific.tasks.generate_simulations.config.neuron.aliases"
 
-TYPE_MAP: dict[str, str] = {
-    # Core types
-    "Block": "obi_one.core.block",
-    "BlockReference": "obi_one.core.block_reference",
-    "CoupledScanGenerationTask": "obi_one.core.scan_generation",
-    "GridScanGenerationTask": "obi_one.core.scan_generation",
-    "Info": "obi_one.core.info",
-    "NamedPath": "obi_one.core.path",
-    "NamedTuple": "obi_one.core.tuple",
-    "ScanConfig": "obi_one.core.scan_config",
-    # Scan configs and single configs
-    "AINDEPhysDispatchScanConfig": "obi_one.scientific.tasks.aind_ephys._01_dispatch.config",
-    "AINDEPhysDispatchSingleConfig": "obi_one.scientific.tasks.aind_ephys._01_dispatch.config",
-    "AINDEPhysPreprocessingScanConfig": "obi_one.scientific.tasks.aind_ephys._02_preprocessing.config",
-    "AINDEPhysPreprocessingSingleConfig": "obi_one.scientific.tasks.aind_ephys._02_preprocessing.config",
-    "AINDEPhysSpikesortKilosort4ScanConfig": "obi_one.scientific.tasks.aind_ephys._03_kilosort4.config",
-    "AINDEPhysSpikesortKilosort4SingleConfig": "obi_one.scientific.tasks.aind_ephys._03_kilosort4.config",
-    "AINDEPhysPostprocessingScanConfig": "obi_one.scientific.tasks.aind_ephys._04_postprocessing.config",
-    "AINDEPhysPostprocessingSingleConfig": "obi_one.scientific.tasks.aind_ephys._04_postprocessing.config",
-    "AINDEPhysCurationScanConfig": "obi_one.scientific.tasks.aind_ephys._05_curation.config",
-    "AINDEPhysCurationSingleConfig": "obi_one.scientific.tasks.aind_ephys._05_curation.config",
-    "AINDEPhysVisualizationScanConfig": "obi_one.scientific.tasks.aind_ephys._06_visualization.config",
-    "AINDEPhysVisualizationSingleConfig": "obi_one.scientific.tasks.aind_ephys._06_visualization.config",
-    "AINDEPhysResultsCollectorScanConfig": "obi_one.scientific.tasks.aind_ephys._07_results_collector.config",
-    "AINDEPhysResultsCollectorSingleConfig": "obi_one.scientific.tasks.aind_ephys._07_results_collector.config",
-    "AINDEPhysProcessingQCScanConfig": "obi_one.scientific.tasks.aind_ephys._08_processing_qc.config",
-    "AINDEPhysProcessingQCSingleConfig": "obi_one.scientific.tasks.aind_ephys._08_processing_qc.config",
-    "AINDEPhysQCCollectorScanConfig": "obi_one.scientific.tasks.aind_ephys._09_qc_collector.config",
-    "AINDEPhysQCCollectorSingleConfig": "obi_one.scientific.tasks.aind_ephys._09_qc_collector.config",
-    "AINDEcephysNWBScanConfig": "obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config",
-    "AINDEcephysNWBSingleConfig": "obi_one.scientific.tasks.aind_ephys._10_ecephys_nwb.config",
-    "AINDUnitsNWBScanConfig": "obi_one.scientific.tasks.aind_ephys._11_units_nwb.config",
-    "AINDUnitsNWBSingleConfig": "obi_one.scientific.tasks.aind_ephys._11_units_nwb.config",
-    "BasicConnectivityPlotsScanConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
-    "BasicConnectivityPlotsSingleConfig": "obi_one.scientific.tasks.basic_connectivity_plots",
-    "CircuitExtractionScanConfig": "obi_one.scientific.tasks.circuit_extraction",
-    "CircuitExtractionSingleConfig": "obi_one.scientific.tasks.circuit_extraction",
-    "CircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
-    "CircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit",
-    "ConnectivityMatrixExtractionScanConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
-    "ConnectivityMatrixExtractionSingleConfig": "obi_one.scientific.tasks.connectivity_matrix_extraction",
-    "ContributeMorphologyScanConfig": "obi_one.scientific.tasks.contribute",
-    "ContributeMorphologySingleConfig": "obi_one.scientific.tasks.contribute",
-    "ContributeSubjectScanConfig": "obi_one.scientific.tasks.contribute",
-    "ContributeSubjectSingleConfig": "obi_one.scientific.tasks.contribute",
-    "CreateExtracellularRecordingArrayScanConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
-    "CreateExtracellularRecordingArraySingleConfig": "obi_one.scientific.tasks.create_recording_array.create_recording_array",
-    "ElectrophysiologyMetricsScanConfig": "obi_one.scientific.tasks.ephys_extraction",
-    "ElectrophysiologyMetricsSingleConfig": "obi_one.scientific.tasks.ephys_extraction",
-    "EMSynapseMappingScanConfig": "obi_one.scientific.tasks.em_synapse_mapping.config",
-    "EMSynapseMappingSingleConfig": "obi_one.scientific.tasks.em_synapse_mapping.config",
-    "FolderCompressionScanConfig": "obi_one.scientific.tasks.folder_compression",
-    "FolderCompressionSingleConfig": "obi_one.scientific.tasks.folder_compression",
-    "IonChannelFittingScanConfig": "obi_one.scientific.tasks.ion_channel_modeling",
-    "IonChannelFittingSingleConfig": "obi_one.scientific.tasks.ion_channel_modeling",
-    "IonChannelModelSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models",
-    "IonChannelModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_ion_channel_models",
-    "LearningEngineCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit",
-    "LearningEngineCircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit",
-    "MEModelSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
-    "MEModelSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model",
-    "MEModelWithSynapsesCircuitSimulationScanConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
-    "MEModelWithSynapsesCircuitSimulationSingleConfig": "obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses",
-    "MorphologyContainerizationScanConfig": "obi_one.scientific.tasks.morphology_containerization",
-    "MorphologyContainerizationSingleConfig": "obi_one.scientific.tasks.morphology_containerization",
-    "MorphologyDecontainerizationScanConfig": "obi_one.scientific.tasks.morphology_decontainerization",
-    "MorphologyDecontainerizationSingleConfig": "obi_one.scientific.tasks.morphology_decontainerization",
-    "MorphologyLocationsScanConfig": "obi_one.scientific.tasks.morphology_locations",
-    "MorphologyLocationsSingleConfig": "obi_one.scientific.tasks.morphology_locations",
-    "MorphologyMetricsScanConfig": "obi_one.scientific.tasks.morphology_metrics",
-    "MorphologyMetricsSingleConfig": "obi_one.scientific.tasks.morphology_metrics",
-    "SkeletonizationScanConfig": "obi_one.scientific.tasks.skeletonization",
-    "SkeletonizationSingleConfig": "obi_one.scientific.tasks.skeletonization",
-    # __init__.py aliases (class is re-exported under this name)
-    "CoupledScan": "obi_one",
-    "GridScan": "obi_one",
-    "SimulationsForm": "obi_one.scientific.unions.aliases",
-}
+_CORE_TYPE_REFS: tuple[ClassRef, ...] = (
+    ("obi_one.core.block", "Block"),
+    ("obi_one.core.block_reference", "BlockReference"),
+    ("obi_one.core.scan_generation", "CoupledScanGenerationTask"),
+    ("obi_one.core.scan_generation", "GridScanGenerationTask"),
+    ("obi_one.core.info", "Info"),
+    ("obi_one.core.path", "NamedPath"),
+    ("obi_one.core.tuple", "NamedTuple"),
+    ("obi_one.core.scan_config", "ScanConfig"),
+)
+
+_ALIAS_TYPE_REFS: tuple[ClassRef, ...] = (
+    ("obi_one.core.scan", "CoupledScan"),
+    ("obi_one.core.scan", "GridScan"),
+    (_SIMULATION_ALIASES, "Simulation"),
+    *SCAN_CONFIG_EXTRA_REFS,
+)
+
+
+def _build_type_map(
+    core_type_refs: tuple[ClassRef, ...] = _CORE_TYPE_REFS,
+    alias_type_refs: tuple[ClassRef, ...] = _ALIAS_TYPE_REFS,
+    task_specs: dict[TaskType, TaskSpec] = TASK_SPECS,
+) -> dict[str, ClassRef]:
+    """Index every deserializable class reference by the ``type`` value it is stored under."""
+    refs = [
+        *core_type_refs,
+        *alias_type_refs,
+        *(ref for task_spec in task_specs.values() for ref in task_spec.config_refs),
+    ]
+    type_map: dict[str, ClassRef] = {}
+    for ref in refs:
+        name = class_name(ref)
+        existing = type_map.get(name)
+        if existing is not None and existing != ref:
+            msg = f"Duplicate deserializable type {name!r}: {existing!r} and {ref!r}"
+            raise ValueError(msg)
+        type_map[name] = ref
+    return type_map
+
+
+TYPE_MAP: dict[str, ClassRef] = _build_type_map()
 
 
 def load_class(type_name: str) -> type:
     """Resolve a type name to its class using TYPE_MAP and lazy import."""
-    module_path = TYPE_MAP[type_name]
-    module = import_module(module_path)
-    return getattr(module, type_name)
+    return import_class(TYPE_MAP[type_name])

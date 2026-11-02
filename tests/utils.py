@@ -15,9 +15,9 @@ PROJECT_ID = "ee86d4a0-eaca-48ca-9788-ddc450250b15"
 UNRELATED_VIRTUAL_LAB_ID = "99999999-2c6f-4eac-893f-f0dc665605c5"
 UNRELATED_PROJECT_ID = "66666666-eaca-48ca-9788-ddc450250b15"
 
-TOKEN_ADMIN = "I'm admin"  # noqa: S105
-TOKEN_USER_1 = "I'm user 1"  # noqa: S105
-TOKEN_USER_2 = "I'm user 2"  # noqa: S105
+TOKEN_ADMIN = "I'm admin"  # ruff: ignore[hardcoded-password-string]
+TOKEN_USER_1 = "I'm user 1"  # ruff: ignore[hardcoded-password-string]
+TOKEN_USER_2 = "I'm user 2"  # ruff: ignore[hardcoded-password-string]
 
 AUTH_HEADER_ADMIN = {"Authorization": f"Bearer {TOKEN_ADMIN}"}
 AUTH_HEADER_USER_1 = {"Authorization": f"Bearer {TOKEN_USER_1}"}

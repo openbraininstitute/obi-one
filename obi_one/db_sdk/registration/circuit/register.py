@@ -1,0 +1,640 @@
+"""High-level circuit registration functions."""
+
+import logging
+from datetime import datetime
+from pathlib import Path
+from uuid import UUID
+
+from entitysdk import Client, models, types
+from entitysdk.types import DerivationType
+
+from obi_one.db_sdk.registration.circuit.assets import register_sonata_circuit_asset
+from obi_one.db_sdk.registration.circuit.generate import (
+    generate_additional_circuit_assets,
+    generate_overview_image_asset,
+    generate_sim_designer_image_asset,
+)
+from obi_one.db_sdk.registration.circuit.links import (
+    register_contributions,
+    register_derivation,
+    register_publication_links,
+)
+from obi_one.db_sdk.registration.circuit.resolve import (
+    check_hierarchy_species,
+    check_if_circuit_exists,
+    get_brain_region,
+    get_brain_region_hierarchy,
+    get_contributions,
+    get_exp_date,
+    get_license,
+    get_parent_circuit,
+    get_publications,
+    get_root_circuit,
+    get_subject,
+)
+from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
+from obi_one.utils.circuit import get_circuit_properties, get_circuit_size
+from obi_one.utils.io import extract_tar_gz
+
+L = logging.getLogger(__name__)
+
+
+def _resolve_target_simulator(
+    target_simulator: types.TargetSimulator,
+    circuit: OBICircuit,
+) -> types.TargetSimulator:
+    """Resolve target simulator from user input and circuit config.
+
+    Checks consistency between the provided target_simulator and the value
+    specified in the circuit config (if any).
+    """
+    cfg_target_simulator = circuit.sonata_circuit.config.get("target_simulator")
+    if cfg_target_simulator and target_simulator != cfg_target_simulator:
+        msg = (
+            f"Specified target simulator '{target_simulator}' does not match"
+            f" '{cfg_target_simulator}' in circuit config!"
+        )
+        raise ValueError(msg)
+    return target_simulator
+
+
+def _resolve_circuit_path(circuit_path: str | Path) -> tuple[Path, Path | None]:
+    """Resolve circuit_path to the circuit_config.json file.
+
+    If ``circuit_path`` is a .gz archive, it is extracted first and the original
+    compressed path is returned as the second element.  Otherwise the second
+    element is None.
+
+    Returns:
+        Tuple of (resolved circuit_config.json path, compressed path or None).
+    """
+    circuit_path = Path(circuit_path)
+    circuit_path_compressed: Path | None = None
+
+    if circuit_path.suffix == ".gz":
+        circuit_path_compressed = circuit_path
+        circuit_path = extract_tar_gz(circuit_path, clean=True)
+        L.info(f"Extracted compressed circuit '{circuit_path_compressed}' to '{circuit_path}'")
+
+    if circuit_path.is_dir():
+        config_candidate = circuit_path / "circuit_config.json"
+        if not config_candidate.exists():
+            # Archive may contain a single top-level directory; look one level deeper
+            subdirs = [d for d in circuit_path.iterdir() if d.is_dir()]
+            if len(subdirs) == 1:
+                config_candidate = subdirs[0] / "circuit_config.json"
+        circuit_path = config_candidate
+    if not circuit_path.exists():
+        msg = f"Circuit config not found at '{circuit_path}'!"
+        raise ValueError(msg)
+
+    return circuit_path, circuit_path_compressed
+
+
+def _get_biophysical_model_templates(circuit: OBICircuit) -> set[str]:
+    """Get model-template values used by biophysical populations in a circuit."""
+    templates: set[str] = set()
+    for population_name in circuit.sonata_circuit.nodes.population_names:
+        population = circuit.sonata_circuit.nodes[population_name]
+        if population.type not in TYPES_OF_BIOPHYS_NODES:
+            continue
+        if "model_template" not in population.property_names:
+            continue
+        templates.update(
+            str(template)
+            for template in population.get(properties="model_template").unique().tolist()
+            if template
+        )
+    return templates
+
+
+def _resolve_emodel_sources(
+    emodels: models.EModel | list[models.EModel],
+    labels: str | list[str] | None,
+    model_templates: set[str],
+) -> list[tuple[models.EModel, str]]:
+    """Normalize a single EModel or list of EModels into validated (emodel, label) pairs."""
+    emodel_list = emodels if isinstance(emodels, list) else [emodels]
+    for emodel in emodel_list:
+        if not isinstance(emodel, models.EModel):
+            msg = "derived_from_emodel must be an EModel or a list of EModels"
+            raise TypeError(msg)
+    if labels is None:
+        msg = "derivation_label is required when derived_from_emodel is provided"
+        raise ValueError(msg)
+    label_list = labels if isinstance(labels, list) else [labels]
+    if len(label_list) != len(emodel_list):
+        msg = "derivation_label must have the same length as derived_from_emodel"
+        raise ValueError(msg)
+    for label in label_list:
+        if label not in model_templates:
+            msg = "derivation_label must match a biophysical model_template in the circuit"
+            raise ValueError(msg)
+    return list(zip(emodel_list, label_list, strict=True))
+
+
+def _register_parent_emodel_derivations(
+    client: Client,
+    parent: models.Circuit | None,
+    registered_circuit: models.Circuit | None,
+    *,
+    parent_derivation_type: DerivationType | None,
+    model_templates: set[str],
+    dry_run: bool,
+) -> None:
+    """Copy matching EModel derivations from a parent circuit to a derived circuit."""
+    # Customization and simplification may replace HOC files or EModels, so their parent
+    # derivations must not be inherited.
+    # TODO: Revisit when those workflows preserve model identity.
+    if parent is None or parent_derivation_type in {
+        DerivationType.circuit_customization,
+        DerivationType.circuit_simplification,
+    }:
+        return
+
+    derivations = client.search_entity(
+        entity_type=models.Derivation,
+        query={
+            "generated__id": parent.id,
+            "derivation_type": DerivationType.emodel_circuit,
+        },
+    ).all()
+    for derivation in derivations:
+        if derivation.used is not None and derivation.label in model_templates:
+            register_derivation(
+                client=client,
+                from_entity=derivation.used,
+                derivation_type=DerivationType.emodel_circuit,
+                registered_circuit=registered_circuit,
+                dry_run=dry_run,
+                label=derivation.label,
+            )
+
+
+def register_circuit(  # ruff: ignore[too-many-arguments, too-many-locals, complex-structure, too-many-branches, too-many-statements]
+    client: Client,
+    circuit_path: str | Path,
+    *,
+    name: str,
+    description: str,
+    build_category: types.CircuitBuildCategory,
+    brain_region: models.BrainRegion,
+    subject: models.Subject,
+    target_simulator: types.TargetSimulator,
+    scale_override: types.CircuitScale | None = None,
+    contact_email: str | None = None,
+    published_in: str | None = None,
+    experiment_date: datetime | None = None,
+    license: models.License | None = None,
+    atlas: models.BrainAtlas | None = None,
+    root: models.Circuit | UUID | None = None,
+    parent: models.Circuit | UUID | None = None,
+    derived_from_emodel: models.EModel | list[models.EModel] | None = None,
+    derivation_type: DerivationType | None = None,
+    derivation_label: str | list[str] | None = None,
+    contributions: dict | None = None,
+    publications: dict | None = None,
+    authorized_public: bool = False,
+    skip_additional_assets: bool = False,
+    skip_validation: bool = False,
+    include_compressed: bool = True,
+    include_overview_images: bool = True,
+    lifecycle_status: types.EntityLifecycleStatus | str | None = None,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
+    dry_run: bool = False,
+    neurodamus_validation: bool = False,
+) -> models.Circuit | None:
+    """Register a circuit entity with all associated links and assets.
+
+    This is the main entry point for tasks and programmatic registration.
+    All entity references (subject, brain_region, license, parent) must already
+    be resolved.
+
+    Scale, neuron/synapse/connection counts, and circuit properties (morphologies,
+    point neurons, electrical models, spines) are computed automatically from
+    the circuit files. The SONATA circuit folder is registered as an asset.
+
+    For the HTTP draft → async-validate → assets flow, call with
+    ``lifecycle_status="draft"`` and ``skip_validation=True``, then trigger
+    the validation launch job. Sync registration (tasks/notebooks) leaves
+    those defaults so validation and assets run in-process.
+
+    Set ``neurodamus_validation=True`` to run the fuller MOD compile / HOC /
+    snap validation in-process after registration (same checks as the
+    neurodamus launch job, without the launch-system). The circuit is
+    registered as ``draft`` first and transitions to ``active`` or
+    ``disqualified`` based on the result.
+
+    Args:
+        client: The entitycore SDK client.
+        circuit_path: Path to circuit_config.json (or the folder containing it,
+            or a compressed .gz archive of the circuit folder).
+        name: Circuit name.
+        description: Circuit description.
+        build_category: Build category (computational_model, em_reconstruction).
+        brain_region: Resolved brain region entity.
+        subject: Resolved subject entity.
+        target_simulator: Target simulator for the circuit.
+        scale_override: If provided, override the automatically computed circuit scale.
+            Only works for scales greater than 'small' (e.g. microcircuit, whole-brain).
+        contact_email: Contact email address (optional).
+        published_in: Human-readable publication string (optional).
+        experiment_date: Experiment/build date (optional).
+        license: Resolved license entity (optional).
+        atlas: Brain atlas entity associated with the circuit (optional).
+        root: Root circuit entity or root circuit ID (UUID) in the derivation
+            hierarchy (optional). When omitted and ``parent`` is set, defaults to
+            ``parent.root_circuit_id or parent.id``.
+        parent: Parent circuit entity or ID (UUID) for the circuit derivation hierarchy
+            (optional). When set, it creates a Circuit-to-Circuit derivation link with
+            ``derivation_type`` and no label. ``root`` defaults from it.
+        derived_from_emodel: EModel source(s) for ``emodel_circuit`` derivations (optional).
+            Accepts a single EModel or a list of EModels, one derivation per EModel. It cannot
+            be combined with ``parent`` and requires ``derivation_label`` matching biophysical
+            ``model_template`` values in the circuit. It does not affect the hierarchy.
+        derivation_type: Type of derivation for a parent circuit. It must be ``None`` when an
+            explicit EModel source is provided; explicit EModel sources always use
+            ``emodel_circuit``.
+        derivation_label: Label(s) for the derivation. Required for an explicit EModel source:
+            a single label or a list matching ``derived_from_emodel`` in length, each matching
+            a biophysical ``model_template``. Forbidden otherwise.
+        contributions: Resolved contributions dict (from get_contributions, optional).
+        publications: Resolved publications dict (from get_publications, optional).
+        authorized_public: Whether to make the circuit publicly accessible.
+        skip_additional_assets: If True, skip generation/registration of additional assets
+            (compressed circuit, matrices, plots, figures).
+        skip_validation: If True, skip SONATA circuit validation (e.g. when validation
+            runs asynchronously after registration).
+        include_compressed: When generating additional assets, also produce the
+            compressed circuit archive. Set False when the circuit folder is staged
+            as symlinks (circuit customization).
+        include_overview_images: When generating additional assets, also produce plots
+            and overview / sim-designer images. Set False for post-validation jobs that
+            only need compressed + connectivity matrices.
+        lifecycle_status: Optional lifecycle status (e.g. ``"draft"`` for async
+            validation). When omitted, entitycore's default applies.
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
+        dry_run: If True, perform a dry run without registering anything.
+        neurodamus_validation: If True, register as ``draft``, skip the light
+            bluepysnap SONATA check, then run MOD compile / HOC / snap validation
+            in-process and set lifecycle to ``active`` or ``disqualified``.
+
+    Returns:
+        The registered circuit entity, or the unregistered ``Circuit`` model
+        (with computed size/properties) when ``dry_run`` is True.
+    """
+    if neurodamus_validation:
+        skip_validation = True
+        lifecycle_status = "draft"
+
+    # Validate that a license is provided for public circuits
+    if authorized_public and license is None:
+        msg = "A license is required when registering a public circuit (authorized_public=True)."
+        raise ValueError(msg)
+    # Validate species consistency
+    if (
+        brain_region.species is not None
+        and subject.species is not None
+        and brain_region.species.id != subject.species.id
+    ):
+        msg = (
+            f"Species mismatch: brain region '{brain_region.name}'"
+            f" ('{brain_region.species.name}') does not match"
+            f" subject species '{subject.species.name}'!"
+        )
+        raise ValueError(msg)
+
+    # Resolve circuit_path to the circuit_config.json file
+    circuit_path, circuit_path_compressed = _resolve_circuit_path(circuit_path)
+    circuit_folder = circuit_path.parent
+
+    # Validate provided image paths
+    overview_image_path = Path(overview_image_path) if overview_image_path else None
+    sim_designer_image_path = Path(sim_designer_image_path) if sim_designer_image_path else None
+    if overview_image_path is not None and not overview_image_path.exists():
+        msg = f"Overview image file not found: '{overview_image_path}'"
+        raise FileNotFoundError(msg)
+    if sim_designer_image_path is not None and not sim_designer_image_path.exists():
+        msg = f"Sim designer image file not found: '{sim_designer_image_path}'"
+        raise FileNotFoundError(msg)
+
+    # Validate SONATA circuit
+    if not skip_validation:
+        from obi_one.utils.circuit_validation import (  # ruff: ignore[import-outside-top-level]
+            run_validation,
+        )
+
+        run_validation(circuit_path)
+
+    # Assure target simulator consistency
+    c = OBICircuit(name=name, path=str(circuit_path))
+    target_simulator = _resolve_target_simulator(target_simulator, c)
+
+    # Compute scale, counts, and properties from circuit
+    scale, number_neurons, number_synapses, number_connections = get_circuit_size(
+        c, scale_override=scale_override
+    )
+    has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines = (
+        get_circuit_properties(c)
+    )
+    L.info(
+        f"Circuit size & properties: scale={scale}, neurons={number_neurons}, "
+        f"synapses={number_synapses}, connections={number_connections}, "
+        f"has_morphologies={has_morphologies}, has_point_neurons={has_point_neurons}, "
+        f"has_electrical_cell_models={has_electrical_cell_models}, has_spines={has_spines}"
+    )
+
+    # Resolve parent and derive root when not explicitly provided
+    emodel_sources: list[tuple[models.EModel, str]] = []
+    if parent is not None and isinstance(parent, UUID):
+        parent = client.get_entity(entity_id=parent, entity_type=models.Circuit)
+    if parent is not None and derived_from_emodel is not None:
+        msg = "parent and derived_from_emodel cannot both be provided"
+        raise ValueError(msg)
+    if parent is not None:
+        if not isinstance(parent, models.Circuit):
+            msg = "parent must be a Circuit or UUID"
+            raise TypeError(msg)
+        if derivation_label is not None:
+            msg = "derivation_label must be None when parent is provided"
+            raise ValueError(msg)
+    elif derived_from_emodel is not None:
+        # Explicit EModel provenance declared by the caller (e.g. synaptome or
+        # EM synapse mapping builds); labels must be circuit model_templates.
+        if derivation_type is not None:
+            msg = "derivation_type must be None when derived_from_emodel is provided"
+            raise ValueError(msg)
+        emodel_sources = _resolve_emodel_sources(
+            emodels=derived_from_emodel,
+            labels=derivation_label,
+            model_templates=_get_biophysical_model_templates(c),
+        )
+    elif derivation_label is not None:
+        msg = "derivation_label requires parent or derived_from_emodel"
+        raise ValueError(msg)
+    if root is None and parent is not None:
+        root = parent.root_circuit_id or parent.id
+
+    # Build circuit model
+    circuit_kwargs: dict = {
+        "name": name,
+        "description": description,
+        "subject": subject,
+        "brain_region": brain_region,
+        "license": license,
+        "number_neurons": number_neurons,
+        "number_synapses": number_synapses,
+        "number_connections": number_connections,
+        "has_morphologies": has_morphologies,
+        "has_point_neurons": has_point_neurons,
+        "has_electrical_cell_models": has_electrical_cell_models,
+        "has_spines": has_spines,
+        "scale": scale,
+        "build_category": build_category,
+        "target_simulator": target_simulator,
+        "root_circuit_id": root.id if isinstance(root, models.Circuit) else root,
+        "atlas_id": atlas.id if atlas is not None else None,
+        "contact_email": contact_email,
+        "published_in": published_in,
+        "experiment_date": experiment_date,
+        "authorized_public": authorized_public,
+    }
+    if lifecycle_status is not None:
+        circuit_kwargs["lifecycle_status"] = lifecycle_status
+    circuit_model = models.Circuit(**circuit_kwargs)
+
+    # Register circuit entity
+    if dry_run:
+        L.info(f"Circuit entity '{circuit_model.name}': DRY RUN (not registered)")
+        registered_circuit = None
+    else:
+        registered_circuit = client.register_entity(circuit_model)
+        L.info(f"Circuit '{registered_circuit.name}' registered under ID {registered_circuit.id}")
+
+    # Derivation links: parent circuits and explicit EModels are mutually exclusive.
+    # The parent link records the circuit-to-circuit hierarchy (e.g. extraction);
+    # the emodel_circuit links record which EModel(s) the circuit's node
+    # model_templates were built from, consumed by neuronal manipulations.
+    # They are either inherited from the parent circuit or declared explicitly
+    # via derived_from_emodel — used by the synaptome and EM synapse mapping
+    # workflows, which build fresh hoc models rather than deriving a circuit
+    # from another circuit.
+    if parent is not None:
+        register_derivation(
+            client=client,
+            from_entity=parent,
+            derivation_type=derivation_type,
+            registered_circuit=registered_circuit,
+            dry_run=dry_run,
+        )
+        # Inherit the parent's emodel_circuit derivations still referenced by
+        # this circuit's model_templates.
+        _register_parent_emodel_derivations(
+            client=client,
+            parent=parent,
+            registered_circuit=registered_circuit,
+            parent_derivation_type=derivation_type,
+            model_templates=_get_biophysical_model_templates(c),
+            dry_run=dry_run,
+        )
+    elif emodel_sources:
+        # Used for synaptome and EM synapse mapping workflows that build fresh hoc
+        # models rather than deriving a circuit from another circuit.
+        # One emodel_circuit derivation per explicit (emodel, label) pair.
+        for emodel, label in emodel_sources:
+            register_derivation(
+                client=client,
+                from_entity=emodel,
+                derivation_type=DerivationType.emodel_circuit,
+                registered_circuit=registered_circuit,
+                dry_run=dry_run,
+                label=label,
+            )
+
+    # Contributions
+    if contributions:
+        register_contributions(
+            client=client,
+            contribution_dict=contributions,
+            registered_circuit=registered_circuit,
+            dry_run=dry_run,
+        )
+
+    # Publication links
+    if publications:
+        register_publication_links(
+            client=client,
+            publication_dict=publications,
+            registered_circuit=registered_circuit,
+            dry_run=dry_run,
+        )
+
+    # Register SONATA circuit folder asset
+    register_sonata_circuit_asset(
+        client=client,
+        file_path=circuit_folder,
+        registered_circuit=registered_circuit,
+        dry_run=dry_run,
+    )
+
+    # Generate and register additional circuit assets
+    if not skip_additional_assets:
+        edge_pop = c.default_edge_population_name if scale != types.CircuitScale.single else None
+        generate_additional_circuit_assets(
+            circuit_path=circuit_path,
+            edge_population=edge_pop,
+            circuit_path_compressed=circuit_path_compressed,
+            overview_image_path=overview_image_path,
+            sim_designer_image_path=sim_designer_image_path,
+            client=client,
+            circuit_entity=registered_circuit,
+            include_compressed=include_compressed,
+            include_overview_images=include_overview_images,
+        )
+    elif not dry_run and (overview_image_path is not None or sim_designer_image_path is not None):
+        # Generated assets are deferred to the post-validation job, but a user-uploaded image is
+        # attached right away so it is present before that job runs (which then skips any image
+        # already present rather than overwriting the user's). Only the provided image(s) are
+        # registered here - no plots, matrices, or figures are generated.
+        config_path = Path(circuit_path)
+        viz_dir = config_path.parents[1] / (config_path.parent.name + "__CIRCUIT_VIZ__")
+        if overview_image_path is not None:
+            generate_overview_image_asset(
+                plot_dir=None,
+                output_dir=viz_dir,
+                image_path=Path(overview_image_path),
+                client=client,
+                circuit_entity=registered_circuit,
+            )
+        if sim_designer_image_path is not None:
+            generate_sim_designer_image_asset(
+                plot_dir=None,
+                output_dir=viz_dir,
+                image_path=Path(sim_designer_image_path),
+                client=client,
+                circuit_entity=registered_circuit,
+            )
+
+    if neurodamus_validation and not dry_run and registered_circuit is not None:
+        from obi_one.scientific.tasks.circuit_validation.task import (  # ruff: ignore[import-outside-top-level]
+            run_circuit_validation,
+        )
+
+        result = run_circuit_validation(
+            db_client=client,
+            circuit_id=registered_circuit.id,
+        )
+        if not result["valid"]:
+            errors = "; ".join(result["errors"]) or "unknown validation error"
+            msg = f"Neurodamus validation failed for circuit '{name}': {errors}"
+            raise ValueError(msg)
+        registered_circuit = client.get_entity(
+            entity_id=registered_circuit.id, entity_type=models.Circuit
+        )
+
+    if dry_run:
+        return circuit_model
+    return registered_circuit
+
+
+def register_circuit_from_metadata(
+    client: Client,
+    circuit_metadata: dict,
+    circuit_path: str | Path,
+    *,
+    contributions: dict | None = None,
+    publications: dict | None = None,
+    authorized_public: bool = False,
+    include_overview_images: bool = True,
+    overview_image_path: str | Path | None = None,
+    sim_designer_image_path: str | Path | None = None,
+    dry_run: bool = False,
+    neurodamus_validation: bool = False,
+) -> models.Circuit | None:
+    """Register a circuit from user-provided metadata (resolving all entities).
+
+    This is the top-level user-facing function. It resolves all entity references
+    from string names in the metadata dict, computes counts/scale from the circuit
+    files, and delegates to register_circuit().
+
+    Args:
+        client: The entitycore SDK client.
+        circuit_metadata: Dictionary with circuit properties. Required keys:
+            name, description, build_category, species, subject, brain_region,
+            brain_region_hierarchy, target_simulator.
+            Optional keys: root, parent, derivation_type, license, published_in,
+            contact, experiment_date.
+        circuit_path: Path to the SONATA circuit folder (containing circuit_config.json),
+            directly to the circuit_config.json file, or a compressed .gz archive.
+        contributions: Raw contributions dict (agent name -> {type, role}).
+            Will be resolved via get_contributions(). Optional.
+        publications: Raw publications dict (DOI -> {type}).
+            Will be resolved via get_publications(). Optional.
+        authorized_public: Whether to make the circuit publicly accessible.
+        include_overview_images: When generating additional assets, also produce plots
+            and overview / sim-designer images. Defaults to True.
+        overview_image_path: Path to a pre-existing overview image file (.png or .webp).
+            If provided, generation is skipped and this file is registered directly (optional).
+        sim_designer_image_path: Path to a pre-existing simulation designer image file (.png).
+            If provided, generation is skipped and this file is registered directly (optional).
+        dry_run: If True, perform validation and dry run without registering.
+        neurodamus_validation: If True, run MOD compile / HOC / snap validation
+            in-process after registration (no launch-system job).
+
+    Returns:
+        The registered circuit entity, or the unregistered ``Circuit`` model
+        when ``dry_run`` is True.
+    """
+    # Validate and resolve all dependencies
+    check_if_circuit_exists(client, circuit_metadata)
+
+    subject = get_subject(client, circuit_metadata)
+    brain_hierarchy = get_brain_region_hierarchy(client, circuit_metadata)
+    check_hierarchy_species(brain_hierarchy, subject)
+    brain_region = get_brain_region(client, circuit_metadata, brain_hierarchy)
+    license_entity = get_license(client, circuit_metadata)
+    root = get_root_circuit(client, circuit_metadata)
+    parent = get_parent_circuit(client, circuit_metadata)
+    exp_date = get_exp_date(circuit_metadata)
+
+    # Resolve contributions and publications
+    contribution_dict = None
+    if contributions:
+        contribution_dict = get_contributions(client, contributions)
+
+    publication_dict = None
+    if publications:
+        publication_dict = get_publications(client, publications)
+
+    # Delegate to register_circuit with resolved entities
+    return register_circuit(
+        client=client,
+        circuit_path=circuit_path,
+        name=circuit_metadata["name"],
+        description=circuit_metadata["description"],
+        build_category=circuit_metadata["build_category"],
+        brain_region=brain_region,
+        subject=subject,
+        target_simulator=circuit_metadata["target_simulator"],
+        scale_override=circuit_metadata.get("scale_override"),
+        contact_email=circuit_metadata.get("contact"),
+        published_in=circuit_metadata.get("published_in"),
+        experiment_date=exp_date,
+        license=license_entity,
+        root=root,
+        parent=parent,
+        derivation_type=circuit_metadata.get("derivation_type"),
+        contributions=contribution_dict,
+        publications=publication_dict,
+        authorized_public=authorized_public,
+        include_overview_images=include_overview_images,
+        overview_image_path=overview_image_path,
+        sim_designer_image_path=sim_designer_image_path,
+        dry_run=dry_run,
+        neurodamus_validation=neurodamus_validation,
+    )

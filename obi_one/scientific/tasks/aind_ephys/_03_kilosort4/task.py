@@ -21,7 +21,7 @@ from obi_one.scientific.tasks.aind_ephys.capsule_runtime import ensure_capsule_p
 L = logging.getLogger(__name__)
 
 KS4_REPO_URL = "https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4.git"
-KS4_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-spikesort-kilosort4")  # noqa: S108
+KS4_REPO_DEFAULT_PATH = Path("/tmp/aind-ephys-spikesort-kilosort4")  # ruff: ignore[hardcoded-temp-file]
 
 # macOS-installable subset of the capsule's environment/Dockerfile, sufficient for a
 # local toy run. The capsule's FROM ...kilosort4-base image ships kilosort + torch
@@ -61,8 +61,10 @@ def _seed_data_dir(data_dir: Path, source: Path) -> int:
         ):
             shutil.copytree(entry, data_dir / entry.name)
             n += 1
-        elif (entry.is_file() and entry.name.startswith("binary_") and entry.suffix == ".json") or (
-            entry.is_file() and entry.name.startswith("preprocessed_") and entry.suffix == ".json"
+        elif (
+            entry.is_file()
+            and entry.suffix == ".json"
+            and entry.name.startswith(("binary_", "preprocessed_"))
         ):
             shutil.copy2(entry, data_dir / entry.name)
     return n
@@ -109,9 +111,9 @@ class AINDEPhysSpikesortKilosort4Task(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # noqa: ARG002
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         repo = _ensure_ks4_repo()
         capsule_python = ensure_capsule_python(repo, CAPSULE_DEPS)
@@ -153,7 +155,7 @@ class AINDEPhysSpikesortKilosort4Task(Task):
             argv.append("--raise-if-fails")
 
         L.info("Running %s", " ".join(argv))
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             argv,
             cwd=code_dir,
             capture_output=True,

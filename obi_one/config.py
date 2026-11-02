@@ -7,8 +7,23 @@ class CircuitExtractionSettings(BaseModel):
     run_validation: bool = False
 
 
+class SynapseParameterizationSettings(BaseModel):
+    benchmarking_enabled: bool = True
+
+
+class ExtracellularRecordingWeightsSettings(BaseModel):
+    benchmarking_enabled: bool = True
+
+
 class CaveClientConfig(BaseModel):
     microns_api_key: str = "CAVECLIENT_MICRONS_API_KEY"
+    # Retry behaviour for the CAVEClient materialization engine (urllib3 Retry).
+    # The engine intermittently returns 503s; these widen caveclient's weak
+    # built-in defaults so transient outages are ridden out before failing.
+    max_retries: int = 8
+    retry_backoff_factor: float = 0.5
+    retry_backoff_max: float = 120.0
+    retry_status_forcelist: tuple[int, ...] = (429, 502, 503, 504)
 
 
 class Settings(BaseSettings):
@@ -20,6 +35,12 @@ class Settings(BaseSettings):
     )
 
     circuit_extraction: CircuitExtractionSettings = CircuitExtractionSettings()
+
+    synapse_parameterization: SynapseParameterizationSettings = SynapseParameterizationSettings()
+
+    extracellular_recording_weights: ExtracellularRecordingWeightsSettings = (
+        ExtracellularRecordingWeightsSettings()
+    )
 
     cave_client_config: CaveClientConfig = CaveClientConfig()
 

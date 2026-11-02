@@ -22,7 +22,7 @@ capsule's Dockerfile that is actually exercised locally.
 import json
 import logging
 import os
-import subprocess  # noqa: S404
+import subprocess
 from pathlib import Path
 
 L = logging.getLogger(__name__)
@@ -64,13 +64,13 @@ def ensure_capsule_python(repo_path: Path, deps: list[str]) -> str:
 
     if not python.exists():
         L.info("Creating isolated capsule venv at %s", venv_dir)
-        subprocess.run(  # noqa: S603
-            ["uv", "venv", "--python", "3.12", str(venv_dir)],  # noqa: S607
+        subprocess.run(
+            ["uv", "venv", "--python", "3.12", str(venv_dir)],
             check=True,
         )
     L.info("Installing %d capsule dependencies into %s", len(deps), venv_dir)
-    subprocess.run(  # noqa: S603
-        ["uv", "pip", "install", "--python", str(python), *deps],  # noqa: S607
+    subprocess.run(
+        ["uv", "pip", "install", "--python", str(python), *deps],
         check=True,
     )
     marker.write_text(desired, encoding="utf-8")

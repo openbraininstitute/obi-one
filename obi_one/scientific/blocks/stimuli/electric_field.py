@@ -1,6 +1,6 @@
+import math
 from typing import Annotated, ClassVar, Self
 
-import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -14,8 +14,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.unions.unions_neuron_sets import (
-    NeuronSetReference,
+from obi_one.scientific.unions_and_references.combined_neuron_sets import (
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
 
@@ -43,19 +44,18 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         },
     }
 
-    title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"
+    title: ClassVar[str] = "Spatially uniform electric field (fixed amplitude and direction)"
 
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
 
-    neuron_set: NeuronSetReference | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPE: NeuronSetReference.__name__,
-            SchemaKey.SUPPORTS_VIRTUAL: False,
+            SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
         },
     )
 
@@ -79,7 +79,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
             "Time over which the field linearly ramps up from zero to full amplitude, "
             "in milliseconds (ms). " + _RAMP_QAULIFIER_DESCRIPTION
         ),
-        title="Ramp Up (Duration)",
+        title="Ramp up (duration)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -92,7 +92,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
             "Time over which the field linearly ramps down from full amplitude to zero, "
             "in milliseconds (ms). " + _RAMP_QAULIFIER_DESCRIPTION
         ),
-        title="Ramp Down (Duration)",
+        title="Ramp down (duration)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -136,9 +136,9 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         stim_dict = {
             "delay": offset_timestamp,
             "duration": self.duration,
+            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "module": self._module,
             "input_type": self._input_type,
-            "node_set": resolve_neuron_set_ref_to_node_set(self.neuron_set, self._default_node_set),
             "ramp_up_duration": self.ramp_up_duration,
             "ramp_down_duration": self.ramp_down_duration,
             "fields": [
@@ -147,7 +147,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
                     "Ey": self.E_y,
                     "Ez": self.E_z,
                     "frequency": self._frequency,
-                    "phase": np.deg2rad(self._phase_degrees),
+                    "phase": math.radians(self._phase_degrees),
                 }
             ],
         }
@@ -164,7 +164,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
     parameters.
     """
 
-    title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
+    title: ClassVar[str] = "Temporally cosine spatially uniform electric field"
 
     frequency: (
         Annotated[

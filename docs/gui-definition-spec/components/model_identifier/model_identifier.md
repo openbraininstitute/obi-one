@@ -4,6 +4,8 @@ ui_element: `model_identifier`
 
 - Should accept as input an object including an `id_str` string field.
 
+The accepted entity is encoded in the field's **type** (the discriminated union and its `type` const).
+
 Reference schema [model_identifier](reference_schemas/model_identifier.jsonc)
 
 ### Example Pydantic implementation

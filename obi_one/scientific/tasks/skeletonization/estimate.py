@@ -11,9 +11,9 @@ from entitysdk import models
 from entitysdk.client import Client
 from entitysdk.types import AssetLabel, ContentType, FetchFileStrategy
 
+from obi_one.db_sdk.db_sdk import get_entity_asset_by_label
 from obi_one.scientific.from_id.em_cell_mesh_from_id import EMCellMeshFromID
 from obi_one.scientific.tasks.skeletonization.config import SkeletonizationSingleConfig
-from obi_one.utils.db_sdk import get_entity_asset_by_label
 
 
 def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -> float:
@@ -29,7 +29,7 @@ def _compute_mesh_surface_area(db_client: Client, cell_mesh: EMCellMeshFromID) -
     with tempfile.TemporaryDirectory() as tmp_dir:
         output_path = Path(tmp_dir) / "mesh.glb"
         db_client.fetch_assets(
-            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),  # ty:ignore[invalid-argument-type]
+            entity_or_id=(cell_mesh.id_str, models.EMCellMesh),
             selection={
                 "label": AssetLabel.cell_surface_mesh,
                 "content_type": ContentType.model_gltf_binary,

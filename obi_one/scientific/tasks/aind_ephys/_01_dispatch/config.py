@@ -1,12 +1,8 @@
 import json
 import shlex
 from enum import StrEnum
-from pathlib import Path
 from typing import ClassVar
 
-from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.scan_config import ScanConfig
@@ -37,7 +33,6 @@ class BlockGroup(StrEnum):
 class AINDEPhysDispatchScanConfig(ScanConfig):
     """ScanConfig wrapping the aind-ephys-job-dispatch CLI."""
 
-    single_coord_class_name: ClassVar[str] = "AINDEPhysDispatchSingleConfig"
     name: ClassVar[str] = "Multi Electrode Recording Postprocessing"
     description: ClassVar[str] = "Spike sorting preprocessing configuration."
 
@@ -49,12 +44,6 @@ class AINDEPhysDispatchScanConfig(ScanConfig):
             BlockGroup.SPIKE_SORTING,
         ],
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
-
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
-        return []
 
     dispatch_basic: DispatchBasic = Field(
         title="Recording setup",
@@ -86,31 +75,9 @@ class AINDEPhysDispatchScanConfig(ScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,  # noqa: ARG002
-        multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,  # noqa: ARG002
-    ) -> None:
-        return None
-
-    def create_campaign_generation_entity(
-        self,
-        generated: list,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
-
 
 class AINDEPhysDispatchSingleConfig(AINDEPhysDispatchScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysDispatchScanConfig`."""
-
-    def create_single_entity_with_config(
-        self,
-        campaign: TaskConfig,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
 
     def command_line_representation(self) -> str:
         """Build the dispatch CLI invocation for this single coordinate.

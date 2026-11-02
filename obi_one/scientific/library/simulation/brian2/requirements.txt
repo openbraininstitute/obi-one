@@ -1,7 +1,0 @@
-obi-auth
-entitysdk
-brian2
-bluepysnap
-pydantic
-click
-h5py

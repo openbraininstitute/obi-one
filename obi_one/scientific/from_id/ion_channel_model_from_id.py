@@ -1,19 +1,15 @@
 from pathlib import Path
-from typing import ClassVar
 
 import entitysdk
 from entitysdk.models import IonChannelModel
-from entitysdk.models.entity import Entity
 from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
-from pydantic import PrivateAttr
 
 from obi_one.core.entity_from_id import EntityFromID
 
 
-class IonChannelModelFromID(EntityFromID):
-    entitysdk_class: ClassVar[type[Entity]] = IonChannelModel
-    _entity: IonChannelModel | None = PrivateAttr(default=None)
+class IonChannelModelFromID(EntityFromID[IonChannelModel]):
+    _entitysdk_type: type[IonChannelModel] = IonChannelModel
 
     def download_asset(
         self,
@@ -31,7 +27,7 @@ class IonChannelModelFromID(EntityFromID):
 
     def get_conductance_name(self, db_client: entitysdk.client.Client = None) -> str | None:  # ty:ignore[invalid-parameter-default]
         """Returns the conductance name if present, else return None."""
-        return self.entity(db_client=db_client).conductance_name  # ty:ignore[unresolved-attribute]
+        return self.entity(db_client=db_client).conductance_name
 
     def has_conductance(self, db_client: entitysdk.client.Client = None) -> bool:  # ty:ignore[invalid-parameter-default]
         """Returns True if the ion channel model has a conductance name."""
@@ -39,7 +35,7 @@ class IonChannelModelFromID(EntityFromID):
 
     def get_max_permeability_name(self, db_client: entitysdk.client.Client = None) -> str | None:  # ty:ignore[invalid-parameter-default]
         """Returns the max permeability name if present, else return None."""
-        return self.entity(db_client=db_client).max_permeability_name  # ty:ignore[unresolved-attribute]
+        return self.entity(db_client=db_client).max_permeability_name
 
     def has_max_permeability(self, db_client: entitysdk.client.Client = None) -> bool:  # ty:ignore[invalid-parameter-default]
         """Returns True if the ion channel model has a max permeability name."""
@@ -49,10 +45,10 @@ class IonChannelModelFromID(EntityFromID):
     def get_other_parameter_names(self, db_client: entitysdk.client.Client = None) -> list[str]:  # ty:ignore[invalid-parameter-default]
         """Returns a list of RANGE parameter names except conductance and max permeability."""
         entity = self.entity(db_client=db_client)
-        range_params = entity.neuron_block.range or []  # ty:ignore[unresolved-attribute]
-        to_remove = [
+        range_params = entity.neuron_block.range or []
+        to_remove = {
             self.get_conductance_name(db_client),
             self.get_max_permeability_name(db_client),
             None,
-        ]
-        return [param for param in range_params if param not in to_remove]
+        }
+        return [name for entry in range_params for name in entry if name not in to_remove]

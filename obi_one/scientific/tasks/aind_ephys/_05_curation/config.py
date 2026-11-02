@@ -4,9 +4,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
-from entitysdk import Client
-from entitysdk.models import Entity, TaskConfig
-from entitysdk.types import TaskActivityType, TaskConfigType
 from pydantic import Field
 
 from obi_one.core.block import Block
@@ -32,7 +29,6 @@ class AINDEPhysCurationScanConfig(ScanConfig):
     HuggingFace classifiers (writing ``unit_classifier_<name>.csv``).
     """
 
-    single_coord_class_name: ClassVar[str] = "AINDEPhysCurationSingleConfig"
     name: ClassVar[str] = "AIND Ephys Curation"
     description: ClassVar[str] = (
         "Run the aind-ephys-curation capsule (default QC + UnitRefine classifiers)."
@@ -42,12 +38,6 @@ class AINDEPhysCurationScanConfig(ScanConfig):
         SchemaKey.UI_ENABLED: False,
         SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.CURATION],
     }
-
-    _campaign_task_config_type: ClassVar[TaskConfigType] = None
-    _campaign_generation_task_activity_type: ClassVar[TaskActivityType] = None
-
-    def input_entities(self, db_client: Client) -> list[Entity]:  # noqa: ARG002, PLR6301
-        return []
 
     class Initialize(Block):
         """Top-level CLI / control parameters for the curation capsule."""
@@ -114,31 +104,9 @@ class AINDEPhysCurationScanConfig(ScanConfig):
         },
     )
 
-    def create_campaign_entity_with_config(
-        self,
-        output_root: Path,  # noqa: ARG002
-        multiple_value_parameters_dictionary: dict | None = None,  # noqa: ARG002
-        db_client: Client = None,  # noqa: ARG002
-    ) -> None:
-        return None
-
-    def create_campaign_generation_entity(
-        self,
-        generated: list,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
-
 
 class AINDEPhysCurationSingleConfig(AINDEPhysCurationScanConfig, SingleConfigMixin):
     """Single-coordinate variant of :class:`AINDEPhysCurationScanConfig`."""
-
-    def create_single_entity_with_config(
-        self,
-        campaign: TaskConfig,  # noqa: ARG002
-        db_client: Client,  # noqa: ARG002
-    ) -> None:
-        return None
 
     def params_dict(self) -> dict:
         """Build the params.json payload the capsule expects."""

@@ -31,6 +31,7 @@ class ProcessParameters(BaseModel):
     neuron_voxel_size: float
     spines_voxel_size: float
     write_raw_spines: bool
+    repair_slicing_artifacts: bool = False
 
 
 class SkeletonizationInputs(BaseModel):
@@ -46,4 +47,4 @@ class SkeletonizationOutputs(BaseModel):
     h5_morphology_file: Path
     swc_morphology_file: Path
     asc_morphology_file: Path
-    h5_combined_morphology_file: Path
+    h5_combined_morphology_file: Path | None = None

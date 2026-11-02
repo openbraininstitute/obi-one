@@ -31,7 +31,7 @@ The schema can be tested locally with the command:
 ScanConfigs are composed of multiple UI elements, each corresponding to a single variable in the Python definition of the ScanConfig. For example, there is a UI element for specifying a user-defined string:
 ```py
 file_name: str = Field(min_length=1,
-                        title="title",
+                        title="File name",
                         description="description",
                         json_schema_extra={
                             "SchemaKey.UI_ELEMENT": UIElement.STRING_INPUT,
@@ -44,19 +44,32 @@ Each `ui_element` identifier corresponds to a strict reference schema. Schema va
 
 All ui_elements must contain a `title` and a `description`.
 
+### Titles
+
+The frontend shows titles exactly as written, with no case transform. This covers field titles, root element titles, the `title` ClassVar of a block offered by a `block_union` or `block_dictionary`, and group names.
+
+- Write titles in sentence case: capitalize the first letter and write the rest in lowercase. Proper nouns and named models keep their capitals (Hodgkin-Huxley, Tsodyks-Markram, Ornstein-Uhlenbeck, Poisson, Neuropixels, Utah), and so do acronyms and symbols, written as the field uses them (ID, RRP, EM, ACh, Mg2+, U_SE, ME-model, NEURON). A variable is written as math, even a single letter ("$m$ exponent in channel equation"). Parentheses follow the same rule: "Soma voltage recording (full experiment)", "Neuron set (target)".
+- Give every field shown in the UI an explicit `title=`. Pydantic's default title is the field name in Title Case ("Random Seed").
+- Keep units out of the title. Set `units` in `json_schema_extra` (`SchemaKey.UNITS: Units.CELSIUS`) and the frontend shows it next to the title: "Temperature", not "Temperature (in °C)".
+- A title may contain inline math between single dollars, rendered with KaTeX, e.g. `title=r"$m_\infty$ equation"`. This includes the option titles in `title_by_key`, e.g. `r"Sigmoid equation for $\tau_m$"`. Use math rather than Unicode look-alikes: Unicode has no subscript ∞. Group names are shown in capitals, so they must not contain math.
+
+`tests/ui_schema/test_titles.py` checks the mechanical part of these rules: no title written in capitals, no field titled with pydantic's default, no unit in parentheses, and closed `$` pairs.
+
 
 ## Types of UI element
 There are two major types of such UI elements:
 
 1. `Root UI elements` appear in the left hand column of the configuration interface. 
     
-    - There are currently three supported types:
+    - There are currently four supported types:
 
         - [block_single](components/block_single/block_single.md)
 
         - [block_union](components/block_union/block_union.md)
 
         - [block_dictionary](components/block_dictionary/block_dictionary.md)
+
+        - [emodel_optimisation_parameters](components/emodel_optimisation_parameters/emodel_optimisation_parameters.md)
         
     - Root elements must have the following properties:
         - `title`
@@ -64,6 +77,8 @@ There are two major types of such UI elements:
         - A dictionary called `json_schema_extra` (the standard name for adding extra information to the schema in Pydantic). Within the `json_schema_extra` dictionary, the following properties must be specified:
             - `group` string that points to a string in its parent config's `group_order` array.
             - `group_order` integer (unique within the group) which determines the order in which the root element appears within its specified `group`.
+
+    - A root element can instead be marked as hidden by setting `ui_hidden = true` in its `json_schema_extra`. A hidden root element is not rendered in the UI, so it is exempt from the requirements above (`ui_element`, `group`, `group_order`, `title`, and `description` are not required). Because it is never shown or edited, a hidden root element must have a `default`. See [ui_hidden](components/ui_hidden/ui_hidden.md).
 
     - These properties are added to the root element in the Field definition of the parameter, with the `ui_element` string specifying the type, e.g.:
         ```py
@@ -84,7 +99,25 @@ There are two major types of such UI elements:
 
         - [string_input](components/string/string_input.md)
 
+        - [string_list_input](components/string/string_input.md#string-list-input)
+
+        - [string_list_optional](components/string/string_input.md#string-list-optional)
+
         - [string_selection](components/string/string_selection.md) and [string_selection_enhanced](components/string/string_selection.md#string-selection-enhanced)
+
+        - [axon_modifier](components/axon_modifier/axon_modifier.md) (one-off)
+
+        - [distance_function_input](components/distance_function_input/distance_function_input.md)
+
+        - [distance_function_input_nullable](components/distance_function_input_nullable/distance_function_input_nullable.md)
+
+        - [distribution_parameter_list](components/distribution_parameter_list/distribution_parameter_list.md)
+
+        - [object](components/object/object.md)
+
+        - [stochasticity](components/stochasticity/stochasticity.md) (one-off)
+
+        - [ion_channel_model_properties](components/ion_channel_model_properties/ion_channel_model_properties.md) (one-off)
 
         - [string_constant](components/string/string_constant.md) and [string_constant_enhanced](components/string/string_constant.md#string-constant-enhanced)
 
@@ -92,13 +125,25 @@ There are two major types of such UI elements:
 
         - [model_identifier](components/model_identifier/model_identifier.md)
 
+        - [model_selector_single](components/model_selector/model_selector.md)
+
         - [model_identifier_multiple](components/multiple_entities/multiple_entities.md)
+
+        - [model_identifier_grouped](components/model_identifier_grouped/model_identifier_grouped.md)
+
+        - [task_result_selector](components/task_result_selector/task_result_selector.md)
 
         - [numeric](components/numeric/numeric.md)
 
         - [reference](components/reference/reference.md)
 
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
+
+        - [neuron_property_filter](components/neuron_property_filter/neuron_property_filter.md)
+
+        - [neuron_set_combination](components/neuron_set_combination/neuron_set_combination.md)
+
+        - [morphology_section_type_selection](components/morphology_section_type_selection/morphology_section_type_selection.md)
 
         - [variable_modification](components/neuronal_modification/BySectionListMechanismVariableNeuronalManipulation.md)
 
@@ -136,7 +181,7 @@ And the following optional property:
 - `default_block_element_labels` specifying the labels for null references used in the config. If a `reference` used in the config isn't in this dictionary it will be hidden from the UI.
 
 - ScanConfigs can optionally have the following specifed:
-    - `properties_endpoint`: dictionary of urls relative to the base url of the api, such as `"Circuit": "/circuit-usability/{circuit_id}"`. For providing data to a ui_element, see for example: [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md). Within the dictionary returned by any of these endpoints, a `usability` dictionary should also be defined with booleans which can be used for optionally displaying elements.
+    - `properties_endpoint`: dictionary of urls relative to the base url of the api, such as `"Circuit": "/mapped-circuit-properties/{circuit_id}"`. For providing data to a ui_element, see for example: [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md). Within the dictionary returned by any of these endpoints, a `usability` dictionary should also be defined with booleans which can be used for optionally displaying elements.
 
 See the [Example scan config schema](components/scan_config/scan_config.jsonc)
 

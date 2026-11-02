@@ -43,7 +43,10 @@ The `GenerateSimulationTask` class (`obi_one/scientific/tasks/generate_simulatio
 A typical single cell simulation configuration includes:
 
 ```python
-from obi_one import MEModelSimulationSingleConfig, MEModelFromID
+from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model import (
+    MEModelSimulationSingleConfig,
+)
 
 config = MEModelSimulationSingleConfig(
     initialize=MEModelSimulationSingleConfig.Initialize(
@@ -65,7 +68,9 @@ config = MEModelSimulationSingleConfig(
 
 - **circuit**: MEModel to simulate (can be `MEModelCircuit` or `MEModelFromID`)
 - **simulation_length**: Duration in milliseconds (default: 1000.0 ms)
-- **v_init**: Initial membrane potential in millivolts (default: -80.0 mV)
+- **v_init**: Initial membrane potential in millivolts (default: -80.0 mV). It takes precedence
+  over any initial `v` the neuron model template sets, so a point neuron model that starts at its
+  own resting potential still begins the simulation at this value.
 - **extracellular_calcium_concentration**: Extracellular calcium concentration in mM (default: 1.1 mM)
 - **random_seed**: Random seed for reproducibility
 - **timestep**: Simulation time step in ms (default: 0.025 ms)
@@ -77,6 +82,11 @@ Various stimulus types are available for single cell simulations:
 
 - Current clamp stimuli (constant, linear, sinusoidal, etc.)
 - Spike-based stimuli (Poisson, synchronous, etc.)
+
+Units follow the SONATA convention and are mixed, so a stimulus that combines the two has to
+convert: **times** — `delay`, `duration`, `width`, `dt` — are milliseconds, while **frequencies**
+are hertz and **current amplitudes** are nanoamps. A `frequency` of 10 therefore means one cycle
+every 100 ms, not every 0.1 ms.
 
 ### Recordings
 
@@ -90,7 +100,7 @@ Recordings capture electrophysiological data:
 ### Using GenerateSimulationTask
 
 ```python
-from obi_one import GenerateSimulationTask
+from obi_one.scientific.tasks.generate_simulations.task.task import GenerateSimulationTask
 
 task = GenerateSimulationTask(config=config)
 task.run(output_path=Path("output"))
@@ -121,4 +131,4 @@ Simulation outputs include:
 
 See the examples directory for notebook examples:
 
-- `examples/F_single_cell_simulations/` - Single cell simulation examples
+- `examples/obi_one/scientific/tasks/generate_simulations/NEURON/` - Single cell (ME-model) simulation examples

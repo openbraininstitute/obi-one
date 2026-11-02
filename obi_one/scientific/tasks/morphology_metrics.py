@@ -2,10 +2,10 @@ import logging
 from typing import ClassVar
 
 import entitysdk
-from fastapi import HTTPException
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -18,7 +18,6 @@ L = logging.getLogger(__name__)
 
 
 class MorphologyMetricsScanConfig(ScanConfig):
-    single_coord_class_name: ClassVar[str] = "MorphologyMetricsSingleConfig"
     name: ClassVar[str] = "Morphology Metrics"
     description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
 
@@ -41,8 +40,8 @@ class MorphologyMetricsTask(Task):
         self,
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-        entity_cache: bool = False,  # noqa: ARG002
-        execution_activity_id: str | None = None,  # noqa: ARG002
+        entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> MorphologyMetricsOutput:
         try:
             L.info("Running Morphology Metrics...")
@@ -52,6 +51,7 @@ class MorphologyMetricsTask(Task):
             L.info(morphology_metrics)
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            message = f"Internal Server Error: {e}"
+            raise OBIONEError(message) from e
         else:
             return morphology_metrics
