@@ -10,9 +10,9 @@ controller and no steering rule. The simulation config's ``neuromechfly`` sectio
 experiment (``config.ClosedLoopConfig``): the arena, pushes and legs taken over.
 
 The spikes are written as in any Brian2 simulation; the body's trajectory and a summary of the
-episode are added to the spikes file under ``/neuromechfly``. A replay of everything the body did
-(``neuromechfly_replay.json``) is written beside the spikes file, for the 3D viewer; it is not
-registered with the result.
+episode are added to the spikes file under ``/neuromechfly``. A replay of everything the body did,
+for the 3D viewer, goes in it as ``/neuromechfly_replay`` (JSON), so the registered spike report
+carries it; all three are also written beside the spikes file.
 """
 
 import json
@@ -137,12 +137,14 @@ def replay_document(body: Body, loop: ClosedLoopConfig, start_ms: float, summary
 def write_body_outputs(
     spikes_file: Path, trajectory: pd.DataFrame, summary: dict, replay: dict
 ) -> None:
-    """Add the trajectory and summary to the spikes file; write them, and the replay, beside it."""
+    """Add the trajectory, summary and replay to the spikes file; write them beside it too."""
     with h5py.File(spikes_file, "a") as h5:
         group = h5.create_group(SECTION)
         for column in trajectory.columns:
             group.create_dataset(column, data=trajectory[column].to_numpy())
         group.attrs["summary"] = json.dumps(summary)
+        # A simulation result's assets can only be h5 reports, so the replay rides in this one.
+        h5.create_dataset(f"{SECTION}_replay", data=json.dumps(replay))
     trajectory.to_csv(spikes_file.parent / f"{SECTION}_trajectory.csv", index=False)
     (spikes_file.parent / f"{SECTION}_summary.json").write_text(json.dumps(summary, indent=2))
     (spikes_file.parent / f"{SECTION}_replay.json").write_text(json.dumps(replay))

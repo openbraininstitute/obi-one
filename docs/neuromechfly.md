@@ -66,7 +66,7 @@ Forces and leg overrides are timed in ms from the start of the simulation. Stimu
 
 ## Outputs
 
-The spikes are written and registered as in any Brian2 simulation. The spikes file also holds a `neuromechfly` group: one dataset per trajectory column, every 10 ms (time, position, heading, sources reached, whether a push or leg override acted, and whether the fly is right side up), and a `summary` attribute (sources reached and when, when the fly first turned over if it did, path length, straightness, speed). `neuromechfly_replay.json`, written beside the spikes file and not registered, holds the body's every joint and pose every 10 ms, for replaying the episode in 3D.
+The spikes are written and registered as in any Brian2 simulation. The spikes file also holds a `neuromechfly` group: one dataset per trajectory column, every 10 ms (time, position, heading, sources reached, whether a push or leg override acted, and whether the fly is right side up), and a `summary` attribute (sources reached and when, when the fly first turned over if it did, path length, straightness, speed). A `neuromechfly_replay` dataset (JSON text, also written beside the spikes file as `neuromechfly_replay.json`) holds the body's every joint and pose every 10 ms, for replaying the episode in 3D. The registered spike report carries it, since a simulation result's assets can only be h5 reports.
 
 ## Running it locally
 

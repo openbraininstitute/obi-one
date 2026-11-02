@@ -64,14 +64,16 @@ class TestClosedLoop:
         assert counts[1] > 10
         assert counts[4] > 5
         assert counts[5] == 0
+        replay = json.loads((tmp_path / "output/neuromechfly_replay.json").read_text())
+        assert replay["start_ms"] == 0
+        assert len(replay["frames"]["thorax"]) == DURATION_MS / 10 + 1
         with h5py.File(tmp_path / "output/spikes.h5") as h5:
             trajectory = h5["neuromechfly"]
             # a row as the body starts and one every 10 ms
             assert len(trajectory["x"]) == DURATION_MS / 10 + 1
             assert json.loads(trajectory.attrs["summary"]) == summary
-        replay = json.loads((tmp_path / "output/neuromechfly_replay.json").read_text())
-        assert replay["start_ms"] == 0
-        assert len(replay["frames"]["thorax"]) == DURATION_MS / 10 + 1
+            # the registered spike report carries the replay
+            assert json.loads(h5["neuromechfly_replay"][()]) == replay
         assert (tmp_path / "output/neuromechfly_trajectory.csv").exists()
 
     def test_the_odour_reaches_the_legs_only_through_the_circuit(self, tmp_path):
