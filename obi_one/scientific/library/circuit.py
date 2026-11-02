@@ -115,14 +115,14 @@ class Circuit(OBIBaseModel):
         return popul_names
 
     @staticmethod
-    def _default_population_name(c: snap.Circuit) -> str:
+    def _default_population_name(c: snap.Circuit) -> str | None:
         """Returns the default node population name of a SONATA circuit c."""
         popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=False)
         if len(popul_names) == 0:
             # Include point neurons
             popul_names = Circuit.get_node_population_names(c, incl_virtual=False, incl_point=True)
         if len(popul_names) == 0:
-            return None  # No biophysical/point neurons  # ty:ignore[invalid-return-type]
+            return None  # No biophysical/point neurons
         if len(popul_names) != 1:
             msg = "Default node population unknown!"
             raise ValueError(msg)
@@ -130,8 +130,17 @@ class Circuit(OBIBaseModel):
 
     @property
     def default_population_name(self) -> str:
-        """The default node population name."""
-        return self._default_population_name(self.sonata_circuit)
+        """The default node population name.
+
+        Raises:
+            ValueError: If the circuit has no biophysical or point node population
+                to use as the default.
+        """
+        name = self._default_population_name(self.sonata_circuit)
+        if name is None:
+            msg = "Circuit has no biophysical or point node population."
+            raise ValueError(msg)
+        return name
 
     @staticmethod
     def get_edge_population_names(
