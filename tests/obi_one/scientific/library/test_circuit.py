@@ -155,9 +155,14 @@ def test_get_node_population_names_filters(fake_snap_circuit):
     )
 
 
-def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
+def test_default_population_name_cases(fake_snap_circuit, monkeypatch, tmp_path):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_population_name(c) == "bio"
+
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+    circuit = fake_snap_circuit.Circuit(name="c1", path=str(cfg))
+    assert circuit.default_population_name == "bio"
 
     def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         if not incl_point:
@@ -170,6 +175,8 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
         staticmethod(fake_get_node_pop_names),
     )
     assert fake_snap_circuit.Circuit._default_population_name(c) is None
+    with pytest.raises(ValueError, match="no biophysical or point node population"):
+        _ = circuit.default_population_name
 
     def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
