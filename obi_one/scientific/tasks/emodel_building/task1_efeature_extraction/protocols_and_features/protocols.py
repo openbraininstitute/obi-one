@@ -88,6 +88,7 @@ class Protocol(OBIBaseModel, abc.ABC):
         json_schema_extra={
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS,
             SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.AMPLITUDES_BY_PROTOCOL,
+            SchemaKey.UNITS: Units.NANOAMPS,
         },
     )
 

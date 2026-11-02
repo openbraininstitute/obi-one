@@ -74,9 +74,17 @@ class ParentCircuitContext:
     Collected in a single staging pass, since staging the parent is the expensive
     part. Every field is empty when the parent could not be resolved, in which
     case the checks that depend on it are skipped rather than failed.
+
+    Mechanisms are tracked two ways because the two consumers need different keys:
+    ``mechanism_suffixes`` holds the parsed ``SUFFIX`` tokens, which is what HOC
+    ``insert <mechanism>`` statements reference, while ``mechanism_filenames`` holds
+    the ``.mod`` file stems, used to decide whether an uploaded mod modifies an
+    existing parent file. These differ whenever a mod's filename != its SUFFIX
+    (a common legacy pattern, e.g. ``cacumm.mod`` declaring ``SUFFIX cacum``).
     """
 
-    mechanism_names: set[str]
+    mechanism_suffixes: set[str]
+    mechanism_filenames: set[str]
     hoc_stems: set[str]
     model_template_stems: set[str]
 
@@ -351,7 +359,7 @@ def _run_cross_validations(
     if hoc_paths:
         try:
             _validate_hoc_mechanisms(
-                hoc_paths, mod_paths, parent.mechanism_names if parent else None
+                hoc_paths, mod_paths, parent.mechanism_suffixes if parent else None
             )
         except HocValidationError as e:
             errors.append(f"hoc/mod cross-check: {e}")
@@ -361,7 +369,7 @@ def _run_cross_validations(
         except ValueError as e:
             errors.append(f"nodes/hoc cross-check: {e}")
     if mod_paths and parent is not None:
-        synapse_errors = _validate_new_mod_not_synapse(mod_paths, parent.mechanism_names)
+        synapse_errors = _validate_new_mod_not_synapse(mod_paths, parent.mechanism_filenames)
         errors.extend(synapse_errors)
     return errors
 
@@ -390,9 +398,18 @@ def _validate_new_mod_not_synapse(
     return errors
 
 
-def _collect_parent_node_facts(circuit: SnapCircuit) -> tuple[set[str], set[str], set[str]]:
-    """Collect mechanism, HOC, and model_template names from each node population."""
-    mechanism_names: set[str] = set()
+def _collect_parent_node_facts(
+    circuit: SnapCircuit,
+) -> tuple[set[str], set[str], set[str], set[str]]:
+    """Collect mechanism, HOC, and model_template names from each node population.
+
+    Returns (mechanism_suffixes, mechanism_filenames, hoc_stems, template_stems).
+    Suffixes are parsed from each .mod's ``SUFFIX`` declaration (what HOC ``insert``
+    references); filenames are the .mod stems (used for the modification check). These
+    differ whenever a mod's filename != its SUFFIX.
+    """
+    mechanism_suffixes: set[str] = set()
+    mechanism_filenames: set[str] = set()
     hoc_stems: set[str] = set()
     template_stems: set[str] = set()
 
@@ -401,7 +418,9 @@ def _collect_parent_node_facts(circuit: SnapCircuit) -> tuple[set[str], set[str]
 
         mech_dir_str = pop.config.get("mechanisms_dir")
         if mech_dir_str and Path(mech_dir_str).is_dir():
-            mechanism_names |= {p.stem for p in Path(mech_dir_str).glob("*.mod")}
+            mod_paths = list(Path(mech_dir_str).glob("*.mod"))
+            mechanism_filenames |= {p.stem for p in mod_paths}
+            mechanism_suffixes |= _extract_mod_mechanism_names(mod_paths)
 
         hoc_dir_str = pop.config.get("biophysical_neuron_models_dir")
         if hoc_dir_str and Path(hoc_dir_str).is_dir():
@@ -410,7 +429,7 @@ def _collect_parent_node_facts(circuit: SnapCircuit) -> tuple[set[str], set[str]
         if "model_template" in pop.property_names:
             template_stems |= _template_stems(pop.property_values("model_template"))
 
-    return mechanism_names, hoc_stems, template_stems
+    return mechanism_suffixes, mechanism_filenames, hoc_stems, template_stems
 
 
 def _get_parent_context(
@@ -421,20 +440,30 @@ def _get_parent_context(
         with tempfile.TemporaryDirectory() as ptmp:
             config_path = stage_circuit(db_client, model=parent, output_dir=Path(ptmp))
             circuit = SnapCircuit(str(config_path))
-            mechanism_names, hoc_stems, template_stems = _collect_parent_node_facts(circuit)
+            mechanism_suffixes, mechanism_filenames, hoc_stems, template_stems = (
+                _collect_parent_node_facts(circuit)
+            )
 
-            if not mechanism_names:
+            if not mechanism_filenames:
                 # Fallback for circuits predating per-population "mechanisms_dir"
-                mechanism_names = {p.stem for p in Path(ptmp).rglob("*.mod")}
+                fallback_mods = list(Path(ptmp).rglob("*.mod"))
+                mechanism_filenames = {p.stem for p in fallback_mods}
+                mechanism_suffixes = _extract_mod_mechanism_names(fallback_mods)
 
             return ParentCircuitContext(
-                mechanism_names=mechanism_names,
+                mechanism_suffixes=mechanism_suffixes,
+                mechanism_filenames=mechanism_filenames,
                 hoc_stems=hoc_stems,
                 model_template_stems=template_stems,
             )
     except (OSError, KeyError, ValueError, TypeError) as e:
         L.warning("Could not resolve parent circuit context: %s", e)
-    return ParentCircuitContext(mechanism_names=set(), hoc_stems=set(), model_template_stems=set())
+    return ParentCircuitContext(
+        mechanism_suffixes=set(),
+        mechanism_filenames=set(),
+        hoc_stems=set(),
+        model_template_stems=set(),
+    )
 
 
 def _run_validations(

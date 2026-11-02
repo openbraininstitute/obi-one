@@ -49,9 +49,9 @@ CLUSTER_TASK_TYPES = [
     if isinstance(TASK_DEFINITIONS[task_type].resources, ClusterResources)
 ]
 
-# Tasks routed to ECS Managed Instances. Everything else keeps the pre-existing
-# behaviour of running on Fargate on the AWS cell.
-MANAGED_INSTANCES_TASK_TYPES = {
+# Tasks routed to ECS EC2. Everything else keeps the pre-existing behaviour of
+# running on Fargate on the AWS cell.
+ECS_EC2_TASK_TYPES = {
     TaskType.ion_channel_fitting,
     TaskType.ion_channel_model_simulation_execution,
     TaskType.single_neuron_simulation_execution,
@@ -738,14 +738,14 @@ def test_apply_placement_type_per_cell(compute_cell, expected):
     assert "placement_type_map" not in result.model_dump(mode="json")
 
 
-@pytest.mark.parametrize("task_type", sorted(MANAGED_INSTANCES_TASK_TYPES))
-def test_apply_placement_type_pinned_to_managed_instances(task_type):
-    """Simulation execution tasks are routed to ECS Managed Instances on cell_a."""
+@pytest.mark.parametrize("task_type", sorted(ECS_EC2_TASK_TYPES))
+def test_apply_placement_type_pinned_to_ecs_ec2(task_type):
+    """Simulation execution tasks are routed to ECS EC2 on cell_a."""
     resources = TASK_DEFINITIONS[task_type].resources
 
     result = test_module.apply_placement_type(resources, "cell_a")
 
-    assert result.placement_type == MachinePlacementType.ecs_managed_instances
+    assert result.placement_type == MachinePlacementType.ecs_ec2
 
 
 def test_apply_placement_type_leaves_cluster_resources_untouched():
@@ -755,36 +755,36 @@ def test_apply_placement_type_leaves_cluster_resources_untouched():
     assert test_module.apply_placement_type(resources, "cell_a") is resources
 
 
-def test_managed_instances_declared_by_expected_tasks():
-    """Only the expected tasks opt into ECS Managed Instances, on any cell."""
+def test_ecs_ec2_declared_by_expected_tasks():
+    """Only the expected tasks opt into ECS EC2, on any cell."""
     declared = {
         task_type
         for task_type in MACHINE_TASK_TYPES
-        if MachinePlacementType.ecs_managed_instances
+        if MachinePlacementType.ecs_ec2
         in TASK_DEFINITIONS[task_type].resources.placement_type_map.values()
     }
 
-    assert declared == MANAGED_INSTANCES_TASK_TYPES
+    assert declared == ECS_EC2_TASK_TYPES
 
 
-def test_managed_instances_declared_only_for_cell_a():
-    """ECS Managed Instances exists only on the AWS cell, so no other cell may pin it."""
+def test_ecs_ec2_declared_only_for_cell_a():
+    """ECS EC2 exists only on the AWS cell, so no other cell may pin it."""
     for task_type in MACHINE_TASK_TYPES:
         for cell, placement in TASK_DEFINITIONS[task_type].resources.placement_type_map.items():
-            if placement == MachinePlacementType.ecs_managed_instances:
-                assert cell == "cell_a", f"{task_type} pins managed instances on {cell}"
+            if placement == MachinePlacementType.ecs_ec2:
+                assert cell == "cell_a", f"{task_type} pins ecs_ec2 on {cell}"
 
 
 @pytest.mark.parametrize("task_type", MACHINE_TASK_TYPES)
 def test_cell_a_placement_preserves_previous_behaviour(task_type):
-    """On the AWS cell tasks stay on Fargate, apart from those pinned to Managed Instances."""
+    """On the AWS cell tasks stay on Fargate, apart from those pinned to ECS EC2."""
     resources = TASK_DEFINITIONS[task_type].resources
 
     result = test_module.apply_placement_type(resources, "cell_a")
 
     expected = (
-        MachinePlacementType.ecs_managed_instances
-        if task_type in MANAGED_INSTANCES_TASK_TYPES
+        MachinePlacementType.ecs_ec2
+        if task_type in ECS_EC2_TASK_TYPES
         else MachinePlacementType.fargate
     )
     assert result.placement_type == expected

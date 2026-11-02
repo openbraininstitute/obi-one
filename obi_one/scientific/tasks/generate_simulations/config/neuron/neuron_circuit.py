@@ -103,7 +103,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         )
         node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Neuron Set",
+            title="Neuron set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -141,6 +141,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     )
 
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        title="Synaptic manipulations",
         default_factory=dict,
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
@@ -154,7 +155,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
 
     neuronal_manipulations: dict[str, CircuitNeuronalManipulationUnion] = Field(
         default_factory=dict,
-        title="Neuronal Manipulations",
+        title="Neuronal manipulations",
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
@@ -204,6 +205,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     )
 
     neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -219,7 +221,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     # every morphology, so hand-picked points are only meaningful for a single neuron.
     morphology_locations: dict[str, CircuitMorphologyLocationUnion] = Field(
         default_factory=dict,
-        title="Morphology Locations",
+        title="Morphology locations",
         description=(
             "Reusable rules for selecting precise locations on neuronal morphologies. "
             "Stimuli can reference these locations to target compartments instead of whole cells."

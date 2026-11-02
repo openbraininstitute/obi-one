@@ -16,11 +16,11 @@ class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulati
     This is applied for all synapses between biophysical neurons.
     """
 
-    title: ClassVar[str] = "Demo: Synaptic Mg2+ Concentration Manipulation"
+    title: ClassVar[str] = "Demo: synaptic Mg2+ concentration manipulation"
 
     magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=2.4,
-        title="Extracellular Magnesium Concentration",
+        title="Extracellular magnesium concentration",
         description="Extracellular magnesium concentration in millimoles (mM).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -45,7 +45,7 @@ class ScaleAcetylcholineUSESynapticManipulation(GlobalVariableInterNeuronSetSyna
     """
 
     title: ClassVar[str] = (
-        "Demo: Scale U_SE to Modulate Acetylcholine Effect on Synaptic Release Probability"
+        "Demo: scale U_SE to modulate acetylcholine effect on synaptic release probability"
     )
 
     use_scaling: NonNegativeFloat | list[NonNegativeFloat] = Field(

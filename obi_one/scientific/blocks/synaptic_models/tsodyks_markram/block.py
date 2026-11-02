@@ -44,7 +44,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     u_hill_coefficient_distribution: AllDistributionsReference | None = Field(
         default=None,
-        title="U Hill Coefficient Distribution",
+        title="U Hill coefficient distribution",
         description=(
             "Distribution of the Hill coefficient for the steady-state utilization of synaptic "
             "efficacy (u)."
@@ -61,7 +61,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     conductance_distribution: AllDistributionsReference | None = Field(
         default=None,
-        title="Conductance (g_syn) Distribution",
+        title="Conductance (g_syn) distribution",
         description="Distribution of synaptic conductance (g_syn).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -75,7 +75,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     conductance_scale_factor_distribution: AllDistributionsReference | None = Field(
         default=None,
-        title="Conductance Scale Factor Distribution",
+        title="Conductance scale factor distribution",
         description=(
             "Distribution of the conductance scale factor that multiplies the synaptic "
             "conductance (g_syn) to allow for fitting of synaptic conductance values that are "
@@ -93,7 +93,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     facilitation_time: AllDistributionsReference | None = Field(
         default=None,
-        title="Facilitation Time Distribution",
+        title="Facilitation time distribution",
         description="Distribution of facilitation time in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -108,7 +108,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     depression_time: AllDistributionsReference | None = Field(
         default=None,
-        title="Depression Time Distribution",
+        title="Depression time distribution",
         description="Distribution of depression time in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -123,7 +123,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     n_rrp_vesicles_distribution: AllDistributionsReference | None = Field(
         default=None,
-        title="Number of RRP Vesicles Distribution",
+        title="Number of RRP vesicles distribution",
         description="Distribution of the number of readily releasable pool (RRP) vesicles.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -137,7 +137,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     decay_time: AllDistributionsReference | None = Field(
         default=None,
-        title="Decay Time Distribution",
+        title="Decay time distribution",
         description="Distribution of decay time in milliseconds.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -152,7 +152,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     u_syn: AllDistributionsReference | None = Field(
         default=None,
-        title="U_syn Distribution",
+        title="U_syn distribution",
         description=(
             "Distribution of the utilization of synaptic efficacy (u_syn) for the first spike "
             "in a spike train."
@@ -169,7 +169,7 @@ class TsodyksMarkramSynapticModel(SynapticModelBase, abc.ABC):
 
     delay_distribution: AllDistributionsReference | None = Field(
         default=None,
-        title="Delay Distribution",
+        title="Delay distribution",
         description=(
             "Distribution for the synaptic delay from the presynaptic spike in milliseconds. "
         ),

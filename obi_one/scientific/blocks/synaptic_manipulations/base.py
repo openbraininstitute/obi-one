@@ -29,7 +29,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
 
     presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Presynaptic Neuron Set",
+        title="Presynaptic neuron set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -40,7 +40,7 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
 
     postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Postsynaptic Neuron Set",
+        title="Postsynaptic neuron set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -118,7 +118,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
 
     timestamp_offset: float | list[float] | None = Field(
         default=0.0,
-        title="Timestamp Offset",
+        title="Timestamp offset",
         description="An optional offset of the manipulation relative to each "
         "timestamp in milliseconds (ms).",
         json_schema_extra={

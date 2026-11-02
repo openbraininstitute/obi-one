@@ -229,7 +229,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -262,7 +262,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -279,7 +279,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -296,7 +296,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,

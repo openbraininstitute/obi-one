@@ -17,10 +17,10 @@ from obi_one.scientific.unions_and_references.morphology_locations import (
 class MorphologyLocationVoltageRecording(Block):
     """Records voltage from a morphology-location target for the full length of the experiment."""
 
-    title: ClassVar[str] = "Morphology Location Voltage Recording (Full Experiment)"
+    title: ClassVar[str] = "Morphology location voltage recording (full experiment)"
 
     morphology_locations: MorphologyLocationsReference | None = Field(
-        title="Morphology Locations",
+        title="Morphology locations",
         description="Morphology-location rule to record from.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -102,9 +102,10 @@ class MorphologyLocationVoltageRecording(Block):
 class TimeWindowMorphologyLocationVoltageRecording(MorphologyLocationVoltageRecording):
     """Records voltage from a morphology-location target over a specified time window."""
 
-    title: ClassVar[str] = "Morphology Location Voltage Recording (Time Window)"
+    title: ClassVar[str] = "Morphology location voltage recording (time window)"
 
     start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        title="Start time",
         default=0.0,
         description="Recording start time in milliseconds (ms).",
         json_schema_extra={
@@ -114,6 +115,7 @@ class TimeWindowMorphologyLocationVoltageRecording(MorphologyLocationVoltageReco
     )
 
     end_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        title="End time",
         default=100.0,
         description="Recording end time in milliseconds (ms).",
         json_schema_extra={

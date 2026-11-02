@@ -2,6 +2,7 @@ from enum import StrEnum
 
 
 class Units(StrEnum):
+    CELSIUS = "°C"
     CENTIMETERS_PER_SECOND = "cm/s"
     DEGREES = "°"
     HERTZ = "Hz"

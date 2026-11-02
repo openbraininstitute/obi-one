@@ -36,10 +36,10 @@ class ExtracellularElectrodeArrayRecordingBlock(Recording):
         },
     }
 
-    title: ClassVar[str] = "Extracellular Electrode Array Recording"
+    title: ClassVar[str] = "Extracellular electrode array recording"
 
     electrode_array: SimulatableExtracellularRecordingArrayFromID = Field(
-        title="Extracellular Recording Array",
+        title="Extracellular recording array",
         description=(
             "Extracellular recording array to record with. Must have been built for the circuit "
             "being simulated."

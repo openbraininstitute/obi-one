@@ -25,7 +25,7 @@ class SingleCompartmentAlgorithm(SimplificationAlgorithm):
 
     filter_poles: FilterPoles | list[FilterPoles] = Field(
         default=1,
-        title="Filter Poles",
+        title="Filter poles",
         description=(
             "Number of exponential poles of the Rössert synaptic correction filter fit"
             f" (1-{MAX_FILTER_POLES}). More poles capture several dendritic time constants."
@@ -34,7 +34,7 @@ class SingleCompartmentAlgorithm(SimplificationAlgorithm):
     )
     filter_method: Literal["timedomain", "impedance"] = Field(
         default="timedomain",
-        title="Filter Method",
+        title="Filter method",
         description=(
             "How dendritic filters are computed: 'timedomain' runs NEURON simulations of"
             " the detailed cell; 'impedance' uses a much faster passive frequency-domain"
@@ -44,7 +44,7 @@ class SingleCompartmentAlgorithm(SimplificationAlgorithm):
     )
     strict_filters: bool = Field(
         default=True,
-        title="Strict Filters",
+        title="Strict filters",
         description=(
             "Fail the task when filter computation errors instead of silently using"
             " pass-through filters (no dendritic correction)."

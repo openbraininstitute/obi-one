@@ -215,6 +215,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
     )
 
     synaptic_models: dict[str, SynapticModelUnion] = Field(
+        title="Synaptic models",
         default_factory=dict,
         description="Synaptic models for synapse parameterization.",
         json_schema_extra={
@@ -227,6 +228,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
     )
 
     synapse_model_assigners: dict[str, SynapticModelAssignerUnion] = Field(
+        title="Synapse model assigners",
         default_factory=dict,
         description="Parameterizations...",
         json_schema_extra={
@@ -239,6 +241,7 @@ class SynapseParameterizationScanConfig(InfoScanConfig):
     )
 
     neuron_sets: dict[str, NEURONSynapseParameterizationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={

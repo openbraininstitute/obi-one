@@ -47,7 +47,7 @@ class BlockGroup(StrEnum):
 class SynapticModelPlacer(Block):
     """Places synapses with a given synaptic model on a single-cell morphology."""
 
-    title: ClassVar[str] = "Synaptic Model Placer"
+    title: ClassVar[str] = "Synaptic model placer"
 
     synaptic_model: SynapticModelReference = Field(
         title="Synaptic model",

@@ -29,11 +29,11 @@ The variable picker is populated from the dedicated MEModel neuronal-manipulatio
 
 ```py
 class BySectionListMechanismVariableNeuronalManipulation(Block):
-    title: ClassVar[str] = "Variable Modification by Section List"
+    title: ClassVar[str] = "Variable modification by section list"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},

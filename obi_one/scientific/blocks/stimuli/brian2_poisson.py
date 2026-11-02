@@ -44,11 +44,11 @@ class Brian2DirectPoissonStimulus(Block):
     neuron's membrane potential by the weight.
     """
 
-    title: ClassVar[str] = "Direct Poisson Input"
+    title: ClassVar[str] = "Direct Poisson input"
 
     neuron_set: POINT_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Neurons that receive the Poisson drive.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
