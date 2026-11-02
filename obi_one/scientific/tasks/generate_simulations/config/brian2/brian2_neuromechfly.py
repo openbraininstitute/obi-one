@@ -109,7 +109,7 @@ class Brian2NeuroMechFlySimulationScanConfig(Brian2CircuitSimulationScanConfig):
     )
     odour_sources: dict[str, OdourSourceUnion] = Field(
         default_factory=dict,
-        title="Odour Sources",
+        title="Odour sources",
         description="Where the odour comes from: at least one.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
@@ -133,7 +133,7 @@ class Brian2NeuroMechFlySimulationScanConfig(Brian2CircuitSimulationScanConfig):
     )
     forces: dict[str, BodyForceUnion] = Field(
         default_factory=dict,
-        title="Body Forces",
+        title="Body forces",
         description="Pushes on the body during the episode.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
@@ -145,7 +145,7 @@ class Brian2NeuroMechFlySimulationScanConfig(Brian2CircuitSimulationScanConfig):
     )
     leg_overrides: dict[str, LegOverrideUnion] = Field(
         default_factory=dict,
-        title="Leg Overrides",
+        title="Leg overrides",
         description="Legs taken from their muscles during the episode, as if held by hand: "
         "held, lifted, limp or swung. Where two take the same leg at once, the later one wins.",
         json_schema_extra={

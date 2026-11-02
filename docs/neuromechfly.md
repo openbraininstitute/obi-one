@@ -57,10 +57,10 @@ The run lasts `tstop`. A physics fault (the body falling apart) stops the body t
 The config is UI-enabled; its closed-loop blocks form the **Body** group:
 
 - **Arena**: peak odour intensity, capture radius (for noting when the fly reaches a source) and start heading. The fly starts at the origin, facing +X, standing.
-- **Odour Sources** (at least one): `x`, `y` in mm and the odour's class, which decides the receptor neurons it drives. A source keeps emitting once reached.
+- **Odour sources** (at least one): `x`, `y` in mm and the odour's class, which decides the receptor neurons it drives. A source keeps emitting once reached.
 - **Walls**: `(x0, y0)` to `(x1, y1)` in mm, boxes 1.2 mm thick and 3 mm high.
-- **Body Forces**: pushes on the thorax, head, abdomen or one leg (at its tibia), in µN; the fly weighs about 10 µN. A force's axes are the fly's forward, left and up (turning with its heading, not its pitch or roll) or the arena's. It is steady, or a sine at its frequency, from its start for its duration.
-- **Leg Overrides**: one leg taken from its muscles for a window, as if held by hand (gains of 45 µN·mm/radian, cancelling the passive springs): **hold** freezes it as it is (a planted foot keeps its grip), **lift** raises it about 1 mm off the floor (the femur raised 69 degrees from the standing pose), **limp** cuts its muscles, leaving only the passive springs, and **swing** holds it while one joint swings as a sine. Where two overrides take the same leg at once, the later one wins.
+- **Body forces**: pushes on the thorax, head, abdomen or one leg (at its tibia), in µN; the fly weighs about 10 µN. A force's axes are the fly's forward, left and up (turning with its heading, not its pitch or roll) or the arena's. It is steady, or a sine at its frequency, from its start for its duration.
+- **Leg overrides**: one leg taken from its muscles for a window, as if held by hand (gains of 45 µN·mm/radian, cancelling the passive springs): **hold** freezes it as it is (a planted foot keeps its grip), **lift** raises it about 1 mm off the floor (the femur raised 69 degrees from the standing pose), **limp** cuts its muscles, leaving only the passive springs, and **swing** holds it while one joint swings as a sine. Where two overrides take the same leg at once, the later one wins.
 
 Forces and leg overrides are timed in ms from the start of the simulation. Stimuli, recordings and manipulations (e.g. a lesion as a synaptic manipulation) work as in any Brian2 simulation, on the same clock.
 

@@ -82,7 +82,7 @@ class OdourSource(Block):
     intensity at its own antenna or palp; the circuit does the rest.
     """
 
-    title: ClassVar[str] = "Odour Source"
+    title: ClassVar[str] = "Odour source"
 
     odour: OdourClass = Field(
         default="yeasty_volatile",
@@ -90,7 +90,7 @@ class OdourSource(Block):
         description="Which receptor neurons the odour drives: those of its class.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
-            SchemaKey.TITLE_BY_KEY: ODOUR_TITLES,
+            SchemaKey.TITLE_BY_KEY: {**ODOUR_TITLES},
             SchemaKey.DESCRIPTION_BY_KEY: {
                 key: f"Drives the receptor neurons classed {title.lower()} (BANC's "
                 "cell_function_detailed)."
@@ -128,13 +128,13 @@ class OdourArena(Block):
 
     peak_odour_intensity: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0,
-        title="Peak Odour Intensity",
+        title="Peak odour intensity",
         description="Intensity of each source; it falls with the inverse square of distance.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     capture_radius: PositiveFloat | list[PositiveFloat] = Field(
         default=2.5,
-        title="Capture Radius",
+        title="Capture radius",
         description="Distance from a source at which the fly reaches it.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -143,7 +143,7 @@ class OdourArena(Block):
     )
     start_heading: float | list[float] = Field(
         default=0.0,
-        title="Start Heading",
+        title="Start heading",
         description="Direction the fly faces at the start, anticlockwise from +X.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -170,11 +170,11 @@ class BodyForce(Block):
     it sliding across the floor.
     """
 
-    title: ClassVar[str] = "Body Force"
+    title: ClassVar[str] = "Body force"
 
     segment: BodySegment = Field(
         default="thorax",
-        title="Body Part",
+        title="Body part",
         description="Where the force acts, at that part's centre of mass.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
@@ -204,7 +204,7 @@ class BodyForce(Block):
     )
     frame: Literal["body", "arena"] = Field(
         default="body",
-        title="Direction Frame",
+        title="Direction frame",
         description="What the force's axes are measured against.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
@@ -215,11 +215,11 @@ class BodyForce(Block):
             },
         },
     )
-    force_x: float | list[float] = force_field("Force X", "Forward, or the arena's X.")
+    force_x: float | list[float] = force_field("Force along X", "Forward, or the arena's X.")
     force_y: float | list[float] = force_field(
-        "Force Y", "To the fly's left, or the arena's Y.", default=2.0
+        "Force along Y", "To the fly's left, or the arena's Y.", default=2.0
     )
-    force_z: float | list[float] = force_field("Force Z", "Up.")
+    force_z: float | list[float] = force_field("Force along Z", "Up.")
     start: NonNegativeFloat | list[NonNegativeFloat] = episode_time_field(
         "Start", "When the force begins, after the episode starts.", 1000.0
     )
@@ -254,7 +254,7 @@ class LegOverride(Block):
     The circuit's motor neurons keep driving the other legs.
     """
 
-    title: ClassVar[str] = "Leg Override"
+    title: ClassVar[str] = "Leg override"
 
     leg: Leg = Field(
         default="left_front",
@@ -308,7 +308,7 @@ class LegOverride(Block):
     )
     joint: LegJoint = Field(
         default="tibia",
-        title="Swung Joint",
+        title="Swung joint",
         description="The joint a swing moves.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
@@ -334,7 +334,7 @@ class LegOverride(Block):
     )
     amplitude: float | list[float] = Field(
         default=20.0,
-        title="Swing Amplitude",
+        title="Swing amplitude",
         description="How far a swing moves the joint either way.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -343,7 +343,7 @@ class LegOverride(Block):
     )
     frequency: PositiveFloat | list[PositiveFloat] = Field(
         default=5.0,
-        title="Swing Frequency",
+        title="Swing frequency",
         description="How fast a swing goes back and forth.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
