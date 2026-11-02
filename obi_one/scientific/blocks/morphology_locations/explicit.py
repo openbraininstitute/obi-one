@@ -22,7 +22,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
     _SOM_PAD,
-    MorphologyPathDistanceCalculator,
+    OptimizedMorphologyPathDistanceCalculator,
 )
 
 _LOCATION_COLUMNS = pandas.Index(
@@ -78,7 +78,7 @@ def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> 
 
 def _point_on_section(
     morphology: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator | None,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator | None,
     section_id: int,
     offset: float,
 ) -> dict[str, int | float]:
@@ -184,7 +184,7 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
             raise ConfigValidationError(msg)
 
         path_distance_calculator = (
-            MorphologyPathDistanceCalculator(morphology)
+            OptimizedMorphologyPathDistanceCalculator(morphology)
             if any(location.section_id != _SOMA_SECTION_ID for location in self.locations)
             else None
         )
