@@ -30,7 +30,7 @@ class TestOBIBaseModelTypeField:
         assert obj.type == "SimpleModel"
 
     def test_type_annotation_is_literal(self):
-        assert SimpleModel.__annotations__["type"] is Literal["SimpleModel"]
+        assert SimpleModel.__annotations__["type"] == Literal["SimpleModel"]
 
     def test_type_field_set_from_dict(self):
         obj = SimpleModel.model_validate({"value": 42})
