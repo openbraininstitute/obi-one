@@ -1,0 +1,10 @@
+obi-one
+obi-auth
+entitysdk
+brian2
+bluepysnap
+pydantic
+click
+h5py
+pandas
+flygym==1.2.1

@@ -61,6 +61,7 @@ class BlockGroup(StrEnum):
     """Enumeration of block groups for simulation configuration."""
 
     SETUP_BLOCK_GROUP = "Setup"
+    BODY_BLOCK_GROUP = "Body"
     STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
     TARGETING_BLOCK_GROUP = "Targets"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"

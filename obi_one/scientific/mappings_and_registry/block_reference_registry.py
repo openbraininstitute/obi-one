@@ -73,6 +73,10 @@ _BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         f"{_BLOCK_REFERENCES}.extracellular_locations",
         "ExtracellularLocationsReference",
     ),
+    "OdourSourceReference": (f"{_BLOCK_REFERENCES}.neuromechfly", "OdourSourceReference"),
+    "WallReference": (f"{_BLOCK_REFERENCES}.neuromechfly", "WallReference"),
+    "BodyForceReference": (f"{_BLOCK_REFERENCES}.neuromechfly", "BodyForceReference"),
+    "LegOverrideReference": (f"{_BLOCK_REFERENCES}.neuromechfly", "LegOverrideReference"),
 }
 
 

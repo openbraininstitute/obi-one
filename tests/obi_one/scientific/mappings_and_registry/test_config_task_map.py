@@ -55,6 +55,7 @@ LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP = (
     TaskType.circuit_simulation_neuron,
     TaskType.circuit_simulation_neurodamus_cluster,
     TaskType.circuit_simulation_brian2_machine,
+    TaskType.circuit_simulation_neuromechfly_machine,
 )
 
 # Every class reference declared by any task spec, with the field it came from for the test id.
