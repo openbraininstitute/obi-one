@@ -142,9 +142,11 @@ class GenerateSimulationTask(Task):
                 **stage_kwargs,
             )
 
-            # LOCAL TEST ONLY, revert before committing: staging's load balancer refuses (498) a
-            # config whose relative path holds "../" when a local API uploads it.
-            self._sonata_config["network"] = str(Path(self._circuit.path).resolve())
+            self._sonata_config["network"] = str(
+                Path(self._circuit.path).relative_to(
+                    self.config.coordinate_output_root, walk_up=True
+                )
+            )
 
         if self._circuit is None:
             msg = "Failed to resolve circuit!"
