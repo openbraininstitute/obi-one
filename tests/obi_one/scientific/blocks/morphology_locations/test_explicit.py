@@ -13,7 +13,9 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.library.morphology_locations import MorphologyPathDistanceCalculator
+from obi_one.scientific.library.morphology_locations import (
+    OptimizedMorphologyPathDistanceCalculator,
+)
 from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
 
 from tests.utils import DATA_DIR
@@ -73,7 +75,7 @@ def test_explicit_location_path_distance_matches_calculator(morphology):
 
     dataframe = locations.points_on(morphology)
     soma = pd.DataFrame({"section_id": [0], "segment_id": [0], "segment_offset": [0.0]})
-    expected = MorphologyPathDistanceCalculator(morphology).path_distances(
+    expected = OptimizedMorphologyPathDistanceCalculator(morphology).path_distances(
         soma,
         dataframe,
         str_section_id="section_id",

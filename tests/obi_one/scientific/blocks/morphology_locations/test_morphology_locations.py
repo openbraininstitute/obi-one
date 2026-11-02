@@ -27,7 +27,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEC_LOC,
     _SEG_ID,
     _SEG_OFF,
-    MorphologyPathDistanceCalculator,
+    OptimizedMorphologyPathDistanceCalculator,
     add_normalized_section_offset,
 )
 
@@ -176,7 +176,7 @@ def test_normalized_section_offset_includes_segment_offset():
         SectionType.axon,
     )
     morphology = morphio.Morphology(mut)
-    path_distance_calculator = MorphologyPathDistanceCalculator(morphology)
+    path_distance_calculator = OptimizedMorphologyPathDistanceCalculator(morphology)
     dataframe = pd.DataFrame(
         {
             _SEC_ID: [1],
