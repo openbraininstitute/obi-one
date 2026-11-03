@@ -8,7 +8,7 @@ from typing import cast
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from app.services.file import create_zip_file, save_upload_file
+from app.services import file as test_module
 
 
 def _detail_message(exc: HTTPException) -> str:
@@ -26,7 +26,7 @@ def make_upload_file():
 
 def test_save_upload_file_with_output_stem(tmp_path, make_upload_file):
     upload = make_upload_file("input.SWC", b"morphology-bytes")
-    output = save_upload_file(
+    output = test_module.save_upload_file(
         upload,
         tmp_path,
         output_stem="cell",
@@ -40,7 +40,7 @@ def test_save_upload_file_with_output_stem(tmp_path, make_upload_file):
 def test_save_upload_file_rejects_disallowed_extension(tmp_path, make_upload_file):
     upload = make_upload_file("input.txt", b"data")
     with pytest.raises(HTTPException) as exc:
-        save_upload_file(
+        test_module.save_upload_file(
             upload,
             tmp_path,
             output_stem="cell",
@@ -55,7 +55,7 @@ def test_save_upload_file_rejects_missing_filename(tmp_path, make_upload_file):
     upload = make_upload_file("x.swc", b"data")
     upload.filename = None
     with pytest.raises(HTTPException) as exc:
-        save_upload_file(
+        test_module.save_upload_file(
             upload,
             tmp_path,
             output_stem="cell",
@@ -68,7 +68,7 @@ def test_save_upload_file_rejects_missing_filename(tmp_path, make_upload_file):
 def test_save_upload_file_rejects_empty_file(tmp_path, make_upload_file):
     upload = make_upload_file("input.swc", b"")
     with pytest.raises(HTTPException) as exc:
-        save_upload_file(
+        test_module.save_upload_file(
             upload,
             tmp_path,
             output_stem="cell",
@@ -81,7 +81,7 @@ def test_save_upload_file_rejects_empty_file(tmp_path, make_upload_file):
 def test_save_upload_file_case_sensitive_extension_rejects_upper(tmp_path, make_upload_file):
     upload = make_upload_file("input.SWC", b"data")
     with pytest.raises(HTTPException):
-        save_upload_file(
+        test_module.save_upload_file(
             upload,
             tmp_path,
             output_stem="cell",
@@ -97,7 +97,7 @@ def test_create_zip_file_with_all_inputs(tmp_path):
     b.write_text("bbb")
     out = tmp_path / "out.zip"
 
-    create_zip_file([a, b], out, delete_input=False)
+    test_module.create_zip_file([a, b], out, delete_input=False)
 
     with zipfile.ZipFile(out) as zf:
         assert sorted(zf.namelist()) == ["a.txt", "b.txt"]
@@ -111,7 +111,7 @@ def test_create_zip_file_delete_input_removes_source_files(tmp_path):
     a.write_text("aaa")
     out = tmp_path / "out.zip"
 
-    create_zip_file([a], out, delete_input=True)
+    test_module.create_zip_file([a], out, delete_input=True)
 
     assert out.exists()
     assert not a.exists()
