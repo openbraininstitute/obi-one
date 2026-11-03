@@ -542,7 +542,7 @@ def _build_edge_populations(
     return populations
 
 
-def get_circuit_metrics(  # ruff: ignore[too-many-locals]
+def get_circuit_metrics(
     circuit_id: str,
     db_client: Client,
     level_of_detail_nodes: dict[str, CircuitStatsLevelOfDetail] | None = None,
