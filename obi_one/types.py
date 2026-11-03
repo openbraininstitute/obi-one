@@ -23,6 +23,7 @@ class TaskType(StrEnum):
     circuit_simulation_neurodamus_cluster = auto()
     circuit_simulation_neurodamus_machine = auto()
     circuit_simulation_brian2_machine = auto()
+    circuit_simulation_nest_machine = auto()
     circuit_synaptic_physiology_assignment = auto()
     em_synapse_mapping = auto()
     efeature_extraction = auto()
