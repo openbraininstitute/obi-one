@@ -95,6 +95,15 @@ class TestHttpRangeFile:
         remote.seek(-3, io.SEEK_CUR)
         assert remote.read(1) == b"d"
 
+    @pytest.mark.parametrize(
+        ("offset", "whence", "match"),
+        [(-1, io.SEEK_SET, "negative seek position"), (0, 3, "invalid whence")],
+    )
+    def test_invalid_seek_is_rejected(self, offset, whence, match):
+        remote = HttpRangeFile("http://s/f", _client(RangeServer(b"x")), 1)
+        with pytest.raises(ValueError, match=match):
+            remote.seek(offset, whence)
+
     def test_h5py_reads_one_dataset_without_the_rest(self):
         blob = TINY_NODES.read_bytes()
         server = RangeServer(blob)

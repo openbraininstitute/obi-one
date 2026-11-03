@@ -56,10 +56,11 @@ def asset_download_url(
         headers=headers,
         follow_redirects=False,
     )
-    if not response.is_redirect:
+    location = response.headers.get("location")
+    if not response.is_redirect or location is None:
         msg = f"Expected a redirect to storage for {asset_path}, got {response.status_code}"
         raise EntitySDKError(msg)
-    return str(response.headers["location"])
+    return location
 
 
 def open_asset_h5(

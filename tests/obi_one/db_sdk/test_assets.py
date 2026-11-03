@@ -113,6 +113,16 @@ class TestAssetDownloadUrl:
                 asset_path="x",
             )
 
+    def test_redirect_without_location_is_an_error(self):
+        client = fake_client()
+        client._http_client = httpx2.Client(
+            transport=httpx2.MockTransport(lambda _request: httpx2.Response(307))
+        )
+        with pytest.raises(EntitySDKError, match="Expected a redirect"):
+            asset_download_url(
+                client, entity_id=uuid4(), entity_type=Circuit, asset_id=uuid4(), asset_path="x"
+            )
+
 
 class TestOpenAssetH5:
     def test_reads_a_dataset_of_the_remote_file(self):

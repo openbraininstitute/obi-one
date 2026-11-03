@@ -14,27 +14,28 @@ For a circuit and an optional neuron set, the steps are:
 See ``docs/neuronal-manipulation-properties.md`` for the data flow and its limits.
 """
 
-from __future__ import annotations
-
 import logging
 import tempfile
 from collections import defaultdict
+from collections.abc import Callable, Container, Hashable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING
 from uuid import UUID
 
+import entitysdk.client
 import h5py
 import numpy as np
 from bluepysnap import Circuit as SnapCircuit
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Derivation as DerivationModel, IonChannelModel
+from entitysdk.models.asset import Asset
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
 from obi_one.db_sdk.assets import open_asset_h5
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import CIRCUIT_MOD_DIR, Circuit as ObiCircuit
 from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.library.emodel_circuit_files import (
@@ -52,14 +53,6 @@ from obi_one.scientific.library.memodel_circuit import (
     MechanismVariableDetail,
     _build_mechanism_variables_by_ion_channel_response,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Container, Hashable, Iterable
-
-    import entitysdk.client
-    from entitysdk.models.asset import Asset
-
-    from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 
 L = logging.getLogger(__name__)
 
