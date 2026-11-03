@@ -1,0 +1,36 @@
+model adex_toy_neuron:
+    # Non-linear dynamics: NESTML integrates this model with the GSL ODE solver.
+    state:
+        V_m mV = -70 mV
+        w pA = 0 pA
+
+    equations:
+        # The exponent is clamped at V_peak so the integrator cannot overflow before the reset.
+        V_m' = (-g_L * (V_m - E_L) + g_L * Delta_T * exp((min(V_m, V_peak) - V_T) / Delta_T) - w + I_e) / C_m
+        w' = (a * (V_m - E_L) - w) / tau_w
+
+    parameters:
+        C_m pF = 200 pF
+        g_L nS = 10 nS
+        E_L mV = -70 mV
+        V_T mV = -50 mV
+        Delta_T mV = 2 mV
+        a nS = 2 nS
+        b pA = 60 pA
+        tau_w ms = 100 ms
+        V_peak mV = 0 mV
+        V_reset mV = -58 mV
+        I_e pA = 500 pA
+
+    input:
+        spikes <- spike
+
+    output:
+        spike
+
+    update:
+        integrate_odes()
+        if V_m >= V_peak:
+            V_m = V_reset
+            w += b
+            emit_spike()

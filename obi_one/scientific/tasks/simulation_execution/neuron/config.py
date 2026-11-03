@@ -1,9 +1,4 @@
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleConfigMixin
-
-
-class SimulationExecutionSingleConfig(ScanConfig, SingleConfigMixin):
-    pass
+from obi_one.scientific.tasks.simulation_execution.config import SimulationExecutionSingleConfig
 
 
 class CircuitSimulationExecutionSingleConfig(SimulationExecutionSingleConfig):

@@ -78,6 +78,10 @@ meshing = ["ultraliser>=2.1.9"]
 # sonata-simplify already depends on bluecellulab.
 simplification = ["sonata-simplify[simulation,reduction]>=0.3.0"]
 
+# NEST - optional, needed to convert/run NEST point-neuron SONATA-extension simulations.
+# libsonata and h5py are already core dependencies; only NEST and NESTML are task-scoped here.
+nest = ["nest-simulator>=3.8", "nestml>=8.0.0"]
+
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
     "ipykernel",
@@ -106,7 +110,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies.
 # emodel is listed explicitly (also pulled by service) so all stays complete if it leaves service later.
-all = ["obi-one[bluecellulab,brian2,circuit-extraction,connectivity,emodel,meshing,notebooks,service]"]
+all = ["obi-one[bluecellulab,brian2,circuit-extraction,connectivity,emodel,meshing,nest,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
@@ -249,6 +253,10 @@ max-returns = 6
 max-branches = 12
 max-statements = 50
 max-public-methods = 60
+
+[tool.ty.analysis]
+# PyNEST builds its API at runtime
+replace-imports-with-any = ["nest"]
 
 [tool.ty.src]
 include = ["app", "obi_one", "launch_scripts"]

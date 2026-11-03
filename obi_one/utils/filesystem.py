@@ -1,11 +1,14 @@
 """Filesystem helpers for path creation and temporary working-directory changes."""
 
+import hashlib
 import os
 import shutil
+import urllib.request
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from obi_one.core.exception import OBIONEError
 from obi_one.types import StrOrPath
 
 
@@ -39,3 +42,30 @@ def copy_tree(source: Path, target: Path) -> None:
         shutil.copytree(source, target, dirs_exist_ok=True)
     else:
         shutil.copy2(source, target)
+
+
+def sha256_file(path: Path) -> str:
+    """Return the hex SHA-256 digest of the file at ``path``."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def download_file(url: str, destination: Path, sha256: str, timeout: float = 600) -> Path:
+    """Download ``url`` to ``destination``, keeping it only if its SHA-256 is ``sha256``."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    partial = destination.with_suffix(destination.suffix + ".part")
+    with (
+        urllib.request.urlopen(url, timeout=timeout) as response,  # ruff: ignore[suspicious-url-open-usage]
+        partial.open("wb") as handle,
+    ):
+        shutil.copyfileobj(response, handle)
+    actual = sha256_file(partial)
+    if actual != sha256:
+        partial.unlink(missing_ok=True)
+        msg = f"Checksum mismatch for {url}: expected {sha256}, got {actual}."
+        raise OBIONEError(msg)
+    partial.replace(destination)
+    return destination
