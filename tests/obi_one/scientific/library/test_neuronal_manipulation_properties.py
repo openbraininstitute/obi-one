@@ -1,5 +1,6 @@
 """Tests for _compute_common_mechanism_variables and related pure-logic functions."""
 
+import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1847,6 +1848,32 @@ class TestCircuitFileStagingEdges:
         assert config_path.exists()
         assert not (tmp_path / "node_sets.json").exists()
         assert all((tmp_path / path).exists() for path in nodes.values())
+
+    @pytest.mark.parametrize("node_sets_file", ["node_sets_new.json", None])
+    def test_stages_the_node_sets_file_the_config_declares(self, tmp_path, node_sets_file):
+        """rCA1 declares node_sets_new.json; a config may also declare none."""
+        source = tmp_path / "source"
+        shutil.copytree(TINY_CIRCUIT_DIR, source)
+        config = json.loads((source / "circuit_config.json").read_text())
+        if node_sets_file:
+            (source / "node_sets.json").rename(source / node_sets_file)
+            config["node_sets_file"] = f"$BASE_DIR/{node_sets_file}"
+        else:
+            del config["node_sets_file"]
+        (source / "circuit_config.json").write_text(json.dumps(config))
+        client = _copying_client(source)
+        staged = tmp_path / "staged"
+        staged.mkdir()
+
+        config_path, _nodes, _dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), staged
+        )
+
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert not any(path.startswith("node_sets") for path in fetched - {node_sets_file})
+        if node_sets_file:
+            assert (staged / node_sets_file).exists()
+            assert ObiCircuit(name="c", path=str(config_path)).node_sets
 
     def test_population_types_limit_which_nodes_files_are_staged(self, tmp_path):
         client = _copying_client(TINY_CIRCUIT_DIR)
