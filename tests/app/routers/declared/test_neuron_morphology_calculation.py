@@ -189,7 +189,7 @@ def test_morphology_registration_success(client, monkeypatch, mock_entity_payloa
 def test_validation_errors(client, filename, content, metadata, expected_code):
     response = client.post(ROUTE, data={"metadata": metadata}, files={"file": (filename, content)})
     assert response.status_code == 400
-    assert response.json()["detail"]["code"] == expected_code
+    assert response.json()["details"]["code"] == expected_code
 
 
 def test_internal_errors(client, monkeypatch, mock_entity_payload):
@@ -211,7 +211,7 @@ def test_internal_errors(client, monkeypatch, mock_entity_payload):
     )
 
     assert response.status_code == 500
-    assert response.json()["detail"]["code"] == "MORPHOLOGY_ANALYSIS_ERROR"
+    assert response.json()["details"]["code"] == "MORPHOLOGY_ANALYSIS_ERROR"
 
 
 def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
@@ -227,7 +227,7 @@ def test_sdk_registration_failure(client, monkeypatch, mock_entity_payload):
         ROUTE, data={"metadata": mock_entity_payload}, files={"file": ("test.swc", b"content")}
     )
     assert response.status_code == 500
-    assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
+    assert response.json()["error_code"] == "ENTITYSDK_API_FAILURE"
 
 
 def test_morphometrics_registration_failure(client, monkeypatch, mock_entity_payload):
@@ -245,7 +245,7 @@ def test_morphometrics_registration_failure(client, monkeypatch, mock_entity_pay
     )
 
     assert response.status_code == 500
-    assert response.json()["detail"]["code"] == "ENTITYSDK_API_FAILURE"
+    assert response.json()["error_code"] == "ENTITYSDK_API_FAILURE"
 
 
 def test_h5_upload_uses_original_path(client, monkeypatch):
@@ -846,7 +846,7 @@ class TestStoreInvalidMorphology:
         )
 
         assert response.status_code == 500
-        detail = response.json()["detail"]
+        detail = response.json()["details"]
         assert detail["code"] == "ENTITYSDK_API_FAILURE"
         db_client.delete_entity.assert_called_once()
         assert str(db_client.delete_entity.call_args.kwargs["entity_id"]) == entity_id
@@ -861,7 +861,7 @@ class TestStoreInvalidMorphology:
         )
 
         assert response.status_code == 500
-        assert response.json()["detail"]["entity_id"] == entity_id
+        assert response.json()["details"]["entity_id"] == entity_id
 
     def test_disqualified_status_reaches_the_registered_entity(self):
         """The real CellMorphology is built with the disqualified status, not just passed along."""
