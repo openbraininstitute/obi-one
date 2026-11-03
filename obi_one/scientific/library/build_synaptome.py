@@ -17,7 +17,10 @@ import numpy as np
 import pandas as pd
 from bluepysnap.nodes import NodePopulation
 
-from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+from obi_one.scientific.blocks.morphology_locations.base import (
+    GeneratedMorphologyLocationsBlock,
+    MorphologyLocationsBlock,
+)
 from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 from obi_one.scientific.library.circuit import ensure_mechanisms_dir
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import write_edges
@@ -107,13 +110,14 @@ def _generate_locations(
         )
     try:
         placement_for_group = placement
-        random_seed = getattr(placement, "random_seed", None)
-        if group_index and isinstance(random_seed, int):
-            placement_for_group = placement.model_copy(
-                update={
-                    "random_seed": _derive_group_seed(random_seed, group_index),
-                }
-            )
+        if group_index and isinstance(placement, GeneratedMorphologyLocationsBlock):
+            random_seed = placement.random_seed
+            if isinstance(random_seed, int):
+                placement_for_group = placement.model_copy(
+                    update={
+                        "random_seed": _derive_group_seed(random_seed, group_index),
+                    }
+                )
         with _preserve_numpy_random_state():
             locations = placement_for_group.points_on(morphology)
     except Exception as exc:

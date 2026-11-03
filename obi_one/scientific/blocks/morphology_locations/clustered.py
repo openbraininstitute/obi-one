@@ -10,9 +10,6 @@ from obi_one.core.units import Units
 from obi_one.scientific.blocks.morphology_locations.base import (
     GeneratedMorphologyLocationsBlock,
 )
-from obi_one.scientific.blocks.morphology_locations.random import (
-    RandomGroupedMorphologyLocations,
-)
 from obi_one.scientific.library.morphology_locations import (
     _CEN_IDX,
     generate_neurite_locations_on,
@@ -23,13 +20,32 @@ PathDistanceStandardDeviationParameter = Annotated[float, Field(ge=_MIN_PD_SD)]
 
 
 class ClusteredMorphologyLocations(GeneratedMorphologyLocationsBlock):
-    """Clustered locations with cluster centers randomly distributed across selected neurites."""
+    """Clustered locations with cluster centers randomly distributed across selected neurites.
 
-    title: ClassVar[str] = "Random clustered morphology locations"
+    ``n_groups`` splits the locations within each cluster, so the total number of groups is
+    ``n_clusters * n_groups``. For synapse placement each group is a distinct presynaptic neuron.
+    """
+
+    title: ClassVar[str] = "Random Clustered Morphology Locations"
+
+    n_groups: PositiveInt | list[PositiveInt] = Field(
+        default=1,
+        title="Number of location groups per cluster",
+        description=(
+            "How many groups to split the locations of each cluster into. Every location is "
+            "tagged with its group so later steps can treat each group separately; the total "
+            "number of groups is this value times the number of clusters. When these locations "
+            "place synapses, each group is a separate presynaptic neuron. Leave it at 1 to keep "
+            "each cluster in a single group."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
 
     n_clusters: PositiveInt | list[PositiveInt] = Field(
         default=5,
-        title="Number of clusters",
+        title="Number of Clusters",
         description=(
             "Number of randomly placed clusters to generate. The total number of locations is "
             "divided across these clusters."
@@ -40,7 +56,7 @@ class ClusteredMorphologyLocations(GeneratedMorphologyLocationsBlock):
     )
     cluster_max_distance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=50.0,
-        title="Maximum distance from cluster center",
+        title="Maximum Distance from Cluster Center",
         description=(
             "Maximum soma path distance between each generated location and its cluster center. "
             "Locations are sampled uniformly from valid morphology intervals within this distance."
@@ -59,7 +75,7 @@ class ClusteredMorphologyLocations(GeneratedMorphologyLocationsBlock):
             morphology,
             n_centers=n_clusters,
             n_per_center=n_per_cluster,
-            srcs_per_center=1,
+            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=0.0,
             center_path_distances_sd=1e20,
             max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
@@ -83,46 +99,19 @@ class ClusteredMorphologyLocations(GeneratedMorphologyLocationsBlock):
             raise ValueError(msg)
 
 
-class ClusteredGroupedMorphologyLocations(
-    ClusteredMorphologyLocations, RandomGroupedMorphologyLocations
-):
-    """Clustered random locations, grouped in to conceptual groups."""
-
-    title: ClassVar[str] = "Clustered grouped morphology locations"
-
-    def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        count = cast("int", self.number_of_locations)
-        n_clusters = cast("int", self.n_clusters)
-        n_per_cluster = math.ceil(count / n_clusters)
-        locs = generate_neurite_locations_on(
-            morphology,
-            n_centers=n_clusters,
-            n_per_center=n_per_cluster,
-            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
-            center_path_distances_mean=0.0,
-            center_path_distances_sd=1e20,
-            max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
-            lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
-            seed=self.random_seed,  # ty:ignore[invalid-argument-type]
-        ).drop(columns=[_CEN_IDX])
-        locs = locs.iloc[:count]
-        return locs
-
-    def _check_parameter_values(self) -> None:
-        super(ClusteredMorphologyLocations, self)._check_parameter_values()
-        super(RandomGroupedMorphologyLocations, self)._check_parameter_values()
-
-
 class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     """Locations uniformly sampled within clusters whose centers are normally distributed
     around a specified soma path distance.
+
+    ``n_groups`` splits the locations within each cluster, so the total number of groups is
+    ``n_clusters * n_groups``. For synapse placement each group is a distinct presynaptic neuron.
     """
 
-    title: ClassVar[str] = "Clustered path distance morphology locations"
+    title: ClassVar[str] = "Clustered Path Distance Morphology Locations"
 
     path_dist_mean: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
-        title="Cluster path distance sampling mean",
+        title="Cluster Path Distance Sampling Mean",
         description=("Target soma path distance used to bias where cluster centers are selected."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -133,7 +122,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         PathDistanceStandardDeviationParameter | list[PathDistanceStandardDeviationParameter]
     ) = Field(
         default=50.0,
-        title="Cluster path distance standard deviation",
+        title="Cluster Path Distance Standard Deviation",
         description=(
             "Standard deviation of the soma path-distance distribution used to select "
             "cluster centers."
@@ -141,14 +130,6 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MICROMETERS,
-        },
-    )
-    n_groups_per_cluster: PositiveInt | list[PositiveInt] = Field(
-        default=1,
-        title="Groups per cluster",
-        description=("Number of conceptual groups to assign within each generated cluster."),
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
         },
     )
 
@@ -160,7 +141,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
             morphology,
             n_centers=n_clusters,
             n_per_center=n_per_cluster,
-            srcs_per_center=self.n_groups_per_cluster,  # ty:ignore[invalid-argument-type]
+            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
             center_path_distances_sd=self.path_dist_sd,  # ty:ignore[invalid-argument-type]
             max_dist_from_center=self.cluster_max_distance,  # ty:ignore[invalid-argument-type]
@@ -172,17 +153,10 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     def _check_parameter_values(self) -> None:
         super()._check_parameter_values()
         # Only check whenever list are resolved to individual objects
-        if not isinstance(self.path_dist_mean, list):  # ruff: ignore[collapsible-if]
-            if self.path_dist_mean < 0:
-                msg = f"Path distance mean: {self.path_dist_mean} < 0"
-                raise ValueError(msg)
+        if not isinstance(self.path_dist_mean, list) and self.path_dist_mean < 0:
+            msg = f"Path distance mean: {self.path_dist_mean} < 0"
+            raise ValueError(msg)
 
-        if not isinstance(self.path_dist_sd, list):  # ruff: ignore[collapsible-if]
-            if self.path_dist_sd < _MIN_PD_SD:
-                msg = f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
-                raise ValueError(msg)
-
-        if not isinstance(self.n_groups_per_cluster, list):  # ruff: ignore[collapsible-if]
-            if self.n_groups_per_cluster < 1:
-                msg = f"Number of groups per cluster: {self.n_groups_per_cluster} < 1"
-                raise ValueError(msg)
+        if not isinstance(self.path_dist_sd, list) and self.path_dist_sd < _MIN_PD_SD:
+            msg = f"Path distance std: {self.path_dist_sd} < {_MIN_PD_SD} (numerical stability)"
+            raise ValueError(msg)

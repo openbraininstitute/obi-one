@@ -111,6 +111,22 @@ class GeneratedMorphologyLocationsBlock(MorphologyLocationsBlock, abc.ABC):
         },
     )
 
+    n_groups: PositiveInt | list[PositiveInt] = Field(
+        default=1,
+        title="Number of location groups",
+        description=(
+            "How many groups to split the generated locations into. The locations are partitioned "
+            "into this many groups, and every location is tagged with its group so later steps can "
+            "treat each group separately. When these locations place synapses, each group is a "
+            "separate presynaptic neuron, so this sets how many presynaptic neurons the synapses "
+            "come from. Leave it at 1 to keep all locations in a single group (one presynaptic "
+            "neuron)."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
+        },
+    )
+
     @override
     def output_location_count(self) -> int | None:
         """Return the requested count, or None while it is still a parameter sweep."""

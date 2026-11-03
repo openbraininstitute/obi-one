@@ -4,7 +4,6 @@ import pandas as pd
 import pytest
 
 from obi_one.scientific.blocks.morphology_locations.clustered import (
-    ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
 )
@@ -17,10 +16,10 @@ _MODULE = "obi_one.scientific.blocks.morphology_locations.clustered"
     ("block_type", "extra", "expected_sources", "drops_center"),
     [
         (ClusteredMorphologyLocations, {}, 1, True),
-        (ClusteredGroupedMorphologyLocations, {"n_groups": 2}, 2, True),
+        (ClusteredMorphologyLocations, {"n_groups": 2}, 2, True),
         (
             ClusteredPathDistanceMorphologyLocations,
-            {"path_dist_mean": 20.0, "path_dist_sd": 5.0, "n_groups_per_cluster": 3},
+            {"path_dist_mean": 20.0, "path_dist_sd": 5.0, "n_groups": 3},
             3,
             False,
         ),
