@@ -201,10 +201,11 @@ def _stage_circuit_for_neuron_set(
 
     Copies circuit_config.json as a real file (not a symlink) so that
     $BASE_DIR resolves to the temp directory rather than the S3 cache.
-    node_sets.json and the nodes.h5 of every population (or only those whose type is in
-    ``population_types``) are then staged concurrently on ``FETCH_POOL`` with
-    link_or_download (symlinks to the S3 cache where available, downloads otherwise).
-    A missing node_sets.json is tolerated; it is optional in SONATA. With
+    The node sets file the config declares (``node_sets_file``, any name) and the nodes.h5
+    of every population (or only those whose type is in ``population_types``) are then
+    staged concurrently on ``FETCH_POOL`` with link_or_download (symlinks to the S3 cache
+    where available, downloads otherwise).
+    A missing node sets file is tolerated; it is optional in SONATA. With
     ``stage_nodes=False`` neither is fetched: the nodes paths are returned for the caller
     to read another way.
 
@@ -245,20 +246,28 @@ def _stage_circuit_for_neuron_set(
         if population_types is None or dirs.population_type in population_types
     }
 
+    # The file bluepysnap reads node sets from (any name, e.g. node_sets_new.json); "" when
+    # the config declares none, in which case bluepysnap reads none either.
+    node_sets_path = snap_circuit.to_libsonata.node_sets_path
+    node_sets_asset_path = (
+        str(Path(node_sets_path).resolve().relative_to(temp_dir_path)) if node_sets_path else None
+    )
+
     def stage(asset_path: str) -> Path:
         return _stage_file(db_client, circuit_id, asset, temp_dir_path, asset_path)
 
-    def stage_node_sets() -> None:
+    def stage_node_sets(asset_path: str) -> None:
         # Needed for neuron set resolution, but optional in SONATA.
         try:
-            stage("node_sets.json")
+            stage(asset_path)
         except Exception:  # ruff: ignore[blind-except]
-            L.debug("node_sets.json not available, continuing without it")
+            L.debug("%s not available, continuing without it", asset_path)
 
     if stage_nodes:
         # Independent files: fetch together. A failed nodes.h5 re-raises from result().
-        futures = [FETCH_POOL.submit(stage_node_sets)]
-        futures.extend(FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values())
+        futures = [FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values()]
+        if node_sets_asset_path:
+            futures.append(FETCH_POOL.submit(stage_node_sets, node_sets_asset_path))
         for future in futures:
             future.result()
 
@@ -693,7 +702,7 @@ def _stage_circuit_for_neuron_set_resolution(
 ) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str]]:
     """Stage circuit files, resolve neuron set to node IDs, read model_template.
 
-    Stages circuit_config.json, node_sets.json, and the nodes.h5 for each population
+    Stages circuit_config.json, its node sets file, and the nodes.h5 for each population
     the neuron set spans, then resolves the neuron set (every scan value, see
     ``get_expanded_neuron_ids``) and reads model_template
     for the resulting node IDs across all populations. The hoc and mod files of
