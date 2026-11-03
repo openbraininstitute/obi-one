@@ -13,6 +13,7 @@ from pynwb import NWBHDF5IO
 from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
 
 from obi_one.core.task import Task
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.blocks import JobDispatch
 from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchSingleConfig
 from obi_one.scientific.tasks.aind_ephys.utils import write_jobs
 
@@ -117,6 +118,72 @@ def clip_segments(recording: si.BaseRecording, duration_s: float) -> si.BaseReco
     return si.append_recordings(segments)
 
 
+def dispatch_jobs(nwb_path: Path, params: JobDispatch) -> list[dict]:
+    """One job per recording, segment and probe group of an NWB file.
+
+    Each job holds the recording serialized relative to the NWB file's folder, which it records
+    as ``input_folder``. Only metadata is read, so this is cheap.
+    """
+    nwb_path = Path(nwb_path).resolve()
+    input_folder = nwb_path.parent
+    recordings = read_nwb_recordings(
+        nwb_path, params.electrical_series_path, params.min_sampling_frequency
+    )
+
+    jobs = []
+    for recording_name, full_recording in recordings.items():
+        duration = full_recording.get_total_duration()
+        if params.min_recording_duration is not None and duration < params.min_recording_duration:
+            L.info("Skipping %s, which lasts only %.2f s.", recording_name, duration)
+            continue
+        segments = si.split_recording(full_recording) if params.split_segments else [full_recording]
+        for segment_index, segment in enumerate(segments):
+            recording = segment
+            segment_name = (
+                f"{recording_name}{segment_index + 1}" if params.split_segments else recording_name
+            )
+            problem = None if params.skip_timestamps_check else timestamps_problem(recording)
+            if problem is not None:
+                L.info("Resetting the timestamps of %s: %s.", segment_name, problem)
+                recording.reset_times()
+            if params.debug:
+                recording = clip_segments(recording, params.debug_duration)
+
+            if params.split_groups and len(np.unique(recording.get_channel_groups())) > 1:
+                groups = {
+                    f"{segment_name}_group{group}": group_recording
+                    for group, group_recording in recording.split_by("group").items()
+                }
+            else:
+                groups = {segment_name: recording}
+
+            for job_recording_name, group_recording in groups.items():
+                L.info(
+                    "Job %s: %.2f s, %d channels.",
+                    job_recording_name,
+                    group_recording.get_total_duration(),
+                    group_recording.get_num_channels(),
+                )
+                jobs.append(
+                    {
+                        "session_name": nwb_path.stem,
+                        "recording_name": job_recording_name,
+                        "recording_dict": group_recording.to_dict(
+                            recursive=True, relative_to=input_folder
+                        ),
+                        "input_folder": str(input_folder),
+                        "skip_times": problem is not None,
+                        "duration": round(group_recording.get_total_duration(), 2),
+                        "debug": params.debug,
+                    }
+                )
+
+    if not jobs:
+        msg = f"Every recording in {nwb_path} was too short to dispatch."
+        raise ValueError(msg)
+    return jobs
+
+
 class AINDEPhysDispatchTask(Task):
     """Write one ``job_<i>.json`` per recording, segment and probe group of an NWB file.
 
@@ -137,67 +204,7 @@ class AINDEPhysDispatchTask(Task):
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         init = self.config.initialize
-        nwb_path = Path(init.nwb_path).resolve()
-        input_folder = nwb_path.parent
-        recordings = read_nwb_recordings(
-            nwb_path, init.electrical_series_path, init.min_sampling_frequency
-        )
-
-        jobs = []
-        for recording_name, full_recording in recordings.items():
-            duration = full_recording.get_total_duration()
-            if init.min_recording_duration is not None and duration < init.min_recording_duration:
-                L.info("Skipping %s, which lasts only %.2f s.", recording_name, duration)
-                continue
-            segments = (
-                si.split_recording(full_recording) if init.split_segments else [full_recording]
-            )
-            for segment_index, segment in enumerate(segments):
-                recording = segment
-                segment_name = (
-                    f"{recording_name}{segment_index + 1}"
-                    if init.split_segments
-                    else recording_name
-                )
-                problem = None if init.skip_timestamps_check else timestamps_problem(recording)
-                if problem is not None:
-                    L.info("Resetting the timestamps of %s: %s.", segment_name, problem)
-                    recording.reset_times()
-                if init.debug:
-                    recording = clip_segments(recording, init.debug_duration)
-
-                if init.split_groups and len(np.unique(recording.get_channel_groups())) > 1:
-                    groups = {
-                        f"{segment_name}_group{group}": group_recording
-                        for group, group_recording in recording.split_by("group").items()
-                    }
-                else:
-                    groups = {segment_name: recording}
-
-                for job_recording_name, group_recording in groups.items():
-                    L.info(
-                        "Job %s: %.2f s, %d channels.",
-                        job_recording_name,
-                        group_recording.get_total_duration(),
-                        group_recording.get_num_channels(),
-                    )
-                    jobs.append(
-                        {
-                            "session_name": nwb_path.stem,
-                            "recording_name": job_recording_name,
-                            "recording_dict": group_recording.to_dict(
-                                recursive=True, relative_to=input_folder
-                            ),
-                            "input_folder": str(input_folder),
-                            "skip_times": problem is not None,
-                            "duration": round(group_recording.get_total_duration(), 2),
-                            "debug": init.debug,
-                        }
-                    )
-
-        if not jobs:
-            msg = f"Every recording in {nwb_path} was too short to dispatch."
-            raise ValueError(msg)
+        jobs = dispatch_jobs(init.nwb_path, init)
         output_folder = Path(self.config.coordinate_output_root)
         write_jobs(jobs, output_folder)
         L.info("Wrote %d job files into %s.", len(jobs), output_folder)

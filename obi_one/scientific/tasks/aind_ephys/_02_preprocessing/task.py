@@ -1,4 +1,4 @@
-"""Preprocessing stage: filter, denoise and remove the bad channels of each dispatched recording."""
+"""Preprocessing stage: dispatch a raw recording into jobs, then filter and denoise each."""
 
 import itertools
 import logging
@@ -14,17 +14,19 @@ from spikeinterface.preprocessing.detect_bad_channels import DetectAndRemoveBadC
 from spikeinterface.sortingcomponents.motion import interpolate_motion
 
 from obi_one.core.task import Task
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import dispatch_jobs
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionCorrection
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
 )
 from obi_one.scientific.tasks.aind_ephys.utils import (
+    JOB_FILE_PREFIX,
     dump_recording,
     global_job_kwargs,
     load_recording,
-    read_jobs,
     remove_outputs,
     write_data_process,
+    write_jobs,
     write_skip,
 )
 
@@ -128,30 +130,51 @@ def estimate_motion(
 
 
 class AINDEPhysPreprocessingTask(Task):
-    """Preprocess every job of the dispatch stage into this config's output folder.
+    """Dispatch the raw recording into jobs and preprocess each into this config's output folder.
 
+    The NWB file is the local one given, or the recording entity's NWB asset, downloaded into
+    ``input/`` (kept, since the lazy ``preprocessed_<name>.json`` chains point into it). The jobs
+    are written as ``job_<i>.json``, so later stages can read this folder as the dispatch output.
     A recording that is too short, loses too many channels or fails every step gets a
     ``preprocessed_<name>/`` holding only ``error.txt``, which the later stages skip.
     """
 
     name: ClassVar[str] = "AIND Ephys Preprocessing"
-    description: ClassVar[str] = "Preprocesses dispatched extracellular recordings."
+    description: ClassVar[str] = "Preprocesses a raw extracellular recording."
 
     config: AINDEPhysPreprocessingSingleConfig
 
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> Path:
         output_folder = Path(self.config.coordinate_output_root)
         output_folder.mkdir(parents=True, exist_ok=True)
+        nwb_path = self.stage_nwb(output_folder, db_client)
+        jobs = dispatch_jobs(nwb_path, self.config.dispatch)
+        for stale in output_folder.glob(f"{JOB_FILE_PREFIX}*.json"):
+            stale.unlink()
+        write_jobs(jobs, output_folder)
+        L.info("Dispatched %s into %d jobs.", nwb_path.name, len(jobs))
         with global_job_kwargs(self.config.job_kwargs.to_dict()):
-            for job in read_jobs(Path(self.config.initialize.dispatch_output_path)):
+            for job in jobs:
                 self.preprocess(job, output_folder)
         return output_folder
+
+    def stage_nwb(self, output_folder: Path, db_client: entitysdk.client.Client | None) -> Path:
+        """The local NWB file, or the recording entity's NWB asset downloaded into ``input/``."""
+        init = self.config.initialize
+        if init.nwb_path is not None:
+            return Path(init.nwb_path)
+        if init.recording is None or db_client is None:
+            msg = "A recording and a db_client are needed to download the recording's NWB asset."
+            raise ValueError(msg)
+        return init.recording.download_nwb_asset(
+            dest_dir=output_folder / "input", db_client=db_client
+        )
 
     def preprocess(self, job: dict, output_folder: Path) -> None:
         """Preprocess one dispatched recording."""

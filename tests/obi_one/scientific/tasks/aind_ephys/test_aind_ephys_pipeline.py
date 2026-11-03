@@ -1,12 +1,16 @@
 """The AIND ephys pipeline stages, run once in sequence on a toy NWB recording."""
 
 import json
+import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
+import uuid
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 pytest.importorskip("spikeinterface")
 
@@ -14,11 +18,16 @@ import spikeinterface as si
 
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
 from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchScanConfig
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionCorrection
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
+    AINDEPhysPreprocessingSingleConfig,
 )
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import AINDEPhysPreprocessingTask
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import SpykingCircus2Sorter
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
     AINDEPhysSpikeSortingScanConfig,
@@ -73,7 +82,7 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     preprocessing = run_stage(
         AINDEPhysPreprocessingScanConfig(
             initialize=AINDEPhysPreprocessingScanConfig.Initialize(
-                dispatch_output_path=dispatch, min_preprocessing_duration=0.0
+                nwb_path=nwb_path, min_preprocessing_duration=0.0
             ),
             job_kwargs=SINGLE_JOB,
             motion_correction=MotionCorrection(compute=False),
@@ -117,6 +126,7 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     )
     return {
         "root": root,
+        "nwb": nwb_path,
         "dispatch": dispatch,
         "preprocessing": preprocessing,
         "sorting": sorting,
@@ -156,12 +166,48 @@ class TestStages:
             "common_reference",
         ]
 
+    def test_preprocessing_dispatches_like_the_dispatch_stage(self, stages):
+        (dispatched,) = stages["dispatch"].glob("job_*.json")
+        (preprocessed,) = stages["preprocessing"].glob("job_*.json")
+
+        assert json.loads(preprocessed.read_text()) == json.loads(dispatched.read_text())
+
+    @pytest.mark.parametrize("both", [True, False])
+    def test_preprocessing_needs_exactly_one_input(self, stages, both):
+        recording = ElectricalCellRecordingFromID(id_str=str(uuid.uuid4())) if both else None
+        with pytest.raises(ValidationError, match="either a recording or an NWB file"):
+            AINDEPhysPreprocessingScanConfig(
+                initialize=AINDEPhysPreprocessingScanConfig.Initialize(
+                    recording=recording, nwb_path=stages["nwb"] if both else None
+                ),
+            )
+
+    def test_preprocessing_downloads_the_recording_entity(self, stages, tmp_path):
+        form = AINDEPhysPreprocessingSingleConfig(
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                recording=ElectricalCellRecordingFromID(id_str=str(uuid.uuid4())),
+                min_preprocessing_duration=0.0,
+            ),
+            job_kwargs=SINGLE_JOB,
+            motion_correction=MotionCorrection(compute=False),
+        )
+        form.coordinate_output_root = tmp_path / "preprocessing"
+
+        def download(_self, dest_dir, **_kwargs):
+            dest_dir.mkdir(parents=True)
+            return Path(shutil.copy(stages["nwb"], dest_dir))
+
+        with patch.object(ElectricalCellRecordingFromID, "download_nwb_asset", download):
+            folder = AINDEPhysPreprocessingTask(config=form).execute(db_client=object())
+
+        (job_file,) = folder.glob("job_*.json")
+        assert json.loads(job_file.read_text())["input_folder"] == str((folder / "input").resolve())
+        assert len(list(folder.glob("binary_*.json"))) == 1
+
     def test_preprocessing_skips_recordings_that_are_too_short(self, stages, tmp_path):
         folder = run_stage(
             AINDEPhysPreprocessingScanConfig(
-                initialize=AINDEPhysPreprocessingScanConfig.Initialize(
-                    dispatch_output_path=stages["dispatch"]
-                ),
+                initialize=AINDEPhysPreprocessingScanConfig.Initialize(nwb_path=stages["nwb"]),
                 job_kwargs=SINGLE_JOB,
             ),
             tmp_path / "preprocessing",
@@ -173,7 +219,7 @@ class TestStages:
     def test_preprocessing_reruns_into_the_same_folder(self, stages, tmp_path):
         form = AINDEPhysPreprocessingScanConfig(
             initialize=AINDEPhysPreprocessingScanConfig.Initialize(
-                dispatch_output_path=stages["dispatch"], min_preprocessing_duration=0.0
+                nwb_path=stages["nwb"], min_preprocessing_duration=0.0
             ),
             job_kwargs=SINGLE_JOB,
             motion_correction=MotionCorrection(compute=False),

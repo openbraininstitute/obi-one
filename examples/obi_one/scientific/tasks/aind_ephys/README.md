@@ -19,7 +19,7 @@ Run the notebooks in numerical order (00 → 11). Each stage reads the previous 
 |---|---|---|---|---|
 | 00 | `00_generate_toy_recording.ipynb` | Writes a 10 s, 32-channel, 10-unit ground-truth recording of one probe as NWB, with the probe geometry in the electrodes table, and saves the ground-truth sorting beside it. | — | `obi-output/00_toy_example_recording/toy_recording.nwb`, `ground_truth_sorting/` |
 | 01 | `01_aind_ephys_dispatch.ipynb` | Port of [aind-ephys-job-dispatch](https://github.com/AllenNeuralDynamics/aind-ephys-job-dispatch) for NWB input: one job per ElectricalSeries in acquisition, split by segment and probe group. | `obi-output/00_toy_example_recording/` | `obi-output/01_aind_ephys_dispatch/grid_scan/0/job_0.json` |
-| 02 | `02_aind_ephys_preprocessing.ipynb` | Port of [aind-ephys-preprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing) on a 9 s clip: highpass filter, bad-channel removal and common median reference, then motion estimation. | `obi-output/01_aind_ephys_dispatch/grid_scan/0/` | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/preprocessed_<name>/`, `binary_<name>.json`, `motion_<name>/`, … |
+| 02 | `02_aind_ephys_preprocessing.ipynb` | Port of [aind-ephys-preprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing) on a 9 s clip. It dispatches the NWB file itself, then applies highpass filter, bad-channel removal and common median reference, then motion estimation. | `obi-output/00_toy_example_recording/toy_recording.nwb` | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/job_<i>.json`, `preprocessed_<name>/`, `binary_<name>.json`, `motion_<name>/`, … |
 | 03 | `03_aind_ephys_spikesorting.ipynb` | Port of the AIND sorter steps ([kilosort4](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-kilosort4), [spykingcircus2](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-spykingcircus2), [lupin](https://github.com/AllenNeuralDynamics/aind-ephys-spikesort-lupin)), with the sorter chosen by a block. Sorts notebook 02's output with Kilosort4 on CPU and scores it against the ground truth. | `obi-output/02_aind_ephys_preprocessing/grid_scan/0/` | `obi-output/03_aind_ephys_spikesorting/grid_scan/0/spikesorted_<name>/` |
 | 04 | `04_aind_ephys_postprocessing.ipynb` | Port of [aind-ephys-postprocessing](https://github.com/AllenNeuralDynamics/aind-ephys-postprocessing): duplicate removal, then a `SortingAnalyzer` with its extensions and quality metrics. | `obi-output/02_…/grid_scan/0/`, `obi-output/03_…/grid_scan/0/` | `obi-output/04_aind_ephys_postprocessing/grid_scan/0/postprocessed_<name>.zarr` |
 | 05 | `05_aind_ephys_curation.ipynb` | Port of [aind-ephys-curation](https://github.com/AllenNeuralDynamics/aind-ephys-curation): default QC, UnitRefine and Bombcell labels, noise flagging and SLAy merge proposals. | `obi-output/04_aind_ephys_postprocessing/grid_scan/0/` | `obi-output/05_aind_ephys_curation/grid_scan/0/unit_labels_<name>.csv`, `unit_merges_<name>.json`, `curation_<name>.json` |
@@ -46,12 +46,15 @@ A recording a stage skips (too short, too many bad channels, failed sorting) get
 
 ### 01 — Job dispatch (`obi-output/01_aind_ephys_dispatch/grid_scan/0/`)
 
+Standalone, for inspecting the jobs. Preprocessing makes the same jobs itself, so notebook 02 doesn't need this one.
+
 - **`job_0.json`** — top-level keys `session_name`, `recording_name`, `recording_dict` (the recording serialised relative to `input_folder`), `input_folder` (the NWB file's folder), `skip_times`, `duration` and `debug`. The recording's probe carries the NWB device's name and description.
 
 ### 02 — Preprocessing (`obi-output/02_aind_ephys_preprocessing/grid_scan/0/`)
 
 For each recording (`<name> = block0_acquisition-ElectricalSeriesRaw_recording1`):
 
+- **`job_<i>.json`** — the dispatched jobs, as notebook 01 writes them. Stages 06–11 can take this folder as their `dispatch_output_path`.
 - **`preprocessed_<name>/`** — the preprocessed traces, as a SpikeInterface `BinaryFolderRecording`.
 - **`binary_<name>.json`** — reloads that binary folder (paths relative to this folder); what the later stages read.
 - **`preprocessed_<name>.json`** — the lazy preprocessing chain over the raw NWB recording (absolute paths).

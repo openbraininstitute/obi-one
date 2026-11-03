@@ -2,15 +2,21 @@
 
 from enum import StrEnum
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Self
 
-from pydantic import Field, NonNegativeFloat
+import entitysdk
+from entitysdk.models.entity import Entity
+from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
+from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
+    ElectricalCellRecordingFromID,
+)
+from obi_one.scientific.tasks.aind_ephys._01_dispatch.blocks import JobDispatch
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import (
     BandpassFilterParams,
     CommonReference,
@@ -31,15 +37,17 @@ class BlockGroup(StrEnum):
 
 
 class AINDEPhysPreprocessingScanConfig(ScanConfig):
-    """Filter, denoise and remove the bad channels of each dispatched recording.
+    """Split a raw NWB recording into jobs, then filter, denoise and remove bad channels of each.
 
-    Port of https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing. Writes, for each job,
+    The jobs are made as by the dispatch stage and written as ``job_<i>.json`` into the output
+    folder, so the recording is staged only once. Port of
+    https://github.com/AllenNeuralDynamics/aind-ephys-preprocessing. Writes, for each job,
     the preprocessed traces to ``preprocessed_<name>/``, files to reload them (``binary_<name>``
     and the lazy chain ``preprocessed_<name>``) and the estimated motion to ``motion_<name>/``.
     """
 
     name: ClassVar[str] = "AIND Ephys Preprocessing"
-    description: ClassVar[str] = "Preprocesses dispatched extracellular recordings."
+    description: ClassVar[str] = "Preprocesses a raw extracellular recording."
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: False,
@@ -47,9 +55,19 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
     }
 
     class Initialize(Block):
-        dispatch_output_path: Path = Field(
-            title="Dispatch output",
-            description="Folder of the dispatch stage's job_*.json files.",
+        recording: ElectricalCellRecordingFromID | None = Field(
+            default=None,
+            title="Recording",
+            description=(
+                "Recording entity whose NWB asset holds the raw extracellular traces. An"
+                " ElectricalCellRecording for now, until entitycore has ExtracellularRecording."
+            ),
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
+        )
+        nwb_path: Path | None = Field(
+            default=None,
+            title="NWB file",
+            description="Local NWB file with the raw recording, instead of a recording entity.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
         denoising_strategy: Literal["cmr", "destripe"] = Field(
@@ -106,11 +124,21 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
 
     initialize: Initialize = Field(
         title="Initialize",
-        description="The dispatched jobs and the preprocessing strategy.",
+        description="The raw recording and the preprocessing strategy.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 0,
+        },
+    )
+    dispatch: JobDispatch = Field(
+        default_factory=JobDispatch,
+        title="Job dispatch",
+        description="How the recording is split into jobs, one per series, segment and probe.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     job_kwargs: JobKwargs = Field(
@@ -120,7 +148,7 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
             SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
     phase_shift: PhaseShift = Field(
@@ -193,6 +221,20 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 6,
         },
     )
+
+    @model_validator(mode="after")
+    def one_input(self) -> Self:
+        """Exactly one of the recording entity and the local NWB file is given."""
+        if (self.initialize.recording is None) == (self.initialize.nwb_path is None):
+            msg = "Give either a recording or an NWB file, not both or neither."
+            raise ValueError(msg)
+        return self
+
+    def input_entities(self, db_client: entitysdk.client.Client) -> list[Entity]:
+        """The recording entity, recorded as the input of the task config."""
+        if self.initialize.recording is None:
+            return []
+        return [self.initialize.recording.entity(db_client=db_client)]
 
 
 class AINDEPhysPreprocessingSingleConfig(AINDEPhysPreprocessingScanConfig, SingleConfigMixin):
