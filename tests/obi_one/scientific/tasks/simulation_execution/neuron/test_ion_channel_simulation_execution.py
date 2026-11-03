@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.simulation_execution.neuron.task import (
 from obi_one.types import SimulationBackend
 
 _TASK = "obi_one.scientific.tasks.simulation_execution.neuron.task"
+_BASE = "obi_one.scientific.tasks.simulation_execution.task"
 
 
 @pytest.fixture
@@ -98,10 +99,10 @@ def _neurodamus_simulation_parameters(tmp_path, mechanism_build):
 @patch(f"{_TASK}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
 @patch(f"{_TASK}.run_simulation")
 @patch(f"{_TASK}.get_simulation_parameters")
-@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_BASE}.stage_simulation")
 @patch(f"{_TASK}.compile_mechanisms")
 @patch(f"{_TASK}.stage_ion_channel_models_as_circuit")
-@patch(f"{_TASK}.create_dir")
+@patch(f"{_BASE}.create_dir")
 def test_execute_local_does_not_register(
     mock_create_dir,
     mock_stage_circuit,
@@ -149,13 +150,13 @@ def test_execute_local_does_not_register(
 
 
 @patch(f"{_TASK}.IonChannelModelSimulationExecutionTask.get_generation_single_config")
-@patch(f"{_TASK}.register_simulation_results")
+@patch(f"{_BASE}.register_simulation_results")
 @patch(f"{_TASK}.run_simulation")
 @patch(f"{_TASK}.get_simulation_parameters")
-@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_BASE}.stage_simulation")
 @patch(f"{_TASK}.compile_mechanisms")
 @patch(f"{_TASK}.stage_ion_channel_models_as_circuit")
-@patch(f"{_TASK}.create_dir")
+@patch(f"{_BASE}.create_dir")
 def test_execute_tracked_registers_and_updates_activity(
     mock_create_dir,
     mock_stage_circuit,

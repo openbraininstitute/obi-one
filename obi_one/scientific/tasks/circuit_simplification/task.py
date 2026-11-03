@@ -363,7 +363,9 @@ class CircuitSimplificationTask(Task):
                 )
 
                 # Run the pipeline with a recipe that includes the exporter
-                recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
+                recipe = Recipe.from_mode(
+                    base_algorithm, exporter=exporter_name, nest_format="sonata-extension"
+                )
                 pipeline.run_recipe(recipe)
 
                 # The simplified SONATA circuit is in output_dir / "output"

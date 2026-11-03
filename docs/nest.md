@@ -1,0 +1,41 @@
+---
+tags:
+  - circuit-simulation
+---
+
+# NEST Point Neuron Simulations
+
+NEST simulations in OBI-ONE run point neuron networks from a SONATA-extension circuit (`target_simulator: "NEST"`, defined by the [`sonata_nest`](https://sonata-extension.readthedocs.io/) spec). Node populations are `point_neuron` / `point_process` / `virtual`, edge populations are `chemical`. NEST and NESTML are optional: install them with `pip install obi-one[nest]`. NEST needs no SONATA/HDF5 support, since `libsonata` reads the network files and the network is built through PyNEST. The code lives in `obi_one/scientific/library/simulation/nest/`.
+
+## Loader
+
+`NestSonataNetwork` reads the simulation and circuit configs through `libsonata` and mirrors the stock `nest.SonataNetwork` API:
+
+```python
+from obi_one.scientific.library.simulation.nest.simulate_nest import NestSonataNetwork
+
+net = NestSonataNetwork("simulation_config.json")
+net.BuildNetwork()         # Create() + Connect()
+net.add_spike_recorders()  # one spike_recorder per non-virtual population
+net.Simulate()             # runs for run.tstop ms
+```
+
+- **Point neurons** are created per model template with its `params`, then the per-node `dynamics_params` from the nodes file.
+- **Virtual populations** become `spike_train_injector` nodes fed by the `synapse_replay` inputs targeting them.
+- **Synapses** get the template's `model` and `params`, then per-edge `syn_weight`/`delay`, then per-edge `dynamics_params` (e.g. `U`, `u`, `tau_rec`, `tau_fac`, `receptor_type`).
+
+`run_simulation(simulation_config)` does all of the above and writes the spikes of every non-virtual population to the config's `output.spikes_file` as a SONATA spike report. Voltage `reports` are not supported and raise `NotImplementedError`.
+
+## Simulation execution task
+
+`circuit_simulation_nest_machine` is the launch-system task for NEST simulations, alongside the neurodamus and `brian2` machine tasks. It is selected when the simulation's (or circuit's) `target_simulator` is `NEST`. It stages the circuit and simulation config (reusing the neuron staging helper), calls `run_simulation`, and registers the spike report as a `SimulationResult` (no voltage reports). It is built on the shared `SimulationExecutionTask`, which the neuron execution tasks also subclass; each subclass only provides circuit staging and the simulator-specific run step. It is billed with the `NEST_CIRCUIT_SIMULATION` service subtype, and its launch dependencies are `launch_scripts/launch_task_for_single_config_asset/dependencies/nest.txt` (`obi-one[nest]`).
+
+## NESTML custom models
+
+A template whose `model` is `nestml:<name>` references `<model_template_dir>/<name>.nestml`. On first use the loader runs NESTML to generate and compile a NEST extension module, installs it and creates nodes with the generated model. Modules are cached by source hash under `<circuit>/.nestml_cache/`. The host needs `cmake`, `make` and a C++ compiler. Build failures raise `NestmlBuildError` with the path to the build output. Co-generated plastic (STDP) neuron/synapse pairs are not supported yet.
+
+`nestml_build.py` prepares the build against the installed NEST. A compile-capable NEST (source build, conda-forge) uses its own `nest-config`. The PyPI `nest-simulator` wheel needs workarounds: its `nest-config` reports a stale build path, so a replacement pointing at the wheel's headers is written, and modules are compiled with the wheel's C++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0`). The wheel also lacks the Boost and GSL headers that NEST's headers and GSL-integrated models include. They are taken from, in order:
+
+1. `NESTML_BOOST_INCLUDE` / `NESTML_GSL_INCLUDE` (directories containing `boost/` and `gsl/`);
+2. `/usr/include` or `/usr/local/include` (Boost only; GSL must match the wheel's bundled 1.15);
+3. a one-time, checksum-verified download of Boost 1.86 and GSL 1.15 into `OBI_NESTML_CACHE` (default `~/.cache/obi-one/nestml`, about 180 MB).
