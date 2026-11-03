@@ -593,35 +593,6 @@ def get_circuit_metrics(  # ruff: ignore[too-many-locals]
         circ, temp_dir, node_props, db_client, circuit_id, asset_id, level_of_detail_edges
     )
 
-    biophys_pops = _build_node_populations(
-        dict_props["names_of_biophys_node_populations"],
-        node_props,
-        NodePopulationType.biophysical,
-        include_dynamics_params=True,
-    )
-    point_pops = _build_node_populations(
-        dict_props["names_of_point_node_populations"],
-        node_props,
-        NodePopulationType.point,
-        include_dynamics_params=False,
-    )
-    virtual_pops = _build_node_populations(
-        dict_props["names_of_virtual_node_populations"],
-        node_props,
-        NodePopulationType.virtual,
-        include_dynamics_params=False,
-    )
-    chemical_pops = _build_edge_populations(
-        dict_props["names_of_chemical_edge_populations"],
-        edge_props,
-        EdgePopulationType.chemical,
-    )
-    electrical_pops = _build_edge_populations(
-        dict_props["names_of_electrical_edge_populations"],
-        edge_props,
-        EdgePopulationType.electrical,
-    )
-
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=dict_props["number_of_biophys_node_populations"],
         number_of_virtual_node_populations=dict_props["number_of_virtual_node_populations"],
@@ -634,9 +605,32 @@ def get_circuit_metrics(  # ruff: ignore[too-many-locals]
         names_of_chemical_edge_populations=dict_props["names_of_chemical_edge_populations"],
         names_of_electrical_edge_populations=dict_props["names_of_electrical_edge_populations"],
         names_of_nodesets=nodesets,
-        biophysical_node_populations=biophys_pops,
-        virtual_node_populations=virtual_pops,
-        point_node_populations=point_pops,
-        chemical_edge_populations=chemical_pops,
-        electrical_edge_populations=electrical_pops,
+        biophysical_node_populations=_build_node_populations(
+            dict_props["names_of_biophys_node_populations"],
+            node_props,
+            NodePopulationType.biophysical,
+            include_dynamics_params=True,
+        ),
+        virtual_node_populations=_build_node_populations(
+            dict_props["names_of_virtual_node_populations"],
+            node_props,
+            NodePopulationType.virtual,
+            include_dynamics_params=False,
+        ),
+        point_node_populations=_build_node_populations(
+            dict_props["names_of_point_node_populations"],
+            node_props,
+            NodePopulationType.point,
+            include_dynamics_params=False,
+        ),
+        chemical_edge_populations=_build_edge_populations(
+            dict_props["names_of_chemical_edge_populations"],
+            edge_props,
+            EdgePopulationType.chemical,
+        ),
+        electrical_edge_populations=_build_edge_populations(
+            dict_props["names_of_electrical_edge_populations"],
+            edge_props,
+            EdgePopulationType.electrical,
+        ),
     )
