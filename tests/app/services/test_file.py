@@ -1,0 +1,117 @@
+"""Unit tests for the file-service helpers (upload validation and zip creation)."""
+
+import io
+import zipfile
+from http import HTTPStatus
+from typing import cast
+
+import pytest
+from fastapi import HTTPException, UploadFile
+
+from app.services import file as test_module
+
+
+def _detail_message(exc: HTTPException) -> str:
+    """Extract the inner 'detail' message from the service's dict-shaped error detail."""
+    return cast("dict", exc.detail)["detail"]
+
+
+@pytest.fixture
+def make_upload_file():
+    def _make(filename: str, content: bytes) -> UploadFile:
+        return UploadFile(filename=filename, file=io.BytesIO(content), size=len(content))
+
+    return _make
+
+
+def test_save_upload_file_with_output_stem(tmp_path, make_upload_file):
+    upload = make_upload_file("input.SWC", b"morphology-bytes")
+    output = test_module.save_upload_file(
+        upload,
+        tmp_path,
+        output_stem="cell",
+        allowed_extensions={".swc"},
+        force_lower_case=True,
+    )
+    assert output == tmp_path / "cell.swc"
+    assert output.read_bytes() == b"morphology-bytes"
+
+
+def test_save_upload_file_rejects_disallowed_extension(tmp_path, make_upload_file):
+    upload = make_upload_file("input.txt", b"data")
+    with pytest.raises(HTTPException) as exc:
+        test_module.save_upload_file(
+            upload,
+            tmp_path,
+            output_stem="cell",
+            allowed_extensions={".swc", ".h5"},
+            force_lower_case=True,
+        )
+    assert exc.value.status_code == HTTPStatus.BAD_REQUEST
+    assert "Invalid file extension" in _detail_message(exc.value)
+
+
+def test_save_upload_file_rejects_missing_filename(tmp_path, make_upload_file):
+    upload = make_upload_file("x.swc", b"data")
+    upload.filename = None
+    with pytest.raises(HTTPException) as exc:
+        test_module.save_upload_file(
+            upload,
+            tmp_path,
+            output_stem="cell",
+            allowed_extensions={".swc"},
+            force_lower_case=True,
+        )
+    assert _detail_message(exc.value) == "No filename provided"
+
+
+def test_save_upload_file_rejects_empty_file(tmp_path, make_upload_file):
+    upload = make_upload_file("input.swc", b"")
+    with pytest.raises(HTTPException) as exc:
+        test_module.save_upload_file(
+            upload,
+            tmp_path,
+            output_stem="cell",
+            allowed_extensions={".swc"},
+            force_lower_case=True,
+        )
+    assert "File size is 0" in _detail_message(exc.value)
+
+
+def test_save_upload_file_case_sensitive_extension_rejects_upper(tmp_path, make_upload_file):
+    upload = make_upload_file("input.SWC", b"data")
+    with pytest.raises(HTTPException):
+        test_module.save_upload_file(
+            upload,
+            tmp_path,
+            output_stem="cell",
+            allowed_extensions={".swc"},
+            force_lower_case=False,
+        )
+
+
+def test_create_zip_file_with_all_inputs(tmp_path):
+    a = tmp_path / "a.txt"
+    b = tmp_path / "b.txt"
+    a.write_text("aaa")
+    b.write_text("bbb")
+    out = tmp_path / "out.zip"
+
+    test_module.create_zip_file([a, b], out, delete_input=False)
+
+    with zipfile.ZipFile(out) as zf:
+        assert sorted(zf.namelist()) == ["a.txt", "b.txt"]
+        assert zf.read("a.txt") == b"aaa"
+    assert a.exists()
+    assert b.exists()
+
+
+def test_create_zip_file_delete_input_removes_source_files(tmp_path):
+    a = tmp_path / "a.txt"
+    a.write_text("aaa")
+    out = tmp_path / "out.zip"
+
+    test_module.create_zip_file([a], out, delete_input=True)
+
+    assert out.exists()
+    assert not a.exists()
