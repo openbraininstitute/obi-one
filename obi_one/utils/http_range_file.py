@@ -94,8 +94,16 @@ class HttpRangeFile(io.RawIOBase):
 
     @override
     def seek(self, offset: int, whence: int = io.SEEK_SET, /) -> int:
-        base = {io.SEEK_SET: 0, io.SEEK_CUR: self._position, io.SEEK_END: self.size}[whence]
-        self._position = base + offset
+        try:
+            base = {io.SEEK_SET: 0, io.SEEK_CUR: self._position, io.SEEK_END: self.size}[whence]
+        except KeyError as err:
+            msg = f"invalid whence ({whence}, should be 0, 1 or 2)"
+            raise ValueError(msg) from err
+        position = base + offset
+        if position < 0:
+            msg = f"negative seek position {position}"
+            raise ValueError(msg)
+        self._position = position
         return self._position
 
     @override
