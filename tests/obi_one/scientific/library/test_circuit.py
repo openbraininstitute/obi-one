@@ -327,6 +327,33 @@ def test_default_edge_population_name_prefers_canonical_chemical_name(
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
 
 
+def test_default_edge_population_name_falls_back_to_prefix(fake_snap_circuit, monkeypatch):
+    """No chemical/canonical match: the single prefix-matching population wins."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Both intrinsic and non-chemical; only one follows the "bio__bio__" naming convention.
+    c.edges._pops["bio__bio__gap"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["intrinsic_other"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__gap", "intrinsic_other"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__gap"
+
+
 def test_default_edge_population_name_falls_back_to_largest_then_first(
     fake_snap_circuit, monkeypatch
 ):
