@@ -75,6 +75,18 @@ def assemble_collection_from_specs(
     return voxcell.CellCollection.from_dataframe(out_df), lst_notices
 
 
+def finalize_node_properties(
+    cell_collection: CellCollection,
+    model_type: str,
+    set_identity_orientation: bool = False,  # ruff: ignore[boolean-default-value-positional-argument,boolean-type-hint-positional-argument]
+) -> None:
+    """Add SONATA-required node fields: model_type and, optionally, identity orientation."""
+    cell_collection.properties["model_type"] = model_type
+    if set_identity_orientation and cell_collection.orientations is None:
+        count = len(cell_collection.properties)
+        cell_collection.orientations = np.tile(np.eye(3), (count, 1, 1))
+
+
 def write_nodes(
     fn_out: os.PathLike,
     population_name: str,

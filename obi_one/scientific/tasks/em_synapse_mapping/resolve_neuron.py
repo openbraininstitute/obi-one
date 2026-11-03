@@ -344,8 +344,8 @@ def place_morphologies_and_mechanisms(
         )
         shutil.rmtree(tmp_staging)
         phys_node_props["model_template"] = numpy.array(["hoc:" + name_hoc_model])
-        phys_node_props["model_type"] = numpy.array([0], dtype=numpy.int32)
-        phys_node_props["morph_class"] = numpy.array([0], dtype=numpy.int32)
+        phys_node_props["model_type"] = numpy.array(["biophysical"])
+        phys_node_props["morph_class"] = numpy.array(["N/A"])
         if me_model_entity.calibration_result is not None:
             phys_node_props["@dynamics:threshold_current"] = numpy.array(
                 [me_model_entity.calibration_result.threshold_current],

@@ -20,6 +20,7 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import (
 )
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     assemble_collection_from_specs,
+    finalize_node_properties,
     write_nodes,
 )
 from obi_one.scientific.tasks.em_synapse_mapping.config import EMSynapseMappingSingleConfig
@@ -227,10 +228,12 @@ class EMSynapseMappingTask(Task):
         if advanced.custom_virtual_node_population:
             pop_virt = advanced.custom_virtual_node_population
 
+        finalize_node_properties(coll_bio, "biophysical", set_identity_orientation=True)
         write_nodes(
             out_root / fn_nodes_out, pop_bio, coll_bio, write_mode="w", override_library=True
         )
         if coll_virtual is not None:
+            finalize_node_properties(coll_virtual, "virtual")
             write_nodes(out_root / fn_nodes_out, pop_virt, coll_virtual, write_mode="a")
 
         edges_path = out_root / fn_edges_out

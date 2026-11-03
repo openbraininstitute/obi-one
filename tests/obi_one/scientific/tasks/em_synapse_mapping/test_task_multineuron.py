@@ -26,6 +26,7 @@ class _FakeCollection:
 
     def __init__(self, n_nodes):
         self.properties = pd.DataFrame(index=range(n_nodes))
+        self.orientations = None
 
     def __len__(self):
         return len(self.properties)
