@@ -22,7 +22,6 @@ from obi_one.scientific.validations.memodel.presets import (
     thalamic_depolarization_block_preset,
 )
 from obi_one.scientific.validations.memodel.profiles import (
-    DefaultMEModelValidationProfile,
     MEModelValidationProfile,
     ThalamicMEModelValidationProfile,
 )
@@ -37,7 +36,6 @@ from obi_one.scientific.validations.memodel.tests import (
 from obi_one.scientific.validations.memodel.workflow import (
     MEModelValidationWorkflow,
     MEModelWorkflowContext,
-    _derive_profile_holding_current,
     _select_morphology_path,
 )
 
@@ -86,12 +84,13 @@ class TestMEModelValidationWorkflow:
             output_dir=tmp_path,
             validation_profile=ThalamicMEModelValidationProfile(),
         )
+        template_params = MagicMock()
+        template_params.emodel_properties.holding_current = -0.03
         context = MEModelWorkflowContext(
             entity_id="test-id",
-            template_params=MagicMock(),
+            template_params=template_params,
             rheobase=1.0,
             rin=100.0,
-            holding_current=-0.03,
             out_dir=tmp_path,
         )
 
@@ -111,28 +110,27 @@ class TestMEModelValidationWorkflow:
         assert len(tests) == 9
         assert sum(test.name == "Spiking Validation" for test in tests) == 1
 
-        # Tonic firing pre-holds at the derived holding current (-0.03 nA),
-        # then steps +0.4 nA on top of it (-> 0.37 nA).
+        # Tonic firing applies the calibrated hold via add_hypamp, so the step
+        # phase carries only the +0.4 nA step (phase 0 is 0 on top of the hold).
         tonic_spiking = tests[0]
         assert isinstance(tonic_spiking.protocol, SequenceProtocol)
         assert tonic_spiking.protocol.measurement_phase == 1
-        assert tonic_spiking.protocol.add_hypamp is False
+        assert tonic_spiking.protocol.add_hypamp is True
         assert tonic_spiking.protocol.phases[0][0] == pytest.approx(500.0)
-        assert tonic_spiking.protocol.phases[0][1] == pytest.approx(-0.03)
+        assert tonic_spiking.protocol.phases[0][1] == pytest.approx(0.0)
         assert tonic_spiking.protocol.phases[1][0] == pytest.approx(1350.0)
-        assert tonic_spiking.protocol.phases[1][1] == pytest.approx(0.37)
+        assert tonic_spiking.protocol.phases[1][1] == pytest.approx(0.4)
 
-        # Thalamic depol block pre-holds at the derived holding current
-        # (-0.03 nA), then steps at 200% rheobase (1.0 nA -> 2.0 nA) on top of
-        # the hold (-0.03 + 2.0 = 1.97 nA).
+        # Thalamic depol block applies the calibrated hold via add_hypamp, then
+        # steps at 200% rheobase (1.0 nA -> 2.0 nA) on top of the hold.
         depolarization_block = tests[1]
         assert isinstance(depolarization_block.protocol, SequenceProtocol)
         assert depolarization_block.protocol.measurement_phase == 1
-        assert depolarization_block.protocol.add_hypamp is False
+        assert depolarization_block.protocol.add_hypamp is True
         assert depolarization_block.protocol.phases[0][0] == pytest.approx(500.0)
-        assert depolarization_block.protocol.phases[0][1] == pytest.approx(-0.03)
+        assert depolarization_block.protocol.phases[0][1] == pytest.approx(0.0)
         assert depolarization_block.protocol.phases[1][0] == pytest.approx(1350.0)
-        assert depolarization_block.protocol.phases[1][1] == pytest.approx(1.97)
+        assert depolarization_block.protocol.phases[1][1] == pytest.approx(2.0)
 
         assert isinstance(tests[2].protocol, SequenceProtocol)
         assert tests[2].protocol.measurement_phase == 2
@@ -156,12 +154,13 @@ class TestMEModelValidationWorkflow:
 
     def test_thalamic_profile_forwards_explicit_bpap_holding_current(self, tmp_path):
         profile = ThalamicMEModelValidationProfile(bpap_holding_current=0.065)
+        template_params = MagicMock()
+        template_params.emodel_properties.holding_current = -0.03
         context = MEModelWorkflowContext(
             entity_id="test-id",
-            template_params=MagicMock(),
+            template_params=template_params,
             rheobase=1.0,
             rin=100.0,
-            holding_current=-0.03,
             out_dir=tmp_path,
             simulator_config=SimulatorConfig(celsius=34.0, v_init=-70.0),
         )
@@ -172,13 +171,16 @@ class TestMEModelValidationWorkflow:
         assert bpap.holding_current == pytest.approx(0.065)
         assert bpap.stim_duration == pytest.approx(2.0)
 
-    def _thalamic_context(self, tmp_path):
+    def _thalamic_context(self, tmp_path, calibrated_hold=-0.03):
+        template_params = MagicMock()
+        # Pre-held tests read the calibrated hold off emodel_properties
+        # (applied via add_hypamp), so the context must carry a nonzero one.
+        template_params.emodel_properties.holding_current = calibrated_hold
         return MEModelWorkflowContext(
             entity_id="test-id",
-            template_params=MagicMock(),
+            template_params=template_params,
             rheobase=1.0,
             rin=100.0,
-            holding_current=-0.03,
             out_dir=tmp_path,
             simulator_config=SimulatorConfig(celsius=34.0, v_init=-70.0),
         )
@@ -189,9 +191,11 @@ class TestMEModelValidationWorkflow:
 
         tonic = profile.build_tests(context)[0]
 
-        # The step phase amplitude is holding_current + step_current.
-        step_amplitude = tonic.protocol.phases[1][1]
-        assert step_amplitude == pytest.approx(context.holding_current + 0.4)
+        # The hold comes from the calibrated hypamp via add_hypamp, so the step
+        # phase carries only the step current (not hold + step).
+        assert tonic.protocol.add_hypamp is True
+        assert tonic.protocol.phases[0][1] == pytest.approx(0.0)
+        assert tonic.protocol.phases[1][1] == pytest.approx(0.4)
 
     def test_thalamic_tonic_step_is_configurable_per_etype(self, tmp_path):
         profile = ThalamicMEModelValidationProfile(tonic_step_current=0.8)
@@ -199,8 +203,16 @@ class TestMEModelValidationWorkflow:
 
         tonic = profile.build_tests(context)[0]
 
-        step_amplitude = tonic.protocol.phases[1][1]
-        assert step_amplitude == pytest.approx(context.holding_current + 0.8)
+        assert tonic.protocol.phases[1][1] == pytest.approx(0.8)
+
+    def test_thalamic_pre_held_tests_require_calibrated_hold(self, tmp_path):
+        # A zero/missing calibrated hold must fail loudly, not validate at the
+        # cell's bare resting potential.
+        profile = ThalamicMEModelValidationProfile()
+        context = self._thalamic_context(tmp_path, calibrated_hold=0.0)
+
+        with pytest.raises(InvalidValidationContextError, match="calibrated holding current"):
+            profile.build_tests(context)
 
     def test_extracts_simulator_configuration_from_hoc(self, tmp_path):
         hoc_path = tmp_path / "model.hoc"
@@ -257,20 +269,23 @@ class TestMEModelValidationWorkflow:
             output_dir=tmp_path,
             validation_profile=ThalamicMEModelValidationProfile(),
         )
+        template_params = MagicMock()
+        template_params.emodel_properties.holding_current = -0.025
         context = MEModelWorkflowContext(
             entity_id="test-id",
-            template_params=MagicMock(),
+            template_params=template_params,
             rheobase=1.0,
             rin=100.0,
-            holding_current=-0.025,
             simulator_config=simulator_config,
             out_dir=tmp_path,
         )
 
         tests = workflow.get_tests(context)
 
-        # Tonic firing holds at the derived holding current from the context.
-        assert tests[0].protocol.phases[0][1] == pytest.approx(-0.025)
+        # Tonic firing applies the calibrated hold via add_hypamp; the step
+        # phase carries only the step current.
+        assert tests[0].protocol.add_hypamp is True
+        assert tests[0].protocol.phases[0][1] == pytest.approx(0.0)
         # Rebound burst holds at the fixed calibrated current, not the pre-hold.
         assert tests[2].protocol.phases[0][1] == pytest.approx(0.04140625)
         assert tests[3].simulator_config == simulator_config
@@ -579,41 +594,6 @@ class TestSelectMorphologyPath:
             _select_morphology_path(downloaded, "ent-123")
 
 
-class TestDeriveProfileHoldingCurrent:
-    """Deriving the pre-hold current via BlueCelluLab's search.
-
-    The profile declares the target holding voltage; the current that reaches it
-    is found by bluecellulab.tools.search_hyp_current. Profiles that step from
-    rest (holding_voltage is None) skip the search and return None.
-    """
-
-    def _template_params(self):
-        tp = MagicMock()
-        tp.template_filepath = "model.hoc"
-        tp.morph_filepath = "morph.asc"
-        tp.template_format = "v6"
-        tp.emodel_properties = MagicMock()
-        return tp
-
-    def test_returns_none_for_profile_without_hold(self):
-        result = _derive_profile_holding_current(
-            DefaultMEModelValidationProfile(), self._template_params()
-        )
-        assert result is None
-
-    @patch("bluecellulab.tools.calculate_SS_voltage", return_value=-64.9)
-    @patch("bluecellulab.tools.search_hyp_current", return_value=0.065)
-    def test_delegates_to_bluecellulab_search_for_thalamic(self, mock_search, mock_ss):
-        result = _derive_profile_holding_current(
-            ThalamicMEModelValidationProfile(), self._template_params()
-        )
-        assert result == pytest.approx(0.065)
-        # The search targets the profile's -60 mV holding voltage.
-        assert mock_search.call_args.kwargs["target_voltage"] == pytest.approx(-60.0)
-        # The achieved hold is read back (and logged) via calculate_SS_voltage.
-        assert mock_ss.call_args.kwargs["step_level"] == pytest.approx(0.065)
-
-
 class TestMEModelValidationTask:
     def test_named_profile_is_forwarded(self, tmp_path):
         config = MEModelValidationSingleConfig(
@@ -641,30 +621,24 @@ class TestSpikingPreset:
 
 
 class TestThalamicDepolarizationBlockPreset:
-    def test_prehold_then_rheobase_step(self):
-        # Hold at the derived holding current (-0.05 nA), then step 200% of
-        # rheobase (2.0 nA -> 4.0 nA) on top of the hold (-0.05 + 4.0 = 3.95 nA).
-        preset = thalamic_depolarization_block_preset(
-            rheobase=2.0,
-            holding_current=-0.05,
-        )
+    def test_step_is_rheobase_scaled_on_top_of_calibrated_hold(self):
+        # The calibrated hold is applied via add_hypamp, so the step phase
+        # carries only 200% of rheobase (2.0 nA -> 4.0 nA); phase 0 is 0.
+        preset = thalamic_depolarization_block_preset(rheobase=2.0)
         assert preset.name == "Depolarization Block Validation"
         assert isinstance(preset.protocol, SequenceProtocol)
         assert preset.protocol.amplitude_mode == "amplitude"
         assert preset.protocol.measurement_phase == 1
-        assert preset.protocol.add_hypamp is False
+        assert preset.protocol.add_hypamp is True
         assert preset.protocol.phases[0][0] == pytest.approx(500.0)
-        assert preset.protocol.phases[0][1] == pytest.approx(-0.05)
+        assert preset.protocol.phases[0][1] == pytest.approx(0.0)
         assert preset.protocol.phases[1][0] == pytest.approx(1350.0)
-        assert preset.protocol.phases[1][1] == pytest.approx(3.95)
+        assert preset.protocol.phases[1][1] == pytest.approx(4.0)
         assert isinstance(preset.measurement, EfelMeasurement)
         assert preset.measurement.feature_name == "depol_block_bool"
         assert isinstance(preset.criterion, IsFalse)
 
-    def test_step_sits_on_top_of_zero_hold(self):
-        preset = thalamic_depolarization_block_preset(
-            rheobase=1.0,
-            holding_current=0.0,
-        )
+    def test_step_scales_with_rheobase(self):
+        preset = thalamic_depolarization_block_preset(rheobase=1.0)
         assert preset.protocol.phases[0][1] == pytest.approx(0.0)
         assert preset.protocol.phases[1][1] == pytest.approx(2.0)

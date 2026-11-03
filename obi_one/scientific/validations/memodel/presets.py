@@ -57,7 +57,6 @@ def depolarization_block_preset() -> ParametricValidation:
 
 def thalamic_depolarization_block_preset(
     rheobase: float,
-    holding_current: float,
     *,
     step_percentage: float = 200.0,
     settle_duration: float = 500.0,
@@ -65,24 +64,19 @@ def thalamic_depolarization_block_preset(
 ) -> ParametricValidation:
     """Depolarization block for intrinsic bursters, with a depolarized pre-hold.
 
-    Holding the cell at a depolarized potential (~-60 mV) before the step keeps
-    the T-type Ca2+ channels inactivated, so the step produces regular tonic
-    firing rather than a rebound burst. Without the pre-hold, the burst rides on
-    a slow plateau that eFEL's ``depol_block_bool`` misreads as block. With it,
-    the step shows tonic firing and the plain eFEL feature judges block
-    correctly.
+    Holding the cell at its calibrated operating point before the step keeps the
+    T-type Ca2+ channels inactivated, so the step produces regular tonic firing
+    rather than a rebound burst. Without the pre-hold, the burst rides on a slow
+    plateau that eFEL's ``depol_block_bool`` misreads as block. With it, the step
+    shows tonic firing and the plain eFEL feature judges block correctly.
 
     Protocol:
-        1. Hold at ``holding_current`` (derived by setup to reach the profile's
-           target holding voltage).
+        1. Hold at the cell's calibrated holding current (``add_hypamp=True``).
         2. Apply a step at ``step_percentage`` of rheobase on top of the hold.
         3. Measure depolarization block during the step.
 
     Args:
         rheobase: The model's rheobase in nA, used to size the step.
-        holding_current: Absolute holding current in nA that brings the cell to
-            the target holding voltage, derived by the workflow. Applied for the
-            whole protocol so the step sits on top of the hold.
         step_percentage: Step amplitude as a percentage of rheobase (default
             200%, matching the default depolarization-block protocol).
         settle_duration: Duration of the pre-step hold phase in ms.
@@ -94,13 +88,12 @@ def thalamic_depolarization_block_preset(
     """
     step_current = rheobase * step_percentage / 100.0
 
-    # Two phases, both absolute current: hold to inactivate T-type, then the
-    # suprathreshold step on top of the hold. Measure block during the step.
-    # add_hypamp is False because holding_current already sets the hold; the
-    # models carry no separate calibrated holding to add.
+    # add_hypamp=True applies the model's calibrated holding current underneath,
+    # so the phases carry only the suprathreshold step on top of that baseline.
+    # Measure block during the step.
     phases: list[tuple[float, float]] = [
-        (settle_duration, holding_current),
-        (step_duration, holding_current + step_current),
+        (settle_duration, 0.0),
+        (step_duration, step_current),
     ]
 
     protocol = SequenceProtocol(
@@ -109,7 +102,7 @@ def thalamic_depolarization_block_preset(
         post_delay=250.0,
         amplitude_mode="amplitude",
         measurement_phase=1,
-        add_hypamp=False,
+        add_hypamp=True,
     )
 
     return ParametricValidation(
@@ -219,29 +212,26 @@ def rebound_burst_preset(
 
 
 def tonic_firing_preset(
-    holding_current: float,
     *,
     step_current: float = 0.4,
     settle_duration: float = 500.0,
 ) -> ParametricValidation:
     """Tonic firing validation for thalamic-type neurons.
 
-    Holding the cell at a depolarized potential (~-60 mV) before the step keeps
-    the T-type Ca2+ channels inactivated, so the depolarizing step produces regular
-    tonic firing from the start rather than an onset burst. The -60 mV hold matches
-    the source ephys protocol (Hartley et al., Cell Reports 2024, Figure 2O-R); the
-    step defaults to 0.4 nA (400 pA) but is set per-e-type by the caller.
+    Holding the cell at its calibrated operating point before the step keeps the
+    T-type Ca2+ channels inactivated, so the depolarizing step produces regular
+    tonic firing rather than an onset rebound burst. The hold is the model's
+    calibrated holding current (applied via ``add_hypamp``); the step defaults to
+    0.4 nA (400 pA) but is set per-e-type by the caller.
 
     Protocol:
-        1. Hold at holding_current (derived by setup to reach the target voltage)
-        2. Apply a depolarizing step on top of the holding current
-        3. Measure spike count during the step
+        1. Hold at the cell's calibrated holding current (``add_hypamp=True``).
+        2. Apply a depolarizing step on top of the hold.
+        3. Measure spike count during the step.
 
     Args:
-        holding_current: Absolute holding current in nA that brings the cell to
-            the target holding voltage, derived by the workflow.
-        step_current: Absolute step current in nA applied on top of the holding
-            current during the step phase.
+        step_current: Absolute step current in nA applied on top of the calibrated
+            holding current during the step phase.
         settle_duration: Duration of the pre-step hold phase in ms. Longer values
             give the T-type channels more time to inactivate before the step.
 
@@ -249,10 +239,11 @@ def tonic_firing_preset(
         A configured ParametricValidation for the tonic firing test.
     """
     # Two phases: hold (settle_duration to equilibrate) → step (1350ms, measured).
-    # add_hypamp is False because holding_current already sets the hold.
+    # add_hypamp=True applies the model's calibrated holding current underneath,
+    # so the phases carry only the step on top of that baseline.
     phases: list[tuple[float, float]] = [
-        (settle_duration, holding_current),  # Phase 0: pre-hold (inactivate T-type)
-        (1350.0, holding_current + step_current),  # Phase 1: depolarizing step (measured)
+        (settle_duration, 0.0),  # Phase 0: pre-hold at the calibrated hold (via add_hypamp)
+        (1350.0, step_current),  # Phase 1: depolarizing step on top (measured)
     ]
 
     protocol = SequenceProtocol(
@@ -261,7 +252,7 @@ def tonic_firing_preset(
         post_delay=250.0,
         amplitude_mode="amplitude",
         measurement_phase=1,  # Count spikes during the step
-        add_hypamp=False,
+        add_hypamp=True,
     )
 
     return ParametricValidation(

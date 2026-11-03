@@ -270,11 +270,18 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
                 "depolarization-block step."
             )
             raise InvalidValidationContextError(message)
-        holding_current = context.holding_current
-        if holding_current is None:
+        # The pre-held tests (tonic, depolarization block) apply the cell's
+        # calibrated holding current via add_hypamp. A zero or missing calibrated
+        # hold means the cell would sit at its bare resting potential instead of
+        # the operating point these protocols assume, so fail loudly rather than
+        # validate at the wrong baseline.
+        emodel_properties = getattr(context.template_params, "emodel_properties", None)
+        calibrated_hold = getattr(emodel_properties, "holding_current", None)
+        if calibrated_hold is None or not calibrated_hold:
             message = (
-                f"Validation profile '{self.profile_name}' requires a derived holding current "
-                "to pre-hold the cell; setup did not provide one."
+                f"Validation profile '{self.profile_name}' pre-holds the cell at its "
+                "calibrated holding current, but the model's calibrated holding current is "
+                f"{calibrated_hold!r}. Populate MEModelCalibrationResult.holding_current."
             )
             raise InvalidValidationContextError(message)
         return [
@@ -283,14 +290,12 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             # Ecel1 per the source protocol; ~0.8 nA for the higher-Rin Spp
             # cells to show sustained tonic firing without a rebound burst).
             tonic_firing_preset(
-                holding_current=holding_current,
                 step_current=self.tonic_step_current,
             ),
-            # Depolarization block uses the same depolarized hold so the step
+            # Depolarization block uses the same calibrated hold so the step
             # produces tonic firing rather than a rebound burst.
             thalamic_depolarization_block_preset(
                 rheobase=rheobase,
-                holding_current=holding_current,
             ),
             rebound_burst_preset(
                 holding_current=self.rebound_holding_current,

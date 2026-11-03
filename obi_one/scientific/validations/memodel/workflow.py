@@ -195,54 +195,6 @@ def _resolve_rheobase(
     return rheobase
 
 
-def _derive_profile_holding_current(
-    validation_profile: MEModelValidationProfile,
-    template_params: Any,
-) -> float | None:
-    """Return the holding current for a profile that pre-holds the cell.
-
-    Profiles that hold the cell at a target voltage (a defined experimental
-    condition, e.g. the thalamic -60 mV hold that inactivates T-type Ca) get the
-    current that reaches that voltage. The current is found with BlueCelluLab's
-    binary search over steady-state voltage, which mirrors how the holding
-    current is set experimentally. Returns None for profiles that step from rest.
-    """
-    holding_voltage = validation_profile.holding_voltage
-    if holding_voltage is None:
-        return None
-
-    from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
-        calculate_SS_voltage,
-        search_hyp_current,
-    )
-
-    # The hold may be depolarizing or hyperpolarizing relative to rest, so the
-    # search range spans both signs rather than the hyperpolarizing-only default.
-    holding_current = search_hyp_current(
-        template_path=template_params.template_filepath,
-        morphology_path=template_params.morph_filepath,
-        template_format=template_params.template_format,
-        emodel_properties=template_params.emodel_properties,
-        target_voltage=holding_voltage,
-        min_current=-0.5,
-        max_current=0.5,
-    )
-    achieved = calculate_SS_voltage(
-        template_path=template_params.template_filepath,
-        morphology_path=template_params.morph_filepath,
-        template_format=template_params.template_format,
-        emodel_properties=template_params.emodel_properties,
-        step_level=holding_current,
-    )
-    logger.info(
-        "Derived holding current %.4f nA to hold at %.1f mV (achieved %.2f mV).",
-        holding_current,
-        holding_voltage,
-        achieved,
-    )
-    return holding_current
-
-
 def _verify_simulator_configuration(simulator_config: SimulatorConfig) -> None:
     """Verify global NEURON state and the loaded HOC contract."""
     actual_celsius = float(neuron.h.celsius)
@@ -287,17 +239,17 @@ class MEModelWorkflowContext(WorkflowContext):
         template_params: BlueCelluLab TemplateParams for creating the cell.
         rheobase: The rheobase (threshold) current in nA.
         rin: The input resistance in MOhm, when required by a profile.
-        holding_current: Current in nA that holds the cell at the profile's
-            requested holding voltage, when the profile requests one. None when
-            the profile does not pre-hold the cell (it then steps from rest).
         out_dir: Output directory for figures and artifacts.
         simulator_config: Global NEURON conditions applied for this run.
+
+    Pre-held profiles apply the cell's calibrated holding current via
+    ``add_hypamp`` (from ``template_params.emodel_properties.holding_current``),
+    so the hold is not carried as a separate context field.
     """
 
     template_params: Any = None
     rheobase: float | None = None
     rin: float | None = None
-    holding_current: float | None = None
     out_dir: Path | None = None
     simulator_config: SimulatorConfig | None = None
 
@@ -437,12 +389,6 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
                 )
                 raise InvalidValidationContextError(message)
 
-        # Derive the holding current for profiles that pre-hold the cell at a
-        # target voltage (None when the profile steps from rest).
-        holding_current_for_hold = _derive_profile_holding_current(
-            self.validation_profile, cell.template_params
-        )
-
         # Prepare output directory for figures
         cell_name = memodel.name or entity_id
         out_dir = self.output_dir / cell_name
@@ -458,7 +404,6 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
             template_params=cell.template_params,
             rheobase=rheobase,
             rin=rin,
-            holding_current=holding_current_for_hold,
             simulator_config=simulator_config,
             out_dir=out_dir,
             extra={"cell": cell, "memodel": memodel},
