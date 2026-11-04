@@ -4,12 +4,19 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
+import entitysdk
+from entitysdk.models.entity import Entity
+from entitysdk.types import TaskResultType
 from pydantic import Field, NonNegativeInt
 
 from obi_one.core.block import Block
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
+from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
+from obi_one.scientific.library.info_scan_config.config import (
+    BlockGroup as InfoBlockGroup,
+    InfoScanConfig,
+)
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import (
     Kilosort4Sorter,
     SorterUnion,
@@ -20,11 +27,10 @@ from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 class BlockGroup(StrEnum):
     """Spike sorting block groups."""
 
-    SETUP = "Setup"
     SORTING = "Sorting"
 
 
-class AINDEPhysSpikeSortingScanConfig(ScanConfig):
+class AINDEPhysSpikeSortingScanConfig(InfoScanConfig):
     """Sort the spikes of each preprocessed recording.
 
     Port of the AIND pipeline's sorter steps (aind-ephys-spikesort-kilosort4, -spykingcircus2 and
@@ -36,19 +42,28 @@ class AINDEPhysSpikeSortingScanConfig(ScanConfig):
     description: ClassVar[str] = "Sorts the spikes of preprocessed extracellular recordings."
 
     json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: False,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.SORTING],
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [InfoBlockGroup.SETUP_BLOCK_GROUP, BlockGroup.SORTING],
     }
 
     class Initialize(Block):
+        preprocessing_result: TaskResultFromID | None = Field(
+            default=None,
+            title="Preprocessing result",
+            description="Result of the preprocessing stage, whose recordings are sorted.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.TASK_RESULT_SELECTOR,
+                SchemaKey.TASK_RESULT_TYPE: TaskResultType.aind_ephys_preprocessing__result,
+            },
+        )
         preprocessing_output_path: Path | None = Field(
             default=None,
             title="Preprocessing output",
             description=(
-                "Folder of the preprocessing stage's output. None sorts a toy recording, made and"
-                " preprocessed on the fly."
+                "Local folder of the preprocessing stage's output, instead of a result entity."
+                " With neither, a toy recording is made and preprocessed on the fly."
             ),
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+            json_schema_extra={SchemaKey.UI_HIDDEN: True},
         )
         skip_motion_correction: bool = Field(
             default=False,
@@ -75,19 +90,15 @@ class AINDEPhysSpikeSortingScanConfig(ScanConfig):
         description="The preprocessed recordings and the settings every sorter shares.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP: InfoBlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     job_kwargs: JobKwargs = Field(
-        default_factory=JobKwargs,
+        default=JobKwargs(),
         title="Job kwargs",
         description="SpikeInterface job kwargs.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
-        },
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     sorter: SorterUnion = Field(
         default_factory=Kilosort4Sorter,
@@ -99,6 +110,12 @@ class AINDEPhysSpikeSortingScanConfig(ScanConfig):
             SchemaKey.GROUP_ORDER: 0,
         },
     )
+
+    def input_entities(self, db_client: entitysdk.client.Client) -> list[Entity]:
+        """The preprocessing result, recorded as the input of the task config."""
+        if self.initialize.preprocessing_result is None:
+            return []
+        return [self.initialize.preprocessing_result.entity(db_client=db_client)]
 
 
 class AINDEPhysSpikeSortingSingleConfig(AINDEPhysSpikeSortingScanConfig, SingleConfigMixin):

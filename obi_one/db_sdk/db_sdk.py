@@ -193,18 +193,23 @@ def fetch_directory_asset_by_label(
     asset_label: AssetLabel,
     output_path: Path,
 ) -> Path:
-    """Fetch a directory asset matching the given label to output_path.
+    """Fetch the files of a directory asset matching the given label into output_path.
 
-    Uses fetch_assets (checks local data store first).
-    Returns the path to the fetched directory.
+    Uses fetch_directory, since fetch_assets refuses directories (checks local data store first).
+    Returns output_path, which holds the directory's files directly.
     """
-    output_dir = create_dir(output_path)
-    asset = client.fetch_assets(
+    asset = client.select_assets(
         entity,
         selection={"label": asset_label, "content_type": ContentType.application_vnd_directory},
-        output_path=output_dir,
     ).one()
-    return asset.path
+    client.fetch_directory(
+        entity_id=entity.id,
+        entity_type=type(entity),
+        asset_id=asset,
+        output_path=output_path,
+        ignore_directory_name=True,
+    )
+    return output_path
 
 
 def select_asset_content(

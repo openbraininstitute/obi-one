@@ -539,3 +539,24 @@ def test_select_json_asset_content(client, httpx_mock):
         selection={"label": AssetLabel.sonata_simulation_config},
     )
     assert res == content
+
+
+def test_fetch_directory_asset_by_label_fetches_the_files_into_the_given_folder(tmp_path):
+    entity = Mock(id=uuid4())
+    client = Mock()
+    asset = client.select_assets.return_value.one.return_value
+
+    path = test_module.fetch_directory_asset_by_label(
+        client=client,
+        entity=entity,
+        asset_label=AssetLabel.task_result,
+        output_path=tmp_path,
+    )
+
+    assert path == tmp_path
+    assert client.select_assets.call_args.kwargs["selection"]["label"] == AssetLabel.task_result
+    fetch = client.fetch_directory.call_args.kwargs
+    assert fetch["asset_id"] is asset
+    assert fetch["output_path"] == tmp_path
+    assert fetch["ignore_directory_name"] is True
+    client.fetch_assets.assert_not_called()

@@ -10,6 +10,7 @@ import entitysdk
 import numpy as np
 import spikeinterface as si
 import spikeinterface.preprocessing as spre
+from entitysdk.types import TaskResultType
 from spikeinterface.preprocessing.detect_bad_channels import DetectAndRemoveBadChannelsRecording
 from spikeinterface.sortingcomponents.motion import interpolate_motion
 
@@ -19,6 +20,7 @@ from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionC
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
 )
+from obi_one.scientific.tasks.aind_ephys.registration import register_stage_result
 from obi_one.scientific.tasks.aind_ephys.utils import (
     JOB_FILE_PREFIX,
     dump_recording,
@@ -34,6 +36,8 @@ if TYPE_CHECKING:
     from spikeinterface.core.base import BaseExtractor
 
 L = logging.getLogger(__name__)
+
+INPUT_FOLDER_NAME = "input"
 
 
 def clip(
@@ -136,7 +140,8 @@ class AINDEPhysPreprocessingTask(Task):
     ``input/`` (kept, since the lazy ``preprocessed_<name>.json`` chains point into it). The jobs
     are written as ``job_<i>.json``, so later stages can read this folder as the dispatch output.
     A recording that is too short, loses too many channels or fails every step gets a
-    ``preprocessed_<name>/`` holding only ``error.txt``, which the later stages skip.
+    ``preprocessed_<name>/`` holding only ``error.txt``, which the later stages skip. A launched
+    task registers the folder, without ``input/``, as a TaskResult of the execution activity.
     """
 
     name: ClassVar[str] = "AIND Ephys Preprocessing"
@@ -149,7 +154,7 @@ class AINDEPhysPreprocessingTask(Task):
         *,
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> Path:
         output_folder = Path(self.config.coordinate_output_root)
         output_folder.mkdir(parents=True, exist_ok=True)
@@ -162,6 +167,20 @@ class AINDEPhysPreprocessingTask(Task):
         with global_job_kwargs(self.config.job_kwargs.to_dict()):
             for job in jobs:
                 self.preprocess(job, output_folder)
+        if execution_activity_id is not None:
+            result = register_stage_result(
+                db_client,
+                folder=output_folder,
+                task_result_type=TaskResultType.aind_ephys_preprocessing__result,
+                name=self.config.campaign_name,
+                description="Preprocessed extracellular recordings.",
+                excluded=(INPUT_FOLDER_NAME,),
+            )
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=self._get_execution_activity(db_client, execution_activity_id),
+                generated=[str(result.id)],
+            )
         return output_folder
 
     def stage_nwb(self, output_folder: Path, db_client: entitysdk.client.Client | None) -> Path:
@@ -173,7 +192,7 @@ class AINDEPhysPreprocessingTask(Task):
             msg = "A recording and a db_client are needed to download the recording's NWB asset."
             raise ValueError(msg)
         return init.recording.download_nwb_asset(
-            dest_dir=output_folder / "input", db_client=db_client
+            dest_dir=output_folder / INPUT_FOLDER_NAME, db_client=db_client
         )
 
     def preprocess(self, job: dict, output_folder: Path) -> None:

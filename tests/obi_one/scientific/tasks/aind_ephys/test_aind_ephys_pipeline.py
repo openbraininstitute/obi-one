@@ -6,21 +6,25 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 import uuid
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from entitysdk.types import AssetLabel, TaskResultType
 from pydantic import ValidationError
 
 pytest.importorskip("spikeinterface")
 
 import spikeinterface as si
 
+from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
-    ElectricalCellRecordingFromID,
+from obi_one.core.task import Task
+from obi_one.scientific.from_id.extracellular_recording_from_id import (
+    ExtracellularRecordingFromID,
 )
+from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
 from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchScanConfig
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionCorrection
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
@@ -31,8 +35,12 @@ from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import AINDEPhys
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import SpykingCircus2Sorter
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
     AINDEPhysSpikeSortingScanConfig,
+    AINDEPhysSpikeSortingSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.task import deep_merge
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.task import (
+    AINDEPhysSpikeSortingTask,
+    deep_merge,
+)
 from obi_one.scientific.tasks.aind_ephys._04_postprocessing.blocks import QualityMetrics
 from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
     AINDEPhysPostprocessingScanConfig,
@@ -46,6 +54,7 @@ from obi_one.scientific.tasks.aind_ephys.utils import ERROR_FILE_NAME, load_anal
 
 NUM_CHANNELS = 32
 SINGLE_JOB = JobKwargs(n_jobs=1)
+INFO = Info(campaign_name="Test campaign", campaign_description="Test campaign.")
 CONFIG_MODULES = [
     f"obi_one.scientific.tasks.aind_ephys.{stage}.config"
     for stage in (
@@ -81,6 +90,7 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     )
     preprocessing = run_stage(
         AINDEPhysPreprocessingScanConfig(
+            info=INFO,
             initialize=AINDEPhysPreprocessingScanConfig.Initialize(
                 nwb_path=nwb_path, min_preprocessing_duration=0.0
             ),
@@ -91,6 +101,7 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     )
     sorting = run_stage(
         AINDEPhysSpikeSortingScanConfig(
+            info=INFO,
             initialize=AINDEPhysSpikeSortingScanConfig.Initialize(
                 preprocessing_output_path=preprocessing
             ),
@@ -135,6 +146,15 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     }
 
 
+def registering_client() -> MagicMock:
+    """A db client whose registered entities come back with an id."""
+    client = MagicMock()
+    client.register_entity.side_effect = lambda entity: entity.model_copy(
+        update={"id": uuid.uuid4()}
+    )
+    return client
+
+
 def only_name(folder: Path, prefix: str, suffix: str = "") -> str:
     (path,) = folder.glob(f"{prefix}*{suffix}")
     return path.name.removeprefix(prefix).removesuffix(suffix)
@@ -174,9 +194,10 @@ class TestStages:
 
     @pytest.mark.parametrize("both", [True, False])
     def test_preprocessing_needs_exactly_one_input(self, stages, both):
-        recording = ElectricalCellRecordingFromID(id_str=str(uuid.uuid4())) if both else None
+        recording = ExtracellularRecordingFromID(id_str=str(uuid.uuid4())) if both else None
         with pytest.raises(ValidationError, match="either a recording or an NWB file"):
             AINDEPhysPreprocessingScanConfig(
+                info=INFO,
                 initialize=AINDEPhysPreprocessingScanConfig.Initialize(
                     recording=recording, nwb_path=stages["nwb"] if both else None
                 ),
@@ -184,8 +205,9 @@ class TestStages:
 
     def test_preprocessing_downloads_the_recording_entity(self, stages, tmp_path):
         form = AINDEPhysPreprocessingSingleConfig(
+            info=INFO,
             initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
-                recording=ElectricalCellRecordingFromID(id_str=str(uuid.uuid4())),
+                recording=ExtracellularRecordingFromID(id_str=str(uuid.uuid4())),
                 min_preprocessing_duration=0.0,
             ),
             job_kwargs=SINGLE_JOB,
@@ -197,16 +219,104 @@ class TestStages:
             dest_dir.mkdir(parents=True)
             return Path(shutil.copy(stages["nwb"], dest_dir))
 
-        with patch.object(ElectricalCellRecordingFromID, "download_nwb_asset", download):
+        with patch.object(ExtracellularRecordingFromID, "download_nwb_asset", download):
             folder = AINDEPhysPreprocessingTask(config=form).execute(db_client=object())
 
         (job_file,) = folder.glob("job_*.json")
         assert json.loads(job_file.read_text())["input_folder"] == str((folder / "input").resolve())
         assert len(list(folder.glob("binary_*.json"))) == 1
 
+    def test_launched_preprocessing_registers_its_folder_without_the_input(self, stages, tmp_path):
+        form = AINDEPhysPreprocessingSingleConfig(
+            info=INFO,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                recording=ExtracellularRecordingFromID(id_str=str(uuid.uuid4())),
+                min_preprocessing_duration=0.0,
+            ),
+            job_kwargs=SINGLE_JOB,
+            motion_correction=MotionCorrection(compute=False),
+        )
+        form.coordinate_output_root = tmp_path / "preprocessing"
+        db_client = registering_client()
+
+        def download(_self, dest_dir, **_kwargs):
+            dest_dir.mkdir(parents=True)
+            return Path(shutil.copy(stages["nwb"], dest_dir))
+
+        with (
+            patch.object(ExtracellularRecordingFromID, "download_nwb_asset", download),
+            patch.object(Task, "_get_execution_activity"),
+            patch.object(Task, "_update_execution_activity") as update_activity,
+        ):
+            AINDEPhysPreprocessingTask(config=form).execute(
+                db_client=db_client, execution_activity_id=str(uuid.uuid4())
+            )
+
+        result = db_client.register_entity.call_args.args[0]
+        upload = db_client.upload_directory.call_args.kwargs
+        top_level = {path.parts[0] for path in upload["paths"]}
+        assert result.name == INFO.campaign_name
+        assert result.task_result_type == TaskResultType.aind_ephys_preprocessing__result
+        assert upload["label"] == AssetLabel.task_result
+        assert "input" not in top_level
+        assert any(name.startswith("binary_") for name in top_level)
+        assert update_activity.call_args.kwargs["generated"] == [str(upload["entity_id"])]
+
+    def test_launched_sorting_reads_and_registers_results(self, stages, tmp_path):
+        form = AINDEPhysSpikeSortingSingleConfig(
+            info=INFO,
+            initialize=AINDEPhysSpikeSortingSingleConfig.Initialize(
+                preprocessing_result=TaskResultFromID(id_str=str(uuid.uuid4())),
+            ),
+            job_kwargs=SINGLE_JOB,
+        )
+        form.coordinate_output_root = tmp_path / "sorting"
+        db_client = registering_client()
+
+        with (
+            patch.object(
+                TaskResultFromID,
+                "download_directory_asset_by_label",
+                return_value=stages["preprocessing"],
+            ) as download,
+            patch.object(AINDEPhysSpikeSortingTask, "sort") as sort,
+            patch.object(Task, "_get_execution_activity"),
+            patch.object(Task, "_update_execution_activity") as update_activity,
+        ):
+            AINDEPhysSpikeSortingTask(config=form).execute(
+                db_client=db_client, execution_activity_id=str(uuid.uuid4())
+            )
+
+        result = db_client.register_entity.call_args.args[0]
+        upload = db_client.upload_directory.call_args.kwargs
+        assert download.call_args.args == (AssetLabel.task_result,)
+        assert sort.call_args.args[0] == stages["preprocessing"]
+        assert result.task_result_type == TaskResultType.aind_ephys_spikesorting__result
+        assert update_activity.call_args.kwargs["generated"] == [str(upload["entity_id"])]
+
+    def test_the_input_entities_are_recorded_on_the_task_config(self):
+        db_client = object()
+        recording = ExtracellularRecordingFromID(id_str=str(uuid.uuid4()))
+        result = TaskResultFromID(id_str=str(uuid.uuid4()))
+        preprocessing = AINDEPhysPreprocessingScanConfig(
+            info=INFO, initialize=AINDEPhysPreprocessingScanConfig.Initialize(recording=recording)
+        )
+        sorting = AINDEPhysSpikeSortingScanConfig(
+            info=INFO,
+            initialize=AINDEPhysSpikeSortingScanConfig.Initialize(preprocessing_result=result),
+        )
+
+        with (
+            patch.object(ExtracellularRecordingFromID, "entity", return_value="recording"),
+            patch.object(TaskResultFromID, "entity", return_value="result"),
+        ):
+            assert preprocessing.input_entities(db_client) == ["recording"]
+            assert sorting.input_entities(db_client) == ["result"]
+
     def test_preprocessing_skips_recordings_that_are_too_short(self, stages, tmp_path):
         folder = run_stage(
             AINDEPhysPreprocessingScanConfig(
+                info=INFO,
                 initialize=AINDEPhysPreprocessingScanConfig.Initialize(nwb_path=stages["nwb"]),
                 job_kwargs=SINGLE_JOB,
             ),
@@ -218,6 +328,7 @@ class TestStages:
 
     def test_preprocessing_reruns_into_the_same_folder(self, stages, tmp_path):
         form = AINDEPhysPreprocessingScanConfig(
+            info=INFO,
             initialize=AINDEPhysPreprocessingScanConfig.Initialize(
                 nwb_path=stages["nwb"], min_preprocessing_duration=0.0
             ),
@@ -244,6 +355,7 @@ class TestStages:
 
         folder = run_stage(
             AINDEPhysSpikeSortingScanConfig(
+                info=INFO,
                 initialize=AINDEPhysSpikeSortingScanConfig.Initialize(
                     preprocessing_output_path=tmp_path / "preprocessing"
                 ),

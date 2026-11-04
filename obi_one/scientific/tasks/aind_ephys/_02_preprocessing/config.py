@@ -9,12 +9,15 @@ from entitysdk.models.entity import Entity
 from pydantic import Field, NonNegativeFloat, model_validator
 
 from obi_one.core.block import Block
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
-from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
-    ElectricalCellRecordingFromID,
+from obi_one.scientific.from_id.extracellular_recording_from_id import (
+    ExtracellularRecordingFromID,
+)
+from obi_one.scientific.library.info_scan_config.config import (
+    BlockGroup as InfoBlockGroup,
+    InfoScanConfig,
 )
 from obi_one.scientific.tasks.aind_ephys._01_dispatch.blocks import JobDispatch
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import (
@@ -32,11 +35,10 @@ from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 class BlockGroup(StrEnum):
     """Preprocessing block groups."""
 
-    SETUP = "Setup"
     PREPROCESSING = "Preprocessing"
 
 
-class AINDEPhysPreprocessingScanConfig(ScanConfig):
+class AINDEPhysPreprocessingScanConfig(InfoScanConfig):
     """Split a raw NWB recording into jobs, then filter, denoise and remove bad channels of each.
 
     The jobs are made as by the dispatch stage and written as ``job_<i>.json`` into the output
@@ -50,25 +52,22 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
     description: ClassVar[str] = "Preprocesses a raw extracellular recording."
 
     json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.UI_ENABLED: False,
-        SchemaKey.GROUP_ORDER: [BlockGroup.SETUP, BlockGroup.PREPROCESSING],
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [InfoBlockGroup.SETUP_BLOCK_GROUP, BlockGroup.PREPROCESSING],
     }
 
     class Initialize(Block):
-        recording: ElectricalCellRecordingFromID | None = Field(
+        recording: ExtracellularRecordingFromID | None = Field(
             default=None,
             title="Recording",
-            description=(
-                "Recording entity whose NWB asset holds the raw extracellular traces. An"
-                " ElectricalCellRecording for now, until entitycore has ExtracellularRecording."
-            ),
+            description="Recording entity whose NWB asset holds the raw extracellular traces.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER},
         )
         nwb_path: Path | None = Field(
             default=None,
             title="NWB file",
             description="Local NWB file with the raw recording, instead of a recording entity.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
+            json_schema_extra={SchemaKey.UI_HIDDEN: True},
         )
         denoising_strategy: Literal["cmr", "destripe"] = Field(
             default="cmr",
@@ -127,8 +126,8 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         description="The raw recording and the preprocessing strategy.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 0,
+            SchemaKey.GROUP: InfoBlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
         },
     )
     dispatch: JobDispatch = Field(
@@ -137,19 +136,15 @@ class AINDEPhysPreprocessingScanConfig(ScanConfig):
         description="How the recording is split into jobs, one per series, segment and probe.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 1,
+            SchemaKey.GROUP: InfoBlockGroup.SETUP_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 2,
         },
     )
     job_kwargs: JobKwargs = Field(
-        default_factory=lambda: JobKwargs(mp_context="spawn"),
+        default=JobKwargs(mp_context="spawn"),
         title="Job kwargs",
         description="SpikeInterface job kwargs.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.SETUP,
-            SchemaKey.GROUP_ORDER: 2,
-        },
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     phase_shift: PhaseShift = Field(
         default_factory=PhaseShift,

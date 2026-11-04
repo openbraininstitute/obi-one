@@ -19,6 +19,7 @@ class Kilosort4Sorter(Block):
     See ``kilosort.parameters`` for the meaning of each parameter.
     """
 
+    title: ClassVar[str] = "Kilosort4"
     sorter_name: ClassVar[str] = "kilosort4"
     motion_correction_parameter: ClassVar[str] = "do_correction"
 
@@ -359,6 +360,7 @@ class Kilosort4Sorter(Block):
 class SpykingCircus2Sorter(Block):
     """SpykingCircus2, which ships with spikeinterface."""
 
+    title: ClassVar[str] = "SpykingCircus2"
     sorter_name: ClassVar[str] = "spykingcircus2"
     motion_correction_parameter: ClassVar[str] = "apply_motion_correction"
 
@@ -434,6 +436,7 @@ class SpykingCircus2Sorter(Block):
 class LupinSorter(Block):
     """Lupin, which ships with spikeinterface."""
 
+    title: ClassVar[str] = "Lupin"
     sorter_name: ClassVar[str] = "lupin"
     motion_correction_parameter: ClassVar[str] = "apply_motion_correction"
 

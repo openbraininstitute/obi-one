@@ -1119,16 +1119,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.34"
+version = "0.19.36"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/fa/4581b9092ef1981561d0e074059d8f1800dc01e273ae6e5f9eb396e27666/entitysdk-0.19.34.tar.gz", hash = "sha256:5db6b0cd7fa360d5dae0e13ad97b1cde2c2da3fe558ad8e35320709561ab5202", size = 82191, upload-time = "2026-10-22T13:16:22.794Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/73/e54af8c5fb170ac700d9bcba04c9d8065e46aa3eeb6e837d159e435c1a63/entitysdk-0.19.36.tar.gz", hash = "sha256:df247190e10bbc558134c08b4388fb266e7c80150d83d3742cc66a3934220e7d", size = 83120, upload-time = "2026-11-04T14:00:34.910Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/32/5a7935fea3efa35539fdd3578ec2466f781d25e626e6a177181e1ee3795c/entitysdk-0.19.34-py3-none-any.whl", hash = "sha256:6f456f64275a753acd777cc41b40f2a58f41f3d5f4fa0d748d7434c25b4f22d0", size = 116535, upload-time = "2026-10-22T13:16:21.213Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/b3/a550c6ffb1eefbfc969144ec1aacd239e75472b696157d775aeefa89b296/entitysdk-0.19.36-py3-none-any.whl", hash = "sha256:07b61e486c112580297f9c61d91d8126b981ac9469326f8fb91de9f3dd553284", size = 117829, upload-time = "2026-11-04T14:00:33.328Z" },
 ]
 
 [[package]]
@@ -3104,7 +3104,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.18" },
-    { name = "entitysdk", specifier = ">=0.19.33" },
+    { name = "entitysdk", specifier = ">=0.19.36" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },

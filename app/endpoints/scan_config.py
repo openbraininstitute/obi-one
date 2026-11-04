@@ -13,6 +13,12 @@ from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (  # ruff: ignore[import-private-name]
+    AINDEPhysPreprocessingScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (  # ruff: ignore[import-private-name]
+    AINDEPhysSpikeSortingScanConfig,
+)
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationScanConfig
@@ -163,6 +169,8 @@ def activate_scan_config_endpoints() -> None:
         (SchemaExampleScanConfig, "generate", "", False),
         (EMSynapseMappingScanConfig, "generate", "", False),
         (EModelEFeatureExtractionScanConfig, "generate", "", False),
+        (AINDEPhysPreprocessingScanConfig, "generate", "", False),
+        (AINDEPhysSpikeSortingScanConfig, "generate", "", False),
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),

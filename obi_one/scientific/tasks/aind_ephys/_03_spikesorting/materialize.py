@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 
+from obi_one.core.info import Info
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionCorrection
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
@@ -23,6 +24,7 @@ def materialize_preprocessing_output(folder: Path) -> Path:
     write_toy_nwb(nwb_path)
 
     preprocessing = AINDEPhysPreprocessingSingleConfig(
+        info=Info(campaign_name="Toy recording", campaign_description="Toy recording to sort."),
         initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
             nwb_path=nwb_path,
             min_preprocessing_duration=0.0,

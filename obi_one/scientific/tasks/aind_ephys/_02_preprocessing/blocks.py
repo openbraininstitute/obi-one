@@ -288,31 +288,31 @@ class MotionCorrection(Block):
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     detect_kwargs: dict = Field(
-        default_factory=dict,
+        default={},
         title="Detect kwargs",
         description="Overrides of the preset's peak detection kwargs.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     select_kwargs: dict = Field(
-        default_factory=dict,
+        default={},
         title="Select kwargs",
         description="Overrides of the preset's peak selection kwargs.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     localize_peaks_kwargs: dict = Field(
-        default_factory=dict,
+        default={},
         title="Localize peaks kwargs",
         description="Overrides of the preset's peak localization kwargs.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     estimate_motion_kwargs: dict = Field(
-        default_factory=dict,
+        default={},
         title="Estimate motion kwargs",
         description="Overrides of the preset's motion estimation kwargs.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     interpolate_motion_kwargs: dict = Field(
-        default_factory=dict,
+        default={},
         title="Interpolate motion kwargs",
         description="Kwargs of the motion interpolation, when motion is applied.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},

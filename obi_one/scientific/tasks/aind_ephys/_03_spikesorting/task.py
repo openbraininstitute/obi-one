@@ -12,6 +12,7 @@ import numpy as np
 import spikeinterface as si
 import spikeinterface.curation as scur
 import spikeinterface.sorters as ss
+from entitysdk.types import AssetLabel, TaskResultType
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
@@ -20,6 +21,7 @@ from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.materialize import (
     materialize_preprocessing_output,
 )
+from obi_one.scientific.tasks.aind_ephys.registration import register_stage_result
 from obi_one.scientific.tasks.aind_ephys.utils import (
     global_job_kwargs,
     load_dumped_recording,
@@ -33,6 +35,8 @@ from obi_one.scientific.tasks.aind_ephys.utils import (
 L = logging.getLogger(__name__)
 
 SORTER_LOG_FILE_NAME = "spikeinterface_log.json"
+INPUT_FOLDER_NAME = "input"
+TOY_INPUT_FOLDER_NAME = "toy_input"
 
 
 def deep_merge(defaults: dict, overrides: dict) -> dict:
@@ -64,7 +68,9 @@ def read_kilosort4_motion(sorter_output_folder: Path, recording: si.BaseRecordin
 class AINDEPhysSpikeSortingTask(Task):
     """Sort every recording of the preprocessing stage into this config's output folder.
 
-    Sorting runs in ``sorter_scratch/<name>/``, which is removed once the sorting is saved.
+    Sorting runs in ``sorter_scratch/<name>/``, which is removed once the sorting is saved. A
+    launched task registers the folder, without its inputs, as a TaskResult of the execution
+    activity.
     """
 
     name: ClassVar[str] = "AIND Ephys Spike Sorting"
@@ -75,16 +81,13 @@ class AINDEPhysSpikeSortingTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> Path:
         output_folder = Path(self.config.coordinate_output_root)
         output_folder.mkdir(parents=True, exist_ok=True)
-        source = self.config.initialize.preprocessing_output_path
-        if source is None:
-            source = materialize_preprocessing_output(output_folder / "toy_input")
-        source = Path(source)
+        source = self.stage_preprocessing_output(output_folder, db_client)
         names = stage_output_names(source, "preprocessed_")
         if not names:
             msg = f"No preprocessed_<name>/ folders in {source}; run the preprocessing stage first."
@@ -94,7 +97,36 @@ class AINDEPhysSpikeSortingTask(Task):
             for name in names:
                 self.sort(source, name, output_folder)
         shutil.rmtree(output_folder / "sorter_scratch", ignore_errors=True)
+        if execution_activity_id is not None:
+            result = register_stage_result(
+                db_client,
+                folder=output_folder,
+                task_result_type=TaskResultType.aind_ephys_spikesorting__result,
+                name=self.config.campaign_name,
+                description="Sorted spikes of preprocessed extracellular recordings.",
+                excluded=(INPUT_FOLDER_NAME, TOY_INPUT_FOLDER_NAME),
+            )
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=self._get_execution_activity(db_client, execution_activity_id),
+                generated=[str(result.id)],
+            )
         return output_folder
+
+    def stage_preprocessing_output(
+        self, output_folder: Path, db_client: entitysdk.client.Client | None
+    ) -> Path:
+        """The result entity's folder downloaded into ``input/``, the local folder, or a toy one."""
+        init = self.config.initialize
+        if init.preprocessing_result is not None:
+            return init.preprocessing_result.download_directory_asset_by_label(
+                AssetLabel.task_result,
+                dest_dir=output_folder / INPUT_FOLDER_NAME,
+                db_client=db_client,  # ty:ignore[invalid-argument-type]
+            )
+        if init.preprocessing_output_path is not None:
+            return Path(init.preprocessing_output_path)
+        return materialize_preprocessing_output(output_folder / TOY_INPUT_FOLDER_NAME)
 
     def sort(self, source: Path, name: str, output_folder: Path) -> None:
         """Sort one preprocessed recording."""
