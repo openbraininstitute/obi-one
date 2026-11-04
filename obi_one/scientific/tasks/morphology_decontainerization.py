@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import ClassVar, Literal
 
 import bluepysnap as snap
-import entitysdk.client
 import h5py
 import numpy as np
+from bluepysnap.nodes import NodePopulation
+from entitysdk.client import Client
 from morph_tool import convert
 from morphio import MorphioError
 
@@ -71,7 +72,7 @@ class MorphologyDecontainerizationTask(Task):
 
     def _load_node_population(
         self, c: snap.Circuit, npop: str
-    ) -> (snap.nodes.NodePopulation, np.ndarray, str, Path, Path):  # ty:ignore[invalid-type-form, possibly-missing-submodule]
+    ) -> (NodePopulation, np.ndarray, str, Path, Path):  # ty:ignore[invalid-type-form]
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
             morph_names = None
@@ -204,7 +205,7 @@ class MorphologyDecontainerizationTask(Task):
 
     def _set_population_morph_entry(
         self,
-        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        nodes: NodePopulation,
         cfg_dict: dict,
         h5_folder: Path,
         rel_target_folder: Path,
@@ -230,7 +231,7 @@ class MorphologyDecontainerizationTask(Task):
         self,
         circuit_config: str,
         target_folder: Path,
-        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        nodes: NodePopulation,
         *,
         global_morph_entry: bool,
         cfg_dict: dict,
@@ -255,7 +256,7 @@ class MorphologyDecontainerizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,  # ruff: ignore[unused-method-argument]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:

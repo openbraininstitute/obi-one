@@ -483,6 +483,17 @@ def test_resolve_circuit_unsupported_type():
         )
 
 
+def test_resolve_circuit_from_id_requires_db_client(tmp_path):
+    with pytest.raises(ValueError, match="db_client is required to stage a CircuitFromID"):
+        circuit_module.resolve_circuit(
+            CircuitFromID(id_str="circuit-1"),
+            db_client=None,
+            entity_cache=False,
+            cache_root=tmp_path / "cache",
+            temp_dir=tmp_path / "temp",
+        )
+
+
 def test_select_json_asset_content(client, httpx_mock):
     entity_id = uuid4()
     asset_1_id = uuid4()

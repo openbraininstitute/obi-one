@@ -71,7 +71,7 @@ def _run(config, tmp_path: Path, mock_pipeline, *, target_set_name=None):
         patch(f"{TASK}._resolve_target_neuron_set", return_value=target_set_name),
         patch(f"{TASK}._smoke_check_loadability"),
     ):
-        task.execute(db_client=None)  # ty:ignore[invalid-argument-type]
+        task.execute(db_client=None)
     return mock_pipeline.call_args.kwargs
 
 

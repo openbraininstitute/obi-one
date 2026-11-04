@@ -17,7 +17,8 @@ class TaskConfigFromID(EntityFromID[TaskConfig]):
         self,
         asset_label: AssetLabel,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        *,
+        db_client: entitysdk.client.Client,
     ) -> Path:
         """Download a single asset matching the given label to dest_dir.
 

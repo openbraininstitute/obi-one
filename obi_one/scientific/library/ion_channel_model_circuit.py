@@ -20,7 +20,7 @@ class CircuitFromIonChannelModels:
     def stage_circuit(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client,
         dest_dir: Path | None = None,
         entity_cache: bool = False,
     ) -> MEModelCircuit:

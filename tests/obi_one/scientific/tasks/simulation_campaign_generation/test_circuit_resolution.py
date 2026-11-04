@@ -102,6 +102,17 @@ class TestCircuitFromID:
     def _config(self):
         return build_config(CircuitSimulationSingleConfig, circuit=CircuitFromID(id_str=CIRCUIT_ID))
 
+    def test_staging_without_db_client_raises(self, tmp_path):
+        config = self._config()
+        coordinate_root = tmp_path / "0"
+        coordinate_root.mkdir(parents=True)
+        config.scan_output_root = tmp_path
+        config.coordinate_output_root = coordinate_root
+        task = GenerateSimulationTask(config=config)
+
+        with pytest.raises(ValueError, match="db_client is required to stage a circuit"):
+            task.execute(db_client=None)
+
     def test_circuit_is_staged_into_the_coordinate_directory(
         self, staging_recorder, tmp_path, db_client
     ):

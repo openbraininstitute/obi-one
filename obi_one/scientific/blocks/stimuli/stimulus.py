@@ -187,13 +187,14 @@ class ContinuousStimulusWithoutTimestamps(BaseStimulus):
     def config(
         self,
         default_node_set: str = "All",
-        default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
+        default_timestamps: TimestampsReference | None = None,
         simulation_timestep: PositiveFloat | None = None,
     ) -> dict:
         self._default_node_set = default_node_set
         if default_timestamps is None:
-            default_timestamps = SingleTimestamp(start_time=0.0)
-        self._default_timestamps = default_timestamps
+            self._default_timestamps = SingleTimestamp(start_time=0.0)  # ty:ignore[invalid-assignment]
+        else:
+            self._default_timestamps = default_timestamps
         if simulation_timestep is not None:
             self._simulation_timestep = simulation_timestep
 
