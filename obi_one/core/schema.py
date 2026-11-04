@@ -88,6 +88,8 @@ class UIElement(StrEnum):
     FLOAT_INPUT = "float_input"
     FLOAT_OPTIONAL = "float_optional"
     FLOAT_PARAMETER_SWEEP = "float_parameter_sweep"
+    INT_LIST_OPTIONAL = "int_list_optional"
+    INT_OPTIONAL = "int_optional"
     INT_PARAMETER_SWEEP = "int_parameter_sweep"
     ION_CHANNEL_MODEL_PROPERTIES = "ion_channel_model_properties"
     ION_CHANNEL_VARIABLE_MODIFICATION_BY_NEURON = "ion_channel_variable_modification_by_neuron"
@@ -96,6 +98,7 @@ class UIElement(StrEnum):
     )
     NEURON_PROPERTY_FILTER = "neuron_property_filter"
     NEURON_SET_COMBINATION = "neuron_set_combination"
+    JSON_OBJECT = "json_object"
     MODEL_IDENTIFIER = "model_identifier"
     MODEL_IDENTIFIER_SCAN = "model_identifier_scan"
     MODEL_IDENTIFIER_MULTIPLE = "model_identifier_multiple"

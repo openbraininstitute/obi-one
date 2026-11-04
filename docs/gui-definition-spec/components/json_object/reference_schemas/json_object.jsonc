@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "additionalProperties": true,
+  "title": "Clustering method kwargs",
+  "description": "Overrides of the clustering method's arguments, as JSON.",
+  "default": {},
+  "ui_element": "json_object"
+}
