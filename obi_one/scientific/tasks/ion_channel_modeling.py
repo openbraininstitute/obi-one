@@ -62,8 +62,9 @@ except ImportError:
     ) -> None:
         pass
 
-    def get_range_params_with_units(eq_names: dict[str, str]) -> list[dict[str, str | None]]:  # ty:ignore[empty-body]
-        pass
+    def get_range_params_with_units(eq_names: dict[str, str]) -> list[dict[str, str | None]]:
+        msg = "ion_channel_builder is required"
+        raise NotImplementedError(msg)
 
     def write_vgate_output(
         eq_names: dict[str, str],
