@@ -12,7 +12,6 @@ from pydantic import PrivateAttr
 from obi_one.config import settings
 from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
@@ -97,7 +96,6 @@ class CircuitExtractionTask(Task):
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
-        db_client = require_db_client(db_client)
         # Start benchmark tracking
         BenchmarkTracker.start_tracking()
 

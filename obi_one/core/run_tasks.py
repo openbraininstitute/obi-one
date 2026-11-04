@@ -79,12 +79,11 @@ def run_task_for_single_config_asset(
     config_asset_id: str,
     scan_output_root: str,
     *,
-    db_client: Client | None = None,
+    db_client: Client,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> None:
     """Run the appropriate task for a single configuration stored as an asset."""
-    db_client = db_sdk.require_db_client(db_client)
     json_str = db_client.download_content(
         entity_id=entity_id,  # ty:ignore[invalid-argument-type]
         entity_type=entity_type,
@@ -114,12 +113,11 @@ def run_task_type(
     entity_id: str,
     scan_output_root: str,
     *,
-    db_client: Client | None = None,
+    db_client: Client,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
     shared_cache: "SharedCache | None" = None,
 ) -> None:
-    db_client = db_sdk.require_db_client(db_client)
     task_spec = get_task_spec_for_task_type(task_type)
     entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
 

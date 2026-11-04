@@ -15,7 +15,6 @@ from typing import Any, ClassVar
 import entitysdk
 
 from obi_one.core.task import Task
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.tasks.emodel_building import utils as emodel_building_utils
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
     create_entitycore_access_point,
@@ -109,11 +108,10 @@ class EModelValidationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client | None = None,
+        db_client: entitysdk.client.Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> Path:
-        db_client = require_db_client(db_client)
         coord_root = Path(self.config.coordinate_output_root).resolve()
         staged = staging.stage_working_directory(self.config, coord_root, db_client)
         emodel_building_utils.compile_mechanisms(coord_root / "mechanisms")

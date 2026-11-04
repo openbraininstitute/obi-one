@@ -10,7 +10,6 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.library.ephys_extraction import (
     CALCULATED_FEATURES,
     POSSIBLE_STIMULI_STR,
@@ -73,11 +72,10 @@ class ElectrophysiologyMetricsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client | None = None,
+        db_client: entitysdk.client.Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> ElectrophysiologyMetricsOutput:
-        db_client = require_db_client(db_client)
         try:
             ephys_metrics = get_electrophysiology_metrics(
                 trace_id=self.config.initialize.trace_id,

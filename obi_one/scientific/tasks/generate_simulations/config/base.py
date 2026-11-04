@@ -19,7 +19,6 @@ from obi_one.core.serialization_constants import (
 )
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.units import Units
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
     AllPointNeurons,
@@ -265,10 +264,10 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client | None = None,
+        *,
+        db_client: Client,
     ) -> SimulationCampaign:
         """Initializes the simulation campaign in the database."""
-        db_client = require_db_client(db_client)
         L.info("1. Initializing simulation campaign in the database...")
         if multiple_value_parameters_dictionary is None:
             multiple_value_parameters_dictionary = {}

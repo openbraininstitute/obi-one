@@ -12,7 +12,6 @@ from entitysdk.schemas.memodel import DownloadedMEModel
 from entitysdk.types import ID, ValidationStatus
 
 from obi_one.core.task import Task
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.library.memodel_calibration_validation import (
     compute_calibration_in_subprocess,
     run_validations_in_subprocess,
@@ -103,11 +102,10 @@ class MEModelBuildTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.Client | None = None,
+        db_client: entitysdk.Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> str:
-        db_client = require_db_client(db_client)
         coord_root = Path(self.config.coordinate_output_root).resolve()
         execution_activity = self._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id

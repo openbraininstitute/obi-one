@@ -22,7 +22,6 @@ from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.simulation.neuron import process
@@ -300,7 +299,6 @@ class CircuitSimplificationTask(Task):
 
         Returns the ID of the first registered simulator-specific circuit, or None.
         """
-        db_client = require_db_client(db_client)
         # Get execution activity
         execution_activity = CircuitSimplificationTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id

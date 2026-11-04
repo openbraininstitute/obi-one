@@ -6,7 +6,6 @@ from entitysdk.types import ContentType
 from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.entity_from_id import EntityFromID
-from obi_one.db_sdk.db_sdk import require_db_client
 
 
 class IonChannelRecordingFromID(EntityFromID[IonChannelRecording]):
@@ -15,9 +14,9 @@ class IonChannelRecordingFromID(EntityFromID[IonChannelRecording]):
     def download_asset(
         self,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client | None = None,
+        *,
+        db_client: entitysdk.client.Client,
     ) -> Path:
-        db_client = require_db_client(db_client)
         output_dir = create_dir(dest_dir)
         asset = db_client.download_assets(
             self.entity(db_client=db_client),

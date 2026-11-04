@@ -23,7 +23,6 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.extracellular_locations import (
     extracellular_locations_block_dictionary_summary,
@@ -223,12 +222,11 @@ class CreateExtracellularRecordingArrayTask(Task):
     def execute(
         self,
         *,
-        db_client: Client | None = None,
+        db_client: Client,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit
         """Run the task."""
-        db_client = require_db_client(db_client)
         execution_activity = CreateExtracellularRecordingArrayTask._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )

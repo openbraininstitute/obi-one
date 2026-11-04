@@ -11,7 +11,6 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.task import Task
-from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.blocks.morphology_locations.base import (
     GeneratedMorphologyLocationsBlock,
 )
@@ -94,7 +93,7 @@ class GenerateSimulationTask(Task):
             for block in getattr(self.config, block_dict_name, {}).values()
         )
 
-    def _resolve_circuit(self, db_client: Client) -> None:
+    def _resolve_circuit(self, db_client: Client | None) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
         if hasattr(self.config.initialize, "circuit"):
             circuit = self.config.initialize.circuit
@@ -137,6 +136,9 @@ class GenerateSimulationTask(Task):
                 # download for a private-project circuit, which cannot be symlinked.
                 stage_kwargs["nodes_only"] = True
 
+            if db_client is None:
+                msg = "db_client is required to stage a circuit from entitycore"
+                raise ValueError(msg)
             self._circuit = circuit.stage_circuit(
                 db_client=db_client,
                 dest_dir=circuit_dest_dir,
@@ -703,7 +705,6 @@ class GenerateSimulationTask(Task):
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         """Generates SONATA simulation files."""
-        db_client = require_db_client(db_client)
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
         self._check_the_simulator_runs_every_block()
