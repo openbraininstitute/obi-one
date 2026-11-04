@@ -101,8 +101,8 @@ class TestRunValidation:
         assert "conductance" not in mock_validate.call_args.kwargs["ignore_edge_properties"]
 
     @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
-    def test_falls_back_to_strict_when_circuit_unreadable(self, mock_validate, monkeypatch):
-        """An unreadable circuit path does not get the physiology ignore list applied."""
+    def test_falls_back_to_strict_when_circuit_unreadable(self, mock_validate, monkeypatch, caplog):
+        """An unreadable circuit path is validated strictly, and the reason is logged."""
         monkeypatch.setattr(
             "obi_one.utils.circuit_validation.SYNAPSE_PHYSIOLOGY_PROPERTIES", ["conductance"]
         )
@@ -110,6 +110,7 @@ class TestRunValidation:
         run_validation("circuit_config.json")
 
         assert "conductance" not in mock_validate.call_args.kwargs["ignore_edge_properties"]
+        assert "validating strictly" in caplog.text
 
 
 def test_simulation_execution_does_not_import_circuit_validation():

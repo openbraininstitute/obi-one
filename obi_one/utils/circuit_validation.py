@@ -31,8 +31,12 @@ def _is_structural_only(circuit_path: str | Path) -> bool:
     """
     try:
         return not has_synapse_physiology(Circuit(name="validation", path=str(circuit_path)))
-    except Exception:  # ruff: ignore[blind-except]
-        L.debug("Could not inspect %s for synapse physiology", circuit_path, exc_info=True)
+    except Exception as e:  # ruff: ignore[blind-except]
+        L.warning(
+            "Could not open %s to check for synapse physiology (%s); validating strictly",
+            circuit_path,
+            e,
+        )
         return False
 
 
