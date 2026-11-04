@@ -72,6 +72,28 @@ from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.task im
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.task import (
     SORTER_LOG_FILE_NAME,
 )
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing import task as postprocessing_task
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
+    AINDEPhysPostprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._04_postprocessing.task import (
+    AINDEPhysPostprocessingTask,
+    motion_corrected,
+)
+from obi_one.scientific.tasks.aind_ephys._05_curation import task as curation_task
+from obi_one.scientific.tasks.aind_ephys._05_curation.config import AINDEPhysCurationSingleConfig
+from obi_one.scientific.tasks.aind_ephys._05_curation.task import (
+    LIGHTWEIGHT_UNITREFINE_CLASSIFIERS,
+    AINDEPhysCurationTask,
+    bombcell_thresholds,
+    unitrefine_classifiers,
+)
+from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
+    AINDEPhysVisualizationSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
+    AINDEPhysResultsCollectorSingleConfig,
+)
 from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs, MotionPreset
 from obi_one.scientific.tasks.aind_ephys.toy_recording import (
     ELECTRICAL_SERIES_NAME,
@@ -82,6 +104,7 @@ from obi_one.scientific.tasks.aind_ephys.utils import (
     dump_recording,
     load_dumped_recording,
     load_recording,
+    load_sorting,
     read_jobs,
     remove_outputs,
     write_jobs,
@@ -498,7 +521,7 @@ class TestSortingTask:
         with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()):
             folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
-        sorting = si.load(folder / f"spikesorted_{RECORDING_NAME}")
+        sorting = load_sorting(folder / f"spikesorted_{RECORDING_NAME}")
         assert sorting.get_num_segments() == 2
 
     @pytest.mark.parametrize(
@@ -699,6 +722,104 @@ class TestSortingTask:
             )
 
 
+class TestPostprocessingTask:
+    def form(self, root: Path) -> AINDEPhysPostprocessingSingleConfig:
+        form = AINDEPhysPostprocessingSingleConfig(
+            initialize=AINDEPhysPostprocessingSingleConfig.Initialize(
+                preprocessing_output_path=root, spikesort_output_path=root
+            ),
+            job_kwargs=SINGLE_JOB,
+        )
+        form.coordinate_output_root = root / "postprocessing"
+        return form
+
+    def test_an_empty_input_folder_is_an_error(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="spikesorted_"):
+            AINDEPhysPostprocessingTask(config=self.form(tmp_path)).execute()
+
+    def test_recordings_sorting_skipped_are_skipped(self, tmp_path):
+        write_skip(tmp_path / f"spikesorted_{RECORDING_NAME}", "No sorter")
+
+        folder = AINDEPhysPostprocessingTask(config=self.form(tmp_path)).execute()
+
+        skip = folder / f"postprocessed_{RECORDING_NAME}.zarr" / ERROR_FILE_NAME
+        assert "Spike sorting skipped" in skip.read_text()
+
+    def test_motion_correction_reuses_the_preprocessing_estimate(self, tmp_path):
+        recording = small_recording()
+        corrected = MagicMock()
+        info = {"motion": "motion", "parameters": {"interpolate_motion_kwargs": {"border": 1}}}
+
+        with (
+            patch.object(postprocessing_task.spre, "load_motion_info", return_value=info),
+            patch.object(
+                postprocessing_task, "interpolate_motion", return_value=corrected
+            ) as interpolate,
+        ):
+            assert motion_corrected(recording, tmp_path) is corrected
+
+        assert interpolate.call_args.kwargs == {"motion": "motion", "border": 1}
+        corrected.reset_times.assert_called_once()
+
+
+class TestCuration:
+    def form(self, root: Path) -> AINDEPhysCurationSingleConfig:
+        form = AINDEPhysCurationSingleConfig(
+            initialize=AINDEPhysCurationSingleConfig.Initialize(postprocessing_output_path=root),
+            job_kwargs=SINGLE_JOB,
+        )
+        form.coordinate_output_root = root / "curation"
+        return form
+
+    def test_an_empty_input_folder_is_an_error(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="postprocessed_"):
+            AINDEPhysCurationTask(config=self.form(tmp_path)).execute()
+
+    def test_recordings_postprocessing_skipped_are_passed_over(self, tmp_path):
+        write_skip(tmp_path / f"postprocessed_{RECORDING_NAME}.zarr", "No sorting")
+
+        with patch.object(AINDEPhysCurationTask, "curate") as curate:
+            AINDEPhysCurationTask(config=self.form(tmp_path)).execute()
+
+        curate.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("metric_names", "expected"),
+        [
+            ({"heavy", "sua", "light", "light_sua"}, ("noise", "sua")),
+            ({"light", "light_sua"}, LIGHTWEIGHT_UNITREFINE_CLASSIFIERS),
+            (set(), None),
+        ],
+    )
+    def test_unitrefine_falls_back_on_the_lightweight_classifiers(self, metric_names, expected):
+        required = {
+            "noise": ["heavy"],
+            "sua": ["sua"],
+            LIGHTWEIGHT_UNITREFINE_CLASSIFIERS[0]: ["light"],
+            LIGHTWEIGHT_UNITREFINE_CLASSIFIERS[1]: ["light_sua"],
+        }
+
+        with patch.object(
+            curation_task.scur,
+            "get_required_metrics_from_model",
+            side_effect=lambda repo_id, trust_model: required[repo_id],  # ruff: ignore[unused-lambda-argument]
+        ):
+            assert unitrefine_classifiers("noise", "sua", metric_names) == expected
+
+    def test_bombcell_drops_a_missing_metric(self):
+        thresholds = {"noise": {"a": {"min": 1}, "b": {"min": 2}}}
+
+        kept = bombcell_thresholds(thresholds, {"a"})
+
+        assert kept == {"noise": {"a": {"min": 1}}}
+        assert "b" in thresholds["noise"]
+
+    def test_bombcell_is_skipped_when_too_many_metrics_are_missing(self):
+        thresholds = {"noise": {"a": {"min": 1}, "b": {"min": 2}}}
+
+        assert bombcell_thresholds(thresholds, set()) is None
+
+
 class TestUtils:
     def test_jobs_are_read_in_index_order(self, tmp_path):
         jobs = [{"index": index} for index in range(12)]
@@ -726,11 +847,15 @@ class TestUtils:
             load_dumped_recording(tmp_path, "missing")
 
     def test_loading_the_wrong_kind_of_object_is_an_error(self, tmp_path):
+        recording_folder = tmp_path / "recording"
         sorting_folder = tmp_path / "sorting"
+        small_recording().save(folder=recording_folder)
         si.generate_sorting(num_units=2, durations=[1.0], seed=0).save(folder=sorting_folder)
 
         with pytest.raises(TypeError, match="Expected a recording"):
             load_recording(sorting_folder)
+        with pytest.raises(TypeError, match="Expected a sorting"):
+            load_sorting(recording_folder)
 
     def test_remove_outputs_takes_files_and_folders(self, tmp_path):
         file = tmp_path / "file"
@@ -742,3 +867,31 @@ class TestUtils:
 
         assert not file.exists()
         assert not folder.exists()
+
+
+class TestCapsuleConfigs:
+    def test_visualization_params_are_json_able(self, tmp_path):
+        form = AINDEPhysVisualizationSingleConfig(
+            initialize=AINDEPhysVisualizationSingleConfig.Initialize(
+                dispatch_output_path=tmp_path,
+                preprocessing_output_path=tmp_path,
+                postprocessing_output_path=tmp_path,
+                curation_output_path=tmp_path,
+            ),
+        )
+
+        assert set(json.loads(json.dumps(form.params_dict()))) >= {"timeseries", "drift"}
+
+    def test_results_collector_describes_its_session(self, tmp_path):
+        form = AINDEPhysResultsCollectorSingleConfig(
+            initialize=AINDEPhysResultsCollectorSingleConfig.Initialize(
+                dispatch_output_path=tmp_path,
+                preprocessing_output_path=tmp_path,
+                spikesort_output_path=tmp_path,
+                postprocessing_output_path=tmp_path,
+                curation_output_path=tmp_path,
+                visualization_output_path=tmp_path,
+            ),
+        )
+
+        assert form.synthetic_data_description()["name"] == form.initialize.session_name

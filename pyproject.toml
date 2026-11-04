@@ -283,6 +283,15 @@ branch = true
 parallel = false
 source_pkgs = ["app", "obi_one"]
 data_file = ".coverage/coverage.db"
+# AIND ephys stages not ported yet: they run the pipeline's capsules, and have no tests.
+omit = [
+    "*/aind_ephys/_06_visualization/task.py",
+    "*/aind_ephys/_07_results_collector/task.py",
+    "*/aind_ephys/_08_processing_qc/task.py",
+    "*/aind_ephys/_09_qc_collector/task.py",
+    "*/aind_ephys/_10_ecephys_nwb/task.py",
+    "*/aind_ephys/_11_units_nwb/task.py",
+]
 
 [tool.coverage.report]
 show_missing = true
