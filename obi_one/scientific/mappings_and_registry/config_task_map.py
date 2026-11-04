@@ -401,7 +401,6 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_config_ref=(f"{_AIND_EPHYS}._01_dispatch.config", "AINDEPhysDispatchSingleConfig"),
         scan_config_ref=(f"{_AIND_EPHYS}._01_dispatch.config", "AINDEPhysDispatchScanConfig"),
         asset_label=AssetLabel.task_config,
-        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_preprocessing: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._02_preprocessing.task", "AINDEPhysPreprocessingTask"),
@@ -420,17 +419,19 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.aind_ephys_preprocessing__config,
         single_task_activity_type=TaskActivityType.aind_ephys_preprocessing__execution,
-        task_requires_package="spikeinterface",
     ),
-    TaskType.aind_ephys_spikesorting: TaskSpec(
-        task_ref=(f"{_AIND_EPHYS}._03_spikesorting.task", "AINDEPhysSpikeSortingTask"),
+    TaskType.aind_ephys_spikesorting_kilosort4: TaskSpec(
+        task_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.kilosort4.task",
+            "AINDEPhysSpikeSortingKilosort4Task",
+        ),
         single_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.config",
-            "AINDEPhysSpikeSortingSingleConfig",
+            f"{_AIND_EPHYS}._03_spikesorting.kilosort4.config",
+            "AINDEPhysSpikeSortingKilosort4SingleConfig",
         ),
         scan_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.config",
-            "AINDEPhysSpikeSortingScanConfig",
+            f"{_AIND_EPHYS}._03_spikesorting.kilosort4.config",
+            "AINDEPhysSpikeSortingKilosort4ScanConfig",
         ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
@@ -439,7 +440,48 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
         single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
-        task_requires_package="spikeinterface",
+    ),
+    TaskType.aind_ephys_spikesorting_spykingcircus2: TaskSpec(
+        task_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.spykingcircus2.task",
+            "AINDEPhysSpikeSortingSpykingCircus2Task",
+        ),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.spykingcircus2.config",
+            "AINDEPhysSpikeSortingSpykingCircus2SingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.spykingcircus2.config",
+            "AINDEPhysSpikeSortingSpykingCircus2ScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.aind_ephys_spikesorting__config_generation
+        ),
+        single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
+        single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
+    ),
+    TaskType.aind_ephys_spikesorting_lupin: TaskSpec(
+        task_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.lupin.task",
+            "AINDEPhysSpikeSortingLupinTask",
+        ),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.lupin.config",
+            "AINDEPhysSpikeSortingLupinSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._03_spikesorting.lupin.config",
+            "AINDEPhysSpikeSortingLupinScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.aind_ephys_spikesorting__config_generation
+        ),
+        single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
+        single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
     ),
     TaskType.aind_ephys_postprocessing: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._04_postprocessing.task", "AINDEPhysPostprocessingTask"),
@@ -452,14 +494,12 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             "AINDEPhysPostprocessingScanConfig",
         ),
         asset_label=None,
-        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_curation: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._05_curation.task", "AINDEPhysCurationTask"),
         single_config_ref=(f"{_AIND_EPHYS}._05_curation.config", "AINDEPhysCurationSingleConfig"),
         scan_config_ref=(f"{_AIND_EPHYS}._05_curation.config", "AINDEPhysCurationScanConfig"),
         asset_label=None,
-        requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_visualization: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._06_visualization.task", "AINDEPhysVisualizationTask"),
@@ -566,12 +606,6 @@ def _is_task_type_available(task_type: TaskType) -> bool:
     return task_spec.requires_package is None or _is_package_installed(task_spec.requires_package)
 
 
-def _is_task_class_importable(task_type: TaskType) -> bool:
-    """Return whether the task class imports here; its configs may import where it does not."""
-    package = TASK_SPECS[task_type].task_requires_package
-    return package is None or _is_package_installed(package)
-
-
 def get_task_spec_for_task_type(task_type: TaskType) -> TaskSpec:
     """Return the task spec for ``task_type`` without importing the task's classes."""
     if not _is_task_type_available(task_type):
@@ -646,7 +680,7 @@ def iter_task_refs() -> Iterator[ClassRef]:
     """
     seen: set[str] = set()
     for task_type, task_spec in TASK_SPECS.items():
-        if not _is_task_type_available(task_type) or not _is_task_class_importable(task_type):
+        if not _is_task_type_available(task_type):
             continue
         task_ref = task_spec.task_ref
         name = class_name(task_ref)

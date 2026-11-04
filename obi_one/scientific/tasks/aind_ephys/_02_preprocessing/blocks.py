@@ -5,14 +5,59 @@ function its step calls. Defaults are those of the AIND pipeline's ``default_par
 for the motion preset: its DREDGE needs torch, which a launch job does not install.
 """
 
-from typing import Literal
+from typing import Annotated, ClassVar, Literal
 
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic import (
+    Discriminator,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+)
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
-from obi_one.scientific.tasks.aind_ephys.blocks import MotionPreset
+from obi_one.scientific.tasks.aind_ephys.blocks import (
+    MOTION_PRESET_OPTIONS,
+    MotionPreset,
+    string_selection,
+)
+
+BAD_CHANNEL_METHOD_OPTIONS = {
+    "coherence+psd": (
+        "Coherence and power spectrum",
+        "Finds dead, noisy and outside channels from coherence and power spectrum.",
+    ),
+    "std": (
+        "Standard deviation",
+        "Flags channels whose standard deviation is far from the others'.",
+    ),
+    "mad": (
+        "Median absolute deviation",
+        "Flags channels whose median absolute deviation is far from the others'.",
+    ),
+}
+OUTSIDE_CHANNELS_OPTIONS = {
+    "top": ("Top", "Only the top of the probe can be outside the brain."),
+    "bottom": ("Bottom", "Only the bottom of the probe can be outside the brain."),
+    "both": ("Both", "Either end of the probe can be outside the brain."),
+}
+REFERENCE_OPTIONS = {
+    "global": ("Global", "Every channel shares one reference, made from all channels."),
+    "local": ("Local", "Each channel's reference is made from the channels around it."),
+    "single": ("Single", "One chosen channel is the reference for all."),
+}
+OPERATOR_OPTIONS = {
+    "median": ("Median", "The median of the reference channels, robust to outliers."),
+    "average": ("Average", "The mean of the reference channels."),
+}
+DIRECTION_OPTIONS = {
+    "x": ("x", "Across the width of the probe."),
+    "y": ("y", "Along the depth of the probe."),
+    "z": ("z", "Along the third axis of the probe."),
+}
 
 
 class PhaseShift(Block):
@@ -33,7 +78,10 @@ class PhaseShift(Block):
 
 
 class HighpassFilterParams(Block):
-    """``highpass_filter``, used when the filter type is 'highpass'."""
+    """Keep the frequencies above a cutoff."""
+
+    title: ClassVar[str] = "Highpass"
+    pipeline_step: ClassVar[str] = "highpass_filter"
 
     freq_min: PositiveFloat | list[PositiveFloat] = Field(
         default=300.0,
@@ -47,8 +95,11 @@ class HighpassFilterParams(Block):
     margin_ms: NonNegativeFloat | None = Field(
         default=None,
         title="Filter margin",
-        description="Margin of the filter. None sizes it from the cutoff frequency.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.MILLISECONDS},
+        description="Margin of the filter. Unset sizes it from the cutoff frequency.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
     )
 
     def to_dict(self) -> dict:
@@ -59,7 +110,10 @@ class HighpassFilterParams(Block):
 
 
 class BandpassFilterParams(Block):
-    """``bandpass_filter``, used when the filter type is 'bandpass'."""
+    """Keep the frequencies between two cutoffs."""
+
+    title: ClassVar[str] = "Bandpass"
+    pipeline_step: ClassVar[str] = "bandpass_filter"
 
     freq_min: PositiveFloat | list[PositiveFloat] = Field(
         default=300.0,
@@ -82,8 +136,11 @@ class BandpassFilterParams(Block):
     margin_ms: NonNegativeFloat | None = Field(
         default=None,
         title="Filter margin",
-        description="Margin of the filter. None sizes it from the cutoff frequency.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True, SchemaKey.UNITS: Units.MILLISECONDS},
+        description="Margin of the filter. Unset sizes it from the cutoff frequency.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
     )
 
     def to_dict(self) -> dict:
@@ -101,7 +158,7 @@ class DetectBadChannels(Block):
         default="coherence+psd",
         title="Detection method",
         description="Bad-channel detection method.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+        json_schema_extra=string_selection(BAD_CHANNEL_METHOD_OPTIONS),
     )
     dead_channel_threshold: float | list[float] = Field(
         default=-0.5,
@@ -125,7 +182,7 @@ class DetectBadChannels(Block):
         default="top",
         title="Outside channels location",
         description="Which end of the probe can be outside the brain.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+        json_schema_extra=string_selection(OUTSIDE_CHANNELS_OPTIONS),
     )
     n_neighbors: PositiveInt | list[PositiveInt] = Field(
         default=11,
@@ -159,19 +216,22 @@ class DetectBadChannels(Block):
 
 
 class CommonReference(Block):
-    """``common_reference``, the 'cmr' denoising strategy."""
+    """Subtract a signal shared across channels; by default their median."""
+
+    title: ClassVar[str] = "Common reference"
+    pipeline_step: ClassVar[str] = "common_reference"
 
     reference: Literal["global", "local", "single"] = Field(
         default="global",
         title="Reference",
         description="Which channels form each channel's reference.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+        json_schema_extra=string_selection(REFERENCE_OPTIONS),
     )
     operator: Literal["median", "average"] = Field(
         default="median",
         title="Operator",
         description="How the reference channels are combined.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+        json_schema_extra=string_selection(OPERATOR_OPTIONS),
     )
 
     def to_dict(self) -> dict:
@@ -179,7 +239,10 @@ class CommonReference(Block):
 
 
 class HighpassSpatialFilter(Block):
-    """``highpass_spatial_filter``, the 'destripe' denoising strategy."""
+    """Destripe: filter across channels, removing noise that varies slowly along the probe."""
+
+    title: ClassVar[str] = "Highpass spatial filter"
+    pipeline_step: ClassVar[str] = "highpass_spatial_filter"
 
     n_channel_pad: NonNegativeInt | list[NonNegativeInt] = Field(
         default=60,
@@ -190,14 +253,14 @@ class HighpassSpatialFilter(Block):
     n_channel_taper: NonNegativeInt | None = Field(
         default=None,
         title="Channels to taper",
-        description="Number of channels tapered on each side. None tapers the padded channels.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        description="Number of channels tapered on each side. Unset tapers the padded channels.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_OPTIONAL},
     )
     direction: Literal["x", "y", "z"] = Field(
         default="y",
         title="Direction",
         description="Probe axis along which the spatial filter runs.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+        json_schema_extra=string_selection(DIRECTION_OPTIONS),
     )
     apply_agc: bool = Field(
         default=True,
@@ -258,7 +321,7 @@ class MotionCorrection(Block):
         default="nonrigid_fast_and_accurate",
         title="Motion preset",
         description="Motion estimation preset.",
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+        json_schema_extra=string_selection(MOTION_PRESET_OPTIONS),
     )
     temporal_bin_s: PositiveFloat | list[PositiveFloat] = Field(
         default=1.0,
@@ -273,43 +336,43 @@ class MotionCorrection(Block):
         default=0.1,
         title="Window step",
         description="Step of the non-rigid windows, as a fraction of the probe's span.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL},
     )
     win_scale_norm: PositiveFloat | None = Field(
         default=0.1,
         title="Window scale",
         description="Scale of the non-rigid windows, as a fraction of the probe's span.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_OPTIONAL},
     )
     detect_kwargs: dict = Field(
         default={},
         title="Detect kwargs",
         description="Overrides of the preset's peak detection kwargs.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.JSON_OBJECT},
     )
     select_kwargs: dict = Field(
         default={},
         title="Select kwargs",
         description="Overrides of the preset's peak selection kwargs.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.JSON_OBJECT},
     )
     localize_peaks_kwargs: dict = Field(
         default={},
         title="Localize peaks kwargs",
         description="Overrides of the preset's peak localization kwargs.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.JSON_OBJECT},
     )
     estimate_motion_kwargs: dict = Field(
         default={},
         title="Estimate motion kwargs",
         description="Overrides of the preset's motion estimation kwargs.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.JSON_OBJECT},
     )
     interpolate_motion_kwargs: dict = Field(
         default={},
         title="Interpolate motion kwargs",
         description="Kwargs of the motion interpolation, when motion is applied.",
-        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.JSON_OBJECT},
     )
 
     def estimate_motion_dict(self, probe_span_um: float) -> dict:
@@ -320,3 +383,7 @@ class MotionCorrection(Block):
         if self.win_scale_norm is not None:
             kwargs["win_scale_um"] = self.win_scale_norm * probe_span_um
         return kwargs
+
+
+TemporalFilterUnion = Annotated[HighpassFilterParams | BandpassFilterParams, Discriminator("type")]
+DenoisingUnion = Annotated[CommonReference | HighpassSpatialFilter, Discriminator("type")]

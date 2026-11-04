@@ -1,4 +1,4 @@
-"""Config for the spike sorting stage of the AIND ephys pipeline."""
+"""What the spike sorting stage's configs share, whichever the sorter."""
 
 from enum import StrEnum
 from pathlib import Path
@@ -18,8 +18,8 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import (
-    SorterUnion,
-    SpykingCircus2Sorter,
+    SorterParameters,
+    deep_merge,
 )
 from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 
@@ -31,15 +31,15 @@ class BlockGroup(StrEnum):
 
 
 class AINDEPhysSpikeSortingScanConfig(InfoScanConfig):
-    """Sort the spikes of each preprocessed recording.
+    """Sort the spikes of each preprocessed recording, writing each to ``spikesorted_<name>/``.
 
-    Port of the AIND pipeline's sorter steps (aind-ephys-spikesort-kilosort4, -spykingcircus2 and
-    -lupin), which differ only in the sorter they run. Writes each recording's sorting to
-    ``spikesorted_<name>/``, and Kilosort4's motion estimate to ``spikesortedmotion_<name>/``.
+    Base of the configs of each sorter, as the AIND pipeline has a step per sorter
+    (aind-ephys-spikesort-kilosort4, -spykingcircus2 and -lupin). A sorter's config adds its
+    parameters as ``SorterParameters`` blocks.
     """
 
-    name: ClassVar[str] = "AIND Ephys Spike Sorting"
-    description: ClassVar[str] = "Sorts the spikes of preprocessed extracellular recordings."
+    sorter_name: ClassVar[str]
+    motion_correction_parameter: ClassVar[str]
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
@@ -71,11 +71,11 @@ class AINDEPhysSpikeSortingScanConfig(InfoScanConfig):
             description="Turn off the sorter's own motion correction.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )
-        min_drift_channels: NonNegativeInt = Field(
+        min_drift_channels: NonNegativeInt | list[NonNegativeInt] = Field(
             default=96,
             title="Minimum drift channels",
             description="Recordings with fewer channels are sorted without motion correction.",
-            json_schema_extra={SchemaKey.UI_HIDDEN: True},
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
         )
         raise_if_fails: bool = Field(
             default=True,
@@ -100,22 +100,21 @@ class AINDEPhysSpikeSortingScanConfig(InfoScanConfig):
         description="SpikeInterface job kwargs.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
-    sorter: SorterUnion = Field(
-        default_factory=SpykingCircus2Sorter,
-        title="Sorter",
-        description="The spike sorter and its parameters.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
-            SchemaKey.GROUP: BlockGroup.SORTING,
-            SchemaKey.GROUP_ORDER: 0,
-        },
-    )
 
     def input_entities(self, db_client: entitysdk.client.Client) -> list[Entity]:
         """The preprocessing result, recorded as the input of the task config."""
         if self.initialize.preprocessing_result is None:
             return []
         return [self.initialize.preprocessing_result.entity(db_client=db_client)]
+
+    def sorter_parameters(self) -> dict:
+        """What the config's parameter blocks override of spikeinterface's defaults."""
+        parameters: dict = {}
+        for field_name in type(self).model_fields:
+            block = getattr(self, field_name)
+            if isinstance(block, SorterParameters):
+                parameters = deep_merge(parameters, block.to_dict())
+        return parameters
 
 
 class AINDEPhysSpikeSortingSingleConfig(AINDEPhysSpikeSortingScanConfig, SingleConfigMixin):

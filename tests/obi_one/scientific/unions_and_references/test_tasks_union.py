@@ -25,8 +25,8 @@ def test_task_union_members_are_task_subclasses():
 def test_iter_task_refs_deduplicates_task_names_across_task_specs():
     shared_ref = TASK_SPECS[TaskType.circuit_simulation].task_ref
     patched_specs = {
-        TaskType.circuit_simulation: MagicMock(task_ref=shared_ref, task_requires_package=None),
-        TaskType.me_model_simulation: MagicMock(task_ref=shared_ref, task_requires_package=None),
+        TaskType.circuit_simulation: MagicMock(task_ref=shared_ref),
+        TaskType.me_model_simulation: MagicMock(task_ref=shared_ref),
     }
     with (
         patch.object(config_task_map, "TASK_SPECS", patched_specs),
@@ -39,11 +39,9 @@ def test_iter_task_refs_skips_unavailable_task_types():
     patched_specs = {
         TaskType.circuit_extraction: MagicMock(
             task_ref=TASK_SPECS[TaskType.circuit_extraction].task_ref,
-            task_requires_package=None,
         ),
         TaskType.emodel_optimization: MagicMock(
             task_ref=TASK_SPECS[TaskType.emodel_optimization].task_ref,
-            task_requires_package=None,
         ),
     }
 
@@ -58,14 +56,3 @@ def test_iter_task_refs_skips_unavailable_task_types():
         assert class_name(TASK_SPECS[TaskType.emodel_optimization].task_ref) not in {
             class_name(ref) for ref in refs
         }
-
-
-def test_iter_task_refs_leaves_out_tasks_whose_dependency_is_missing():
-    task_spec = TASK_SPECS[TaskType.aind_ephys_preprocessing]
-
-    with patch.object(config_task_map, "_is_package_installed", return_value=False):
-        task_refs = list(config_task_map.iter_task_refs())
-        scan_config_refs = list(config_task_map.iter_scan_config_refs())
-
-    assert task_spec.task_ref not in task_refs
-    assert task_spec.scan_config_ref in scan_config_refs

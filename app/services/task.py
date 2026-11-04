@@ -378,7 +378,7 @@ def estimate_task_resources(
 ) -> Resources:
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
-        case TaskType.aind_ephys_preprocessing | TaskType.aind_ephys_spikesorting:
+        case TaskType.aind_ephys_preprocessing | TaskType.aind_ephys_spikesorting_spykingcircus2:
             resources = app.services.resource_estimation.aind_ephys.estimate_task_resources(
                 json_model=json_model,
                 db_client=db_client,

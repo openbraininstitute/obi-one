@@ -333,7 +333,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinition(
-        task_type=TaskType.aind_ephys_spikesorting,
+        task_type=TaskType.aind_ephys_spikesorting_spykingcircus2,
         config_type=TaskConfigType.aind_ephys_spikesorting__config,
         activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
         code=_obi_one_code("aind_ephys.txt"),

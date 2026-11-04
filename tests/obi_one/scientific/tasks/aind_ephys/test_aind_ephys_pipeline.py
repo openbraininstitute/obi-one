@@ -10,12 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+import spikeinterface as si
 from entitysdk.types import AssetLabel, TaskResultType
 from pydantic import ValidationError
-
-pytest.importorskip("spikeinterface")
-
-import spikeinterface as si
 
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
@@ -32,14 +29,13 @@ from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
 )
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import AINDEPhysPreprocessingTask
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import SpykingCircus2Sorter
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
-    AINDEPhysSpikeSortingScanConfig,
-    AINDEPhysSpikeSortingSingleConfig,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import deep_merge
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+    AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
+    AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.task import (
-    AINDEPhysSpikeSortingTask,
-    deep_merge,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.task import (
+    AINDEPhysSpikeSortingSpykingCircus2Task,
 )
 from obi_one.scientific.tasks.aind_ephys._04_postprocessing.blocks import QualityMetrics
 from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
@@ -61,6 +57,9 @@ CONFIG_MODULES = [
         "_01_dispatch",
         "_02_preprocessing",
         "_03_spikesorting",
+        "_03_spikesorting.kilosort4",
+        "_03_spikesorting.spykingcircus2",
+        "_03_spikesorting.lupin",
         "_04_postprocessing",
         "_05_curation",
     )
@@ -100,13 +99,12 @@ def stages(tmp_path_factory) -> dict[str, Path]:
         root / "preprocessing",
     )
     sorting = run_stage(
-        AINDEPhysSpikeSortingScanConfig(
+        AINDEPhysSpikeSortingSpykingCircus2ScanConfig(
             info=INFO,
-            initialize=AINDEPhysSpikeSortingScanConfig.Initialize(
+            initialize=AINDEPhysSpikeSortingSpykingCircus2ScanConfig.Initialize(
                 preprocessing_output_path=preprocessing
             ),
             job_kwargs=SINGLE_JOB,
-            sorter=SpykingCircus2Sorter(),
         ),
         root / "sorting",
     )
@@ -263,9 +261,9 @@ class TestStages:
         assert update_activity.call_args.kwargs["generated"] == [str(upload["entity_id"])]
 
     def test_launched_sorting_reads_and_registers_results(self, stages, tmp_path):
-        form = AINDEPhysSpikeSortingSingleConfig(
+        form = AINDEPhysSpikeSortingSpykingCircus2SingleConfig(
             info=INFO,
-            initialize=AINDEPhysSpikeSortingSingleConfig.Initialize(
+            initialize=AINDEPhysSpikeSortingSpykingCircus2SingleConfig.Initialize(
                 preprocessing_result=TaskResultFromID(id_str=str(uuid.uuid4())),
             ),
             job_kwargs=SINGLE_JOB,
@@ -279,11 +277,11 @@ class TestStages:
                 "download_directory_asset_by_label",
                 return_value=stages["preprocessing"],
             ) as download,
-            patch.object(AINDEPhysSpikeSortingTask, "sort") as sort,
+            patch.object(AINDEPhysSpikeSortingSpykingCircus2Task, "sort") as sort,
             patch.object(Task, "_get_execution_activity"),
             patch.object(Task, "_update_execution_activity") as update_activity,
         ):
-            AINDEPhysSpikeSortingTask(config=form).execute(
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute(
                 db_client=db_client, execution_activity_id=str(uuid.uuid4())
             )
 
@@ -301,9 +299,11 @@ class TestStages:
         preprocessing = AINDEPhysPreprocessingScanConfig(
             info=INFO, initialize=AINDEPhysPreprocessingScanConfig.Initialize(recording=recording)
         )
-        sorting = AINDEPhysSpikeSortingScanConfig(
+        sorting = AINDEPhysSpikeSortingSpykingCircus2ScanConfig(
             info=INFO,
-            initialize=AINDEPhysSpikeSortingScanConfig.Initialize(preprocessing_result=result),
+            initialize=AINDEPhysSpikeSortingSpykingCircus2ScanConfig.Initialize(
+                preprocessing_result=result
+            ),
         )
 
         with (
@@ -354,12 +354,11 @@ class TestStages:
         (skipped / ERROR_FILE_NAME).write_text("Too many bad channels")
 
         folder = run_stage(
-            AINDEPhysSpikeSortingScanConfig(
+            AINDEPhysSpikeSortingSpykingCircus2ScanConfig(
                 info=INFO,
-                initialize=AINDEPhysSpikeSortingScanConfig.Initialize(
+                initialize=AINDEPhysSpikeSortingSpykingCircus2ScanConfig.Initialize(
                     preprocessing_output_path=tmp_path / "preprocessing"
                 ),
-                sorter=SpykingCircus2Sorter(),
             ),
             tmp_path / "sorting",
         )

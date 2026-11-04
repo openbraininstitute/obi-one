@@ -92,9 +92,6 @@ def test_declared_class_ref_is_importable(task_type, class_ref):
     declarative registry got rid of: it catches typos, moved modules and renamed classes.
     """
     skip_if_unavailable(task_type)
-    is_task = class_ref == TASK_SPECS[task_type].task_ref
-    if is_task and not test_module._is_task_class_importable(task_type):
-        pytest.skip(f"{task_type!r}'s task needs an optional dependency that is not installed")
 
     cls = import_class(class_ref)
 
@@ -115,8 +112,7 @@ def test_config_task_map_spec_resolves(task_type: TaskType):
     skip_if_unavailable(task_type)
     task_spec = test_module.get_task_spec_for_task_type(task_type)
 
-    if test_module._is_task_class_importable(task_type):
-        assert issubclass(task_spec.task_cls, Task)
+    assert issubclass(task_spec.task_cls, Task)
     assert issubclass(task_spec.single_config_cls, OBIBaseModel)
     assert test_module.get_task_spec_for_single_config(task_spec.single_config_cls) is task_spec
 

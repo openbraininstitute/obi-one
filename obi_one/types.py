@@ -37,7 +37,9 @@ class TaskType(StrEnum):
     mesh_lod_generation = auto()
     morphology_skeletonization = auto()
     aind_ephys_preprocessing = auto()
-    aind_ephys_spikesorting = auto()
+    aind_ephys_spikesorting_kilosort4 = auto()
+    aind_ephys_spikesorting_spykingcircus2 = auto()
+    aind_ephys_spikesorting_lupin = auto()
 
     # Task types supported for local-only execution (via scan generation / direct dispatch)
     basic_connectivity_plots = auto()

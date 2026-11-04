@@ -9,11 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-
-pytest.importorskip("spikeinterface")
-
 import spikeinterface as si
 import spikeinterface.sorters as ss
+from pydantic import ValidationError
 from spikeinterface.preprocessing.motion import motion_options_preset
 
 from obi_one.core.info import Info
@@ -30,7 +28,11 @@ from obi_one.scientific.tasks.aind_ephys._01_dispatch.task import (
     timestamps_problem,
 )
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing import task as preprocessing_task
-from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionCorrection
+from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import (
+    BandpassFilterParams,
+    HighpassSpatialFilter,
+    MotionCorrection,
+)
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingSingleConfig,
 )
@@ -42,18 +44,33 @@ from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import (
     split_concatenated,
 )
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting import task as sorting_task
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import (
-    Kilosort4Sorter,
-    LupinSorter,
-    SpykingCircus2Sorter,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.blocks import (
+    Kilosort4DriftCorrection,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
-    AINDEPhysSpikeSortingSingleConfig,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.config import (
+    AINDEPhysSpikeSortingKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.task import (
+    AINDEPhysSpikeSortingKilosort4Task,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.blocks import LupinPreprocessing
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.config import (
+    AINDEPhysSpikeSortingLupinSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.task import (
+    AINDEPhysSpikeSortingLupinTask,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.blocks import (
+    SpykingCircus2SpikeDetection,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+    AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.task import (
+    AINDEPhysSpikeSortingSpykingCircus2Task,
 )
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.task import (
     SORTER_LOG_FILE_NAME,
-    AINDEPhysSpikeSortingTask,
-    read_kilosort4_motion,
 )
 from obi_one.scientific.tasks.aind_ephys._04_postprocessing import task as postprocessing_task
 from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
@@ -148,12 +165,11 @@ def preprocessing_form(root: Path, **kwargs) -> AINDEPhysPreprocessingSingleConf
     return form
 
 
-def sorting_form(root: Path, sorter=None, **initialize) -> AINDEPhysSpikeSortingSingleConfig:
-    form = AINDEPhysSpikeSortingSingleConfig(
-        info=INFO,
-        initialize=AINDEPhysSpikeSortingSingleConfig.Initialize(**initialize),
-        job_kwargs=SINGLE_JOB,
-        sorter=sorter or SpykingCircus2Sorter(),
+def sorting_form(
+    root: Path, config_class=AINDEPhysSpikeSortingSpykingCircus2SingleConfig, **initialize
+):
+    form = config_class(
+        info=INFO, initialize=config_class.Initialize(**initialize), job_kwargs=SINGLE_JOB
     )
     form.coordinate_output_root = root
     return form
@@ -303,12 +319,12 @@ class TestPreprocessingHelpers:
 
         assert [split.get_num_samples(i) for i in range(2)] == lengths
 
-    def test_the_pipeline_follows_the_chosen_strategies(self):
+    def test_the_pipeline_follows_the_chosen_blocks(self):
         form = AINDEPhysPreprocessingSingleConfig(
             info=INFO,
-            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
-                nwb_path=Path("toy.nwb"), filter_type="bandpass", denoising_strategy="destripe"
-            ),
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(nwb_path=Path("toy.nwb")),
+            temporal_filter=BandpassFilterParams(),
+            denoising=HighpassSpatialFilter(),
         )
 
         steps = form.preprocessing_pipeline(has_inter_sample_shift=True)
@@ -441,13 +457,13 @@ class TestSortingTask:
         form = sorting_form(tmp_path / "sorting", preprocessing_output_path=tmp_path)
 
         with pytest.raises(FileNotFoundError, match="preprocessed_"):
-            AINDEPhysSpikeSortingTask(config=form).execute()
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
     def test_recordings_preprocessing_skipped_are_skipped(self, tmp_path):
         write_skip(tmp_path / f"preprocessed_{RECORDING_NAME}", "Too short")
         form = sorting_form(tmp_path / "sorting", preprocessing_output_path=tmp_path)
 
-        folder = AINDEPhysSpikeSortingTask(config=form).execute()
+        folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
         skip = folder / f"spikesorted_{RECORDING_NAME}" / ERROR_FILE_NAME
         assert "Preprocessing skipped" in skip.read_text()
@@ -461,7 +477,7 @@ class TestSortingTask:
             patch.object(sorting_task.ss, "run_sorter", side_effect=RuntimeError("no sorter")),
             pytest.raises(RuntimeError, match="no sorter"),
         ):
-            AINDEPhysSpikeSortingTask(config=form).execute()
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
     def test_a_failed_sorting_can_skip_the_recording(self, tmp_path):
         form = sorting_form(
@@ -477,7 +493,7 @@ class TestSortingTask:
             raise RuntimeError(msg)
 
         with patch.object(sorting_task.ss, "run_sorter", side_effect=fail):
-            folder = AINDEPhysSpikeSortingTask(config=form).execute()
+            folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
         sorted_folder = folder / f"spikesorted_{RECORDING_NAME}"
         assert "spykingcircus2 failed" in (sorted_folder / ERROR_FILE_NAME).read_text()
@@ -492,9 +508,9 @@ class TestSortingTask:
         )
 
         with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()) as run:
-            AINDEPhysSpikeSortingTask(config=form).execute()
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
-        assert run.call_args.kwargs[SpykingCircus2Sorter.motion_correction_parameter] is False
+        assert run.call_args.kwargs["apply_motion_correction"] is False
 
     def test_segments_are_sorted_together_and_split_back(self, tmp_path):
         form = sorting_form(
@@ -503,39 +519,59 @@ class TestSortingTask:
         )
 
         with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()):
-            folder = AINDEPhysSpikeSortingTask(config=form).execute()
+            folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
         sorting = load_sorting(folder / f"spikesorted_{RECORDING_NAME}")
         assert sorting.get_num_segments() == 2
 
-    def test_kilosorts_motion_estimate_is_saved(self, tmp_path):
+    @pytest.mark.parametrize(
+        ("do_correction", "saved"),
+        [(True, True), (False, False)],
+    )
+    def test_kilosorts_motion_estimate_is_saved(self, do_correction, saved, tmp_path):
         form = sorting_form(
             tmp_path / "sorting",
-            sorter=Kilosort4Sorter(),
+            config_class=AINDEPhysSpikeSortingKilosort4SingleConfig,
             preprocessing_output_path=preprocessed_folder(tmp_path),
             min_drift_channels=0,
         )
+        form.drift_correction = Kilosort4DriftCorrection(do_correction=do_correction)
         motion = MagicMock()
 
         with (
+            patch.object(sorting_task.ss, "get_default_sorter_params", return_value={}),
             patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()),
-            patch.object(sorting_task, "read_kilosort4_motion", return_value=motion),
+            patch.object(AINDEPhysSpikeSortingKilosort4Task, "sorter_motion", return_value=motion),
         ):
-            folder = AINDEPhysSpikeSortingTask(config=form).execute()
+            folder = AINDEPhysSpikeSortingKilosort4Task(config=form).execute()
 
-        motion.save.assert_called_once_with(folder / f"spikesortedmotion_{RECORDING_NAME}")
+        assert motion.save.called is saved
+        if saved:
+            motion.save.assert_called_once_with(folder / f"spikesortedmotion_{RECORDING_NAME}")
+
+    def test_other_sorters_leave_no_motion_to_save(self, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+            min_drift_channels=0,
+        )
+
+        with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()):
+            folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        assert not list(folder.glob("spikesortedmotion_*"))
 
     def test_without_an_input_a_toy_recording_is_sorted(self, tmp_path):
         form = sorting_form(tmp_path / "sorting")
 
-        with patch.object(AINDEPhysSpikeSortingTask, "sort") as sort:
-            AINDEPhysSpikeSortingTask(config=form).execute()
+        with patch.object(AINDEPhysSpikeSortingSpykingCircus2Task, "sort") as sort:
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
         source, name, _output = sort.call_args.args
         assert source.is_relative_to(tmp_path / "sorting" / "toy_input")
         assert (source / f"preprocessed_{name}").is_dir()
 
-    def test_read_kilosort4_motion(self, tmp_path):
+    def test_kilosorts_motion_is_read_from_its_ops(self, tmp_path):
         ops = {
             "dshift": np.zeros((10, 3)),
             "batch_size": 6000,
@@ -544,22 +580,146 @@ class TestSortingTask:
         }
         np.save(tmp_path / "ops.npy", ops, allow_pickle=True)
 
-        motion = read_kilosort4_motion(tmp_path, small_recording())
+        motion = AINDEPhysSpikeSortingKilosort4Task.sorter_motion(tmp_path, small_recording())
 
         assert motion.displacement[0].shape == (10, 3)
         assert motion.temporal_bins_s[0][0] == pytest.approx(0.1)
         assert motion.temporal_bins_s[0][-1] < 2.0
 
     @pytest.mark.parametrize(
-        ("sorter", "sorter_name"),
-        [(Kilosort4Sorter(), "kilosort4"), (LupinSorter(), "lupin")],
+        ("config_class", "sorter_name"),
+        [
+            (AINDEPhysSpikeSortingKilosort4SingleConfig, "kilosort4"),
+            (AINDEPhysSpikeSortingSpykingCircus2SingleConfig, "spykingcircus2"),
+            (AINDEPhysSpikeSortingLupinSingleConfig, "lupin"),
+        ],
     )
-    def test_sorters_only_set_parameters_spikeinterface_knows(self, sorter, sorter_name):
+    def test_sorters_only_set_parameters_spikeinterface_knows(self, config_class, sorter_name):
         if sorter_name == "kilosort4":
             # spikeinterface reads these parameters from the package, an optional extra.
             pytest.importorskip("kilosort")
-        assert sorter.sorter_name == sorter_name
-        assert set(sorter.to_dict()) <= set(ss.get_default_sorter_params(sorter_name))
+        form = config_class(info=INFO)
+        defaults = ss.get_default_sorter_params(sorter_name)
+
+        assert form.sorter_name == sorter_name
+        assert form.motion_correction_parameter in defaults
+        assert set(form.sorter_parameters()) <= set(defaults)
+
+    def test_the_blocks_of_a_sorter_merge_into_its_nested_parameters(self):
+        form = AINDEPhysSpikeSortingSpykingCircus2SingleConfig(
+            info=INFO,
+            spike_detection=SpykingCircus2SpikeDetection(detect_threshold=6.0, peak_sign="pos"),
+        )
+
+        parameters = form.sorter_parameters()
+
+        assert parameters["detection"] == {
+            "method": "matched_filtering",
+            "method_kwargs": {"peak_sign": "pos", "detect_threshold": 6.0},
+        }
+        assert parameters["general"] == {"radius_um": 100.0, "ms_before": 0.5, "ms_after": 1.5}
+        assert parameters["motion_correction"] == {"preset": "nonrigid_fast_and_accurate"}
+        assert parameters["apply_preprocessing"] is False
+        assert "type" not in parameters
+
+    @pytest.mark.parametrize(
+        ("config_class", "sorter_name", "left_to_the_platform"),
+        [
+            (
+                AINDEPhysSpikeSortingKilosort4SingleConfig,
+                "kilosort4",
+                {"pool_engine", "n_jobs", "chunk_duration", "progress_bar", "mp_context"}
+                | {"max_threads_per_worker"},
+            ),
+            (
+                AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+                "spykingcircus2",
+                # spikeinterface passes the other selection and clustering methods too little to
+                # run, and reads ``matching_kwargs`` instead of ``method_kwargs``.
+                {"job_kwargs", "debug", "chunk_preprocessing.memory_limit"}
+                | {"cache_preprocessing.memory_limit", "selection.method", "clustering.method"}
+                | {"detection.pipeline_kwargs", "matching.pipeline_kwargs"}
+                | {"matching.method_kwargs"},
+            ),
+            (
+                AINDEPhysSpikeSortingLupinSingleConfig,
+                "lupin",
+                {"job_kwargs", "debug", "gather_mode", "save_array"},
+            ),
+        ],
+    )
+    def test_every_other_parameter_of_a_sorter_is_a_field(
+        self, config_class, sorter_name, left_to_the_platform
+    ):
+        if sorter_name == "kilosort4":
+            pytest.importorskip("kilosort")
+
+        def names(parameters, prefix=""):
+            found = set()
+            for key, value in parameters.items():
+                if isinstance(value, dict) and value:
+                    found |= names(value, f"{prefix}{key}.")
+                else:
+                    found.add(f"{prefix}{key}")
+            return found
+
+        ours = names(config_class(info=INFO).sorter_parameters())
+
+        assert names(ss.get_default_sorter_params(sorter_name)) - ours == left_to_the_platform
+
+    def test_kilosorts_drift_smoothing_is_one_parameter(self):
+        parameters = Kilosort4DriftCorrection(drift_smoothing_time=2.0).to_dict()
+
+        assert parameters["drift_smoothing"] == (0.5, 2.0, 0.5)
+        assert "drift_smoothing_time" not in parameters
+
+    def test_lupin_filters_internally_on_request(self):
+        block = LupinPreprocessing(filter_internally=True, preprocessing_chain={"a": {}})
+
+        assert block.to_dict()["preprocessing_dict"] is None
+        assert LupinPreprocessing(preprocessing_chain={"a": {}}).to_dict()[
+            "preprocessing_dict"
+        ] == {"a": {}}
+
+    def test_lupin_keeps_its_empty_preprocessing_dict(self):
+        assert (
+            AINDEPhysSpikeSortingLupinSingleConfig(info=INFO).sorter_parameters()[
+                "preprocessing_dict"
+            ]
+            == {}
+        )
+
+    @pytest.mark.parametrize(
+        ("config_class", "task_class"),
+        [
+            (AINDEPhysSpikeSortingKilosort4SingleConfig, AINDEPhysSpikeSortingKilosort4Task),
+            (
+                AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+                AINDEPhysSpikeSortingSpykingCircus2Task,
+            ),
+            (AINDEPhysSpikeSortingLupinSingleConfig, AINDEPhysSpikeSortingLupinTask),
+        ],
+    )
+    def test_each_sorter_runs_as_its_own_task(self, config_class, task_class, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            config_class=config_class,
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+        )
+
+        with (
+            patch.object(sorting_task.ss, "get_default_sorter_params", return_value={}),
+            patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()) as run,
+        ):
+            task_class(config=form).execute()
+
+        assert run.call_args.args[0] == config_class.sorter_name
+
+    def test_a_task_refuses_the_config_of_another_sorter(self):
+        with pytest.raises(ValidationError):
+            AINDEPhysSpikeSortingLupinTask(
+                config=AINDEPhysSpikeSortingSpykingCircus2SingleConfig(info=INFO)
+            )
 
 
 class TestPostprocessingTask:

@@ -34,9 +34,6 @@ class TaskSpec:
 
     ``requires_package`` names an optional dependency the task needs; task types whose
     dependency is missing are reported as unavailable instead of failing on import.
-
-    ``task_requires_package`` names one that only ``task_ref`` needs. The configs import without
-    it, so the service can generate them, and the launch job, which installs it, runs the task.
     """
 
     task_ref: ClassRef
@@ -48,7 +45,6 @@ class TaskSpec:
     single_task_config_type: TaskConfigType | None = None
     single_task_activity_type: TaskActivityType | None = None
     requires_package: str | None = None
-    task_requires_package: str | None = None
 
     @property
     def task_cls(self) -> type:

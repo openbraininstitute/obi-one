@@ -1,4 +1,4 @@
-"""What a deployed service does for the AIND ephys tasks. Its image has no spikeinterface."""
+"""What a deployed service does for the AIND ephys tasks."""
 
 import uuid
 from http import HTTPStatus
@@ -8,10 +8,12 @@ from unittest.mock import Mock
 import pytest
 from entitysdk import models
 from entitysdk.types import AssetLabel
+from pydantic import ValidationError
 
 from app import mappings
 from app.errors import ApiError
 from app.mappings import TASK_DEFINITIONS
+from app.schemas.task import TaskAccountingCreate, TaskLaunchSubmit
 from app.services import task as task_service
 from app.services.resource_estimation import aind_ephys as test_module
 from app.services.resource_estimation.circuit_extraction import CPU_MEMORY_COMBINATIONS
@@ -26,13 +28,21 @@ from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
     AINDEPhysPreprocessingSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import SpykingCircus2Sorter
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
-    AINDEPhysSpikeSortingScanConfig,
-    AINDEPhysSpikeSortingSingleConfig,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.config import (
+    AINDEPhysSpikeSortingKilosort4ScanConfig,
+    AINDEPhysSpikeSortingKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.config import (
+    AINDEPhysSpikeSortingLupinScanConfig,
+    AINDEPhysSpikeSortingLupinSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+    AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
+    AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
 )
 
-AIND_TASK_TYPES = [TaskType.aind_ephys_preprocessing, TaskType.aind_ephys_spikesorting]
+SORTING = TaskType.aind_ephys_spikesorting_spykingcircus2
+AIND_TASK_TYPES = [TaskType.aind_ephys_preprocessing, SORTING]
 INFO = Info(campaign_name="Test campaign", campaign_description="Test campaign.")
 GB = 10**9
 
@@ -74,14 +84,27 @@ def estimate(task_type, client):
             ),
             AINDEPhysPreprocessingSingleConfig,
         ),
-        (
-            AINDEPhysSpikeSortingScanConfig(
-                info=INFO,
-                initialize=AINDEPhysSpikeSortingScanConfig.Initialize(
-                    preprocessing_result=TaskResultFromID(id_str=str(uuid.uuid4()))
+        *(
+            (
+                scan_config_class(
+                    info=INFO,
+                    initialize=scan_config_class.Initialize(
+                        preprocessing_result=TaskResultFromID(id_str=str(uuid.uuid4()))
+                    ),
                 ),
-            ),
-            AINDEPhysSpikeSortingSingleConfig,
+                single_config_class,
+            )
+            for scan_config_class, single_config_class in (
+                (
+                    AINDEPhysSpikeSortingKilosort4ScanConfig,
+                    AINDEPhysSpikeSortingKilosort4SingleConfig,
+                ),
+                (
+                    AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
+                    AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+                ),
+                (AINDEPhysSpikeSortingLupinScanConfig, AINDEPhysSpikeSortingLupinSingleConfig),
+            )
         ),
     ],
 )
@@ -116,8 +139,14 @@ def test_the_machine_is_one_the_launch_system_accepts(task_type):
     assert resources.memory in CPU_MEMORY_COMBINATIONS[resources.cores]
 
 
-def test_the_default_sorter_is_one_the_launch_job_installs():
-    assert isinstance(AINDEPhysSpikeSortingScanConfig(info=INFO).sorter, SpykingCircus2Sorter)
+@pytest.mark.parametrize("request_model", [TaskLaunchSubmit, TaskAccountingCreate])
+@pytest.mark.parametrize(
+    "task_type",
+    [TaskType.aind_ephys_spikesorting_kilosort4, TaskType.aind_ephys_spikesorting_lupin],
+)
+def test_sorters_the_launch_job_does_not_install_cannot_be_launched(task_type, request_model):
+    with pytest.raises(ValidationError, match="not launchable"):
+        request_model(task_type=task_type, config_id=uuid.uuid4())
 
 
 class TestEstimate:
@@ -143,7 +172,7 @@ class TestEstimate:
     def test_sorting_adds_up_the_result_folder(self):
         client = db_client(inputs=[Mock(id=uuid.uuid4())], result_file_gbs=(10.0, 10.0))
 
-        resources = estimate(TaskType.aind_ephys_spikesorting, client)
+        resources = estimate(SORTING, client)
 
         assert client.select_assets.call_args.kwargs["selection"] == {
             "label": AssetLabel.task_result
@@ -152,9 +181,9 @@ class TestEstimate:
         assert resources.timelimit == "11:00"
 
     def test_a_config_without_an_input_keeps_the_defaults(self):
-        resources = estimate(TaskType.aind_ephys_spikesorting, db_client(inputs=[]))
+        resources = estimate(SORTING, db_client(inputs=[]))
 
-        definition = TASK_DEFINITIONS[TaskType.aind_ephys_spikesorting].resources
+        definition = TASK_DEFINITIONS[SORTING].resources
         assert resources.ephemeral_storage is None
         assert resources.timelimit == definition.timelimit
 

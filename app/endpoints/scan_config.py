@@ -16,8 +16,14 @@ from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (  # ruff: ignore[import-private-name]
     AINDEPhysPreprocessingScanConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (  # ruff: ignore[import-private-name]
-    AINDEPhysSpikeSortingScanConfig,
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.config import (  # ruff: ignore[import-private-name]
+    AINDEPhysSpikeSortingKilosort4ScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.config import (  # ruff: ignore[import-private-name]
+    AINDEPhysSpikeSortingLupinScanConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (  # ruff: ignore[import-private-name]
+    AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
 )
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
@@ -170,7 +176,9 @@ def activate_scan_config_endpoints() -> None:
         (EMSynapseMappingScanConfig, "generate", "", False),
         (EModelEFeatureExtractionScanConfig, "generate", "", False),
         (AINDEPhysPreprocessingScanConfig, "generate", "", False),
-        (AINDEPhysSpikeSortingScanConfig, "generate", "", False),
+        (AINDEPhysSpikeSortingKilosort4ScanConfig, "generate", "", False),
+        (AINDEPhysSpikeSortingSpykingCircus2ScanConfig, "generate", "", False),
+        (AINDEPhysSpikeSortingLupinScanConfig, "generate", "", False),
         (CreateExtracellularRecordingArrayScanConfig, "generate", "", False),
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
