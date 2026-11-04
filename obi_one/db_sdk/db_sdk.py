@@ -26,6 +26,14 @@ from obi_one.core.exception import OBIONEError
 L = logging.getLogger(__name__)
 
 
+def require_db_client(db_client: Client | None) -> Client:
+    """Return ``db_client``, raising if it was not provided."""
+    if db_client is None:
+        msg = "db_client is required"
+        raise ValueError(msg)
+    return db_client
+
+
 def get_identifiable[T: Identifiable](
     *, client: Client, identifiable_id: UUID, identifiable_type: type[T]
 ) -> T:

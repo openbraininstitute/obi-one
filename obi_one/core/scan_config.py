@@ -349,8 +349,9 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
     ) -> TaskConfig:
+        db_client = db_sdk.require_db_client(db_client)
         if self.campaign_task_config_type is None:
             msg = "campaign_task_config_type must be defined to create generic campaign TaskConfig."
             raise NotImplementedError(msg)

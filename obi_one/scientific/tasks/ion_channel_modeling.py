@@ -24,6 +24,7 @@ from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
 from obi_one.core.units import Units
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.blocks.ion_channel_equations.ion_channel_equations import (
     EquationKey,
     equation_schema_extra,
@@ -504,9 +505,10 @@ class IonChannelFittingTask(Task):
 
     def download_input(
         self,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
     ) -> tuple[list[Path], list[float]]:
         """Download every recording, and return their traces and ljp values."""
+        db_client = require_db_client(db_client)
         trace_paths = []
         trace_ljps = []
         for recording in self.recordings:
@@ -655,14 +657,15 @@ class IonChannelFittingTask(Task):
 
         return model.id
 
-    def execute(
+    def execute(  # ruff: ignore[too-many-locals]
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> str:  # returns the id of the generated ion channel model
         """Download traces from entitycore, use them to build an ion channel, then register it."""
+        db_client = require_db_client(db_client)
         execution_activity = self._get_execution_activity(
             db_client=db_client, execution_activity_id=execution_activity_id
         )

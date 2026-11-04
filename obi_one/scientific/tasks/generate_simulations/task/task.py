@@ -10,6 +10,7 @@ from pydantic import PrivateAttr
 from obi_one.core.block import Block
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.task import Task
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.blocks.morphology_locations.base import (
     GeneratedMorphologyLocationsBlock,
 )
@@ -704,11 +705,12 @@ class GenerateSimulationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         """Generates SONATA simulation files."""
+        db_client = require_db_client(db_client)
         self._entity_cache = entity_cache
         self._sonata_config = self.config.base_sonata_config()
         self._check_the_simulator_runs_every_block()

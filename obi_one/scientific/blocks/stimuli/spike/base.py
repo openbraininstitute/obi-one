@@ -60,13 +60,14 @@ class SpikeStimulus(StimulusWithTimestamps):
         circuit: Circuit,
         sonata_simulation_config_directory: Path,
         simulation_length: NonNegativeFloat,
-        default_timestamps: TimestampsReference = None,  # ty:ignore[invalid-parameter-default]
+        default_timestamps: TimestampsReference | None = None,
         default_source_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
         default_target_neuron_set_reference: ALL_NEURON_SETS_REFERENCE_UNION | None = None,
     ) -> dict:
         if default_timestamps is None:
-            default_timestamps = SingleTimestamp(start_time=0.0)
-        self._default_timestamps = default_timestamps
+            self._default_timestamps = SingleTimestamp(start_time=0.0)  # ty:ignore[invalid-assignment]
+        else:
+            self._default_timestamps = default_timestamps
 
         source_neuron_set = resolve_neuron_set_ref_to_neuron_set(
             self.source_neuron_set, default_source_neuron_set_reference

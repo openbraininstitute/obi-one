@@ -17,6 +17,7 @@ from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.morphology_loader import load_morphology_nrn_order
@@ -90,10 +91,11 @@ class MorphologyLocationsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
+        db_client = require_db_client(db_client)
         try:  # ruff: ignore[too-many-statements-in-try-clause]
             if isinstance(self.config.initialize.morphology, Path):
                 m = load_morphology_nrn_order(self.config.initialize.morphology)

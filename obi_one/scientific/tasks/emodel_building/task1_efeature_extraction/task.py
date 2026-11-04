@@ -9,6 +9,7 @@ import entitysdk
 import httpx
 
 from obi_one.core.task import Task
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.from_id.electrical_cell_recording_from_id import (
     ElectricalCellRecordingFromID,
 )
@@ -286,10 +287,11 @@ class EModelEFeatureExtractionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> Path:
+        db_client = require_db_client(db_client)
         from bluepyemodel.access_point import (  # ruff: ignore[import-outside-top-level]
             get_access_point,
         )

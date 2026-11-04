@@ -6,6 +6,7 @@ from entitysdk.models import MEModel
 from entitysdk.staging.memodel import stage_sonata_from_memodel
 
 from obi_one.core.entity_from_id import EntityFromID
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 
@@ -15,9 +16,10 @@ class MEModelFromID(EntityFromID[MEModel]):
 
     def morphio_morphology(
         self,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
     ) -> morphio.Morphology:
         """Load this ME-model's morphology through its CellMorphology entity."""
+        db_client = require_db_client(db_client)
         memodel = self.entity(db_client)
         morphology = CellMorphologyFromID(id_str=str(memodel.morphology.id))
         return morphology.morphio_morphology(db_client)
@@ -25,10 +27,11 @@ class MEModelFromID(EntityFromID[MEModel]):
     def stage_circuit(
         self,
         *,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         dest_dir: Path | None = None,
         entity_cache: bool = False,
     ) -> MEModelCircuit:
+        db_client = require_db_client(db_client)
         if not entity_cache and dest_dir.exists():  # ty:ignore[unresolved-attribute]
             msg = f"Circuit directory '{dest_dir}' already exists and is not empty."
             raise FileExistsError(msg)

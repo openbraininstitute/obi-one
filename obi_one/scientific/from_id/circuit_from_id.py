@@ -5,6 +5,7 @@ from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.core.exception import OBIONEError
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.circuit_staging import (
     SONATA_CIRCUIT_ASSET_SELECTION,
@@ -20,7 +21,7 @@ class CircuitFromID(EntityFromID[models.Circuit]):
         self,
         *,
         dest_dir: Path = Path(),
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         entity_cache: bool = False,
         nodes_only: bool = False,
     ) -> Circuit:
@@ -36,6 +37,7 @@ class CircuitFromID(EntityFromID[models.Circuit]):
                 properties and nothing else: a circuit's edge files can dwarf everything else,
                 and private-project circuits have to be downloaded rather than symlinked.
         """
+        db_client = require_db_client(db_client)
         entity = self.entity(db_client=db_client)
 
         for asset in entity.assets:
@@ -87,9 +89,10 @@ class MEModelWithSynapsesCircuitFromID(EntityFromID[models.Circuit]):
         self,
         *,
         dest_dir: Path = Path(),
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         entity_cache: bool = False,
     ) -> MEModelWithSynapsesCircuit:
+        db_client = require_db_client(db_client)
         for asset in self.entity(db_client=db_client).assets:
             if asset.label == "sonata_circuit":
                 if not entity_cache and dest_dir.exists():

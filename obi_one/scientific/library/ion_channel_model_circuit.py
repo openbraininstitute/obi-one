@@ -4,6 +4,7 @@ from typing import Any
 import entitysdk
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 
+from obi_one.db_sdk.db_sdk import require_db_client
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.unions_and_references.ion_channel_model import (
     IonChannelModelUnion,
@@ -20,10 +21,11 @@ class CircuitFromIonChannelModels:
     def stage_circuit(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
         dest_dir: Path | None = None,
         entity_cache: bool = False,
     ) -> MEModelCircuit:
+        db_client = require_db_client(db_client)
         if not entity_cache and dest_dir.exists():  # ty:ignore[unresolved-attribute]
             msg = f"Circuit directory '{dest_dir}' already exists and is not empty."
             raise FileExistsError(msg)
