@@ -87,7 +87,7 @@ def register_output_entities(
     authorized_public = False
     if execution_activity_id is not None:
         activity = db_client.get_entity(
-            entity_id=UUID(str(execution_activity_id)),
+            entity_id=UUID(execution_activity_id),
             entity_type=TaskActivity,
         )
         authorized_public = getattr(activity, "authorized_public", False)
