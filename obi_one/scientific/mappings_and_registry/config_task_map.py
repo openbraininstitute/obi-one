@@ -314,6 +314,12 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         scan_config_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsScanConfig"),
         asset_label=None,
     ),
+    TaskType.pd14_network_write: TaskSpec(
+        task_ref=(f"{_TASKS}.pd14_network_write", "PD14NetworkWriteTask"),
+        single_config_ref=(f"{_TASKS}.pd14_network_write", "PD14NetworkWriteSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.pd14_network_write", "PD14NetworkWriteScanConfig"),
+        asset_label=None,
+    ),
     TaskType.circuit_simplification: TaskSpec(
         task_ref=(f"{_TASKS}.circuit_simplification.task", "CircuitSimplificationTask"),
         single_config_ref=(

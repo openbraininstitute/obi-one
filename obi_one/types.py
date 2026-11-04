@@ -52,3 +52,4 @@ class TaskType(StrEnum):
     morphology_locations = auto()
     morphology_metrics = auto()
     circuit_simplification = auto()
+    pd14_network_write = auto()

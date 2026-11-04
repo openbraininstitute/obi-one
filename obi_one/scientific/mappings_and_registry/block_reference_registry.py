@@ -73,6 +73,14 @@ _BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         f"{_BLOCK_REFERENCES}.extracellular_locations",
         "ExtracellularLocationsReference",
     ),
+    "PointNeuronPopulationReference": (
+        f"{_BLOCK_REFERENCES}.point_neuron_populations",
+        "PointNeuronPopulationReference",
+    ),
+    "PathwayConnectionProbabilityReference": (
+        f"{_BLOCK_REFERENCES}.pathway_connection_probabilities",
+        "PathwayConnectionProbabilityReference",
+    ),
 }
 
 
