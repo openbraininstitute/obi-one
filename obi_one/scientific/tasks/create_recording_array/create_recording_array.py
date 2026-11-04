@@ -222,7 +222,7 @@ class CreateExtracellularRecordingArrayTask(Task):
     def execute(
         self,
         *,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit

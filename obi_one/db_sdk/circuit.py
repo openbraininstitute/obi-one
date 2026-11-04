@@ -118,7 +118,7 @@ def _upload_or_replace_directory(
 def resolve_circuit(
     circuit: Circuit | CircuitFromID,
     *,
-    db_client: Client,
+    db_client: Client | None,
     entity_cache: bool,
     cache_root: Path,
     temp_dir: Path,
@@ -145,6 +145,9 @@ def resolve_circuit(
 
     if isinstance(circuit, CircuitFromID):
         L.info("Circuit is a CircuitFromID instance.")
+        if db_client is None:
+            msg = "db_client is required to stage a CircuitFromID"
+            raise ValueError(msg)
         circuit_id = circuit.id_str
 
         if entity_cache:

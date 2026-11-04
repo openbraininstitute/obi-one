@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -132,6 +133,63 @@ async def entity_sdk_error_handler(request: Request, exc: EntitySDKError) -> Non
     ) from exc
 
 
+def _error_response_for_http_detail(detail: Any) -> ErrorResponse:
+    """Map an HTTPException detail into the shared ErrorResponse envelope.
+
+    Endpoints often raise ``HTTPException`` with ``detail={"code": ..., "detail": ...}``.
+    Prefer that structured code when it matches ``ApiErrorCode``; otherwise fall back to
+    entitycore's GENERIC_ERROR + raw details shape.
+    """
+    if isinstance(detail, dict) and "code" in detail:
+        try:
+            error_code = ApiErrorCode(detail["code"])
+        except ValueError:
+            error_code = ApiErrorCode.GENERIC_ERROR
+        message = str(detail.get("detail") or "HTTP error")
+        return ErrorResponse(message=message, error_code=error_code, details=detail)
+
+    return ErrorResponse(
+        message="HTTP error",
+        error_code=ApiErrorCode.GENERIC_ERROR,
+        details=detail,
+    )
+
+
+async def http_exception_handler(request: Request, exception: StarletteHTTPException) -> Response:
+    """Handle HTTP exceptions with the shared ErrorResponse envelope.
+
+    Modeled on entitycore's StarletteHTTPException handler: log the failure and return a
+    structured body instead of FastAPI's default ``{"detail": ...}`` payload.
+    """
+    err_content = _error_response_for_http_detail(exception.detail)
+    L.warning("HTTP error in %s %s: %s", request.method, request.url, err_content)
+    return Response(
+        media_type="application/json",
+        status_code=int(exception.status_code),
+        content=err_content.model_dump_json(),
+    )
+
+
+async def unhandled_exception_handler(request: Request, exception: Exception) -> Response:
+    """Return a structured 500 for otherwise-unhandled exceptions.
+
+    Lets endpoints propagate server failures (for example ``OSError`` during file conversion)
+    instead of catching them only to rebuild an HTTP 500 by hand.
+    """
+    message = str(exception) or exception.__class__.__name__
+    err_content = ErrorResponse(
+        message=message,
+        error_code=ApiErrorCode.INTERNAL_ERROR,
+        details=[{"type": "value_error", "loc": ["body"], "msg": message}],
+    )
+    L.exception("Unhandled error in %s %s: %s", request.method, request.url, err_content)
+    return Response(
+        media_type="application/json",
+        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+        content=err_content.model_dump_json(),
+    )
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION or "0.0.0",
@@ -141,6 +199,8 @@ app = FastAPI(
         ApiError: api_error_handler,
         RequestValidationError: validation_exception_handler,
         EntitySDKError: entity_sdk_error_handler,
+        StarletteHTTPException: http_exception_handler,
+        Exception: unhandled_exception_handler,
     },  # ty:ignore[invalid-argument-type]
     root_path=settings.ROOT_PATH,
     strict_content_type=False,

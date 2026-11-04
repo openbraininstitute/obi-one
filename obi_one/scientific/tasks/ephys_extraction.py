@@ -72,7 +72,7 @@ class ElectrophysiologyMetricsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> ElectrophysiologyMetricsOutput:

@@ -86,7 +86,7 @@ def test_get_sdk_error(client, monkeypatch):
         response = client.get(f"{ROUTE}/{entity_id}")
 
     assert response.status_code == 500
-    assert response.json()["detail"]["code"] == "INTERNAL_ERROR"
+    assert response.json()["error_code"] == "INTERNAL_ERROR"
 
 
 def test_register_morphology_metrics_success(client, morphology_json, monkeypatch):
@@ -138,7 +138,9 @@ def test_register_morphology_metrics_no_h5_asset(client, morphology_json, monkey
     response = client.post(f"{ROUTE}/{entity_id}/register")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json() == {
-        "detail": "No H5 asset on morphology (expected content type: application/x-hdf5)"
+        "error_code": "GENERIC_ERROR",
+        "message": "HTTP error",
+        "details": "No H5 asset on morphology (expected content type: application/x-hdf5)",
     }
 
 
@@ -159,7 +161,11 @@ def test_register_morphology_metrics_asset_no_id(client, morphology_json, monkey
 
     response = client.post(f"{ROUTE}/{entity_id}/register")
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.json() == {"detail": "Morphology asset is missing an id"}
+    assert response.json() == {
+        "error_code": "GENERIC_ERROR",
+        "message": "HTTP error",
+        "details": "Morphology asset is missing an id",
+    }
 
 
 def test_compute_measurement_kinds_unsupported_format():
