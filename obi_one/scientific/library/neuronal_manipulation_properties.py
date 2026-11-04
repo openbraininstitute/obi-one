@@ -18,7 +18,7 @@ import logging
 import tempfile
 from collections import defaultdict
 from collections.abc import Callable, Container, Hashable, Iterable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from uuid import UUID
@@ -285,7 +285,9 @@ def _stage_circuit_for_neuron_set(
 
     if stage_nodes:
         # Independent files: fetch together. A failed nodes.h5 re-raises from result().
-        futures = [FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values()]
+        futures: list[Future[Path | None]] = [
+            FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values()
+        ]
         if node_sets_asset_path:
             futures.append(FETCH_POOL.submit(stage_node_sets, node_sets_asset_path))
         for future in futures:
