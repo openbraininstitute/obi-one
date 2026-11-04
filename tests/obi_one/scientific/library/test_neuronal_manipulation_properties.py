@@ -1326,13 +1326,51 @@ class TestGetCircuitManipulationPropertiesFastPath:
             )
         ]
 
-    def test_fast_path_rejects_a_malformed_circuit_like_the_neuron_set_path(self):
-        """A circuit without one sonata_circuit asset is a 400 in both modes."""
+    def test_fast_path_without_a_sonata_asset_uses_derivations(self):
+        """Without a neuron set, a circuit with no sonata_circuit asset still gets results."""
+        client = MagicMock()
+        client.get_entity.return_value.assets = []
+        deriv = MagicMock()
+        deriv.label = "hoc:cACint_L23MC"
+        deriv.used.id = str(uuid4())
+        client.search_entity.return_value.all.return_value = [deriv]
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel",
+            return_value=(
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            ),
+        ):
+            result = get_circuit_manipulation_properties(
+                db_client=client, circuit_id=str(uuid4()), neuron_set=None
+            )
+
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+        client.fetch_file.assert_not_called()
+
+    def test_neuron_set_path_rejects_a_circuit_without_a_sonata_asset(self):
+        """With a neuron set the circuit files are required: a ValueError (HTTP 400)."""
         client = MagicMock()
         client.get_entity.return_value.assets = []
         with pytest.raises(ValueError, match="exactly one sonata_circuit"):
             get_circuit_manipulation_properties(
-                db_client=client, circuit_id=str(uuid4()), neuron_set=None
+                db_client=client,
+                circuit_id=str(uuid4()),
+                neuron_set=BiophysicalPopulationPredefinedNeuronSet(
+                    population="S1nonbarrel_neurons", node_set="All"
+                ),
             )
         client.search_entity.assert_not_called()
 

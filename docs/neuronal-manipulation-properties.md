@@ -40,7 +40,7 @@ For `distribute_distance`, the value is the optimised parameter BluePyOpt substi
 
 A template is read from the derivation path instead, with a warning naming the reason, when its hoc file is missing, too large (over 1 MB) or not template output, when no mod file defines one of its mechanisms (or two do), when the asset cannot be listed, or when its population has no `biophysical_neuron_models_dir`. Warnings quote only the reader's own messages; fetch errors are logged and reported by type only, since they can contain signed storage URLs.
 
-A circuit without exactly one `sonata_circuit` asset is rejected (HTTP 400) with or without a neuron set.
+With a neuron set, a circuit without exactly one `sonata_circuit` asset is rejected (HTTP 400): its files are needed to resolve the set. Without one, such a circuit uses its `emodel_circuit` derivations, as when its files cannot be read.
 
 Asset paths built from circuit content are refused when absolute or containing `..`.
 

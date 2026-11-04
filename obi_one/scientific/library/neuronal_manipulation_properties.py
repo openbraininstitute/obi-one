@@ -1209,20 +1209,22 @@ def get_circuit_manipulation_properties(
         and optional warnings. Each template that needed the derivation fallback, or
         could not be resolved at all, gets one warning with the reason.
 
-    A ``ValueError`` propagates when the circuit has no single sonata_circuit asset (in
-    both modes), the neuron set resolves to no nodes, or a selected population has no
-    model_template; the endpoint maps it to HTTP 400.
+    With a neuron set, a ``ValueError`` propagates when the circuit has no single
+    sonata_circuit asset, the neuron set resolves to no nodes, or a selected population
+    has no model_template; the endpoint maps it to HTTP 400. Without one, a circuit
+    without that asset uses its emodel_circuit derivations, as the files cannot be read.
     """
     resolved_populations: list[str] | None = None
-    circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
 
     if neuron_set is None:
         try:
+            _circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
             templates_per_population, template_models = _collect_all_templates(
                 db_client, circuit_id, asset
             )
         except Exception as err:  # ruff: ignore[blind-except]
-            # Circuit files unreadable: the derivation path is all that is left.
+            # No single sonata_circuit asset, or its files unreadable: the derivations are
+            # all that is left, as on the derivation-only path this replaced.
             L.warning("Could not read templates of circuit %s", circuit_id, exc_info=True)
             label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
             if not label_to_emodel_id:
@@ -1242,6 +1244,7 @@ def get_circuit_manipulation_properties(
         if not node_to_template:
             return _empty_response("No population with a model_template found in this circuit.")
     else:
+        circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
         resolved_populations, node_to_template, template_models = (
             _stage_circuit_for_neuron_set_resolution(
                 db_client,
