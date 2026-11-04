@@ -1357,7 +1357,9 @@ class TestMemodelMechanismVariableResponse:
             "obi_one.scientific.library.memodel_circuit.get_mechanism_variables",
             return_value=(variables, mapping),
         ) as mock_get:
-            result = get_memodel_mechanism_variables(db_client, "memodel-id")
+            result = get_memodel_mechanism_variables(
+                db_client, "00000000-0000-4000-8000-0000000000d1"
+            )
 
         db_client.get_entity.assert_called_once()
         mock_get.assert_called_once_with(db_client, memodel)
@@ -1371,7 +1373,7 @@ class TestMemodelMechanismVariableResponse:
         db_client.get_entity.side_effect = RuntimeError("fetch failed")
 
         with pytest.raises(RuntimeError, match="fetch failed"):
-            get_memodel_mechanism_variables(db_client, "memodel-id")
+            get_memodel_mechanism_variables(db_client, "00000000-0000-4000-8000-0000000000d1")
 
 
 class TestMEModelCircuitValidation:
