@@ -86,11 +86,10 @@ def run_task_for_single_config_asset(
 ) -> None:
     """Run the appropriate task for a single configuration stored as an asset."""
     entity_uuid = UUID(entity_id)
-    asset_uuid = UUID(config_asset_id)
     json_str = db_client.download_content(
         entity_id=entity_uuid,
         entity_type=entity_type,
-        asset_id=asset_uuid,
+        asset_id=UUID(config_asset_id),
     ).decode(encoding="utf-8")
 
     json_dict = json.loads(json_str)
