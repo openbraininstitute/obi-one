@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from entitysdk.types import AssetLabel
@@ -246,7 +247,7 @@ class TestMechanismVariableLoading:
 
     def test_get_mechanism_variables_delegates_by_emodel_id(self):
         db_client = MagicMock()
-        memodel = SimpleNamespace(emodel=SimpleNamespace(id="emodel-id"))
+        memodel = SimpleNamespace(emodel=SimpleNamespace(id="00000000-0000-4000-8000-0000000000e1"))
         expected = ([], ChannelSectionListMapping(channel_to_section_lists={}))
 
         with patch(
@@ -256,17 +257,23 @@ class TestMechanismVariableLoading:
             result = get_mechanism_variables(db_client, memodel)
 
         assert result == expected
-        mock_get.assert_called_once_with(db_client, "emodel-id")
+        mock_get.assert_called_once_with(db_client, "00000000-0000-4000-8000-0000000000e1")
 
     def test_emodel_without_assets_adds_default_section_properties(self):
         db_client = MagicMock()
-        emodel = SimpleNamespace(id="emodel-id", ion_channel_models=[], assets=[])
+        emodel = SimpleNamespace(
+            id="00000000-0000-4000-8000-0000000000e1", ion_channel_models=[], assets=[]
+        )
         db_client.get_entity.return_value = emodel
 
-        variables, mapping = get_mechanism_variables_for_emodel(db_client, "emodel-id")
+        variables, mapping = get_mechanism_variables_for_emodel(
+            db_client, "00000000-0000-4000-8000-0000000000e1"
+        )
 
         db_client.get_entity.assert_called_once()
-        assert db_client.get_entity.call_args.kwargs["entity_id"] == "emodel-id"
+        assert db_client.get_entity.call_args.kwargs["entity_id"] == UUID(
+            "00000000-0000-4000-8000-0000000000e1"
+        )
         assert db_client.get_entity.call_args.kwargs["entity_type"].__name__ == "EModel"
         assert mapping.channel_to_section_lists == {}
         assert len(variables) == 8
@@ -343,7 +350,7 @@ class TestMechanismVariableLoading:
     def test_optimization_output_asset_is_downloaded_and_parsed(self):
         asset = SimpleNamespace(label=AssetLabel.emodel_optimization_output, id="asset-id")
         emodel = SimpleNamespace(
-            id="emodel-id",
+            id="00000000-0000-4000-8000-0000000000e1",
             assets=[asset],
             ion_channel_models=[_make_icm("NaTg")],
         )
@@ -420,7 +427,9 @@ class TestMechanismVariableLoading:
                 return_value=metadata_variables,
             ),
         ):
-            variables, mapping = get_mechanism_variables_for_emodel(db_client, "emodel-id")
+            variables, mapping = get_mechanism_variables_for_emodel(
+                db_client, "00000000-0000-4000-8000-0000000000e1"
+            )
 
         assert mapping.channel_to_section_lists["NaTg"].section_lists == ["somatic"]
         variable_names = {variable.neuron_variable for variable in variables}
