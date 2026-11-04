@@ -19,6 +19,11 @@ from obi_one.scientific.tasks.aind_ephys._03_spikesorting.config import (
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.materialize import (
     materialize_preprocessing_output,
 )
+from obi_one.scientific.tasks.aind_ephys._03_spikesorting.sorted_units import (
+    SortedUnits,
+    sorted_units,
+    write_sorted_units,
+)
 from obi_one.scientific.tasks.aind_ephys.registration import register_stage_result
 from obi_one.scientific.tasks.aind_ephys.utils import (
     global_job_kwargs,
@@ -63,8 +68,13 @@ class AINDEPhysSpikeSortingTask(Task):
             raise FileNotFoundError(msg)
 
         with global_job_kwargs(self.config.job_kwargs.to_dict()):
-            for name in names:
-                self.sort(source, name, output_folder)
+            sorted_recordings = {
+                name: units
+                for name in names
+                if (units := self.sort(source, name, output_folder)) is not None
+            }
+        if sorted_recordings:
+            write_sorted_units(output_folder, sorted_recordings)
         shutil.rmtree(output_folder / "sorter_scratch", ignore_errors=True)
         if execution_activity_id is not None:
             result = register_stage_result(
@@ -97,8 +107,8 @@ class AINDEPhysSpikeSortingTask(Task):
             return Path(init.preprocessing_output_path)
         return materialize_preprocessing_output(output_folder / TOY_INPUT_FOLDER_NAME)
 
-    def sort(self, source: Path, name: str, output_folder: Path) -> None:
-        """Sort one preprocessed recording."""
+    def sort(self, source: Path, name: str, output_folder: Path) -> SortedUnits | None:
+        """Sort one preprocessed recording; its units, or None where it was skipped."""
         start = datetime.now(UTC)
         init = self.config.initialize
         sorter_name = self.config.sorter_name
@@ -107,7 +117,7 @@ class AINDEPhysSpikeSortingTask(Task):
         remove_outputs(sorting_folder, output_folder / f"spikesortedmotion_{name}")
         if was_skipped(source / f"preprocessed_{name}"):
             write_skip(sorting_folder, "Preprocessing skipped this recording")
-            return
+            return None
 
         recording = load_dumped_recording(source, f"binary_{name}")
         concatenated = recording.get_num_segments() > 1
@@ -139,10 +149,12 @@ class AINDEPhysSpikeSortingTask(Task):
             L.exception("Sorting %s failed; skipping it.", name)
             write_skip(sorting_folder, f"{sorter_name} failed")
             shutil.copy2(work_folder / SORTER_LOG_FILE_NAME, sorting_folder)
-            return
+            return None
 
         num_units = len(sorting.unit_ids)
         sorting = scur.remove_excess_spikes(sorting.remove_empty_units(), recording)
+        # Before the split, while the segments are one recording to place the units on
+        units = sorted_units(sorting, recording)
         if concatenated:
             sorting = si.split_sorting(sorting, recording)
         sorting.save(folder=sorting_folder)
@@ -166,6 +178,7 @@ class AINDEPhysSpikeSortingTask(Task):
             notes=f"{sorter_name} found {num_units} units.",
             start=start,
         )
+        return units
 
     @staticmethod
     def sorter_motion(

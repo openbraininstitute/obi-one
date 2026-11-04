@@ -240,7 +240,9 @@ class TestStages:
                 "download_directory_asset_by_label",
                 return_value=stages["preprocessing"],
             ) as download,
-            patch.object(AINDEPhysSpikeSortingSpykingCircus2Task, "sort") as sort,
+            patch.object(
+                AINDEPhysSpikeSortingSpykingCircus2Task, "sort", return_value=None
+            ) as sort,
             patch.object(Task, "_get_execution_activity"),
             patch.object(Task, "_update_execution_activity") as update_activity,
         ):

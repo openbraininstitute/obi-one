@@ -53,6 +53,7 @@ For each recording (`<name> = block0_acquisition-ElectricalSeriesRaw_recording1`
 
 - **`spikesorted_<name>/`** — the sorting as a SpikeInterface `NumpyFolderSorting`, without empty units or spikes beyond the recording, plus the sorter's `spikeinterface_log.json`.
 - **`spikesortedmotion_<name>/`** — Kilosort4's own motion estimate, when it corrected drift (probes with at least `min_drift_channels` channels).
+- **`circuit_config.json`, `nodes.h5`, `spikes.h5`, `recordings.json`** — the units and spikes as SONATA files, which the platform's spike viewer reads. Each recording is a population; each unit is a node placed at the centre of its template's amplitude across the electrodes.
 
 ## Output layout
 

@@ -541,7 +541,9 @@ class TestSortingTask:
     def test_without_an_input_a_toy_recording_is_sorted(self, tmp_path):
         form = sorting_form(tmp_path / "sorting")
 
-        with patch.object(AINDEPhysSpikeSortingSpykingCircus2Task, "sort") as sort:
+        with patch.object(
+            AINDEPhysSpikeSortingSpykingCircus2Task, "sort", return_value=None
+        ) as sort:
             AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
 
         source, name, _output = sort.call_args.args
