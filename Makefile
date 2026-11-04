@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-aind-ephys test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -120,6 +120,10 @@ test-schema: ## Run schema tests locally.
 test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
+
+test-aind-ephys: ## Run the AIND ephys tests, whose dependencies are not in the Docker image.
+	@$(call load_env,test-local)
+	uv run -m pytest tests/obi_one/scientific/tasks/aind_ephys --cov-fail-under=0 --cov-report=xml:.coverage/aind_ephys_coverage.xml
 
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test

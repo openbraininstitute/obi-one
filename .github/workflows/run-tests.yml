@@ -90,6 +90,8 @@ jobs:
         run: make install-all
       - name: Run linters
         run: make lint
+      - name: Run AIND ephys tests
+        run: make test-aind-ephys
       - name: Run tests
         run: make test-docker
       - name: Run pip-audit
@@ -100,7 +102,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openbraininstitute/obi-one
           fail_ci_if_error: false
-          files: .coverage/coverage.xml
+          files: .coverage/coverage.xml,.coverage/aind_ephys_coverage.xml
           flags: pytest
           verbose: true
       - name: Cleanup
