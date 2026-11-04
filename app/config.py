@@ -83,8 +83,6 @@ class Settings(BaseSettings):
 
     # Launch script directory within the repository: contains main.py and dependencies/.
     OBI_ONE_LAUNCH_PATH: str = "launch_scripts/launch_task_for_single_config_asset"
-    # The AIND ephys tasks are not released yet: "commit:<sha>" of the pushed branch they run from.
-    AIND_EPHYS_LAUNCH_REF: str | None = None
 
     MOUNT_BASE_DIR: str | None = None
 

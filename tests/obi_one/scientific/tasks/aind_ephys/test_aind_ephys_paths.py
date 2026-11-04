@@ -1,8 +1,10 @@
 """The less-travelled paths of the AIND ephys stages, on small synthetic recordings."""
 
 import json
+import sys
 import uuid
 from pathlib import Path
+from typing import get_args
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -12,6 +14,7 @@ pytest.importorskip("spikeinterface")
 
 import spikeinterface as si
 import spikeinterface.sorters as ss
+from spikeinterface.preprocessing.motion import motion_options_preset
 
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.extracellular_recording_from_id import (
@@ -74,7 +77,7 @@ from obi_one.scientific.tasks.aind_ephys._06_visualization.config import (
 from obi_one.scientific.tasks.aind_ephys._07_results_collector.config import (
     AINDEPhysResultsCollectorSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
+from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs, MotionPreset
 from obi_one.scientific.tasks.aind_ephys.toy_recording import (
     ELECTRICAL_SERIES_NAME,
     write_toy_nwb,
@@ -384,6 +387,26 @@ class TestPreprocessingTask:
 
         assert compute.call_args.kwargs["preset"] == form.motion_correction.preset
         assert list(folder.glob("motioncorrected_*"))
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="Segfaults under pytest on macOS.")
+    def test_the_default_preset_runs_in_the_launch_jobs_packages(self, nwb_path, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0
+            ),
+            motion_correction=MotionCorrection(),
+        )
+
+        folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        (record,) = folder.glob("data_process_preprocessing_*.json")
+        assert not json.loads(record.read_text())["notes"]
+        assert list(folder.glob("motion_*/motion/displacement_seg0.npy"))
+
+    @pytest.mark.parametrize("preset", get_args(MotionPreset))
+    def test_the_offered_presets_do_not_need_torch(self, preset):
+        assert "dredge" not in motion_options_preset[preset]["estimate_motion_kwargs"]["method"]
 
     def test_a_failed_motion_estimate_is_noted(self, nwb_path, tmp_path):
         form = preprocessing_form(

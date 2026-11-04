@@ -1,7 +1,8 @@
 """Sorter blocks for the spike sorting stage of the AIND ephys pipeline.
 
 Each block's ``to_dict`` gives parameters that override spikeinterface's defaults for its sorter.
-Defaults are those of the AIND pipeline's ``default_params.json``.
+Defaults are those of the AIND pipeline's ``default_params.json``, but for SpykingCircus2's motion
+preset: its DREDGE needs torch, which a launch job does not install.
 """
 
 from typing import Annotated, ClassVar, Literal
@@ -11,10 +12,13 @@ from pydantic import Discriminator, Field, NonNegativeInt, PositiveFloat, Positi
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.tasks.aind_ephys.blocks import MotionPreset
 
 
 class Kilosort4Sorter(Block):
-    """Kilosort4, the AIND pipeline's default sorter; needs obi-one's ``kilosort`` extra.
+    """Kilosort4, the AIND pipeline's default sorter. Launch jobs do not install it yet.
+
+    Local runs need obi-one's ``kilosort`` extra.
 
     See ``kilosort.parameters`` for the meaning of each parameter.
     """
@@ -376,8 +380,8 @@ class SpykingCircus2Sorter(Block):
         description="Whether the sorter corrects motion (dense probes only).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    motion_correction_preset: Literal["dredge_fast", "dredge", "rigid_fast"] = Field(
-        default="dredge_fast",
+    motion_correction_preset: MotionPreset = Field(
+        default="nonrigid_fast_and_accurate",
         title="Motion preset",
         description="Motion correction preset.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
@@ -434,7 +438,7 @@ class SpykingCircus2Sorter(Block):
 
 
 class LupinSorter(Block):
-    """Lupin, which ships with spikeinterface."""
+    """Lupin, which needs torch. Launch jobs do not install it yet."""
 
     title: ClassVar[str] = "Lupin"
     sorter_name: ClassVar[str] = "lupin"

@@ -18,8 +18,8 @@ from obi_one.scientific.library.info_scan_config.config import (
     InfoScanConfig,
 )
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import (
-    Kilosort4Sorter,
     SorterUnion,
+    SpykingCircus2Sorter,
 )
 from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 
@@ -101,7 +101,7 @@ class AINDEPhysSpikeSortingScanConfig(InfoScanConfig):
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
     sorter: SorterUnion = Field(
-        default_factory=Kilosort4Sorter,
+        default_factory=SpykingCircus2Sorter,
         title="Sorter",
         description="The spike sorter and its parameters.",
         json_schema_extra={

@@ -7,6 +7,9 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey
 
+# The motion presets a launch job can run. The others need torch or the medicine package.
+MotionPreset = Literal["nonrigid_fast_and_accurate", "nonrigid_accurate", "kilosort_like"]
+
 
 class JobKwargs(Block):
     """SpikeInterface job kwargs for a stage's chunked, parallel processing."""

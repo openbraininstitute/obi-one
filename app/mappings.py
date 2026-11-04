@@ -30,16 +30,14 @@ def _obi_one_code(
     deps_name: str,
     *,
     capabilities: Capabilities | None = None,
-    ref: str | None = None,
 ) -> PythonRepositoryCode:
-    """Standard obi-one launch code: the obi-one repo at ``ref``, running main.py.
+    """Standard obi-one launch code: the obi-one repo at the service's release tag, running main.py.
 
-    ``ref`` defaults to the service's release tag. Legacy tasks with a different repo/entrypoint
-    build ``PythonRepositoryCode`` directly.
+    Legacy tasks with a different repo/entrypoint build ``PythonRepositoryCode`` directly.
     """
     return PythonRepositoryCode(
         location=settings.OBI_ONE_REPO,
-        ref=ref or release_tag_ref(settings.APP_VERSION),
+        ref=release_tag_ref(settings.APP_VERSION),
         path=OBI_ONE_CODE_PATH,
         dependencies=str(OBI_ONE_DEPS_DIR / deps_name),
         capabilities=capabilities or Capabilities(),
@@ -322,7 +320,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.aind_ephys_preprocessing,
         config_type=TaskConfigType.aind_ephys_preprocessing__config,
         activity_type=TaskActivityType.aind_ephys_preprocessing__execution,
-        code=_obi_one_code("aind_ephys.txt", ref=settings.AIND_EPHYS_LAUNCH_REF),
+        code=_obi_one_code("aind_ephys.txt"),
         resources=MachineResources(
             cores=4,
             memory=16,
@@ -338,7 +336,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.aind_ephys_spikesorting,
         config_type=TaskConfigType.aind_ephys_spikesorting__config,
         activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
-        code=_obi_one_code("aind_ephys.txt", ref=settings.AIND_EPHYS_LAUNCH_REF),
+        code=_obi_one_code("aind_ephys.txt"),
         resources=MachineResources(
             cores=8,
             memory=32,

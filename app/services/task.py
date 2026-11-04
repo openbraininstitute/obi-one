@@ -15,6 +15,7 @@ from entitysdk.types import (
     TargetSimulator,
 )
 
+import app.services.resource_estimation.aind_ephys
 import app.services.resource_estimation.circuit_extraction
 import app.services.resource_estimation.circuit_simplification
 import app.services.resource_estimation.circuit_simulation
@@ -377,6 +378,13 @@ def estimate_task_resources(
 ) -> Resources:
     """Estimates the machine resources for a given task."""
     match task_definition.task_type:
+        case TaskType.aind_ephys_preprocessing | TaskType.aind_ephys_spikesorting:
+            resources = app.services.resource_estimation.aind_ephys.estimate_task_resources(
+                json_model=json_model,
+                db_client=db_client,
+                task_definition=task_definition,
+                compute_cell=compute_cell,
+            )
         case TaskType.circuit_extraction:
             resources = app.services.resource_estimation.circuit_extraction.estimate_task_resources(
                 json_model=json_model,

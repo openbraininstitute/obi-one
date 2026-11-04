@@ -420,7 +420,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.aind_ephys_preprocessing__config,
         single_task_activity_type=TaskActivityType.aind_ephys_preprocessing__execution,
-        requires_package="spikeinterface",
+        task_requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_spikesorting: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._03_spikesorting.task", "AINDEPhysSpikeSortingTask"),
@@ -439,7 +439,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
         single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
-        requires_package="spikeinterface",
+        task_requires_package="spikeinterface",
     ),
     TaskType.aind_ephys_postprocessing: TaskSpec(
         task_ref=(f"{_AIND_EPHYS}._04_postprocessing.task", "AINDEPhysPostprocessingTask"),

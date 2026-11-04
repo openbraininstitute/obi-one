@@ -1,7 +1,8 @@
 """Blocks for the preprocessing stage of the AIND ephys pipeline.
 
 Each block's ``to_dict`` gives the keyword arguments of the ``spikeinterface.preprocessing``
-function its step calls. Defaults are those of the AIND pipeline's ``default_params.json``.
+function its step calls. Defaults are those of the AIND pipeline's ``default_params.json``, but
+for the motion preset: its DREDGE needs torch, which a launch job does not install.
 """
 
 from typing import Literal
@@ -11,6 +12,7 @@ from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, Pos
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.tasks.aind_ephys.blocks import MotionPreset
 
 
 class PhaseShift(Block):
@@ -252,16 +254,8 @@ class MotionCorrection(Block):
         description="Whether to interpolate the recording to correct the estimated motion.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
     )
-    preset: Literal[
-        "dredge",
-        "medicine",
-        "dredge_fast",
-        "nonrigid_accurate",
-        "nonrigid_fast_and_accurate",
-        "rigid_fast",
-        "kilosort_like",
-    ] = Field(
-        default="dredge_fast",
+    preset: MotionPreset = Field(
+        default="nonrigid_fast_and_accurate",
         title="Motion preset",
         description="Motion estimation preset.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
