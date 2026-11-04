@@ -53,8 +53,11 @@ from obi_one.scientific.library.memodel_circuit import (
     MechanismVariableDetail,
     _build_mechanism_variables_by_ion_channel_response,
 )
+from obi_one.utils.log_redaction import RedactUrlQueries
 
 L = logging.getLogger(__name__)
+# Storage failures are logged with their traceback, which can hold a presigned URL.
+L.addFilter(RedactUrlQueries())
 
 # One pool for every request in the process: the API serves many requests at once, so a
 # per-request pool would multiply threads and open connections with the request count.

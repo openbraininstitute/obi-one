@@ -157,13 +157,14 @@ class HttpRangeFile(io.RawIOBase):
         """Fetch bytes ``[start, end)`` of the file in one request.
 
         Raises:
-            OSError: The server ignored the range or returned a different length.
+            OSError: The server answered anything but 206 (an error status too), or returned
+                a different length. The message leaves the URL out: it is signed.
         """
         self.requests += 1
         response = self._http.get(
             self._url, headers={"Range": f"bytes={start}-{end - 1}"}, follow_redirects=True
         )
-        response.raise_for_status()
+        # No raise_for_status(): its message holds the URL, which callers log.
         if response.status_code != HTTP_PARTIAL_CONTENT:
             msg = f"Expected 206 for a range request, got {response.status_code}"
             raise OSError(msg)
