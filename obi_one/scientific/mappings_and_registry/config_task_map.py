@@ -396,20 +396,14 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         requires_package="bluepyemodel",
     ),
-    TaskType.aind_ephys_dispatch: TaskSpec(
-        task_ref=(f"{_AIND_EPHYS}._01_dispatch.task", "AINDEPhysDispatchTask"),
-        single_config_ref=(f"{_AIND_EPHYS}._01_dispatch.config", "AINDEPhysDispatchSingleConfig"),
-        scan_config_ref=(f"{_AIND_EPHYS}._01_dispatch.config", "AINDEPhysDispatchScanConfig"),
-        asset_label=AssetLabel.task_config,
-    ),
     TaskType.aind_ephys_preprocessing: TaskSpec(
-        task_ref=(f"{_AIND_EPHYS}._02_preprocessing.task", "AINDEPhysPreprocessingTask"),
+        task_ref=(f"{_AIND_EPHYS}._01_preprocessing.task", "AINDEPhysPreprocessingTask"),
         single_config_ref=(
-            f"{_AIND_EPHYS}._02_preprocessing.config",
+            f"{_AIND_EPHYS}._01_preprocessing.config",
             "AINDEPhysPreprocessingSingleConfig",
         ),
         scan_config_ref=(
-            f"{_AIND_EPHYS}._02_preprocessing.config",
+            f"{_AIND_EPHYS}._01_preprocessing.config",
             "AINDEPhysPreprocessingScanConfig",
         ),
         asset_label=AssetLabel.task_config,
@@ -422,15 +416,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
     ),
     TaskType.aind_ephys_spikesorting_kilosort4: TaskSpec(
         task_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.kilosort4.task",
+            f"{_AIND_EPHYS}._02_spikesorting.kilosort4.task",
             "AINDEPhysSpikeSortingKilosort4Task",
         ),
         single_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.kilosort4.config",
+            f"{_AIND_EPHYS}._02_spikesorting.kilosort4.config",
             "AINDEPhysSpikeSortingKilosort4SingleConfig",
         ),
         scan_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.kilosort4.config",
+            f"{_AIND_EPHYS}._02_spikesorting.kilosort4.config",
             "AINDEPhysSpikeSortingKilosort4ScanConfig",
         ),
         asset_label=AssetLabel.task_config,
@@ -443,15 +437,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
     ),
     TaskType.aind_ephys_spikesorting_spykingcircus2: TaskSpec(
         task_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.spykingcircus2.task",
+            f"{_AIND_EPHYS}._02_spikesorting.spykingcircus2.task",
             "AINDEPhysSpikeSortingSpykingCircus2Task",
         ),
         single_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.spykingcircus2.config",
+            f"{_AIND_EPHYS}._02_spikesorting.spykingcircus2.config",
             "AINDEPhysSpikeSortingSpykingCircus2SingleConfig",
         ),
         scan_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.spykingcircus2.config",
+            f"{_AIND_EPHYS}._02_spikesorting.spykingcircus2.config",
             "AINDEPhysSpikeSortingSpykingCircus2ScanConfig",
         ),
         asset_label=AssetLabel.task_config,
@@ -464,15 +458,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
     ),
     TaskType.aind_ephys_spikesorting_lupin: TaskSpec(
         task_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.lupin.task",
+            f"{_AIND_EPHYS}._02_spikesorting.lupin.task",
             "AINDEPhysSpikeSortingLupinTask",
         ),
         single_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.lupin.config",
+            f"{_AIND_EPHYS}._02_spikesorting.lupin.config",
             "AINDEPhysSpikeSortingLupinSingleConfig",
         ),
         scan_config_ref=(
-            f"{_AIND_EPHYS}._03_spikesorting.lupin.config",
+            f"{_AIND_EPHYS}._02_spikesorting.lupin.config",
             "AINDEPhysSpikeSortingLupinScanConfig",
         ),
         asset_label=AssetLabel.task_config,

@@ -22,12 +22,11 @@ from .distance_function_input import validate_distance_function_input
 from .distance_function_input_nullable import validate_distance_function_input_nullable
 from .distribution_parameter_list import validate_distribution_parameter_list
 from .entity_property_dropdown import validate_entity_property_dropdown
+from .entity_property_multi_select import validate_entity_property_multi_select
 from .etype_selector import validate_etype_selector
 from .float_input import validate_float_input
 from .float_optional import validate_float_optional
 from .float_parameter_sweep import validate_float_param_sweep
-from .int_list_optional import validate_int_list_optional
-from .int_optional import validate_int_optional
 from .int_parameter_sweep import validate_int_param_sweep
 from .ion_channel_model_properties import validate_ion_channel_model_properties
 from .ion_channel_variable_modification_by_neuron import (
@@ -36,7 +35,6 @@ from .ion_channel_variable_modification_by_neuron import (
 from .ion_channel_variable_modification_by_section_list import (
     validate_ion_channel_variable_modification_by_section_list,
 )
-from .json_object import validate_json_object
 from .model_identifier import validate_model_identifier
 from .model_identifier_grouped import validate_model_identifier_grouped
 from .model_identifier_multiple import validate_model_identifier_multiple
@@ -89,11 +87,9 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     UIElement.FLOAT_PARAMETER_SWEEP: validate_float_param_sweep,
     UIElement.INT_PARAMETER_SWEEP: validate_int_param_sweep,
     UIElement.FLOAT_OPTIONAL: validate_float_optional,
-    UIElement.INT_LIST_OPTIONAL: validate_int_list_optional,
-    UIElement.INT_OPTIONAL: validate_int_optional,
-    UIElement.JSON_OBJECT: validate_json_object,
     UIElement.ION_CHANNEL_MODEL_PROPERTIES: validate_ion_channel_model_properties,
     UIElement.ENTITY_PROPERTY_DROPDOWN: validate_entity_property_dropdown,
+    UIElement.ENTITY_PROPERTY_MULTI_SELECT: validate_entity_property_multi_select,
     UIElement.REFERENCE: validate_reference,
     UIElement.NEURON_SET_COMBINATION: validate_neuron_set_combination,
     UIElement.STRING_SELECTION: validate_string_selection,

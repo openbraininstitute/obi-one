@@ -25,7 +25,7 @@ def write_toy_nwb(
     """Write a toy recording to ``path`` as one probe's raw ElectricalSeries.
 
     The probe geometry goes into the electrodes table (``rel_x``/``rel_y``), which is where the
-    dispatch stage reads it back from. Returns the ground-truth sorting.
+    preprocessing stage reads it back from. Returns the ground-truth sorting.
     """
     recording, sorting = si.generate_ground_truth_recording(
         durations=[duration_s], num_channels=num_channels, num_units=num_units, seed=seed

@@ -103,12 +103,6 @@ There are two major types of such UI elements:
 
         - [string_list_optional](components/string/string_input.md#string-list-optional)
 
-        - [int_optional](components/int_optional/int_optional.md)
-
-        - [int_list_optional](components/int_list_optional/int_list_optional.md)
-
-        - [json_object](components/json_object/json_object.md)
-
         - [string_selection](components/string/string_selection.md) and [string_selection_enhanced](components/string/string_selection.md#string-selection-enhanced)
 
         - [axon_modifier](components/axon_modifier/axon_modifier.md) (one-off)
@@ -144,6 +138,8 @@ There are two major types of such UI elements:
         - [reference](components/reference/reference.md)
 
         - [entity_property_dropdown](components/entity_property_dropdown/entity_property_dropdown.md)
+
+        - [entity_property_multi_select](components/entity_property_multi_select/entity_property_multi_select.md)
 
         - [neuron_property_filter](components/neuron_property_filter/neuron_property_filter.md)
 

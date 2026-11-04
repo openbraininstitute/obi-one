@@ -12,6 +12,7 @@ class MappedPropertiesGroup(StrEnum):
     NEURONAL_MANIPULATION = "NeuronalManipulation"
     MORPHOLOGY = "Morphology"
     ELECTRICAL_CELL_RECORDINGS = "ElectricalCellRecordings"
+    EXTRACELLULAR_RECORDING = "ExtracellularRecording"
 
 
 class CircuitMappedProperties(StrEnum):
@@ -36,6 +37,10 @@ class ElectricalCellRecordingMappedProperties(StrEnum):
     PROTOCOLS = "Protocols"
     PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
     AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
+
+
+class ExtracellularRecordingMappedProperties(StrEnum):
+    CHANNELS = "Channels"
 
 
 class MorphologySourceMappedProperties(StrEnum):

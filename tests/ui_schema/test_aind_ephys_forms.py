@@ -3,22 +3,20 @@
 import pytest
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.kilosort4.config import (
     AINDEPhysSpikeSortingKilosort4ScanConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.lupin.config import (
     AINDEPhysSpikeSortingLupinScanConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.config import (
     AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
 )
 
-from .validators.int_list_optional import validate_int_list_optional
-from .validators.int_optional import validate_int_optional
-from .validators.json_object import validate_json_object
+from .validators.entity_property_multi_select import validate_entity_property_multi_select
 
 FORMS = [
     AINDEPhysPreprocessingScanConfig,
@@ -83,29 +81,40 @@ class TestForms:
             assert properties[name][SchemaKey.UI_ELEMENT] == UIElement.BLOCK_UNION
             assert properties[name]["default"]["type"]
 
+    def test_the_template_matching_is_a_choice(self):
+        properties = AINDEPhysSpikeSortingSpykingCircus2ScanConfig.model_json_schema()["properties"]
 
-OPTIONAL_INT = {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
-OPTIONAL_INTS = {"anyOf": [{"type": "array", "items": {"type": "integer"}}, {"type": "null"}]}
-FREE_OBJECT = {"type": "object", "additionalProperties": True}
+        assert properties["matching"][SchemaKey.UI_ELEMENT] == UIElement.BLOCK_UNION
+        assert properties["matching"]["default"]["type"]
+
+    def test_the_channels_to_ignore_are_chosen_from_the_recording(self):
+        schema = AINDEPhysPreprocessingScanConfig.model_json_schema()
+        field = schema["$defs"]["Initialize"]["properties"]["channels_to_ignore"]
+        group = field[SchemaKey.PROPERTY_GROUP]
+
+        validate_entity_property_multi_select(field, "channels_to_ignore", "Initialize")
+        assert field["default"] == []
+        assert "{recording_id}" in schema[SchemaKey.PROPERTY_ENDPOINTS][group]
 
 
-class TestNewElements:
+CHOICE = {SchemaKey.PROPERTY_GROUP: "Group", SchemaKey.PROPERTY: "Items"}
+STRINGS = {"type": "array", "items": {"type": "string"}}
+
+
+class TestMultiSelectValidator:
+    def test_it_accepts_a_list_of_strings_with_its_property(self):
+        validate_entity_property_multi_select({**STRINGS, **CHOICE}, "param", "ref")
+
     @pytest.mark.parametrize(
-        ("validate", "valid", "invalid"),
+        "invalid",
         [
-            (
-                validate_int_optional,
-                OPTIONAL_INT,
-                {"anyOf": [{"type": "number"}, {"type": "null"}]},
-            ),
-            (validate_int_optional, OPTIONAL_INT, {"type": "integer"}),
-            (validate_int_list_optional, OPTIONAL_INTS, {"type": "array"}),
-            (validate_json_object, FREE_OBJECT, {"anyOf": [FREE_OBJECT, {"type": "null"}]}),
-            (validate_json_object, FREE_OBJECT, {"type": "string"}),
+            STRINGS,
+            {"type": "array", "items": {"type": "integer"}, **CHOICE},
+            {"anyOf": [STRINGS, {"type": "null"}], **CHOICE},
+            {"type": "string", **CHOICE},
+            {**STRINGS, "minItems": 1, **CHOICE},
         ],
     )
-    def test_each_accepts_its_shape_only(self, validate, valid, invalid):
-        validate(valid, "param", "ref")
-
+    def test_it_refuses_anything_else(self, invalid):
         with pytest.raises(Exception, match="param"):
-            validate(invalid, "param", "ref")
+            validate_entity_property_multi_select(invalid, "param", "ref")

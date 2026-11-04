@@ -21,19 +21,18 @@ from obi_one.scientific.from_id.extracellular_recording_from_id import (
     ExtracellularRecordingFromID,
 )
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.aind_ephys._01_dispatch.config import AINDEPhysDispatchScanConfig
-from obi_one.scientific.tasks.aind_ephys._02_preprocessing.blocks import MotionCorrection
-from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.blocks import MotionCorrection
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
     AINDEPhysPreprocessingSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._02_preprocessing.task import AINDEPhysPreprocessingTask
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.blocks import deep_merge
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.task import AINDEPhysPreprocessingTask
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.blocks import deep_merge
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.config import (
     AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
     AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.task import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.task import (
     AINDEPhysSpikeSortingSpykingCircus2Task,
 )
 from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
@@ -46,12 +45,11 @@ INFO = Info(campaign_name="Test campaign", campaign_description="Test campaign."
 CONFIG_MODULES = [
     f"obi_one.scientific.tasks.aind_ephys.{stage}.config"
     for stage in (
-        "_01_dispatch",
-        "_02_preprocessing",
-        "_03_spikesorting",
-        "_03_spikesorting.kilosort4",
-        "_03_spikesorting.spykingcircus2",
-        "_03_spikesorting.lupin",
+        "_01_preprocessing",
+        "_02_spikesorting",
+        "_02_spikesorting.kilosort4",
+        "_02_spikesorting.spykingcircus2",
+        "_02_spikesorting.lupin",
     )
 ]
 
@@ -71,12 +69,6 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     nwb_path = root / "toy.nwb"
     write_toy_nwb(nwb_path, num_channels=NUM_CHANNELS)
 
-    dispatch = run_stage(
-        AINDEPhysDispatchScanConfig(
-            initialize=AINDEPhysDispatchScanConfig.Initialize(nwb_path=nwb_path)
-        ),
-        root / "dispatch",
-    )
     preprocessing = run_stage(
         AINDEPhysPreprocessingScanConfig(
             info=INFO,
@@ -101,7 +93,6 @@ def stages(tmp_path_factory) -> dict[str, Path]:
     return {
         "root": root,
         "nwb": nwb_path,
-        "dispatch": dispatch,
         "preprocessing": preprocessing,
         "sorting": sorting,
     }
@@ -122,8 +113,8 @@ def only_name(folder: Path, prefix: str, suffix: str = "") -> str:
 
 
 class TestStages:
-    def test_dispatch_writes_one_job_with_the_probe(self, stages):
-        (job_file,) = stages["dispatch"].glob("job_*.json")
+    def test_preprocessing_writes_one_job_with_the_probe(self, stages):
+        (job_file,) = stages["preprocessing"].glob("job_*.json")
         job = json.loads(job_file.read_text())
 
         recording = si.load(job["recording_dict"], base_folder=Path(job["input_folder"]))
@@ -146,12 +137,6 @@ class TestStages:
             "detect_and_remove_bad_channels",
             "common_reference",
         ]
-
-    def test_preprocessing_dispatches_like_the_dispatch_stage(self, stages):
-        (dispatched,) = stages["dispatch"].glob("job_*.json")
-        (preprocessed,) = stages["preprocessing"].glob("job_*.json")
-
-        assert json.loads(preprocessed.read_text()) == json.loads(dispatched.read_text())
 
     @pytest.mark.parametrize("both", [True, False])
     def test_preprocessing_needs_exactly_one_input(self, stages, both):

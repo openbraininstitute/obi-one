@@ -56,4 +56,3 @@ class TaskType(StrEnum):
     morphology_locations = auto()
     morphology_metrics = auto()
     circuit_simplification = auto()
-    aind_ephys_dispatch = auto()

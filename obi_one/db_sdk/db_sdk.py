@@ -5,12 +5,15 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
+import h5py
+import httpx
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import Entity, TaskActivity, TaskConfig
+from entitysdk.models import Entity, ExtracellularRecording, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
+from entitysdk.route import get_assets_endpoint
 from entitysdk.types import (
     ActivityStatus,
     AssetLabel,
@@ -22,6 +25,8 @@ from entitysdk.types import (
 from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.extracellular_recording_properties import read_channel_options
+from obi_one.utils.http_range_file import HttpRangeFile
 
 L = logging.getLogger(__name__)
 
@@ -105,6 +110,39 @@ def fetch_asset_by_label(
         strategy=strategy,
     ).one()
     return asset.path
+
+
+def get_asset_url(*, db_client: Client, entity: Entity, asset: Asset) -> str:
+    """The URL an asset's bytes are served from, which needs no further authorization."""
+    endpoint = get_assets_endpoint(
+        api_url=db_client.api_url, entity_type=type(entity), entity_id=entity.id, asset_id=asset.id
+    )
+    token = db_client._token_manager.get_token()  # ruff: ignore[private-member-access]
+    headers = {"Authorization": f"Bearer {token}"}
+    if context := db_client.project_context:
+        headers["project-id"] = str(context.project_id)
+        headers["virtual-lab-id"] = str(context.virtual_lab_id)
+    with httpx.stream("GET", f"{endpoint}/download", headers=headers) as response:
+        if not response.is_redirect:
+            msg = f"Asset {asset.id} is not served from elsewhere: {response.status_code}."
+            raise OBIONEError(msg)
+        return response.headers["location"]
+
+
+def get_extracellular_recording_channel_options(
+    *, recording_id: UUID, db_client: Client
+) -> list[dict[str, str]]:
+    """The raw channels of a recording's NWB asset, read without downloading the file."""
+    recording = db_client.get_entity(entity_id=recording_id, entity_type=ExtracellularRecording)
+    asset = db_client.select_assets(
+        recording, selection={"content_type": ContentType.application_nwb, "label": AssetLabel.nwb}
+    ).one()
+    url = get_asset_url(db_client=db_client, entity=recording, asset=asset)
+    with (
+        httpx.Client() as http_client,
+        h5py.File(HttpRangeFile(url, http_client), "r") as nwb,
+    ):
+        return read_channel_options(nwb)
 
 
 def get_recording_protocols(

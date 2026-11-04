@@ -1,6 +1,6 @@
 """SpikeInterface helpers shared by the AIND ephys pipeline stages.
 
-Stages hand over through folders laid out as in the AIND pipeline: ``job_<i>.json`` from dispatch,
+Stages hand over through folders laid out as in the AIND pipeline: ``job_<i>.json``,
 ``preprocessed_<name>/`` and ``binary_<name>.json`` from preprocessing, ``spikesorted_<name>/``
 from spike sorting. A stage that skips a recording writes its output folder with only an
 ``error.txt`` inside, which later stages skip.
@@ -40,18 +40,6 @@ def write_jobs(jobs: list[dict], folder: Path) -> list[Path]:
         path.write_text(json.dumps(job, indent=4, cls=SIJsonEncoder), encoding="utf-8")
         paths.append(path)
     return paths
-
-
-def read_jobs(folder: Path) -> list[dict]:
-    """The jobs the dispatch stage wrote into ``folder``, in index order."""
-    paths = sorted(
-        folder.glob(f"{JOB_FILE_PREFIX}*.json"),
-        key=lambda path: int(path.stem.removeprefix(JOB_FILE_PREFIX)),
-    )
-    if not paths:
-        msg = f"No {JOB_FILE_PREFIX}*.json files in {folder}; run the dispatch stage first."
-        raise FileNotFoundError(msg)
-    return [json.loads(path.read_text(encoding="utf-8")) for path in paths]
 
 
 def dump_recording(

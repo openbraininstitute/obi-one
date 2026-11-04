@@ -24,19 +24,19 @@ from obi_one.scientific.from_id.extracellular_recording_from_id import (
     ExtracellularRecordingFromID,
 )
 from obi_one.scientific.from_id.task_result_from_id import TaskResultFromID
-from obi_one.scientific.tasks.aind_ephys._02_preprocessing.config import (
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.config import (
     AINDEPhysPreprocessingScanConfig,
     AINDEPhysPreprocessingSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.kilosort4.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.kilosort4.config import (
     AINDEPhysSpikeSortingKilosort4ScanConfig,
     AINDEPhysSpikeSortingKilosort4SingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.lupin.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.lupin.config import (
     AINDEPhysSpikeSortingLupinScanConfig,
     AINDEPhysSpikeSortingLupinSingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.config import (
     AINDEPhysSpikeSortingSpykingCircus2ScanConfig,
     AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
 )

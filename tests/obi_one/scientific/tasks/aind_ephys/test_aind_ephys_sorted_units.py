@@ -9,11 +9,11 @@ import pytest
 import spikeinterface as si
 
 from obi_one.core.info import Info
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting import (
     sorted_units as sorted_units_module,
     task as sorting_task,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.sorted_units import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.sorted_units import (
     CIRCUIT_CONFIG_FILE_NAME,
     NODES_FILE_NAME,
     RECORDINGS_FILE_NAME,
@@ -22,13 +22,13 @@ from obi_one.scientific.tasks.aind_ephys._03_spikesorting.sorted_units import (
     sorted_units,
     write_sorted_units,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.config import (
     AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.task import (
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.task import (
     AINDEPhysSpikeSortingSpykingCircus2Task,
 )
-from obi_one.scientific.tasks.aind_ephys._03_spikesorting.task import SORTER_LOG_FILE_NAME
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.task import SORTER_LOG_FILE_NAME
 from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 from obi_one.scientific.tasks.aind_ephys.utils import dump_recording, write_skip
 
