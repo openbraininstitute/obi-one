@@ -108,20 +108,6 @@ class MEModelValidationProfile(ABC):
         """
         return False
 
-    @property
-    def holding_voltage(self) -> float | None:
-        """Pre-step holding potential in mV, or None to step from rest.
-
-        Default None: protocols step from the cell's resting potential, which is
-        correct for cells that fire tonically from rest. Override to a target
-        voltage for cell classes that must be held depolarized before the step
-        (e.g. thalamic neurons held at ~-60 mV to inactivate T-type Ca so the
-        step produces tonic firing rather than a rebound burst). When set, setup
-        derives the holding current that reaches this voltage and stores it on
-        the context for the profile's pre-held protocols.
-        """
-        return None
-
     def validate_context(self, context: MEModelWorkflowContext) -> None:
         """Validate context data required by this profile."""
         if self.requires_rin and (
@@ -243,17 +229,6 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         # true firing threshold. The registered calibration carries a shared
         # lower-bound placeholder (~0.02 nA), not the per-model rheobase.
         return True
-
-    @property
-    def holding_voltage(self) -> float:
-        # Thalamic neurons are held at -60 mV before the step to inactivate
-        # T-type Ca, so the spiking and depolarization-block steps produce
-        # regular tonic firing rather than a rebound burst. -60 mV matches the
-        # source ephys protocol (Hartley et al., Cell Reports 2024, Figure
-        # 2O-R: neurons held at -60 mV, tonic firing characterized with
-        # depolarizing steps, representative traces at 400 pA). The step
-        # amplitude itself is per-e-type (see tonic_step_current).
-        return -60.0
 
     def build_tests(self, context: MEModelWorkflowContext) -> list[ValidationTest]:
         """Build the complete nine-test thalamic validation policy."""

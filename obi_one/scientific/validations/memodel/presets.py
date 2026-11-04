@@ -257,7 +257,7 @@ def tonic_firing_preset(
 
     return ParametricValidation(
         # Same name as spiking_preset() — this is the thalamic variant of the
-        # spiking validation (holds at -60 mV first). A given cell runs one or
+        # spiking validation (pre-holds at the calibrated hold first). A given cell runs one or
         # the other, so the platform sees a single "Spiking Validation" result.
         validation_name=ValidationName.SPIKING,
         protocol=protocol,
