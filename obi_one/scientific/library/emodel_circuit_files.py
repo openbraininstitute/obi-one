@@ -40,6 +40,8 @@ from obi_one.scientific.library.emodel_parameters import (
     extract_section_properties,
 )
 
+# Limits given to every variable whose NEURON name starts with ``g`` (a conductance). The
+# files carry no limits; these match the ones ``emodel_parameters`` gives on the EModel path.
 CONDUCTANCE_LIMITS = [0.0, 10.0]
 # Built-in mechanisms with nothing settable through a ``<variable>_<mechanism>`` name:
 # ``capacitance`` sets ``cm``, already a section property, and ion mechanisms
@@ -97,12 +99,19 @@ class ModMechanism:
 
     @property
     def settable_range_variables(self) -> list[str]:
-        """RANGE variables a user can set: all but the ionic currents (``ina``, ``ik``...)."""
+        """RANGE variables a user can set: all but the ionic currents (``ina``, ``ik``...).
+
+        A current is recognised by its name starting with ``i``, so a non-current RANGE
+        variable named like ``inact`` is hidden too.
+        """
+        # ponytail: name-prefix heuristic; reading USEION ... WRITE / NONSPECIFIC_CURRENT
+        # from the NEURON block would identify currents exactly.
         return [name for name in self.range_variables if not name.startswith("i")]
 
 
-# Mechanisms NEURON ships without a mod file (the list BluePyEModel uses, minus the two
-# above), with their settable RANGE variables and units from the NEURON documentation.
+# Mechanisms NEURON ships without a mod file (the list BluePyEModel uses, minus
+# ``capacitance`` and the ``*_ion`` mechanisms, which ``has_variables`` excludes), with
+# their settable RANGE variables and units from the NEURON documentation.
 BUILTIN_MECHANISMS: dict[str, ModMechanism] = {
     name: ModMechanism(suffix=name, range_variables=variables, units=units)
     for name, variables, units in (
@@ -219,7 +228,11 @@ def _declared_units(blocks: dict[str, str]) -> dict[str, str]:
 
 
 def _proc_lines(hoc_text: str, name: str) -> list[str]:
-    """Non-empty stripped lines of ``proc <name>()``, found by brace matching."""
+    """Non-empty stripped lines of ``proc <name>()``, found by brace matching.
+
+    Raises:
+        HocTemplateError: The procedure is missing or its braces do not balance.
+    """
     start = hoc_text.find(f"proc {name}()")
     if start < 0:
         msg = f"hoc template has no 'proc {name}()'"
@@ -372,7 +385,7 @@ def read_hoc_biophysics(hoc_text: str) -> HocBiophysics:
     Returns:
         The two procedures' content, plus GLOBAL values and warnings.
 
-    Fails with ``HocTemplateError`` when a procedure is missing, its braces do not
+    A ``HocTemplateError`` propagates when a procedure is missing, its braces do not
     balance, or it holds a line the BluePyEModel template cannot print.
     """
     result = HocBiophysics()

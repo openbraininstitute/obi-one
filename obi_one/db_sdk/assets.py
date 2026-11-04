@@ -41,6 +41,8 @@ def asset_download_url(
 
     Raises:
         EntitySDKError: entitycore answered without a redirect.
+
+    A network error or timeout of the request propagates from the HTTP client.
     """
     endpoint = get_assets_endpoint(
         api_url=client.api_url, entity_type=entity_type, entity_id=entity_id, asset_id=asset_id
@@ -89,9 +91,10 @@ def open_asset_h5(
     Returns:
         An open, read-only ``h5py.File``; close it, for example with ``with``.
 
-    It fails with ``EntitySDKError`` when entitycore does not redirect to storage, and with
-    ``OSError`` (when opening or reading) when storage does not serve byte ranges or
-    ``size`` is wrong. Callers usually fall back to a full download.
+    Errors propagate: ``EntitySDKError`` when entitycore does not redirect to storage, and
+    ``OSError`` when storage does not serve byte ranges or ``size`` is wrong. The
+    ``OSError`` can come when the file is opened or later, on any read. Callers usually
+    fall back to a full download.
     """
     url = asset_download_url(
         client,

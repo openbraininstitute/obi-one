@@ -70,7 +70,8 @@ MAX_MODEL_FILE_BYTES = 1_000_000
 # staging writes ``mechanisms``. The first that holds a ``.mod`` file in the asset listing wins.
 UNDECLARED_MOD_DIRS = (CIRCUIT_MOD_DIR, "mechanisms")
 
-# (population, node_id) -> model_template, or -> EModel ID after derivation matching.
+# (population, node_id) -> a string per node. The value is the node's model_template,
+# except in ``_match_templates_to_emodels``'s output, where it is the matched EModel ID.
 TemplateNodes = dict[tuple[str, int], str]
 
 
@@ -209,10 +210,21 @@ def _stage_circuit_for_neuron_set(
     ``stage_nodes=False`` neither is fetched: the nodes paths are returned for the caller
     to read another way.
 
+    Args:
+        db_client: entitysdk client.
+        circuit_id: Circuit entity ID.
+        asset: The circuit's ``sonata_circuit`` asset.
+        temp_dir_path: Resolved directory the files are staged into.
+        population_types: Population types whose nodes.h5 to select; None selects all.
+        stage_nodes: Whether to fetch the selected nodes.h5 files and the node sets file.
+
     Returns:
         The config path, population -> nodes.h5 asset path for the selected populations,
-        and population -> type and hoc / mod directories for every population. An
-        ``EntitySDKError`` from fetching circuit_config.json or a nodes.h5 propagates.
+        and population -> type and hoc / mod directories for every population.
+
+    Errors propagate: ``EntitySDKError`` when fetching circuit_config.json or a nodes.h5
+    fails, and ``ValueError`` when the config points a nodes.h5 or the node sets file
+    outside the asset.
     """
     # Copy config as a real file so $BASE_DIR resolves to temp_dir
     config_path = _stage_file(
@@ -702,17 +714,26 @@ def _stage_circuit_for_neuron_set_resolution(
 ) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str]]:
     """Stage circuit files, resolve neuron set to node IDs, read model_template.
 
-    Stages circuit_config.json, its node sets file, and the nodes.h5 for each population
-    the neuron set spans, then resolves the neuron set (every scan value, see
-    ``get_expanded_neuron_ids``) and reads model_template
-    for the resulting node IDs across all populations. The hoc and mod files of
-    every template found are read in the same staging directory.
+    Stages circuit_config.json, its node sets file, and the nodes.h5 of every population,
+    then resolves the neuron set (every scan value, see ``get_expanded_neuron_ids``) and
+    reads model_template for the resulting node IDs across all populations. The hoc and
+    mod files of every template found are read in the same staging directory.
+
+    Args:
+        db_client: entitysdk client.
+        circuit_id: Circuit entity ID.
+        circuit_entity: The circuit entity, for its name.
+        asset: The circuit's ``sonata_circuit`` asset.
+        neuron_set: Neuron set to resolve; swept fields are expanded.
 
     Returns:
         Tuple of (population_names, {(population, node_id): model_template},
-        {model_template: TemplateModel or reason}) where the template dict is
-        keyed by population-qualified node IDs to avoid collisions between
-        populations with overlapping local node IDs.
+        {model_template: TemplateModel or reason}). Node IDs are qualified by population
+        because populations can share local node IDs.
+
+    Raises:
+        ValueError: The neuron set resolves to no node IDs, a selected population has no
+            nodes file, or it has no ``model_template`` attribute.
     """
     # Listed while the circuit is staged and the neuron set resolved: no extra wait.
     listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
@@ -854,6 +875,9 @@ def get_expanded_neuron_ids(neuron_set: NeuronSet, circuit: ObiCircuit) -> dict[
     Returns:
         Dict mapping population name to the sorted union of node IDs across all
         expanded single-valued neuron sets.
+
+    A ``ValueError`` propagates from ``Block.expand_multi_values`` when the sweep has too
+    many combinations or a swept value is nested below a top-level field.
     """
     ids_per_population: dict[str, set[int]] = {}
     for expanded in neuron_set.expand_multi_values():
@@ -879,7 +903,10 @@ def get_circuit_node_ids(
         neuron_set: Neuron set to resolve.
 
     Returns:
-        Dict mapping population name to list of node IDs.
+        Dict mapping population name to the sorted list of node IDs.
+
+    A ``ValueError`` propagates when the circuit has no single ``sonata_circuit`` asset or
+    the neuron set sweep cannot be expanded (see ``get_expanded_neuron_ids``).
     """
     circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
 
@@ -905,6 +932,10 @@ def _build_template_groups(
     template_to_nodes: dict[str, list[tuple[str, int]]],
 ) -> tuple[dict[str, dict], dict[str, str], list[str]]:
     """Build one group of variables per template, from its circuit files.
+
+    Args:
+        template_models: Template -> its parsed files, or the reason they were not read.
+        template_to_nodes: Template -> the (population, node_id) keys that use it.
 
     Returns:
         The groups, in the shape ``_build_emodel_groups`` returns; template -> reason for
@@ -1011,7 +1042,15 @@ def _build_emodel_groups(
     node_key_to_emodel: TemplateNodes,
     label_to_emodel_id: dict[str, str],
 ) -> dict[str, dict]:
-    """Group nodes by emodel and fetch mechanism variables for each."""
+    """Group nodes by emodel and fetch mechanism variables for each.
+
+    A failed fetch is logged and leaves that group's variables empty, so
+    ``_compute_common_mechanism_variables`` ignores it instead of failing the request.
+
+    Returns:
+        EModel ID -> ``{"node_ids", "model_template", "mechanism_variables_by_ion_channel"}``.
+        When several labels map to one EModel, ``model_template`` is the first label.
+    """
     emodel_to_nodes: dict[str, list[tuple[str, int]]] = {}
     for key, emodel_id in node_key_to_emodel.items():
         emodel_to_nodes.setdefault(emodel_id, []).append(key)
@@ -1043,9 +1082,12 @@ def _build_emodel_groups(
 def _compute_common_mechanism_variables(
     emodel_groups: dict[str, dict],
 ) -> dict[str, IonChannelVariables]:
-    """Compute the intersection of mechanism variables across all emodel groups.
+    """Compute the intersection of mechanism variables across all groups.
 
-    Returns only channels and variables that are present in ALL emodel groups.
+    A group is one template read from the circuit files, or one emodel from the
+    derivation fallback; both have the same shape.
+
+    Returns only channels and variables that are present in ALL groups.
     For limits, takes the most restrictive range (max of lower bounds, min of upper bounds).
     For section_lists, takes the intersection across groups.
 
@@ -1147,8 +1189,9 @@ def get_circuit_manipulation_properties(
     """Get neuronal manipulation properties for a circuit + neuron set.
 
     Two modes:
-    1. neuron_set=None: every model_template of every biophysical population.
-    2. neuron_set provided: Stage files, resolve neuron set, read model_template.
+    1. neuron_set=None: every model_template of every biophysical population. If the
+       circuit files cannot be read at all, every emodel_circuit derivation is used.
+    2. neuron_set provided: the model_template of every node the neuron set selects.
 
     Each template's variables come from its hoc and mod files inside the circuit.
     Templates whose files cannot be read fall back to the emodel_circuit derivation.
