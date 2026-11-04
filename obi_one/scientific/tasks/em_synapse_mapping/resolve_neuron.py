@@ -325,7 +325,7 @@ def place_morphologies_and_mechanisms(
     )
     write_morphology_with_offset(spiny_morph.morphology, -xyz, out_root / fn_morphology_out_h5)
 
-    phys_node_props = {}
+    phys_node_props = {"morph_class": numpy.array(["N/A"])}
     if me_model_entity is not None:
         L.info("Placing mechanisms and .hoc file...")
         tmp_staging = out_root / f"temp_staging_{morph_entity.name}"
@@ -345,7 +345,6 @@ def place_morphologies_and_mechanisms(
         shutil.rmtree(tmp_staging)
         phys_node_props["model_template"] = numpy.array(["hoc:" + name_hoc_model])
         phys_node_props["model_type"] = numpy.array(["biophysical"])
-        phys_node_props["morph_class"] = numpy.array(["N/A"])
         if me_model_entity.calibration_result is not None:
             phys_node_props["@dynamics:threshold_current"] = numpy.array(
                 [me_model_entity.calibration_result.threshold_current],
