@@ -7,6 +7,11 @@ TYPES_OF_BIOPHYS_NODES = ["biophysical"]
 TYPES_OF_VIRTUAL_NODES = ["virtual"]
 TYPES_OF_POINT_NODES = ["point_process", "point_neuron", "brian2_point", "inait_point_neuron_lif"]
 
+# Edge properties that only exist on synapses with physiological parameterization
+# (e.g. conductance, kinetics). Absent on purely structural circuits (e.g. EM synaptomes
+# before synapse parameterization). Fill in as parameterization properties are finalized.
+SYNAPSE_PHYSIOLOGY_PROPERTIES: list[str] = []
+
 
 class NodePopulationType(StrEnum):
     biophysical = auto()
