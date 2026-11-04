@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from pydantic import Field, PrivateAttr
 
@@ -72,7 +72,8 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
 class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations applied to all mechanisms using the variable."""
 
-    def _get_synapse_configure(self) -> str:  # ty:ignore[empty-body]
+    @abstractmethod
+    def _get_synapse_configure(self) -> str:
         pass
 
     def _sonata_manipulations_list(self) -> dict:
@@ -87,10 +88,12 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
 ):
     """Base class for synaptic manipulation of a single variable applied to a single mechanism."""
 
-    def _get_synapse_configure(self) -> str:  # ty:ignore[empty-body]
+    @abstractmethod
+    def _get_synapse_configure(self) -> str:
         pass
 
-    def _get_modoverride_name(self) -> str:  # ty:ignore[empty-body]
+    @abstractmethod
+    def _get_modoverride_name(self) -> str:
         pass
 
     def _sonata_manipulations_list(self) -> dict:

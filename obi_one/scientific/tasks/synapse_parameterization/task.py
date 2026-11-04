@@ -121,7 +121,7 @@ class SynapseParameterizationTask(Task):
         with BenchmarkTracker.section("resolve_circuit"):
             staged_circuit, self._circuit_entity = circuit_db_sdk.resolve_circuit(
                 self.config.initialize.circuit,
-                db_client=db_client,  # ty:ignore[invalid-argument-type]
+                db_client=db_client,
                 entity_cache=entity_cache,
                 cache_root=self.config.scan_output_root,
                 temp_dir=self._create_temp_dir(),

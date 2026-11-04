@@ -14,7 +14,8 @@ class ElectricalCellRecordingFromID(EntityFromID[ElectricalCellRecording]):
     def download_nwb_asset(
         self,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        *,
+        db_client: entitysdk.client.Client,
     ) -> Path:
         output_dir = create_dir(dest_dir)
         asset = db_client.fetch_assets(

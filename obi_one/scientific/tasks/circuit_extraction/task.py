@@ -92,7 +92,7 @@ class CircuitExtractionTask(Task):
     def execute(  # ruff: ignore[complex-structure, too-many-locals, too-many-statements]
         self,
         *,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:  # Returns the ID of the extracted circuit

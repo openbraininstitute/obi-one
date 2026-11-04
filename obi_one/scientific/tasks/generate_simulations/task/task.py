@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import ClassVar, get_args, get_type_hints
 from uuid import UUID
 
-import entitysdk
+from entitysdk.client import Client
+from entitysdk.models import Simulation
 from libsonata import SimulatorType
 from pydantic import PrivateAttr
 
@@ -92,7 +93,7 @@ class GenerateSimulationTask(Task):
             for block in getattr(self.config, block_dict_name, {}).values()
         )
 
-    def _resolve_circuit(self, db_client: entitysdk.client.Client) -> None:
+    def _resolve_circuit(self, db_client: Client | None) -> None:
         """Set circuit variable based on the type of initialize.circuit."""
         if hasattr(self.config.initialize, "circuit"):
             circuit = self.config.initialize.circuit
@@ -135,6 +136,9 @@ class GenerateSimulationTask(Task):
                 # download for a private-project circuit, which cannot be symlinked.
                 stage_kwargs["nodes_only"] = True
 
+            if db_client is None:
+                msg = "db_client is required to stage a circuit from entitycore"
+                raise ValueError(msg)
             self._circuit = circuit.stage_circuit(
                 db_client=db_client,
                 dest_dir=circuit_dest_dir,
@@ -182,9 +186,7 @@ class GenerateSimulationTask(Task):
                     )
                 )
 
-    def _add_sonata_simulation_config_reports(
-        self, db_client: entitysdk.client.Client | None
-    ) -> None:
+    def _add_sonata_simulation_config_reports(self, db_client: Client | None) -> None:
         self._sonata_config["reports"] = {}
         for recording in getattr(self.config, "recordings", {}).values():
             self._sonata_config["reports"].update(
@@ -550,7 +552,7 @@ class GenerateSimulationTask(Task):
 
             self._sonata_config["compartment_sets_file"] = self.COMPARTMENT_SETS_FILE_NAME
 
-    def _update_simulation_number_neurons(self, db_client: entitysdk.client.Client | None) -> None:
+    def _update_simulation_number_neurons(self, db_client: Client | None) -> None:
         if db_client:
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
                 neuron_set = self.config.initialize.node_set
@@ -567,7 +569,7 @@ class GenerateSimulationTask(Task):
 
             db_client.update_entity(
                 entity_id=self.config.single_entity.id,
-                entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                entity_type=Simulation,
                 attrs_or_entity={"number_neurons": number_neurons},
             )
 
@@ -611,9 +613,7 @@ class GenerateSimulationTask(Task):
             )
             raise ConfigValidationError(msg)
 
-    def _check_recording_arrays_belong_to_circuit(
-        self, db_client: entitysdk.client.Client, circuit_id: str
-    ) -> None:
+    def _check_recording_arrays_belong_to_circuit(self, db_client: Client, circuit_id: str) -> None:
         """Refuse an LFP recording whose array was built for another circuit.
 
         The UI only offers the arrays of the simulated circuit, but a config can also come from
@@ -631,9 +631,7 @@ class GenerateSimulationTask(Task):
                 )
                 raise ConfigValidationError(msg)
 
-    def _link_recording_arrays_to_simulation(
-        self, db_client: entitysdk.client.Client, array_ids: list[str]
-    ) -> None:
+    def _link_recording_arrays_to_simulation(self, db_client: Client, array_ids: list[str]) -> None:
         """Link the Simulation entity to the recording arrays its LFP reports read.
 
         entitysdk's stage_simulation stages the weight matrix of every linked array when the
@@ -642,7 +640,7 @@ class GenerateSimulationTask(Task):
         """
         db_client.update_entity(
             entity_id=self.config.single_entity.id,
-            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+            entity_type=Simulation,
             attrs_or_entity={"recording_arrays": [{"id": array_id} for array_id in array_ids]},
         )
 
@@ -652,14 +650,12 @@ class GenerateSimulationTask(Task):
             output_path=Path(self.config.coordinate_output_root, self.CONFIG_FILE_NAME),
         )
 
-    def _save_generated_simulation_assets_to_entity(
-        self, db_client: entitysdk.client.Client | None
-    ) -> None:
+    def _save_generated_simulation_assets_to_entity(self, db_client: Client | None) -> None:
         if db_client:
             L.info("-- Upload custom_node_sets")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
-                entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                entity_type=Simulation,
                 file_path=Path(self.config.coordinate_output_root, self.NODE_SETS_FILE_NAME),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
                 asset_label="custom_node_sets",  # ty:ignore[invalid-argument-type]
@@ -673,7 +669,7 @@ class GenerateSimulationTask(Task):
                 L.info("-- Upload compartment_sets.json")
                 _ = db_client.upload_file(
                     entity_id=self.config.single_entity.id,
-                    entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                    entity_type=Simulation,
                     file_path=compartment_sets_path,
                     file_name=self.COMPARTMENT_SETS_FILE_NAME,
                     file_content_type="application/json",  # ty:ignore[invalid-argument-type]
@@ -687,7 +683,7 @@ class GenerateSimulationTask(Task):
                     if spike_file is not None:
                         _ = db_client.upload_file(
                             entity_id=self.config.single_entity.id,
-                            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                            entity_type=Simulation,
                             file_path=Path(self.config.coordinate_output_root, spike_file),
                             file_content_type="application/x-hdf5",  # ty:ignore[invalid-argument-type]
                             asset_label="replay_spikes",  # ty:ignore[invalid-argument-type]
@@ -696,7 +692,7 @@ class GenerateSimulationTask(Task):
             L.info("-- Upload sonata_simulation_config")
             _ = db_client.upload_file(
                 entity_id=self.config.single_entity.id,
-                entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+                entity_type=Simulation,
                 file_path=Path(self.config.coordinate_output_root, self.CONFIG_FILE_NAME),
                 file_content_type="application/json",  # ty:ignore[invalid-argument-type]
                 asset_label="sonata_simulation_config",  # ty:ignore[invalid-argument-type]
@@ -705,7 +701,7 @@ class GenerateSimulationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
