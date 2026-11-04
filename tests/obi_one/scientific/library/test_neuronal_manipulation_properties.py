@@ -1913,6 +1913,24 @@ class TestCircuitFileStagingEdges:
             assert (staged / node_sets_file).exists()
             assert ObiCircuit(name="c", path=str(config_path)).node_sets
 
+    def test_node_sets_file_outside_the_asset_is_skipped(self, tmp_path):
+        """An absolute node_sets_file cannot be staged; it is optional, so no error."""
+        source = tmp_path / "source"
+        shutil.copytree(TINY_CIRCUIT_DIR, source)
+        config = json.loads((source / "circuit_config.json").read_text())
+        config["node_sets_file"] = str(tmp_path / "elsewhere" / "node_sets.json")
+        (source / "circuit_config.json").write_text(json.dumps(config))
+        client = _copying_client(source)
+        staged = tmp_path / "staged"
+        staged.mkdir()
+
+        _config, nodes, _dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), staged
+        )
+
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert fetched == {"circuit_config.json", *nodes.values()}
+
     def test_population_types_limit_which_nodes_files_are_staged(self, tmp_path):
         client = _copying_client(TINY_CIRCUIT_DIR)
         _config, nodes, dirs = _stage_circuit_for_neuron_set(

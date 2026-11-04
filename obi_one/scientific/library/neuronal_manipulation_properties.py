@@ -209,9 +209,9 @@ def _stage_circuit_for_neuron_set(
     of every population (or only those whose type is in ``population_types``) are then
     staged concurrently on ``FETCH_POOL`` with link_or_download (symlinks to the S3 cache
     where available, downloads otherwise).
-    A missing node sets file is tolerated; it is optional in SONATA. With
-    ``stage_nodes=False`` neither is fetched: the nodes paths are returned for the caller
-    to read another way.
+    A node sets file that is missing or outside the asset is skipped; it is optional in
+    SONATA. With ``stage_nodes=False`` neither is fetched: the nodes paths are returned
+    for the caller to read another way.
 
     Args:
         db_client: entitysdk client.
@@ -226,8 +226,7 @@ def _stage_circuit_for_neuron_set(
         and population -> type and hoc / mod directories for every population.
 
     Errors propagate: ``EntitySDKError`` when fetching circuit_config.json or a nodes.h5
-    fails, and ``ValueError`` when the config points a nodes.h5 or the node sets file
-    outside the asset.
+    fails, and ``ValueError`` when the config points a nodes.h5 outside the asset.
     """
     # Copy config as a real file so $BASE_DIR resolves to temp_dir
     config_path = _stage_file(
@@ -262,11 +261,17 @@ def _stage_circuit_for_neuron_set(
     }
 
     # The file bluepysnap reads node sets from (any name, e.g. node_sets_new.json); "" when
-    # the config declares none, in which case bluepysnap reads none either.
+    # the config declares none, in which case bluepysnap reads none either. Optional in
+    # SONATA, so a path outside the asset (e.g. absolute) is skipped like a missing file.
     node_sets_path = snap_circuit.to_libsonata.node_sets_path
+    node_sets_file = Path(node_sets_path).resolve() if node_sets_path else None
     node_sets_asset_path = (
-        str(Path(node_sets_path).resolve().relative_to(temp_dir_path)) if node_sets_path else None
+        str(node_sets_file.relative_to(temp_dir_path))
+        if node_sets_file and node_sets_file.is_relative_to(temp_dir_path)
+        else None
     )
+    if node_sets_file and node_sets_asset_path is None:
+        L.debug("Node sets file %s is outside the circuit asset, not staged", node_sets_file)
 
     def stage(asset_path: str) -> Path:
         return _stage_file(db_client, circuit_id, asset, temp_dir_path, asset_path)
