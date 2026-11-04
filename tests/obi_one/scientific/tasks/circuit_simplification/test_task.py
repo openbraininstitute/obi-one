@@ -669,10 +669,20 @@ class TestTaskExecution:
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
             ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.make_nest_export_loadable",
+            ) as make_loadable,
         ):
             task.execute(db_client=None)
 
         assert mock_pipeline.call_count == len(ALGORITHM_BLOCK_CLASSES)
+        nest_export_dirs = {
+            config.coordinate_output_root / algorithm / f"output_{exporter.replace(':', '_')}"
+            for algorithm, (_, exporter) in ALGORITHM_EXPORT_MAP.items()
+            if exporter and exporter.startswith("nest:")
+        }
+        assert {call.args[0] for call in make_loadable.call_args_list} == nest_export_dirs
+        assert make_loadable.call_count == len(nest_export_dirs)
         for call in mock_pipeline.call_args_list:
             sim_config = json.loads(
                 Path(call.kwargs["simulation_config"]).read_text(encoding="utf-8")
@@ -871,8 +881,39 @@ class TestTaskInternals:
         kwargs = register_circuit.call_args.kwargs
         assert kwargs["name"] == "ParentCircuit__test__adex_brian2_brian2_adex"
         assert kwargs["target_simulator"].name == "Brian2"
+        assert kwargs["skip_validation"] is False
         assert kwargs["parent"] is parent
         assert kwargs["derivation_type"] == DerivationType.circuit_simplification
+
+    @pytest.mark.parametrize(
+        ("algorithm_name", "circuit_config", "target_simulator", "skip_validation"),
+        [
+            # A loadable NEST export no longer names its simulator; bluepysnap has no schema for it.
+            ("adex_nest", {}, "NEST", True),
+            ("adex_brian2", {"target_simulator": "Brian2"}, "Brian2", False),
+            # NEURON outputs keep the simulator their config inherits from the parent.
+            ("single_compartment", {"target_simulator": "CORENEURON"}, "CORENEURON", False),
+        ],
+    )
+    def test_register_output_target_simulator_and_validation(
+        self, tmp_path: Path, algorithm_name, circuit_config, target_simulator, skip_validation
+    ):
+        task = self._make_task(tmp_path)
+        task.config.info = Info(campaign_name="test", campaign_description="test description")
+        task._circuit_entity = MagicMock(root_circuit_id=None)
+        circuit_path = tmp_path / "circuit_config.json"
+        circuit_path.write_text(json.dumps(circuit_config))
+
+        with patch(
+            "obi_one.scientific.tasks.circuit_simplification.task.circuit_registration.register_circuit",
+        ) as register_circuit:
+            task._register_output(
+                db_client=MagicMock(), circuit_path=circuit_path, algorithm_name=algorithm_name
+            )
+
+        kwargs = register_circuit.call_args.kwargs
+        assert kwargs["target_simulator"].value == target_simulator
+        assert kwargs["skip_validation"] is skip_validation
 
 
 class TestMechanismBackendSelection:

@@ -440,12 +440,18 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff
         Tuple of (has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines).
     """
     c_sonata = c.sonata_circuit
+    # Virtual nodes have no morphologies or models.
+    npop_names = Circuit.get_node_population_names(c_sonata, incl_virtual=False)
 
-    # Check morphologies
+    # Check morphologies. Morphology names only count where a morphology location is
+    # configured: a point-neuron export may keep its source's names without any morphology files.
     has_morphologies = False
-    for npop_name in c_sonata.nodes.population_names:
+    for npop_name in npop_names:
         npop = c_sonata.nodes[npop_name]
-        if npop.size == 0:
+        has_morphology_location = npop.config.get("morphologies_dir") or npop.config.get(
+            "alternate_morphologies"
+        )
+        if npop.size == 0 or not has_morphology_location:
             continue
         if "morphology" in npop.property_names and _any_not_empty(
             npop.get(properties="morphology")
@@ -455,7 +461,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff
 
     # Check point neurons
     has_point_neurons = False
-    for npop_name in c_sonata.nodes.population_names:
+    for npop_name in npop_names:
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue
@@ -465,7 +471,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff
 
     # Check electrical models
     has_electrical_cell_models = False
-    for npop_name in c_sonata.nodes.population_names:
+    for npop_name in npop_names:
         npop = c_sonata.nodes[npop_name]
         if npop.size == 0:
             continue

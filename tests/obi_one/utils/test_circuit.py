@@ -4,7 +4,9 @@ import json
 import shutil
 from unittest.mock import MagicMock, patch
 
+import h5py
 import libsonata
+import numpy as np
 import pytest
 from entitysdk import types
 from PIL import Image
@@ -321,6 +323,36 @@ def test_get_circuit_properties_small_circuit():
     assert has_point_neurons is False
     assert has_electrical_cell_models is True
     assert has_spines is False
+
+
+def test_get_circuit_properties_ignores_morphology_names_without_morphologies(tmp_path):
+    """A point-neuron export keeps its source's morphology names but no morphology files."""
+    with h5py.File(tmp_path / "nodes.h5", "w") as f:
+        population = f.create_group("nodes/neurons")
+        population.create_dataset("node_type_id", data=np.zeros(2, dtype=np.int64))
+        for name, value in (
+            ("morphology", "dend-C1_axon-C2"),
+            ("model_template", "json:adex"),
+            ("model_type", "brian2_point"),
+        ):
+            population.create_dataset(f"0/{name}", data=[value] * 2, dtype=h5py.string_dtype())
+    config = {
+        "components": {"point_neuron_models_dir": "models"},
+        "networks": {
+            "nodes": [
+                {
+                    "nodes_file": str(tmp_path / "nodes.h5"),
+                    "populations": {"neurons": {"type": "brian2_point"}},
+                }
+            ],
+            "edges": [],
+        },
+    }
+    (tmp_path / "circuit_config.json").write_text(json.dumps(config))
+    c = Circuit(name="brian2", path=str(tmp_path / "circuit_config.json"))
+
+    # (has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines)
+    assert get_circuit_properties(c) == (False, True, True, False)
 
 
 def test_get_circuit_properties_pair_circuit():
