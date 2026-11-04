@@ -17,6 +17,7 @@ from obi_one.core.path import NamedPath
 
 if TYPE_CHECKING:
     import pandas as pd
+    from bluepysnap.nodes import NodePopulation
 
 import h5py
 import numpy as np
@@ -257,7 +258,7 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
 
 def get_morph_dirs(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> tuple[dict, dict]:
     """Returns source and destination morphology directories for a node population."""
@@ -293,7 +294,7 @@ def get_morph_dirs(
 
 def copy_morphologies(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy morphologies for a node population from original to extracted circuit."""
@@ -352,7 +353,7 @@ def copy_morphologies(
 
 def copy_hoc_files(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy biophysical neuron model (.hoc) files for a node population."""
@@ -382,7 +383,7 @@ def copy_hoc_files(
 
 def copy_mod_files(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy mechanisms (.mod) files for a node population."""
