@@ -532,6 +532,9 @@ class TestSortingTask:
         [(Kilosort4Sorter(), "kilosort4"), (LupinSorter(), "lupin")],
     )
     def test_sorters_only_set_parameters_spikeinterface_knows(self, sorter, sorter_name):
+        if sorter_name == "kilosort4":
+            # spikeinterface reads these parameters from the package, an optional extra.
+            pytest.importorskip("kilosort")
         assert sorter.sorter_name == sorter_name
         assert set(sorter.to_dict()) <= set(ss.get_default_sorter_params(sorter_name))
 
