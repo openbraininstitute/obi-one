@@ -429,9 +429,9 @@ def estimate_task_resources(
 
 
 def select_simulation_task(
-    *, db_client: entitysdk.Client, config_id: UUID, config_type: models.Entity
+    *, db_client: entitysdk.Client, config_id: UUID, config_type: type[models.Simulation]
 ) -> TaskType:
-    simulation = db_client.get_entity(entity_id=config_id, entity_type=config_type)  # ty:ignore[invalid-argument-type]
+    simulation = db_client.get_entity(entity_id=config_id, entity_type=config_type)
 
     simulation_config_content = db_sdk.select_asset_content(
         client=db_client,

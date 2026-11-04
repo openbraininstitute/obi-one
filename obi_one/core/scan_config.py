@@ -363,7 +363,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             multiple_value_parameters_dictionary={
                 "scan_parameters": multiple_value_parameters_dictionary
             },
-            input_entities=self.input_entities(db_client=db_client),  # ty:ignore[invalid-argument-type]
+            input_entities=self.input_entities(db_client=db_client),
             task_config_file_path=output_root / SCAN_CONFIG_FILENAME,
         )
 

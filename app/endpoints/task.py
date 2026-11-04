@@ -81,7 +81,7 @@ def task_launch_endpoint(
         task_type = task_service.select_simulation_task(
             db_client=db_client,
             config_id=json_model.config_id,
-            config_type=TASK_DEFINITIONS[json_model.task_type].config_type,  # ty:ignore[invalid-argument-type]
+            config_type=models.Simulation,
         )
         json_model = json_model.model_copy(update={"task_type": task_type})
         msg = f"Mapped circuit_simulation -> {task_type}"
@@ -174,7 +174,7 @@ def estimate_endpoint(
         task_type = task_service.select_simulation_task(
             db_client=db_client,
             config_id=json_model.config_id,
-            config_type=TASK_DEFINITIONS[json_model.task_type].config_type,  # ty:ignore[invalid-argument-type]
+            config_type=models.Simulation,
         )
         json_model = json_model.model_copy(update={"task_type": task_type})
         msg = f"Mapped circuit_simulation -> {task_type}"

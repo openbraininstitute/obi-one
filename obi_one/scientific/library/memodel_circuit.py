@@ -1,5 +1,6 @@
 import logging
 from typing import Self
+from uuid import UUID
 
 import entitysdk.client
 from entitysdk.models import MEModel
@@ -108,7 +109,7 @@ def get_memodel_mechanism_variables(
         Mapping of ion channel name to its variables, in the same shape used
         by both the MEModel and Circuit neuronal-manipulation endpoints.
     """
-    memodel = db_client.get_entity(entity_id=entity_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
+    memodel = db_client.get_entity(entity_id=UUID(entity_id), entity_type=MEModel)
     variables, channel_mapping = get_mechanism_variables(db_client, memodel)
     return _build_mechanism_variables_by_ion_channel_response(variables, channel_mapping)
 

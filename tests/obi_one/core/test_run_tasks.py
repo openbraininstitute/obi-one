@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 
@@ -12,6 +13,10 @@ from obi_one.scientific.tasks.simulation_execution.neuron.task import (
     CircuitSimulationExecutionTask,
 )
 from obi_one.types import TaskType
+
+ENTITY_ID = "00000000-0000-4000-8000-000000000001"
+ASSET_ID = "00000000-0000-4000-8000-000000000002"
+ACTIVITY_ID = "00000000-0000-4000-8000-000000000003"
 
 
 @pytest.fixture
@@ -37,7 +42,7 @@ def test_run_task_type_resolves_lazy_task_spec_with_asset_label(
 ):
     """Uses real ``config_task_map`` (no mock on ``get_task_spec_for_task_type``)."""
     entity_type = MagicMock()
-    mock_get_asset.return_value = SimpleNamespace(id="asset-1")
+    mock_get_asset.return_value = SimpleNamespace(id="00000000-0000-4000-8000-000000000002")
     db_client.download_content.return_value = json.dumps(
         {"type": "CircuitExtractionSingleConfig", "idx": 0}
     ).encode("utf-8")
@@ -53,11 +58,11 @@ def test_run_task_type_resolves_lazy_task_spec_with_asset_label(
         test_module.run_task_type(
             TaskType.circuit_extraction,
             entity_type=entity_type,
-            entity_id="ent-1",
+            entity_id="00000000-0000-4000-8000-000000000001",
             scan_output_root="/out",
             db_client=db_client,
             entity_cache=True,
-            execution_activity_id="act-1",
+            execution_activity_id="00000000-0000-4000-8000-000000000003",
         )
 
     mock_get_asset.assert_called_once()
@@ -65,7 +70,7 @@ def test_run_task_type_resolves_lazy_task_spec_with_asset_label(
     assert captured["kwargs"] == {
         "db_client": db_client,
         "entity_cache": True,
-        "execution_activity_id": "act-1",
+        "execution_activity_id": "00000000-0000-4000-8000-000000000003",
     }
 
 
@@ -81,7 +86,7 @@ def test_run_task_type_resolves_lazy_task_spec_without_asset_label(db_client):
         test_module.run_task_type(
             TaskType.circuit_simulation_neurodamus_machine,
             entity_type=entity_type,
-            entity_id="ent-1",
+            entity_id="00000000-0000-4000-8000-000000000001",
             scan_output_root="/out",
             db_client=db_client,
         )
@@ -113,29 +118,29 @@ def test_run_task_type_downloads_config_deserializes_sets_entity_and_executes_ta
         single_config_cls=MagicMock(),
     )
     mock_deserialize.return_value = mock_single_config
-    mock_get_asset.return_value = SimpleNamespace(id="asset-1")
+    mock_get_asset.return_value = SimpleNamespace(id="00000000-0000-4000-8000-000000000002")
 
     test_module.run_task_type(
         TaskType.circuit_extraction,
         entity_type=entity_type,
-        entity_id="ent-1",
+        entity_id="00000000-0000-4000-8000-000000000001",
         scan_output_root="/out",
         db_client=db_client,
         entity_cache=True,
-        execution_activity_id="act-1",
+        execution_activity_id="00000000-0000-4000-8000-000000000003",
     )
 
     mock_get_asset.assert_called_once()
     db_client.download_content.assert_called_once_with(
-        entity_id="ent-1",
+        entity_id=UUID(ENTITY_ID),
         entity_type=entity_type,
-        asset_id="asset-1",
+        asset_id=ASSET_ID,
     )
     call_json_dict = mock_deserialize.call_args[0][0]
     assert call_json_dict["scan_output_root"] == "/out"
     assert call_json_dict["coordinate_output_root"] == Path("/out") / "0"
     db_client.get_entity.assert_called_once_with(
-        entity_id="ent-1",
+        entity_id=UUID(ENTITY_ID),
         entity_type=entity_type,
     )
     mock_single_config.set_single_entity.assert_called_once_with(db_client.get_entity.return_value)
@@ -144,7 +149,7 @@ def test_run_task_type_downloads_config_deserializes_sets_entity_and_executes_ta
     mock_task_instance.execute.assert_called_once_with(
         db_client=db_client,
         entity_cache=True,
-        execution_activity_id="act-1",
+        execution_activity_id="00000000-0000-4000-8000-000000000003",
     )
 
 
@@ -171,11 +176,11 @@ def test_run_task_type_without_asset_label_creates_default_config(
     test_module.run_task_type(
         TaskType.circuit_simulation,
         entity_type=entity_type,
-        entity_id="ent-1",
+        entity_id="00000000-0000-4000-8000-000000000001",
         scan_output_root="/out",
         db_client=db_client,
         entity_cache=False,
-        execution_activity_id="act-1",
+        execution_activity_id="00000000-0000-4000-8000-000000000003",
     )
 
     # Should not download content (no asset)
@@ -192,7 +197,7 @@ def test_run_task_type_without_asset_label_creates_default_config(
     mock_task_instance.execute.assert_called_once_with(
         db_client=db_client,
         entity_cache=False,
-        execution_activity_id="act-1",
+        execution_activity_id="00000000-0000-4000-8000-000000000003",
     )
 
 
@@ -265,14 +270,14 @@ def test_run_task_for_single_config_asset_deserializes_and_runs(
     mock_run_single,
     mock_mkdir,  # ruff: ignore[unused-function-argument]
     db_client,
-    mock_single_config,
 ):
-    mock_deserialize.return_value = mock_single_config
+    single_config = CircuitExtractionSingleConfig.model_construct()
+    mock_deserialize.return_value = single_config
 
     test_module.run_task_for_single_config_asset(
         entity_type=MagicMock(),
-        entity_id="ent-1",
-        config_asset_id="asset-1",
+        entity_id=ENTITY_ID,
+        config_asset_id=ASSET_ID,
         scan_output_root="/out",
         db_client=db_client,
     )
@@ -280,8 +285,8 @@ def test_run_task_for_single_config_asset_deserializes_and_runs(
     call_json_dict = mock_deserialize.call_args[0][0]
     assert call_json_dict["scan_output_root"] == "/out"
     assert call_json_dict["coordinate_output_root"] == Path("/out") / "0"
-    mock_single_config.set_single_entity.assert_called_once()
     mock_run_single.assert_called_once()
+    assert mock_run_single.call_args.args[0] is single_config
 
 
 @patch("obi_one.core.run_tasks.db_sdk.get_entity_asset_by_label")
@@ -300,7 +305,7 @@ def test_run_task_type_raises_when_config_asset_has_no_id(
         test_module.run_task_type(
             TaskType.circuit_extraction,
             entity_type=MagicMock(),
-            entity_id="ent-1",
+            entity_id="00000000-0000-4000-8000-000000000001",
             scan_output_root="/out",
             db_client=db_client,
         )

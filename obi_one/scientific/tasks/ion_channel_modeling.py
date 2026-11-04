@@ -522,9 +522,9 @@ class IonChannelFittingTask(Task):
     @staticmethod
     def register_json(client: Client, id_: str | uuid.UUID, json_path: str | Path) -> None:
         client.upload_file(
-            entity_id=id_,  # ty:ignore[invalid-argument-type]
+            entity_id=uuid.UUID(str(id_)),
             entity_type=IonChannelModel,
-            file_path=json_path,  # ty:ignore[invalid-argument-type]
+            file_path=Path(json_path),
             file_content_type=ContentType.application_json,
             asset_label=AssetLabel.ion_channel_model_figure_summary_json,
         )
@@ -534,9 +534,9 @@ class IonChannelFittingTask(Task):
         client: Client, id_: str | uuid.UUID, path_to_register: str | Path
     ) -> None:
         client.upload_file(
-            entity_id=id_,  # ty:ignore[invalid-argument-type]
+            entity_id=uuid.UUID(str(id_)),
             entity_type=IonChannelModel,
-            file_path=path_to_register,  # ty:ignore[invalid-argument-type]
+            file_path=Path(path_to_register),
             file_content_type=ContentType.image_png,
             asset_label=AssetLabel.ion_channel_model_thumbnail,
         )
@@ -554,9 +554,9 @@ class IonChannelFittingTask(Task):
     ) -> None:
         for path in paths_to_register:
             client.upload_file(
-                entity_id=id_,  # ty:ignore[invalid-argument-type]
+                entity_id=uuid.UUID(str(id_)),
                 entity_type=IonChannelModel,
-                file_path=path,  # ty:ignore[invalid-argument-type]
+                file_path=Path(path),
                 file_content_type=ContentType.application_pdf,
                 asset_label=AssetLabel.ion_channel_model_figure,
             )
@@ -645,7 +645,7 @@ class IonChannelFittingTask(Task):
             entity_type=IonChannelModel,
             file_path=mod_filepath,
             file_content_type=ContentType.application_mod,
-            asset_label="neuron_mechanisms",  # ty:ignore[invalid-argument-type]
+            asset_label=AssetLabel.neuron_mechanisms,
         )
 
         self.register_plots_and_json(db_client, figure_filepaths, model.id)

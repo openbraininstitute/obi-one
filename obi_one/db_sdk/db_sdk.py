@@ -126,7 +126,7 @@ def get_recording_protocols(
     by_recording: dict[str, list[str]] = {}
     for rid in recording_ids:
         entity = db_client.get_entity(
-            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_id=UUID(rid),
             entity_type=ElectricalCellRecording,
         )
         stimuli = entity.stimuli or []
@@ -166,7 +166,7 @@ def get_recording_amplitudes(
     combined: dict[str, set[float]] = {}
     for rid in recording_ids:
         entity = db_client.get_entity(
-            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_id=UUID(rid),
             entity_type=ElectricalCellRecording,
         )
         protocol_names = sorted({s.name for s in (entity.stimuli or []) if s.name})
@@ -217,7 +217,10 @@ def select_asset_content(
 ) -> bytes:
     """Select an asset from an entity and fetch its content."""
     if entity is None:
-        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
+        if entity_id is None or entity_type is None:
+            msg = "entity_id and entity_type are required when entity is not provided"
+            raise ValueError(msg)
+        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)
     asset = client.select_assets(
         entity=entity,
         selection=selection,
@@ -387,7 +390,7 @@ def register_task_config_with_asset(
     description: str,
     task_config_type: str,
     multiple_value_parameters_dictionary: dict,
-    input_entities: list[UUID],
+    input_entities: list[Entity],
     task_config_file_path: Path,
     task_config_generator_id: UUID | None = None,
 ) -> tuple[TaskConfig, Asset]:
@@ -399,7 +402,7 @@ def register_task_config_with_asset(
         description=description,
         task_config_type=task_config_type,
         multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-        input_entities=input_entities,  # ty:ignore[invalid-argument-type]
+        input_entities=input_entities,
         task_config_generator_id=task_config_generator_id,
     )
     asset = upload_task_config_asset(

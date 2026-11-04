@@ -1,6 +1,7 @@
 import io
 import logging
 from typing import Annotated, Self
+from uuid import UUID
 
 import entitysdk
 import neurom
@@ -229,7 +230,9 @@ def get_morphology_metrics(
     db_client: entitysdk.client.Client,
     requested_metrics: list[str] | None = None,
 ) -> MorphologyMetricsOutput:
-    morphology = db_client.get_entity(entity_id=cell_morphology_id, entity_type=CellMorphology)  # ty:ignore[invalid-argument-type]
+    morphology = db_client.get_entity(
+        entity_id=UUID(cell_morphology_id), entity_type=CellMorphology
+    )
 
     for asset in morphology.assets:
         if asset.content_type == "application/swc":
