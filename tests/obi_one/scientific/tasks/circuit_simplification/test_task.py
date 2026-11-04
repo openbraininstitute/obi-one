@@ -918,8 +918,8 @@ class TestMechanismBackendSelection:
                 return_value=MagicMock(id="new-circuit-id"),
             ),
             patch(
-                "obi_one.scientific.tasks.circuit_simplification.task.process.get_mechanisms_dirs",
-                return_value=[Path("/fake/mod")],
+                "obi_one.scientific.tasks.circuit_simplification.task.get_mechanisms_dir",
+                return_value=Path("/fake/mod"),
             ),
             patch(
                 "obi_one.scientific.tasks.circuit_simplification.task.process.compile_mechanisms",
@@ -929,6 +929,7 @@ class TestMechanismBackendSelection:
 
         mock_compile.assert_called_once()
         assert mock_compile.call_args.kwargs["simulation_backend"] == SimulationBackend.bluecellulab
+        assert mock_compile.call_args.kwargs["mechanisms_dirs"] == [Path("/fake/mod")]
 
 
 class TestSmokeCheckLoadability:

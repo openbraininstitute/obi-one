@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -21,7 +22,7 @@ from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
 from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
-from obi_one.scientific.library.circuit import Circuit as OBICircuit
+from obi_one.scientific.library.circuit import Circuit as OBICircuit, get_mechanisms_dir
 from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
 
 from tests.utils import CIRCUIT_DIR
@@ -241,6 +242,45 @@ def test_circuit_extraction(tmp_path):
 
                 # Check HOC files
                 _check_hoc(npop_dict, c_res)
+
+
+def test_circuit_extraction_copies_mod_files_kept_in_implicit_mod_dir(tmp_path):
+    """A parent that leaves `mechanisms_dir` empty and keeps its .mod files in `mod/`, as many
+    platform circuits do, passes them on to the extracted circuit.
+    """
+    parent_dir = tmp_path / "parent"
+    shutil.copytree(CIRCUIT_DIR / "N_10__top_nodes_dim6", parent_dir)
+    parent_config_path = parent_dir / "circuit_config.json"
+    parent_config = json.loads(parent_config_path.read_text(encoding="utf-8"))
+    parent_config["components"]["mechanisms_dir"] = ""
+    parent_config_path.write_text(json.dumps(parent_config), encoding="utf-8")
+
+    neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+        node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+    )
+    config = CircuitExtractionScanConfig.empty_config()
+    config.set(Info(campaign_name="Test", campaign_description="Test campaign"), name="info")
+    config.add(neuron_set, name="TestNeuronSet")
+    config.set(
+        CircuitExtractionScanConfig.Initialize(
+            circuit=OBICircuit(name="parent", path=str(parent_config_path)),
+            neuron_set=neuron_set.ref,
+        ),
+        name="initialize",
+    )
+    grid_scan = GridScanGenerationTask(
+        form=config.validated_config(),
+        output_root=tmp_path / "grid_scan",
+        coordinate_directory_option="ZERO_INDEX",
+    )
+    grid_scan.execute()
+    run_tasks_for_generated_scan(grid_scan)
+
+    extracted_dir = tmp_path / "grid_scan" / str(grid_scan.single_configs[0].idx)
+    assert sorted(p.name for p in (extracted_dir / "mod").glob("*.mod")) == sorted(
+        p.name for p in (parent_dir / "mod").glob("*.mod")
+    )
+    assert get_mechanisms_dir(extracted_dir / "circuit_config.json") == extracted_dir / "mod"
 
 
 def test_circuit_extraction_rejects_virtual_neuron_set():

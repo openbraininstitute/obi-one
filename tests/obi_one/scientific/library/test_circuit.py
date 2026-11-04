@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -715,3 +716,124 @@ def test_load_morphology_falls_back_to_swc_without_an_h5(monkeypatch, tmp_path):
     morphology = circuit.load_morphology(0, population="All")
 
     assert len(morphology.sections) == 2
+
+
+def _write_mod_files(directory: Path) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "Na.mod").write_text("NEURON { SUFFIX na }\n")
+
+
+def _write_circuit_config(
+    circuit_dir: Path,
+    *,
+    components_mechanisms_dir: str | None = None,
+    populations: dict[str, dict] | None = None,
+) -> Path:
+    """Minimal SONATA circuit config libsonata can parse; one nodes file per population."""
+    populations = populations or {"A": {"type": "biophysical"}}
+    components = {"morphologies_dir": "morphs", "biophysical_neuron_models_dir": "hoc"}
+    if components_mechanisms_dir is not None:
+        components["mechanisms_dir"] = components_mechanisms_dir
+    nodes = []
+    for name, properties in populations.items():
+        (circuit_dir / f"{name}.h5").touch()
+        nodes.append({"nodes_file": f"$BASE_DIR/{name}.h5", "populations": {name: properties}})
+    config = {
+        "version": 2.3,
+        "manifest": {"$BASE_DIR": "./"},
+        "components": components,
+        "networks": {"nodes": nodes, "edges": []},
+    }
+    config_path = circuit_dir / "circuit_config.json"
+    config_path.write_text(json.dumps(config))
+    return config_path
+
+
+def test_mod_files_dir_prefers_the_directory_itself(tmp_path):
+    _write_mod_files(tmp_path)
+    _write_mod_files(tmp_path / "mod")
+
+    assert test_module.mod_files_dir(tmp_path) == tmp_path
+
+
+def test_mod_files_dir_finds_the_mod_subdirectory(tmp_path):
+    _write_mod_files(tmp_path / "mod")
+
+    assert test_module.mod_files_dir(tmp_path) == tmp_path / "mod"
+
+
+def test_mod_files_dir_without_mod_files(tmp_path):
+    (tmp_path / "mod").mkdir()
+
+    assert test_module.mod_files_dir(tmp_path) is None
+
+
+def test_get_mechanisms_dir_declared_in_components(tmp_path):
+    config_path = _write_circuit_config(tmp_path, components_mechanisms_dir="$BASE_DIR/mechmods")
+    _write_mod_files(tmp_path / "mechmods")
+
+    assert test_module.get_mechanisms_dir(config_path) == tmp_path / "mechmods"
+
+
+@pytest.mark.parametrize("components_mechanisms_dir", [None, "", "$BASE_DIR", "./"])
+def test_get_mechanisms_dir_finds_mod_dir_next_to_the_config(tmp_path, components_mechanisms_dir):
+    """No declared directory, an empty one, or the circuit root: the files are in `mod/`."""
+    config_path = _write_circuit_config(
+        tmp_path, components_mechanisms_dir=components_mechanisms_dir
+    )
+    _write_mod_files(tmp_path / "mod")
+
+    assert test_module.get_mechanisms_dir(config_path) == tmp_path / "mod"
+
+
+def test_get_mechanisms_dir_ignores_virtual_populations(tmp_path):
+    config_path = _write_circuit_config(
+        tmp_path,
+        components_mechanisms_dir="$BASE_DIR/mod",
+        populations={
+            "A": {"type": "biophysical"},
+            "VPM": {"type": "virtual", "mechanisms_dir": "$BASE_DIR/elsewhere"},
+        },
+    )
+    _write_mod_files(tmp_path / "mod")
+    _write_mod_files(tmp_path / "elsewhere")
+
+    assert test_module.get_mechanisms_dir(config_path) == tmp_path / "mod"
+
+
+def test_get_mechanisms_dir_one_directory_named_twice(tmp_path):
+    """Populations naming the same directory differently resolve to that one directory."""
+    config_path = _write_circuit_config(
+        tmp_path,
+        populations={
+            "A": {"type": "biophysical", "mechanisms_dir": "$BASE_DIR/mod"},
+            "B": {"type": "biophysical", "mechanisms_dir": "$BASE_DIR/mod/"},
+            "C": {"type": "biophysical", "mechanisms_dir": "$BASE_DIR"},
+        },
+    )
+    _write_mod_files(tmp_path / "mod")
+
+    assert test_module.get_mechanisms_dir(config_path) == tmp_path / "mod"
+
+
+def test_get_mechanisms_dir_rejects_several_directories(tmp_path):
+    config_path = _write_circuit_config(
+        tmp_path,
+        populations={
+            "A": {"type": "biophysical", "mechanisms_dir": "$BASE_DIR/mod_a"},
+            "B": {"type": "biophysical", "mechanisms_dir": "$BASE_DIR/mod_b"},
+        },
+    )
+    _write_mod_files(tmp_path / "mod_a")
+    _write_mod_files(tmp_path / "mod_b")
+
+    with pytest.raises(ValueError, match="more than one directory"):
+        test_module.get_mechanisms_dir(config_path)
+
+
+def test_get_mechanisms_dir_without_mod_files(tmp_path):
+    config_path = _write_circuit_config(tmp_path, components_mechanisms_dir="")
+    (tmp_path / "mod").mkdir()
+
+    with pytest.raises(FileNotFoundError, match=r"No \.mod files found"):
+        test_module.get_mechanisms_dir(config_path)

@@ -464,3 +464,54 @@ def ensure_mechanisms_dir(
     InhibitoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
 
     return mechanisms_dir
+
+
+def mod_files_dir(directory: Path) -> Path | None:
+    """Where the .mod files of a declared mechanisms directory are.
+
+    Returns `directory` when it holds .mod files, else its `CIRCUIT_MOD_DIR` subdirectory when
+    that does, else None. Circuits often name the circuit root as their mechanisms directory, or
+    leave it empty, which bluepysnap resolves to the root, while the files sit in `mod/`.
+    """
+    for candidate in (directory, directory / CIRCUIT_MOD_DIR):
+        if any(candidate.glob("*.mod")):
+            return candidate
+    return None
+
+
+def get_mechanisms_dir(circuit_config_path: Path) -> Path:
+    """The one directory holding the .mod files of a circuit's non-virtual populations.
+
+    Each non-virtual population's resolved `mechanisms_dir` is looked up with `mod_files_dir`,
+    or the circuit directory when none declares one (libsonata reports an empty value as `""`).
+    Virtual populations are skipped: they have no mechanisms, yet libsonata hands them the
+    components value as well.
+
+    Raises:
+        FileNotFoundError: If no directory holds .mod files.
+        ValueError: If the populations' .mod files are in more than one directory.
+    """
+    config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
+    declared = {
+        Path(properties.mechanisms_dir)
+        for population in config.node_populations
+        if (properties := config.node_population_properties(population)).type
+        not in TYPES_OF_VIRTUAL_NODES
+        and properties.mechanisms_dir
+    } or {circuit_config_path.parent.absolute()}
+    found = {mod_dir for directory in declared if (mod_dir := mod_files_dir(directory)) is not None}
+
+    looked_in = ", ".join(sorted(str(d) for d in declared))
+    if not found:
+        msg = (
+            f"No .mod files found for circuit {circuit_config_path}: looked in {looked_in} and "
+            f"their '{CIRCUIT_MOD_DIR}/' subdirectories."
+        )
+        raise FileNotFoundError(msg)
+    if len(found) > 1:
+        msg = (
+            f"The .mod files of circuit {circuit_config_path} are in more than one directory: "
+            f"{', '.join(sorted(str(d) for d in found))}."
+        )
+        raise ValueError(msg)
+    return found.pop()

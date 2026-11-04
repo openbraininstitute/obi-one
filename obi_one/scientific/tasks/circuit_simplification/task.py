@@ -23,7 +23,7 @@ from pydantic import PrivateAttr
 from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit import Circuit, get_mechanisms_dir
 from obi_one.scientific.library.simulation.neuron import process
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
@@ -324,10 +324,9 @@ class CircuitSimplificationTask(Task):
 
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithm_names:
-                mechanisms_dirs = sorted(set(process.get_mechanisms_dirs(input_circuit_path)))
                 process.compile_mechanisms(
                     output_dir=Path(),
-                    mechanisms_dirs=mechanisms_dirs,
+                    mechanisms_dirs=[get_mechanisms_dir(input_circuit_path)],
                     simulation_backend=SimulationBackend.bluecellulab,
                 )
 

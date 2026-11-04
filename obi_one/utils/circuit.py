@@ -24,7 +24,7 @@ import numpy as np
 from bluepysnap import BluepySnapError
 from entitysdk import types
 
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit import CIRCUIT_MOD_DIR, Circuit, mod_files_dir
 from obi_one.scientific.library.circuit_constants import TYPES_OF_POINT_NODES
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
@@ -386,24 +386,37 @@ def copy_mod_files(
     pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
-    """Copy mechanisms (.mod) files for a node population."""
-    source_dir = original_circuit.nodes[pop_name].config.get("mechanisms_dir")
-    if not source_dir or not Path(source_dir).exists():
-        return
+    """Copy mechanisms (.mod) files for a node population.
 
-    mod_file_list = [p.name for p in Path(source_dir).glob("*.mod")]
-    if len(mod_file_list) == 0:
-        return
+    The files are looked up with `mod_files_dir`, so they are found in the `mod/` subdirectory of
+    a `mechanisms_dir` that names the circuit root (or is empty, which bluepysnap resolves to the
+    root). They are copied to the same place relative to the new population's `mechanisms_dir`,
+    so the extracted circuit resolves them the way its parent did.
+
+    Raises:
+        FileNotFoundError: If the parent population has no .mod files; an extracted circuit
+            without them could not be simulated.
+    """
+    declared_source_dir = original_circuit.nodes[pop_name].config.get("mechanisms_dir")
+    source_dir = mod_files_dir(Path(declared_source_dir)) if declared_source_dir else None
+    if source_dir is None:
+        msg = (
+            f"No mechanisms (.mod) found for population '{pop_name}' (mechanisms_dir: "
+            f"{declared_source_dir!r}, or its '{CIRCUIT_MOD_DIR}/' subdirectory)."
+        )
+        raise FileNotFoundError(msg)
+
+    mod_file_list = [p.name for p in source_dir.glob("*.mod")]
 
     L.info(
         f"Copying {len(mod_file_list)} mechanisms (.mod) for population '{pop_name}' ({pop.size})"
     )
 
-    dest_dir = pop.config.get("mechanisms_dir")
-    Path(dest_dir).mkdir(parents=True, exist_ok=True)
+    dest_dir = Path(pop.config.get("mechanisms_dir")) / source_dir.relative_to(declared_source_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
     for mod_file in mod_file_list:
-        src_file = Path(source_dir) / mod_file
+        src_file = source_dir / mod_file
         dest_file = Path(dest_dir) / mod_file
         if not Path(dest_file).exists():
             # Copy only, if not yet existing (could happen for shared mod files
