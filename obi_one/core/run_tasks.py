@@ -2,7 +2,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import entitysdk
+from entitysdk.client import Client
+from entitysdk.models import Entity
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.core.scan_generation import ScanGenerationTask
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 def run_task_for_single_config(
     single_config: SingleConfigMixin,
     *,
-    db_client: entitysdk.client.Client | None = None,
+    db_client: Client | None = None,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> Any:
@@ -42,7 +43,7 @@ def run_task_for_single_config(
 def run_task_for_single_configs(
     single_configs: list[SingleConfigMixin],
     *,
-    db_client: entitysdk.client.Client | None = None,
+    db_client: Client | None = None,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> list[Any]:
@@ -60,7 +61,7 @@ def run_task_for_single_configs(
 def run_tasks_for_generated_scan(
     scan_generation: ScanGenerationTask,
     *,
-    db_client: entitysdk.client.Client | None = None,
+    db_client: Client | None = None,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> Any:
@@ -73,12 +74,12 @@ def run_tasks_for_generated_scan(
 
 
 def run_task_for_single_config_asset(
-    entity_type: type[entitysdk.models.entity.Entity],  # ty:ignore[possibly-missing-submodule]
+    entity_type: type[Entity],
     entity_id: str,
     config_asset_id: str,
     scan_output_root: str,
     *,
-    db_client: entitysdk.client.Client | None = None,
+    db_client: Client | None = None,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
 ) -> None:
@@ -109,11 +110,11 @@ def run_task_for_single_config_asset(
 
 def run_task_type(
     task_type: TaskType,
-    entity_type: type[entitysdk.models.entity.Entity],  # ty:ignore[possibly-missing-submodule]
+    entity_type: type[Entity],
     entity_id: str,
     scan_output_root: str,
     *,
-    db_client: entitysdk.client.Client | None = None,
+    db_client: Client | None = None,
     entity_cache: bool = False,
     execution_activity_id: str | None = None,
     shared_cache: "SharedCache | None" = None,

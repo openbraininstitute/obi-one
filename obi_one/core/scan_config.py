@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar, get_args, get_origin
 
-import entitysdk
 from entitysdk.client import Client
 from entitysdk.models import Entity, TaskConfig
 from entitysdk.models.activity import Activity
@@ -319,7 +318,7 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
     @property
     def campaign(
         self,
-    ) -> entitysdk.models.Entity | None:  # ty:ignore[possibly-missing-submodule]
+    ) -> Entity | None:
         return self._campaign
 
     def input_entities(self, db_client: Client) -> list[Entity]:  # ruff: ignore[no-self-use, unused-method-argument]

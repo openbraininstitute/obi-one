@@ -2,10 +2,11 @@ import logging
 from http import HTTPStatus
 from typing import Annotated
 
-import entitysdk.client
-import entitysdk.exception
+from entitysdk.client import Client
+from entitysdk.exception import EntitySDKError
 from entitysdk.models import MEModel
 from entitysdk.models.circuit import Circuit
+from entitysdk.types import CircuitScale
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -75,7 +76,7 @@ class MemodelNeuronalManipulationPropertiesRequest(BaseModel):
 )
 def circuit_metrics_endpoint(
     circuit_id: str,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
     level_of_detail_nodes: Annotated[
         CircuitStatsLevelOfDetail,
         Query(description="Level of detail for node populations analysis"),
@@ -94,7 +95,7 @@ def circuit_metrics_endpoint(
             level_of_detail_nodes=level_of_detail_nodes_dict,
             level_of_detail_edges=level_of_detail_edges_dict,
         )
-    except entitysdk.exception.EntitySDKError as err:
+    except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -112,7 +113,7 @@ def circuit_metrics_endpoint(
 )
 def circuit_populations_endpoint(
     circuit_id: str,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
 ) -> CircuitPopulationsResponse:
     try:
         circuit_metrics = get_circuit_metrics(
@@ -121,7 +122,7 @@ def circuit_populations_endpoint(
             level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-    except entitysdk.exception.EntitySDKError as err:
+    except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -139,7 +140,7 @@ def circuit_populations_endpoint(
 )
 def circuit_nodesets_endpoint(
     circuit_id: str,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
 ) -> CircuitNodesetsResponse:
     try:
         circuit_metrics = get_circuit_metrics(
@@ -148,7 +149,7 @@ def circuit_nodesets_endpoint(
             level_of_detail_nodes={"_ALL_": CircuitStatsLevelOfDetail.none},
             level_of_detail_edges={"_ALL_": CircuitStatsLevelOfDetail.none},
         )
-    except entitysdk.exception.EntitySDKError as err:
+    except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -166,7 +167,7 @@ def circuit_nodesets_endpoint(
 )
 def mapped_circuit_properties_endpoint(
     circuit_id: str,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
 ) -> dict:
     mapped_circuit_properties: dict = {}
 
@@ -224,7 +225,7 @@ def mapped_circuit_properties_endpoint(
             )
             if pop is not None
         }
-    except (entitysdk.exception.EntitySDKError, ValueError):
+    except (EntitySDKError, ValueError):
         # Expected for MEModel entities or entities without proper circuit configuration.
         # MEModel mechanism variables are served by the dedicated
         # /memodel-neuronal-manipulation-properties endpoint; this endpoint only
@@ -241,7 +242,7 @@ def mapped_circuit_properties_endpoint(
         # unknown/invalid entities surface as an internal error.
         try:
             db_client.get_entity(entity_id=circuit_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
-        except entitysdk.exception.EntitySDKError as err:
+        except EntitySDKError as err:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail={
@@ -256,26 +257,26 @@ def mapped_circuit_properties_endpoint(
             circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)  # ty:ignore[invalid-argument-type]
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
-                == entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                == CircuitScale.microcircuit,
                 CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: circuit.scale
                 in {
-                    entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.region,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.system,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.whole_brain,  # ty:ignore[possibly-missing-submodule]
+                    CircuitScale.microcircuit,
+                    CircuitScale.region,
+                    CircuitScale.system,
+                    CircuitScale.whole_brain,
                 },
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
                 and circuit.scale
                 in {
-                    entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.pair,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.small,  # ty:ignore[possibly-missing-submodule]
-                    entitysdk.types.CircuitScale.microcircuit,  # ty:ignore[possibly-missing-submodule]
+                    CircuitScale.single,
+                    CircuitScale.pair,
+                    CircuitScale.small,
+                    CircuitScale.microcircuit,
                 },
                 # Single-neuron only: a location carries no cell id, so on a multi-neuron
                 # circuit it applies to every morphology, where it names a different branch.
                 CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
-                and circuit.scale == entitysdk.types.CircuitScale.single,  # ty:ignore[possibly-missing-submodule]
+                and circuit.scale == CircuitScale.single,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: any(
                     INPUT_RESISTANCE_DYNAMIC_PARAM in population.dynamics_param_names  # ty:ignore[unresolved-attribute, unsupported-operator]
                     for population in circuit_metrics.biophysical_node_populations
@@ -305,7 +306,7 @@ def mapped_circuit_properties_endpoint(
                 > 0,
             }
             mapped_circuit_properties["usability"] = simulation_options_usability
-        except entitysdk.exception.EntitySDKError:
+        except EntitySDKError:
             # If we can't get the circuit entity, set default usability
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
@@ -350,7 +351,7 @@ def mapped_circuit_properties_endpoint(
 def neuron_set_node_ids(
     circuit_id: str,
     request: NodeIdsRequest,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
 ) -> NodeIdsResponse:
     try:
         ids_per_population = get_circuit_node_ids(
@@ -360,7 +361,7 @@ def neuron_set_node_ids(
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
-    except entitysdk.exception.EntitySDKError as err:
+    except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -383,7 +384,7 @@ def neuron_set_node_ids(
 )
 def neuronal_manipulation_properties_endpoint_by_neuron_set(
     request: CircuitNeuronalManipulationPropertiesRequest,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
 ) -> dict:
     try:
         result = get_circuit_manipulation_properties(
@@ -393,7 +394,7 @@ def neuronal_manipulation_properties_endpoint_by_neuron_set(
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
-    except entitysdk.exception.EntitySDKError as err:
+    except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail={
@@ -421,14 +422,14 @@ def neuronal_manipulation_properties_endpoint_by_neuron_set(
 )
 def memodel_neuronal_manipulation_properties_endpoint(
     request: MemodelNeuronalManipulationPropertiesRequest,
-    db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
+    db_client: Annotated[Client, Depends(get_client)],
 ) -> dict:
     try:
         mechanism_variables = get_memodel_mechanism_variables(
             db_client=db_client,
             entity_id=request.entity_id,
         )
-    except entitysdk.exception.EntitySDKError as err:
+    except EntitySDKError as err:
         L.warning("EntitySDK error retrieving MEModel %s", request.entity_id, exc_info=True)
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
