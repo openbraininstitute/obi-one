@@ -193,40 +193,7 @@ class Circuit(OBIBaseModel):
             return None
         if len(intrinsic_epops) == 1:
             return intrinsic_epops[0]
-        return Circuit._disambiguate_intrinsic_epops(c, default_npop, intrinsic_epops)
-
-    @staticmethod
-    def _disambiguate_intrinsic_epops(
-        c: snap.Circuit, default_npop: str, intrinsic_epops: list[str]
-    ) -> str:
-        """Pick one default edge population from several intrinsic ones, in preference order."""
-        # Prefer chemical populations (the default is chemical connectivity).
-        chemical_epops = [
-            epop for epop in intrinsic_epops if c.edges[epop].type in TYPES_OF_CHEMICAL_SYNS
-        ]
-        if len(chemical_epops) == 1:
-            return chemical_epops[0]
-        candidates = chemical_epops or intrinsic_epops
-
-        # Prefer a canonically named population, in order.
-        preferred_names = [
-            f"{default_npop}__{default_npop}__chemical",
-            f"{default_npop}__{default_npop}",
-        ]
-        for name in preferred_names:
-            if name in candidates:
-                return name
-
-        # Fall back to the naming-convention prefix.
-        prefixed = [
-            epop for epop in candidates if epop.startswith(f"{default_npop}__{default_npop}")
-        ]
-        if len(prefixed) == 1:
-            return prefixed[0]
-
-        # Last resort: the largest population by edge count (ties: first in order).
-        final_candidates = prefixed or candidates
-        return max(final_candidates, key=lambda epop: c.edges[epop].size)
+        return _disambiguate_intrinsic_epops(c, default_npop, intrinsic_epops)
 
     @property
     def default_edge_population_name(self) -> str | None:
@@ -404,6 +371,37 @@ class Circuit(OBIBaseModel):
             msg = f"{path} is not a mechanisms directory."
             raise NotADirectoryError(msg)
         return path
+
+
+def _disambiguate_intrinsic_epops(
+    c: snap.Circuit, default_npop: str, intrinsic_epops: list[str]
+) -> str:
+    """Pick one default edge population from several intrinsic ones, in preference order."""
+    # Prefer chemical populations (the default is chemical connectivity).
+    chemical_epops = [
+        epop for epop in intrinsic_epops if c.edges[epop].type in TYPES_OF_CHEMICAL_SYNS
+    ]
+    if len(chemical_epops) == 1:
+        return chemical_epops[0]
+    candidates = chemical_epops or intrinsic_epops
+
+    # Prefer a canonically named population, in order.
+    preferred_names = [
+        f"{default_npop}__{default_npop}__chemical",
+        f"{default_npop}__{default_npop}",
+    ]
+    for name in preferred_names:
+        if name in candidates:
+            return name
+
+    # Fall back to the naming-convention prefix.
+    prefixed = [epop for epop in candidates if epop.startswith(f"{default_npop}__{default_npop}")]
+    if len(prefixed) == 1:
+        return prefixed[0]
+
+    # Last resort: the largest population by edge count (ties: first in order).
+    final_candidates = prefixed or candidates
+    return max(final_candidates, key=lambda epop: c.edges[epop].size)
 
 
 def ensure_mechanisms_dir(
