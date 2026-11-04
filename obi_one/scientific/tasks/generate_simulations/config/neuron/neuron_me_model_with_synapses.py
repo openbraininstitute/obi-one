@@ -60,7 +60,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
         circuit: (
             MEModelWithSynapsesCircuitDiscriminator | list[MEModelWithSynapsesCircuitDiscriminator]
         ) = Field(
-            title="MEModel With Synapses",
+            title="ME-model with synapses",
             description="MEModel with synapses to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
@@ -79,6 +79,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     )
 
     neuron_sets: dict[str, NEURONMEModelWithSynapsesNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -95,7 +96,7 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
     # out for the same reason -- there is only one neuron for a point to belong to.
     morphology_locations: dict[str, SingleMorphologySamplingLocationUnion] = Field(
         default_factory=dict,
-        title="Morphology Locations",
+        title="Morphology locations",
         description=(
             "Reusable rules for selecting precise locations on neuronal morphologies. "
             "Stimuli can reference these locations to target compartments instead of whole cells."

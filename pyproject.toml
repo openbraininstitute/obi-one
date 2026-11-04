@@ -44,7 +44,7 @@ dependencies = [
     "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
-    "connectome-utilities>=0.4.12",
+    "connectome-utilities>=0.4.18",
     "connectome-manipulator>=1.0.4",
     "morph_spines>=1.1.0",
     "morph-tool",
@@ -68,6 +68,9 @@ connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 
 # MESHING - optional, private dependency needed for skeletonization and mesh LOD generation
 meshing = ["ultraliser>=2.1.9"]
+
+# SIMPLIFICATION - optional, private dependency needed to run circuit simplification
+simplification = ["sonata-simplify[simulation,reduction]>=0.2.6"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
@@ -98,7 +101,7 @@ all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
-bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.8"]
+bluerecording = ["bluerecording>=0.7.0", "neurodamus>=4.2.11"]
 
 [dependency-groups]
 dev = [
@@ -146,6 +149,7 @@ explicit = true
 [tool.uv.sources]
 repo_name = { git = "https://github.com/openbraininstitute/ion-channel-builder.git", branch = "main" }
 ultraliser = { index = "obi-codeartifact" }
+sonata-simplify = { index = "obi-codeartifact" }
 
 [tool.ruff]
 line-length = 100

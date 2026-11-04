@@ -11,7 +11,14 @@ from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    ContentType,
+    ExecutorType,
+    FetchFileStrategy,
+    TaskActivityType,
+)
 from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.exception import OBIONEError
@@ -51,6 +58,13 @@ def get_task_config_asset(*, client: Client, config: Entity) -> Asset:
     )
 
 
+def get_task_config_asset_content(*, client: Client, config: TaskConfig) -> dict:
+    """Return task config JSON as a dict."""
+    return select_json_asset_content(
+        client=client, entity=config, selection={"label": AssetLabel.task_config}
+    )
+
+
 def create_activity(
     *,
     client: Client,
@@ -76,6 +90,7 @@ def fetch_asset_by_label(
     entity: Entity,
     asset_label: AssetLabel,
     output_path: Path,
+    strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
 ) -> Path:
     """Fetch a single asset matching the given label to output_path.
 
@@ -87,6 +102,7 @@ def fetch_asset_by_label(
         entity,
         selection={"label": asset_label},
         output_path=output_dir,
+        strategy=strategy,
     ).one()
     return asset.path
 

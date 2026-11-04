@@ -10,7 +10,7 @@ from obi_one.scientific.blocks.distributions.base import Distribution
 class FloatConstantDistribution(Distribution):
     """Produces the same floating-point value for every sample."""
 
-    title: ClassVar[str] = "Constant Float"
+    title: ClassVar[str] = "Constant float"
 
     value: float | list[float] = Field(
         default=1.0,
@@ -34,7 +34,7 @@ class FloatConstantDistribution(Distribution):
 class IntConstantDistribution(Distribution):
     """Produces the same integer value for every sample."""
 
-    title: ClassVar[str] = "Constant Integer"
+    title: ClassVar[str] = "Constant integer"
 
     value: int | list[int] = Field(
         default=1,

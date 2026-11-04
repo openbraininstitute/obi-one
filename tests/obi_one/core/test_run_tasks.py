@@ -140,7 +140,7 @@ def test_run_task_type_downloads_config_deserializes_sets_entity_and_executes_ta
     )
     mock_single_config.set_single_entity.assert_called_once_with(db_client.get_entity.return_value)
     mock_get_task_spec_for_task_type.assert_called_once_with(TaskType.circuit_extraction)
-    mock_task_cls.assert_called_once_with(config=mock_single_config)
+    mock_task_cls.assert_called_once_with(config=mock_single_config, shared_cache=None)
     mock_task_instance.execute.assert_called_once_with(
         db_client=db_client,
         entity_cache=True,
@@ -188,7 +188,7 @@ def test_run_task_type_without_asset_label_creates_default_config(
     )
 
     # Should execute the task
-    mock_task_cls.assert_called_once_with(config=mock_config_instance)
+    mock_task_cls.assert_called_once_with(config=mock_config_instance, shared_cache=None)
     mock_task_instance.execute.assert_called_once_with(
         db_client=db_client,
         entity_cache=False,
@@ -257,10 +257,15 @@ def test_run_tasks_for_generated_scan_delegates(mock_run_configs):
     )
 
 
+@patch("pathlib.Path.mkdir")
 @patch("obi_one.core.run_tasks.run_task_for_single_config")
 @patch("obi_one.core.run_tasks.deserialize_obi_object_from_json_data")
 def test_run_task_for_single_config_asset_deserializes_and_runs(
-    mock_deserialize, mock_run_single, db_client, mock_single_config
+    mock_deserialize,
+    mock_run_single,
+    mock_mkdir,  # ruff: ignore[unused-function-argument]
+    db_client,
+    mock_single_config,
 ):
     mock_deserialize.return_value = mock_single_config
 

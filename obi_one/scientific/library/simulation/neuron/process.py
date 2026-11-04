@@ -144,6 +144,7 @@ def compile_mechanisms(
     output_dir: Path,
     mechanisms_dirs: list[Path],
     simulation_backend: SimulationBackend,
+    cache_dir: Path | None = None,
 ) -> MechanismBuild:
 
     match simulation_backend:
@@ -156,6 +157,7 @@ def compile_mechanisms(
             return _compile_neurodamus_mechanisms(
                 output_dir=output_dir,
                 mechanisms_dirs=mechanisms_dirs,
+                cache_dir=cache_dir,
             )
         case _:
             msg = f"Unsupported simulation backend {simulation_backend}."
@@ -181,16 +183,19 @@ def _compile_neuron_mechanisms(
     L.debug(compilation_output)
 
     try:
-        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.*"))
     except StopIteration as e:
-        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
+        msg = "Compiled mechanisms shared object libnrnmech was not found."
         raise RuntimeError(msg) from e
 
     return NeuronMechanismBuild(libnrnmech_path=libnrnmech_path)
 
 
 def _compile_neurodamus_mechanisms(
-    *, output_dir: Path, mechanisms_dirs: list[Path]
+    *,
+    output_dir: Path,
+    mechanisms_dirs: list[Path],
+    cache_dir: Path | None = None,
 ) -> NeurodamusMechanismBuild:
     command = [
         "neurodamus-compile-mods",
@@ -203,6 +208,8 @@ def _compile_neurodamus_mechanisms(
         "--output-type",
         "json",
     ]
+    if cache_dir is not None:
+        command.extend(["--cache-dir", str(cache_dir.absolute())])
 
     compilation_output = run_and_log(
         command, cwd=output_dir, env={"PATH": f"/opt/obi/:{os.environ['PATH']}"}
@@ -217,3 +224,17 @@ def _compile_neurodamus_mechanisms(
         libcorenrnmech_path=Path(env["CORENEURONLIB"]),
         special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )
+
+
+def get_mechanisms_dirs(circuit_config_path: Path) -> list[Path]:
+    config = libsonata.CircuitConfig.from_file(circuit_config_path)
+    if mechanisms_dirs := [
+        d
+        for pop in config.node_populations
+        if (d := config.node_population_properties(pop).mechanisms_dir)
+    ]:
+        return mechanisms_dirs
+
+    if (fallback := (circuit_config_path.parent / "mod")) and fallback.exists():
+        return [fallback]
+    return []

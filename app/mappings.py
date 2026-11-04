@@ -175,7 +175,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.fargate,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -206,10 +206,26 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.memodel_build,
+        config_type=TaskConfigType.memodel_build__config,
+        activity_type=TaskActivityType.memodel_build__execution,
+        code=_obi_one_code("default.txt"),
+        resources=MachineResources(
+            cores=4,
+            memory=8,
+            timelimit="00:30",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
         ),
     ),
     TaskDefinitionLegacy(
@@ -223,7 +239,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -240,7 +256,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -257,7 +273,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.ecs_managed_instances,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -369,6 +385,24 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         resources=MachineResources(
             cores=16,
             memory=32,
+            timelimit="02:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.circuit_simplification,
+        config_type=TaskConfigType.circuit_simplification__config,
+        activity_type=TaskActivityType.circuit_simplification__execution,
+        code=_obi_one_code(
+            "circuit_simplification.txt", capabilities=Capabilities(private_packages=True)
+        ),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
             timelimit="02:00",
             compute_cell="local",
             placement_type_map={

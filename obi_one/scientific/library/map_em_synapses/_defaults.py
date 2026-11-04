@@ -3,50 +3,10 @@ from copy import deepcopy
 from entitysdk import Client
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
-
-DEFAULT_NODE_SPECS = {
-    "Portion 65 of the IARPA MICrONS dataset": {
-        "synapse_class": {
-            "table": "aibs_metamodel_mtypes_v661_v2",
-            "column": "classification_system",
-            "default": "extrinsic_neuron",
-        },
-        "mtype": {
-            "table": "aibs_metamodel_mtypes_v661_v2",
-            "column": "cell_type",
-            "default": "extrinsic_neuron",
-        },
-        "volume": {"table": "aibs_metamodel_mtypes_v661_v2", "column": "volume", "default": -1},
-        "status_axon": {
-            "table": "proofreading_status_and_strategy",
-            "column": "status_axon",
-            "default": False,
-        },
-        "status_dendrite": {
-            "table": "proofreading_status_and_strategy",
-            "column": "status_dendrite",
-            "default": False,
-        },
-        "layer": {"table": None, "default": "N/A"},
-        "etype": {"table": None, "default": "N/A"},
-        "__position": {"table": "aibs_metamodel_mtypes_v661_v2", "column": "pt_position"},
-    }
-}
-
-SYNAPTOME_SONATA_CONFIG = {
-    "components": {
-        "biophysical_neuron_models_dir": "",
-        "mechanisms_dir": "",
-        "morphologies_dir": "",
-        "point_neuron_models_dir": "",
-        "synaptic_models_dir": "",
-        "templates_dir": "",
-    },
-    "networks": {"edges": [], "nodes": []},
-    "node_sets_file": "$BASE_DIR/node_sets.json",
-    "version": 2.3,
-    "manifest": {"$BASE_DIR": "./"},
-}
+from obi_one.scientific.library.map_em_synapses.constants import (
+    DEFAULT_NODE_SPECS,
+    SYNAPTOME_SONATA_CONFIG,
+)
 
 
 def default_node_spec_for(em_dataset: EMDataSetFromID, db_client: Client) -> dict:

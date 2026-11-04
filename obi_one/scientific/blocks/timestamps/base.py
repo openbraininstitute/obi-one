@@ -10,6 +10,7 @@ from obi_one.core.units import Units
 
 class Timestamps(Block, ABC):
     start_time: NonNegativeFloat | list[NonNegativeFloat] = Field(
+        title="Start time",
         default=0.0,
         description="Sart time of the timestamps in milliseconds (ms).",
         json_schema_extra={

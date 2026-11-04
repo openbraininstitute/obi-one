@@ -34,9 +34,7 @@ from obi_one.scientific.tasks.create_recording_array.process import (
     get_number_of_mpi_processes,
     run_bluerecording_write_weights,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.extracellular_locations import (
     ExtracellularLocationsReference,
     ExtracellularLocationsUnion,
@@ -56,7 +54,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    ELECTRODE_POSITIONS = "Electrode Positions"
+    ELECTRODE_POSITIONS = "Electrode positions"
 
 
 class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
@@ -83,7 +81,7 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
             },
         )
         calculation_method: Literal["PointSource", "LineSource", "ObjectiveCSD"] = Field(
-            title="Calculation Method",
+            title="Calculation method",
             description=(
                 "Method to calculate extracellular signals from the"
                 " specified neuron set and electrode locations."
@@ -126,7 +124,7 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
 
     electrode_locations: dict[str, ExtracellularLocationsUnion] = Field(
         default_factory=dict,
-        title="Electrode Locations",
+        title="Electrode locations",
         description=(
             "Parameters defining the locations of the electrodes for the"
             " extracellular recording array. Each entry contributes its electrodes to the array."

@@ -218,7 +218,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.106"
+version = "2.6.110"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -237,9 +237,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/9e/f2d68a4c06caf96faafff14ffd9bfe50403d1916989938ad627637e53df8/bluecellulab-2.6.106.tar.gz", hash = "sha256:8f46f481839be548266564136327eb90b11d69f9920391323869d86b6e3509b2", size = 572282, upload-time = "2026-09-30T09:06:02.174Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/94/c16b273153885a9fa1a8d2f2d069748c6bc04ea9a9dbe14d8f6be0943f9a/bluecellulab-2.6.110.tar.gz", hash = "sha256:7202e412bab5c35ed7fff7d4c0ef0635c3f894fee97e6323f0b6c85d53e776c3", size = 597022, upload-time = "2026-10-23T14:32:26.369Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/c7/89c19e37fe93a29b5eb7eb7a5a22b43f3a1272a738ca8c1cabab292ef2c2/bluecellulab-2.6.106-py3-none-any.whl", hash = "sha256:e1ee69857008a13f6aeaf090a58d409e59e432fb95d6213c32d1c8d01ce533c3", size = 192493, upload-time = "2026-09-30T09:06:00.972Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/34/507cc1a04c49c72ab0bac208bf64e23fd55d4499eda3721e68eba194f920/bluecellulab-2.6.110-py3-none-any.whl", hash = "sha256:ea9037367f45e08b59b41e25df5eccac7cab179fc92004226ae67b6bef293672", size = 221575, upload-time = "2026-10-23T14:32:24.834Z" },
 ]
 
 [[package]]
@@ -672,24 +672,24 @@ wheels = [
 
 [[package]]
 name = "connectome-utilities"
-version = "0.4.14"
+version = "0.4.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
     { name = "h5py" },
     { name = "lazy" },
     { name = "libsonata" },
+    { name = "morphio" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "scikit-learn" },
     { name = "scipy" },
     { name = "tables" },
     { name = "tqdm" },
     { name = "voxcell" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/10/0100c562b898d69fc19b4c1ecba0736eee355b703fb43dec8c371f990f52/connectome_utilities-0.4.14.tar.gz", hash = "sha256:8618077040e61ece76a0e60408ad6fdf2c515f012d550465fe3732f82b735da1", size = 33157944, upload-time = "2026-09-30T07:12:29.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/dd/51c09f4a9fe51619e0457ee5c0d0b7b7a92f5bcba58a789036593d5722cb/connectome_utilities-0.4.18.tar.gz", hash = "sha256:9506a8f2f11f84e663bc3ced49549c5a37994d2d1896318acdf236158318c383", size = 33167039, upload-time = "2026-11-02T11:46:00.634Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/53/0c328303e2dd60dd110d4d86896622e8d3aec54378b6993a17c08d3168f2/connectome_utilities-0.4.14-py3-none-any.whl", hash = "sha256:57907d3b5f0af28898393924c7978f0620ded6db9b8fd8355f5676fb67c0ad08", size = 32813287, upload-time = "2026-09-30T07:12:25.857Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/77/1e50178c98cdb8cccbd1cdbfdb3822b8f44d0cfe682b3141cf0ca0309cf4/connectome_utilities-0.4.18-py3-none-any.whl", hash = "sha256:cf418d5341281940c98db0555a1742e3f9ea35103bf29316693fab4c9afae087", size = 32825219, upload-time = "2026-11-02T11:45:56.582Z" },
 ]
 
 [[package]]
@@ -919,6 +919,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dill"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc53c7d65b01e68edf64dea2932122fe7746a516f75d5/dill-0.4.1.tar.gz", hash = "sha256:423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa", size = 187315, upload-time = "2026-01-19T02:36:56.85Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d", size = 120019, upload-time = "2026-01-19T02:36:55.663Z" },
+]
+
+[[package]]
 name = "distributed"
 version = "2026.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -972,16 +981,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.33"
+version = "0.19.35"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/07/5cdbcd721fd60c5ea0ba1dbd81127566fd2e8966d863e34b0005bd9ca486/entitysdk-0.19.33.tar.gz", hash = "sha256:733889c194fa0d9f042c4e9771205110292ad91a36b11c91830551f34da9202a", size = 82206, upload-time = "2026-10-19T06:42:47.452Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/b0/0d0837939da3df732b590bc6d42fa862adf8d5abed859d2d82ffbd6feeaf/entitysdk-0.19.35.tar.gz", hash = "sha256:b799187478cc60281c61f45b8f562e7e883ac79e520d5e2c9723d1169ec01c0e", size = 82861, upload-time = "2026-11-03T10:02:58.122Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/45/706148668f532aa9dfde59698f1425baccaa075a12c8f4b1a77b14cdc780/entitysdk-0.19.33-py3-none-any.whl", hash = "sha256:b84ff3cbc39af231ca44d3976549214dd6d885a074d9c9fbe30078d5d7414f8a", size = 116525, upload-time = "2026-10-19T06:42:46.129Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/11/69647b766f5a7916da18ecc65df3a98bbf0c84f6611bb58701a26c9038f3/entitysdk-0.19.35-py3-none-any.whl", hash = "sha256:d50a50b37407d615174fadf87feb5329c6ccd061a35ab8d33019a927e39bf783", size = 117303, upload-time = "2026-11-03T10:02:56.664Z" },
 ]
 
 [[package]]
@@ -2060,18 +2069,18 @@ sdist = { url = "https://files.pythonhosted.org/packages/ed/a9/0c35d247ffabb8fc5
 
 [[package]]
 name = "morphio"
-version = "3.5.0"
+version = "3.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/69/099c7eabb60b38bbfe345551db23f51c104c9e99a3ab5c8c0a578885eed7/morphio-3.5.0.tar.gz", hash = "sha256:85378b705603abb91c38d3a7af0c0c9a5122e7e71fb57a928ea49d38d6f41c08", size = 1753119, upload-time = "2026-07-17T19:31:49.859Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/38/07f7bcf50722348fd647f2f529660da5600fb3f638584fcc0001e0492776/morphio-3.5.1.tar.gz", hash = "sha256:f3117504a06d11803d46d7ec6a6ab2169544077af421e33316a5cf505f63ebf5", size = 1752996, upload-time = "2026-10-28T09:21:13.043Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/03/98/936902bde4e03cc2bf3d155acebbaee3ca81c8bf07a254dcb62a5e4ec851/morphio-3.5.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:bea0f85781c7a4a91f2abec0dc5341f603e750f531cd1b44ff1e290eee1a36fb", size = 2092205, upload-time = "2026-07-17T19:31:15.562Z" },
-    { url = "https://files.pythonhosted.org/packages/10/f8/8484e89c350a9e8ef6d1b849369d87f12f04d4e1c86ed4c54900f12b16fc/morphio-3.5.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:9bb258b721f04be2963dfd1f1c156778c24d0a3253ceaaeafec5ba16d2539437", size = 1788874, upload-time = "2026-07-17T19:31:17.206Z" },
-    { url = "https://files.pythonhosted.org/packages/d2/17/670cffc5f0e3e84c460827651157a711644cfdf6254d4b952644ff61fe35/morphio-3.5.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:5a7dca01b9250b84e53505e22287104c181f51754b45e4df143360f5f7184a80", size = 2239588, upload-time = "2026-07-17T19:31:18.737Z" },
-    { url = "https://files.pythonhosted.org/packages/dd/7e/17440ea5ff33d8a1697fded02c786319e34e0d2bdbde8759f7ad2cf89d06/morphio-3.5.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:14b7e773987a0f5a8b5a6c38f97d1903d1871a553cb3a19698a545ba7395b6e5", size = 2506678, upload-time = "2026-07-17T19:31:20.478Z" },
-    { url = "https://files.pythonhosted.org/packages/81/ae/8dc2d3a480f66f1da90f79ebc219e61fbbf9f0d86657166a673be9f076d1/morphio-3.5.0-cp312-cp312-win_amd64.whl", hash = "sha256:df56f812249db103970527c4c5ece0d43cf9968add37c64fad4017c04ec5c417", size = 832085, upload-time = "2026-07-17T19:31:22.24Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/65/b81bc4e5439e5d2d95708db04c22019c8be25a6b63eb65e8b34465545c0d/morphio-3.5.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:44b0d4029c74cd36eff5bb007a8a99eb35a43511cb5c4d7bef4e08b3a9c8631d", size = 2084643, upload-time = "2026-10-28T09:20:39.635Z" },
+    { url = "https://files.pythonhosted.org/packages/22/0d/d67b8c4d5fb4f78197788578e71887a7cb7cfb66ea8e4be0e4dcaaae79b5/morphio-3.5.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:8c7150f7b18e65433bc266a04f8deff745b07ec892387e4bf568a1a034db1c0f", size = 1781932, upload-time = "2026-10-28T09:20:41.29Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/a8/c4ba9b6e4d7c9c8708ec44141277750c9b4f833db85585ec50d0b3ddf7fd/morphio-3.5.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:a1b6be2d3c792e146b30ad724ede2b6cf9828156da543da6366040920a29c329", size = 2231983, upload-time = "2026-10-28T09:20:43.296Z" },
+    { url = "https://files.pythonhosted.org/packages/36/a4/e4c93863cce4ff22840be103925b74f5d3b6c95c12186f674c1842ef7c07/morphio-3.5.1-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:091273ae395c4bef1a0cf53e932f85c0828957db5ef5792a48cf7d5aad2208b2", size = 2498968, upload-time = "2026-10-28T09:20:45.019Z" },
+    { url = "https://files.pythonhosted.org/packages/65/20/2fed8ece7a212ab9ba0c7bdbe9625752689d03549c5478a429f666698d84/morphio-3.5.1-cp312-cp312-win_amd64.whl", hash = "sha256:b48771fe50a889fe88a62cb71a2c1bd64ebc6ceccadca2483815da97ba461631", size = 825324, upload-time = "2026-10-28T09:20:47.213Z" },
 ]
 
 [[package]]
@@ -2224,6 +2233,30 @@ wheels = [
 ]
 
 [[package]]
+name = "nest-neat"
+version = "1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cython" },
+    { name = "dill" },
+    { name = "matplotlib" },
+    { name = "neuron" },
+    { name = "numpy" },
+    { name = "pytest" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/70/d7c7e5491dce567b49b7270de002846171bcd13eab43173c5d1559ae5c99/nest_neat-1.1.tar.gz", hash = "sha256:d8486fc436a140cde5735f232b23771f25ffee7b5f5830171d0f5e1c02a0920b", size = 477625, upload-time = "2026-05-20T15:24:52.986Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/2a/39b22c016164e20583af8c7255480eef39bc5b491c46de3213c89ecaaaad/nest_neat-1.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0bcde13df3c37445560864fa1d23fe50f01dee4daa9287c8627f42f173f079fe", size = 592061, upload-time = "2026-05-20T15:24:33.669Z" },
+    { url = "https://files.pythonhosted.org/packages/28/52/566bfc970070b40275587530307f996a7f23cff7e5a839c8df99d741b0b0/nest_neat-1.1-cp312-cp312-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:1f6a3a1f7db6a8ee45dbf08f76ef791d70ca8288f3f38852c1024b7e676ec16b", size = 1673205, upload-time = "2026-05-20T15:24:35.504Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/c1/58a319502be7de28a5d681fe2ab2a662fac192a9ede0d7c6548ea8484e40/nest_neat-1.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:40c72834af7897978a71c5085bd90bbeea490eee4ed854bedabdd8030c5f53c0", size = 1711343, upload-time = "2026-05-20T15:24:37.246Z" },
+    { url = "https://files.pythonhosted.org/packages/92/37/80af08d8cde1abbecbff606ddb678589711e81e99e56336b1f53ab3ef124/nest_neat-1.1-cp312-cp312-musllinux_1_1_i686.whl", hash = "sha256:95454c9b9cf6b4da7cc6e5b83a67e0e24f509f15020dac9bfb745964f60f4d6d", size = 2238981, upload-time = "2026-05-20T15:24:38.945Z" },
+    { url = "https://files.pythonhosted.org/packages/54/87/047054e24170b14ea3fb844dd182f90e2fedce6d68d6f578872fdde28664/nest_neat-1.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:d3fa369855e1982cd363a0ff00a1b3b4ad7f4e9a53f87036b14444197bde983f", size = 2227594, upload-time = "2026-05-20T15:24:40.9Z" },
+]
+
+[[package]]
 name = "networkx"
 version = "3.7"
 source = { registry = "https://pypi.org/simple" }
@@ -2234,7 +2267,7 @@ wheels = [
 
 [[package]]
 name = "neurodamus"
-version = "4.2.8"
+version = "4.2.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docopt-ng" },
@@ -2244,9 +2277,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/e0/8a8c82c1375c3c8dd449d82d6fd9e3bc936906568d3349f2c65954cb6844/neurodamus-4.2.8.tar.gz", hash = "sha256:095a1d78e967e323b71b2d836832c20cf3b19d3afefacfb8e66d0dc27115ad2d", size = 202208, upload-time = "2026-10-14T14:40:40.516Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/75/f85ef405363c3a032729c73646f31d368b7c97f5b619905bf456fb1d4a5e/neurodamus-4.2.11.tar.gz", hash = "sha256:0dd685ef670f76320ee371e79d8847d56363b840821761c141df5197400d67d5", size = 205039, upload-time = "2026-10-31T15:49:48.511Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/ac/9744a49d1c9a437a8158b3579fa746df0a3e765888c7cabb6c4c08a2a8c9/neurodamus-4.2.8-py3-none-any.whl", hash = "sha256:eb6d90a0c581cbb58d053710aecfae78b62b62b7da57d95a5a1601998d28b16b", size = 237538, upload-time = "2026-10-14T14:40:38.61Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/51/51c5b94d1f9fb450361fc6ac860e3aeb5b12ecf6250c96c1832803f4f704/neurodamus-4.2.11-py3-none-any.whl", hash = "sha256:d3e5ea823c2b93dc0c1d5880b3b19183881970e5089aeeaf2781e55fa84bc351", size = 240609, upload-time = "2026-10-31T15:49:47.069Z" },
 ]
 
 [[package]]
@@ -2285,6 +2318,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/76/ae/71bdb6607da7f17ef4932349c6758c9c91faff87825227ebb94b5a84bc24/neuron-9.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:428e7787f1eebd594105337b4852688e0fba70c47832a3768c0c669134964c16", size = 21409125, upload-time = "2026-08-10T17:18:04.423Z" },
     { url = "https://files.pythonhosted.org/packages/67/cd/f341059ca6097d17e1887bc70b8202419ee50da19456dff4597e6614b21a/neuron-9.0.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c9132866e435f39177a8b02cecd479d54996f7ca0f68488b8a31ab0ef1bf5ad8", size = 17296379, upload-time = "2026-08-10T17:18:07.259Z" },
     { url = "https://files.pythonhosted.org/packages/3a/62/af8bf44e050a471f7e23f4df6e8d7ce225c680bc31a1cd3740fb444b720c/neuron-9.0.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e696cfcf4a807ba00602f5bca3873a2f09ea8adee148d54afe221ed5ad0163d8", size = 17991206, upload-time = "2026-08-10T17:18:10.16Z" },
+]
+
+[[package]]
+name = "neuron-reduce"
+version = "0.0.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/58/f8b3b6eb352cfc4f027e7a1ebebc9aaecfe1eb9eeafa9e039c7ec3b2b702/neuron_reduce-0.0.7.tar.gz", hash = "sha256:672b717dd28cc56605660f142eb407f2db864fa529dc4d9df70ab6e4e872bb3f", size = 18777, upload-time = "2020-08-16T07:52:22.638Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/b6/6ace32c7b86c7eacb9e41a304817546f08bca12db861c7cacf1f841abe2c/neuron_reduce-0.0.7-py3-none-any.whl", hash = "sha256:a3f038d2e082098bf92b8b03995ae58ef359fab3ba806c6448b10479fdd80745", size = 18723, upload-time = "2020-08-16T07:52:20.844Z" },
 ]
 
 [[package]]
@@ -2470,6 +2512,9 @@ service = [
     { name = "starlette" },
     { name = "uvicorn" },
 ]
+simplification = [
+    { name = "sonata-simplify", extra = ["reduction", "simulation"] },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -2503,7 +2548,7 @@ requires-dist = [
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
-    { name = "connectome-utilities", specifier = ">=0.4.12" },
+    { name = "connectome-utilities", specifier = ">=0.4.18" },
     { name = "entitysdk", specifier = ">=0.19.33" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
@@ -2514,7 +2559,7 @@ requires-dist = [
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
-    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.8" },
+    { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.11" },
     { name = "neurom" },
     { name = "notebook", marker = "extra == 'notebooks'" },
     { name = "numpy" },
@@ -2533,11 +2578,12 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
+    { name = "sonata-simplify", extras = ["reduction", "simulation"], marker = "extra == 'simplification'", specifier = ">=0.2.6", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["emodel", "connectivity", "meshing", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3429,6 +3475,41 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1f/ea/49c993d6dfdd7338c9b1000a0f36817ed7ec84577ae2e52f890d1a4ff909/smmap-5.0.3.tar.gz", hash = "sha256:4d9debb8b99007ae47165abc08670bd74cb74b5227dda7f643eccc4e9eb5642c", size = 22506, upload-time = "2026-03-09T03:43:26.1Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl", hash = "sha256:c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f", size = 24390, upload-time = "2026-03-09T03:43:24.361Z" },
+]
+
+[[package]]
+name = "sonata-simplify"
+version = "0.2.6"
+source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
+dependencies = [
+    { name = "click" },
+    { name = "h5py" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.6/sonata_simplify-0.2.6.tar.gz", hash = "sha512:a74ecf0a35bddf427bbf325b5de0323a1743b6b0c11c0a1696945afb0910dea443867991df141619afee8e4713d852eb48d5ee8d714026f284fc88673465b40b", size = 2651029, upload-time = "2026-10-26T07:46:09.821Z" }
+wheels = [
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.6/sonata_simplify-0.2.6-py3-none-any.whl", hash = "sha512:9156ca92edd4fcf331d177b9695056b3d609f3017f795de5dfdc35f66d5243c385b74b41bba72a148f4285aa344a439387bd52cdedd02163a97f0ffa2860dec3", size = 402033, upload-time = "2026-10-26T07:46:09.407Z" },
+]
+
+[package.optional-dependencies]
+reduction = [
+    { name = "dill" },
+    { name = "nest-neat" },
+    { name = "neuron" },
+    { name = "neuron-reduce" },
+    { name = "scikit-learn" },
+    { name = "sympy" },
+]
+simulation = [
+    { name = "bluecellulab" },
+    { name = "bluepysnap" },
+    { name = "efel" },
+    { name = "libsonata" },
+    { name = "matplotlib" },
+    { name = "neuron" },
 ]
 
 [[package]]

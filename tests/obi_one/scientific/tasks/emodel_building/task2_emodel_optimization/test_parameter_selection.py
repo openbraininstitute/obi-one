@@ -560,8 +560,8 @@ def test_recipe_file_contains_artifact_paths_and_pipeline_settings(tmp_path):
 
 def test_feature_and_morphology_staging_write_expected_paths(tmp_path):
     class FakeExtractionTaskResult:
-        def download_asset_by_label(self, asset_label, *, dest_dir, db_client):
-            del asset_label, db_client
+        def download_asset_by_label(self, asset_label, *, dest_dir, db_client, strategy=None):
+            del asset_label, db_client, strategy
             path = dest_dir / "downloaded-features.json"
             path.write_text('{"features": []}', encoding="utf-8")
             return path
@@ -1783,8 +1783,8 @@ def test_tag_local_mechanisms_handles_missing_and_unknown_mechanisms():
 
 def test_download_extraction_features_keeps_already_named_target(tmp_path):
     class AlreadyNamedExtraction:
-        def download_asset_by_label(self, asset_label, *, dest_dir, db_client):
-            del asset_label, db_client
+        def download_asset_by_label(self, asset_label, *, dest_dir, db_client, strategy=None):
+            del asset_label, db_client, strategy
             path = dest_dir / "test.json"
             path.write_text("{}", encoding="utf-8")
             return path

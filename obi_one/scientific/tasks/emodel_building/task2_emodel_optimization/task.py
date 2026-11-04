@@ -19,6 +19,7 @@ compute, no database access).
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
@@ -31,12 +32,12 @@ from entitysdk.types import ValidationStatus
 from pydantic import PrivateAttr
 
 from obi_one.core.task import Task
+from obi_one.scientific.library import memodel_calibration_validation as calibration_validation
 from obi_one.scientific.tasks.emodel_building import (
     utils as emodel_building_utils,
     validation_scoring,
 )
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    calibration_validation,
     registration,
     staging,
 )
@@ -199,6 +200,61 @@ def create_entitycore_access_point(
     )
 
 
+def locate_hoc(coord_root: Path, seed: int) -> Path:
+    """Locate the exported HOC and verify compiled mechanisms exist.
+
+    The HOC comes from the SONATA export (``export_emodels_sonata``). With
+    ``only_best=False`` several candidates may exist; prefer a filename
+    containing ``seed=<seed>``. The morphology and mechanisms are pipeline
+    inputs — the caller passes the morphology path in, and this function only
+    verifies the compiled arch dir (``arm64``/``x86_64``) exists.
+    """
+    sonata_dir = coord_root / "export_emodels_sonata"
+    hoc_candidates = sorted(sonata_dir.rglob("*.hoc")) if sonata_dir.exists() else []
+    if not hoc_candidates:
+        msg = f"No .hoc file found under {sonata_dir}; SONATA export missing."
+        raise FileNotFoundError(msg)
+    if len(hoc_candidates) > 1:
+        seeded = [p for p in hoc_candidates if re.search(rf"seed={seed}(?!\d)", p.stem)]
+        if len(seeded) == 1:
+            hoc_candidates = seeded
+        else:
+            msg = (
+                f"Ambiguous HOC candidates under {sonata_dir}: "
+                f"{[p.name for p in hoc_candidates]} (seed={seed})."
+            )
+            raise RuntimeError(msg)
+    hoc_path = hoc_candidates[0]
+
+    for arch in ("x86_64", "arm64"):
+        if (coord_root / arch / "special").exists():
+            break
+    else:
+        msg = (
+            f"No compiled mechanisms (arm64|x86_64/special) under {coord_root}; "
+            "run compile_mechanisms first."
+        )
+        raise FileNotFoundError(msg)
+
+    L.info("Calibration/validation HOC: %s", hoc_path)
+    return hoc_path
+
+
+def validation_status_from_results(validation_dict: dict) -> ValidationStatus:
+    """Map a bluecellulab validation result dict to a MEModel ``ValidationStatus``.
+
+    ``done`` only when at least one test ran and every test passed; otherwise the
+    status stays ``created``. (A crash in calibration/validation is reported as
+    ``error`` by the caller.)
+    """
+    tests = [
+        value for value in validation_dict.values() if isinstance(value, dict) and "passed" in value
+    ]
+    if tests and all(bool(value["passed"]) for value in tests):
+        return ValidationStatus.done
+    return ValidationStatus.created
+
+
 def run_optimization_pipeline(
     *,
     config: EModelOptimizationSingleConfig,
@@ -309,7 +365,7 @@ def run_optimization_pipeline(
     try:
         cv_results = calibration_validation.compute_calibration_and_validation(
             coord_root,
-            calibration_validation.locate_hoc(coord_root, cast("int", seeds[0])),
+            locate_hoc(coord_root, cast("int", seeds[0])),
             morphology_path,
             cell_name=emodel,
             holding_current=em_metrics["holding_current"] or 0.0,
@@ -318,7 +374,7 @@ def run_optimization_pipeline(
         )
         calibration_dict = cv_results["calibration"]
         validation_dict = cv_results["validation"]
-        validation_status = calibration_validation.validation_status_from_results(validation_dict)
+        validation_status = validation_status_from_results(validation_dict)
     except Exception:  # ruff: ignore[blind-except]
         L.warning(
             "MEModel calibration/validation failed; results will be registered "

@@ -19,8 +19,8 @@ from bluepyemodel.preprocessing.schemas import (
 from entitysdk.types import EntityLifecycleStatus, ValidationStatus
 
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
+from obi_one.scientific.library import memodel_calibration_validation as calibration_validation
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    calibration_validation,
     registration,
     staging,
     utils,
@@ -950,7 +950,8 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     )
     monkeypatch.setattr(registration, "register_output_entities", register_outputs)
     monkeypatch.setattr(
-        calibration_validation, "locate_hoc", Mock(return_value=tmp_path / "hoc.hoc")
+        "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task.locate_hoc",
+        Mock(return_value=tmp_path / "hoc.hoc"),
     )
     compute_cv = Mock(
         return_value={

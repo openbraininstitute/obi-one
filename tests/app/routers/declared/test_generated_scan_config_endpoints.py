@@ -6,6 +6,7 @@ from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 
 _SCHEMA_EXAMPLE_PATH = "/generated/schema-example-scan-config-generate-grid"
 _BUILD_SYNAPTOME_PATH = "/generated/me-model-synaptic-model-placement-scan-config-generate-grid"
+_MEMODEL_BUILD_PATH = "/generated/me-model-build-scan-config-generate-grid"
 
 
 def _route(path):
@@ -29,3 +30,10 @@ def test_build_synaptome_scan_config_endpoint_is_registered():
         route.endpoint.__annotations__["form"]
         is scan_config.MEModelSynapticModelPlacementScanConfig
     )
+
+
+def test_memodel_build_scan_config_endpoint_is_registered():
+    route = _route(_MEMODEL_BUILD_PATH)
+
+    assert route.methods == {"POST"}
+    assert route.endpoint.__annotations__["form"] is scan_config.MEModelBuildScanConfig

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import entitysdk
 from entitysdk.models import TaskResult
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, FetchFileStrategy
 
 from obi_one.core.entity_from_id import EntityFromID
 from obi_one.db_sdk.db_sdk import fetch_asset_by_label, fetch_directory_asset_by_label
@@ -18,6 +18,7 @@ class TaskResultFromID(EntityFromID[TaskResult]):
         asset_label: AssetLabel,
         dest_dir: Path = Path(),
         db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
     ) -> Path:
         """Download a single asset matching the given label to dest_dir.
 
@@ -28,6 +29,7 @@ class TaskResultFromID(EntityFromID[TaskResult]):
             entity=self.entity(db_client=db_client),
             asset_label=asset_label,
             output_path=dest_dir,
+            strategy=strategy,
         )
 
     def download_directory_asset_by_label(

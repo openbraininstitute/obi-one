@@ -30,6 +30,9 @@ install:  ## Default installation (for running tasks and local scripts)
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
 
+install-simplification:  ## Install with private circuit simplification dependencies (Requires AWS auth)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra simplification
+
 install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
 
@@ -112,11 +115,11 @@ test-file: ## Run tests in a single test file locally. Usage: make test-file FIL
 
 test-schema: ## Run schema tests locally.
 	@$(call load_env,test-local)
-	uv run -m pytest tests/ui_schema/test_schema.py --no-cov --disable-warnings
+	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings
 
 test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
-	uv run -m pytest tests/ui_schema/test_schema.py --no-cov --disable-warnings --log-cli-level=INFO
+	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
 test-docker: build  ## Run tests in Docker
 	docker compose run --rm --remove-orphans test

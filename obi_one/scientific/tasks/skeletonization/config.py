@@ -59,7 +59,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
 
     class Initialize(Block):
         cell_mesh: EMCellMeshFromID | list[EMCellMeshFromID] = Field(
-            title="EM Cell Mesh",
+            title="EM cell mesh",
             description="EM cell mesh to use for skeletonization.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE},
         )
@@ -69,7 +69,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             | list[Annotated[PositiveFloat, Field(le=0.1, ge=0.005)]]
         ) = Field(
             default=0.1,
-            title="Neuron Voxel Size",
+            title="Neuron voxel size",
             description="Neuron reconstruction resolution in micrometers.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -82,7 +82,7 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
         ) = Field(
             default=0.1,
-            title="Spine Voxel Size",
+            title="Spine voxel size",
             description="Spine reconstruction resolution in micrometers.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -92,13 +92,34 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
 
         write_raw_spines: bool = Field(
             default=True,
-            title="Include Full Resolution Spines",
+            title="Include full resolution spines",
             description=(
                 "By default a morphology h5 file is created with reconstructed spines. "
                 "Set this parameter to True to additionally include the initially "
                 "extracted full resolution segmented spine meshes in the h5 file. "
                 "This may be useful for use cases which require "
                 "the full resolution spine data."
+            ),
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+
+        remove_spines_from_skeleton: bool = Field(
+            default=True,
+            title="Remove spines from skeleton",
+            description=(
+                "Remove the spines from the skeleton and segment them. Disable this option to "
+                "keep the small branches in the skeleton, e.g. for retinal neurons, whose small "
+                "branches are not spines. No spines are segmented then."
+            ),
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
+        )
+
+        repair_slicing_artifacts: bool = Field(
+            default=False,
+            title="Repair slicing artifacts",
+            description=(
+                "Enable this option if you suspect that the neuronal mesh might have slicing "
+                "artifacts due to issues imposed during the EM reconstruction stage."
             ),
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )

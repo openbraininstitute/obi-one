@@ -1,20 +1,16 @@
-import tempfile
-from pathlib import Path
 from uuid import UUID
 
 import morphio
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import CellMorphology, Circuit, MEModel
-from entitysdk.types import AssetLabel, CircuitScale
+from entitysdk.types import CircuitScale
 
 from app.schemas.morphology_section_types import MorphologySectionTypeOption
 from app.services.circuit_visualization import (
-    download_circuit_config,
-    get_morphology,
-    get_nodes,
     load_cell_morphology,
     load_memodel_morphology,
+    load_single_neuron_circuit_morphology,
 )
 
 _SECTION_TYPE_LABELS = {
@@ -65,22 +61,6 @@ def _memodel_section_type_options(
     return section_type_options(load_memodel_morphology(client, memodel))
 
 
-def _sonata_circuit_asset_id(client: Client, circuit: Circuit) -> UUID:
-    try:
-        asset = client.select_assets(
-            entity=circuit,
-            selection={"label": AssetLabel.sonata_circuit},
-        ).one()
-    except EntitySDKError as exc:
-        msg = "MEModel-with-synapses circuit is missing a SONATA circuit asset."
-        raise ValueError(msg) from exc
-
-    if asset.id is None:
-        msg = "SONATA circuit asset is missing an id."
-        raise ValueError(msg)
-    return asset.id
-
-
 def memodel_with_synapses_section_type_options(
     client: Client,
     circuit_id: UUID,
@@ -93,35 +73,7 @@ def _memodel_with_synapses_section_type_options(
     client: Client,
     circuit: Circuit,
 ) -> list[MorphologySectionTypeOption]:
-    if circuit.scale != CircuitScale.single or circuit.number_neurons != 1:
-        msg = "MEModel-with-synapses circuit must be a single-neuron circuit."
-        raise ValueError(msg)
-    if circuit.id is None:
-        msg = "MEModel-with-synapses circuit is missing an id."
-        raise ValueError(msg)
-    if not circuit.has_morphologies:
-        msg = "MEModel-with-synapses circuit has no morphologies."
-        raise ValueError(msg)
-
-    asset_id = _sonata_circuit_asset_id(client, circuit)
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        parent_dir = Path(tmp_dir)
-        config = download_circuit_config(client, circuit.id, asset_id, parent_dir)
-        nodes = get_nodes(config, parent_dir, client, circuit.id, asset_id)
-        if len(nodes) != 1:
-            msg = "MEModel-with-synapses circuit must contain one biophysical neuron."
-            raise ValueError(msg)
-
-        node = nodes[0]
-        morphology = get_morphology(
-            parent_dir,
-            client,
-            circuit.id,
-            asset_id,
-            Path(node.morphology_file),
-            node.morphology_name,
-        )
-        return section_type_options(morphology)
+    return section_type_options(load_single_neuron_circuit_morphology(client, circuit))
 
 
 def _circuit_section_type_options(

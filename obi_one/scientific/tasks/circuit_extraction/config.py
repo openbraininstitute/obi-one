@@ -21,9 +21,7 @@ from obi_one.scientific.library.entity_property_types import (
     MappedPropertiesGroup,
 )
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
@@ -41,7 +39,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
 
 
 class CircuitExtractionScanConfig(InfoScanConfig):
@@ -117,7 +115,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         )
         neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Neuron Set",
+            title="Neuron set",
             description="Set of neurons to be extracted from the parent circuit, including their"
             " connectivity.",
             json_schema_extra={
@@ -127,7 +125,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         )
         do_virtual: bool = Field(
             default=True,
-            title="Include Virtual Populations",
+            title="Include virtual populations",
             description="Include virtual neurons which target the cells contained in the specified"
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
@@ -137,7 +135,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         )
         create_external: bool = Field(
             default=True,
-            title="Create External Population",
+            title="Create external population",
             description="Convert (non-virtual) neurons which are outside of the specified neuron"
             " set, but which target the cells contained therein, into a new external population"
             " of virtual neurons (together with their connectivity onto the specified neuron set).",
@@ -165,6 +163,7 @@ class CircuitExtractionScanConfig(InfoScanConfig):
         },
     )
     neuron_sets: dict[str, CircuitExtractionNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the extraction.",
         json_schema_extra={

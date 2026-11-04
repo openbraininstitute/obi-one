@@ -48,6 +48,7 @@ class MachinePlacementType(StrEnum):
 
     fargate = auto()
     ecs_managed_instances = auto()
+    ecs_ec2 = auto()
     azure_container_apps = auto()
 
 

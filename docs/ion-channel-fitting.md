@@ -9,7 +9,7 @@ tags:
 
 ## Configuration
 
-- **Recordings** (`initialize.recordings`): every selected recording is fitted jointly into one model, not one model each.
+- **Recordings** (`initialize.recordings`): one to three recordings, fitted jointly into one model, not one model each.
 - **Model properties** (`initialize.model_properties`): the ion channel name, temperature, species, strain and brain region the model is registered with. Each one left unset comes from the recordings:
     - the ion channel name (the `SUFFIX` of the mod file, a valid NEURON identifier) from the recordings' channel, so `Kv6.2` gives `Kv6_2`;
     - the temperature and the species from the recordings;

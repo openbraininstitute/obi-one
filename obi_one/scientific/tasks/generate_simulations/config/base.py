@@ -61,10 +61,10 @@ class BlockGroup(StrEnum):
     """Enumeration of block groups for simulation configuration."""
 
     SETUP_BLOCK_GROUP = "Setup"
-    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & recordings"
     TARGETING_BLOCK_GROUP = "Targets"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
-    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
 
@@ -168,7 +168,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
         v_init: float | list[float] = Field(
             default=-80.0,
-            title="Initial Voltage",
+            title="Initial voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -177,7 +177,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
         random_seed: int | list[int] = Field(
             default=1,
-            title="Random Seed",
+            title="Random seed",
             description="Random seed for the simulation.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,

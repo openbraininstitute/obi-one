@@ -141,6 +141,7 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     resolved_neuron = SimpleNamespace(
         pt_root_id=42,
         use_me_model=False,
+        me_model_entity=None,
         phys_node_props={},
     )
 
@@ -177,3 +178,6 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     assert "Afferent-synaptome-42" in call_kwargs["name"]
     assert call_kwargs["build_category"].value == "em_reconstruction"
     assert call_kwargs["license"] == "license"
+    # Morphology-only circuit: no EModel provenance is forwarded
+    assert call_kwargs["derived_from_emodel"] is None
+    assert call_kwargs["derivation_label"] is None

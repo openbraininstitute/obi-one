@@ -30,10 +30,14 @@ OBI-ONE is a standardized library of workflows for biophysically-detailed brain 
 brew install uv open-mpi boost cmake
 ```
 
-### Private ultraliser from AWS CodeArtifacts
+### Private packages from AWS CodeArtifact
 
-The `meshing` extra (installed by `make install-meshing`, `make install-all` and `make install-dev`) requires `ultraliser`, which is used by the skeletonization and mesh LOD generation tasks and is published only on AWS CodeArtifact.
-The service Docker image does not include the `meshing` extra: those tasks run as launch-system jobs that install `ultraliser` from their own requirements in `launch_scripts/`, so building the image does not need a CodeArtifact token.
+Two optional extras depend on packages published only on AWS CodeArtifact:
+
+- `meshing` (installed by `make install-meshing`, `make install-all` and `make install-dev`) requires `ultraliser`, which is used by the skeletonization and mesh LOD generation tasks.
+- `simplification` (installed by `make install-simplification`) requires `sonata-simplify`, which is used by the circuit simplification task.
+
+The service Docker image does not include these extras: those tasks run as launch-system jobs that install the private packages from their own requirements in `launch_scripts/`, so building the image does not need a CodeArtifact token.
 At the OBI [AWS Console](https://openbraininstitute.awsapps.com/start), first check that you have access to the `Container Registry` (AWS Account Id: `985539765147`).
 
 Then setup the the SSO AWS login; steps 1 and 2 from: [Bastion Access](https://github.com/openbraininstitute/aws-terraform-deployment/blob/staging/bastion_host/BASTION_ACCESS.md#database-access-via-port-forwarding)
@@ -135,3 +139,4 @@ make install-notebooks
 
 - [Single Cell Simulations](scs.md) - Learn about single cell simulation workflows
 - [Small Circuit Simulations](scircuit.md) - Learn about small circuit simulation workflows
+- [Morphology Registration](morphology-registration.md) - Uploading morphologies, including ones that fail validation

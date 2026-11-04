@@ -15,8 +15,8 @@ import pytest
 from voxcell import CellCollection
 
 import obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file as nodes_mod
+from obi_one.scientific.library.map_em_synapses.constants import MAX_COUNT_LIBRARY
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
-    MAX_COUNT_LIBRARY,
     assemble_collection_from_specs,
     get_specified_tables,
     resolve_position_to_xyz,

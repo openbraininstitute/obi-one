@@ -1,22 +1,21 @@
 import logging
-from typing import Annotated, ClassVar, Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    CircuitFromID,
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
@@ -55,8 +54,6 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
-
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
 class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
@@ -106,7 +103,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         )
         node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Neuron Set",
+            title="Neuron set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -144,6 +141,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     )
 
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        title="Synaptic manipulations",
         default_factory=dict,
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
@@ -157,7 +155,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
 
     neuronal_manipulations: dict[str, CircuitNeuronalManipulationUnion] = Field(
         default_factory=dict,
-        title="Neuronal Manipulations",
+        title="Neuronal manipulations",
         description="Neuronal manipulations for the simulation.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
@@ -207,6 +205,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     )
 
     neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -222,7 +221,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     # every morphology, so hand-picked points are only meaningful for a single neuron.
     morphology_locations: dict[str, CircuitMorphologyLocationUnion] = Field(
         default_factory=dict,
-        title="Morphology Locations",
+        title="Morphology locations",
         description=(
             "Reusable rules for selecting precise locations on neuronal morphologies. "
             "Stimuli can reference these locations to target compartments instead of whole cells."

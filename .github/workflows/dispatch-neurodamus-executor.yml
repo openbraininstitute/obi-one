@@ -1,0 +1,57 @@
+name: Dispatch neurodamus executor publish
+
+# Started by pin-release after a successful pin on main (fire-and-forget), or manually
+# for recovery. Separate so a launch-system failure does not fail the pin or Docker/PyPI builds.
+#
+# Not triggered via workflow_run: the main pin is itself started with GITHUB_TOKEN from the
+# thin release job, and GitHub suppresses workflow_run on completion of bot-dispatched runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "obi-one calver release tag (e.g. 2026.10.19)"
+        required: true
+        type: string
+
+run-name: Dispatch neurodamus executor ${{ inputs.tag }}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! [[ "${RELEASE_TAG}" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "::error::Not a calver release tag: '${RELEASE_TAG}'"
+            exit 1
+          fi
+
+      - name: Create launch-system dispatch token
+        id: launch-system-dispatch
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.OBI_REPO_DISPATCHER_CLIENT_ID }}
+          private-key: ${{ secrets.OBI_REPO_DISPATCHER_PRIVATE_KEY }}
+          owner: openbraininstitute
+          repositories: launch-system
+          # repository_dispatch requires Contents write (not Actions)
+          permission-contents: write
+
+      # launch-system: publish-neurodamus-runtime.yml (repository_dispatch neurodamus-executor-publish)
+      - name: Trigger launch-system neurodamus executor publish
+        env:
+          GH_TOKEN: ${{ steps.launch-system-dispatch.outputs.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh api --method POST repos/openbraininstitute/launch-system/dispatches \
+            -f event_type=neurodamus-executor-publish \
+            -f "client_payload[tag]=${RELEASE_TAG}"
+          echo "Dispatched neurodamus-executor-publish for obi-one ${RELEASE_TAG}"

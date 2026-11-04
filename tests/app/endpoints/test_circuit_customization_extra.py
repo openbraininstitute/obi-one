@@ -15,6 +15,7 @@ from app.endpoints.circuit_customization import (
     EdgeValidationError,
     NodeSetsValidationError,
     ParentCircuitContext,
+    _collect_parent_node_facts,
     _collect_uploaded_model_templates,
     _get_parent_context,
     _parse_population_manifest,
@@ -298,7 +299,8 @@ class TestNodesHocConsistencyExtra:
         parent_only.write_text("begintemplate ParentCell\nendtemplate ParentCell\n")
 
         parent = ParentCircuitContext(
-            mechanism_names=set(),
+            mechanism_suffixes=set(),
+            mechanism_filenames=set(),
             hoc_stems={"ParentCell", "UploadedCell"},
             model_template_stems={"ParentCell", "UploadedCell"},
         )
@@ -313,7 +315,8 @@ class TestNodesHocConsistencyExtra:
         orphan.write_text("begintemplate Orphan\nendtemplate Orphan\n")
 
         parent = ParentCircuitContext(
-            mechanism_names=set(),
+            mechanism_suffixes=set(),
+            mechanism_filenames=set(),
             hoc_stems={"UploadedCell"},
             model_template_stems={"UploadedCell"},
         )
@@ -328,7 +331,8 @@ class TestNodesHocConsistencyExtra:
         uploaded.write_text("begintemplate UploadedCell\nendtemplate UploadedCell\n")
 
         parent = ParentCircuitContext(
-            mechanism_names=set(),
+            mechanism_suffixes=set(),
+            mechanism_filenames=set(),
             hoc_stems={"ParentCell"},
             model_template_stems={"ParentCell", "UploadedCell"},
         )
@@ -345,7 +349,10 @@ class TestNodesHocConsistencyExtra:
         other.write_text("begintemplate OtherCell\nendtemplate OtherCell\n")
 
         empty_parent = ParentCircuitContext(
-            mechanism_names=set(), hoc_stems=set(), model_template_stems={"OtherCell"}
+            mechanism_suffixes=set(),
+            mechanism_filenames=set(),
+            hoc_stems=set(),
+            model_template_stems={"OtherCell"},
         )
         _validate_nodes_hoc_consistency([node], [uploaded, other], empty_parent)
 
@@ -368,11 +375,33 @@ class TestRunCrossValidations:
             mod_paths=[mod],
             node_paths=[],
             parent=ParentCircuitContext(
-                mechanism_names=set(), hoc_stems=set(), model_template_stems=set()
+                mechanism_suffixes=set(),
+                mechanism_filenames=set(),
+                hoc_stems=set(),
+                model_template_stems=set(),
             ),
         )
         assert len(errors) == 1
         assert "NET_RECEIVE" in errors[0]
+
+    def test_hoc_insert_of_parent_suffix_with_mismatched_filename_is_accepted(self, tmp_path):
+        """Regression: HOC inserting a parent mechanism whose filename != its SUFFIX.
+
+        The parent circuit's ``cacumm.mod`` declares ``SUFFIX cacum``. An uploaded HOC
+        that legitimately does ``insert cacum`` must pass: the parent context exposes the
+        parsed SUFFIX ``cacum``, not the filename stem ``cacumm``.
+        """
+        hoc = tmp_path / "UploadedCell.hoc"
+        hoc.write_text("begintemplate UploadedCell\n    insert cacum\nendtemplate UploadedCell\n")
+
+        parent = ParentCircuitContext(
+            mechanism_suffixes={"cacum"},  # parsed from cacumm.mod
+            mechanism_filenames={"cacumm"},  # the .mod file stem
+            hoc_stems={"UploadedCell"},
+            model_template_stems={"UploadedCell"},
+        )
+        errors = _run_cross_validations(hoc_paths=[hoc], mod_paths=[], node_paths=[], parent=parent)
+        assert errors == []
 
 
 # ---------------------------------------------------------------------------
@@ -402,9 +431,14 @@ class TestGetParentContext:
             context = _get_parent_context(MagicMock(), MagicMock(name="parent"))
 
         mock_stage.assert_called_once()
-        assert context.mechanism_names == expected_mods
-        # Spot-check a few well-known mechanisms from the N_10 fixture
-        assert {"NaTg", "Ca_HVA2", "ProbAMPANMDA_EMS", "ProbGABAAB_EMS"} <= context.mechanism_names
+        assert context.mechanism_filenames == expected_mods
+        # This fixture happens to use filename == SUFFIX for its density mechanisms, so the
+        # parsed suffixes match the filenames for everything except the POINT_PROCESS mods
+        # (ProbAMPANMDA_EMS, ProbGABAAB_EMS), which have no SUFFIX and are filename-only.
+        assert {"NaTg", "Ca_HVA2"} <= context.mechanism_suffixes
+        assert {"NaTg", "Ca_HVA2", "ProbAMPANMDA_EMS", "ProbGABAAB_EMS"} <= (
+            context.mechanism_filenames
+        )
         assert context.hoc_stems == expected_hocs
         # Every template the circuit references is backed by one of those HOC files
         assert context.model_template_stems
@@ -417,9 +451,35 @@ class TestGetParentContext:
         ):
             context = _get_parent_context(MagicMock(), MagicMock(name="parent"))
 
-        assert context.mechanism_names == set()
+        assert context.mechanism_suffixes == set()
+        assert context.mechanism_filenames == set()
         assert context.hoc_stems == set()
         assert context.model_template_stems == set()
+
+    def test_falls_back_to_rglob_when_no_per_population_mechanisms_dir(self):
+        """Circuits predating per-population ``mechanisms_dir`` fall back to an rglob scan.
+
+        When ``_collect_parent_node_facts`` finds no mechanisms (empty filenames), the
+        fallback scans the staged tree for ``*.mod`` and parses both the filename stems and
+        the ``SUFFIX`` tokens from them.
+        """
+        expected_filenames = {p.stem for p in (TINY_CIRCUIT / "mod").glob("*.mod")}
+        assert expected_filenames  # sanity
+
+        with (
+            patch(f"{CUSTOMIZATION_MODULE}.stage_circuit", side_effect=_fake_stage_circuit),
+            patch(
+                f"{CUSTOMIZATION_MODULE}._collect_parent_node_facts",
+                return_value=(set(), set(), set(), set()),
+            ),
+        ):
+            context = _get_parent_context(MagicMock(), MagicMock(name="parent"))
+
+        # Fallback populated both sets from the staged .mod files.
+        assert context.mechanism_filenames == expected_filenames
+        # SUFFIX-parsed density mechanisms are present; POINT_PROCESS mods have no SUFFIX.
+        assert {"NaTg", "Ca_HVA2"} <= context.mechanism_suffixes
+        assert "ProbAMPANMDA_EMS" not in context.mechanism_suffixes
 
 
 # ---------------------------------------------------------------------------
@@ -535,3 +595,37 @@ class TestStageAndRegister:
             _call_stage_and_register(MagicMock(), _make_parent(), tmp_path)
 
         assert exc.value.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# _collect_parent_node_facts
+# ---------------------------------------------------------------------------
+
+
+class TestCollectParentNodeFacts:
+    def test_mechanism_suffixes_parsed_separately_from_filenames(self, tmp_path):
+        """Density mechanisms expose both the parsed SUFFIX and the .mod filename stem.
+
+        Covers the filename != SUFFIX case that broke the hoc/mod cross-check: a mod named
+        ``cacumm.mod`` declaring ``SUFFIX cacum`` must contribute ``cacum`` to the suffixes
+        and ``cacumm`` to the filenames.
+        """
+        mech_dir = tmp_path / "mod"
+        mech_dir.mkdir()
+        (mech_dir / "cacumm.mod").write_text("NEURON {\n  SUFFIX cacum\n}\n")
+        (mech_dir / "naxn.mod").write_text("NEURON {\n  SUFFIX nax\n}\n")
+        (mech_dir / "NaTg.mod").write_text("NEURON {\n  SUFFIX NaTg\n}\n")
+        # POINT_PROCESS has no SUFFIX: filename only, not a density mechanism.
+        (mech_dir / "ProbAMPANMDA_EMS.mod").write_text("NEURON {\n  POINT_PROCESS Syn\n}\n")
+
+        pop = MagicMock()
+        pop.config = {"mechanisms_dir": str(mech_dir)}
+        pop.property_names = []
+        circuit = MagicMock()
+        circuit.nodes.population_names = ["hippocampus_neurons"]
+        circuit.nodes.__getitem__.return_value = pop
+
+        suffixes, filenames, _hoc_stems, _templates = _collect_parent_node_facts(circuit)
+
+        assert suffixes == {"cacum", "nax", "NaTg"}
+        assert filenames == {"cacumm", "naxn", "NaTg", "ProbAMPANMDA_EMS"}

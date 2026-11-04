@@ -103,11 +103,11 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
     [SectionList](https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology.html)
     """
 
-    title: ClassVar[str] = "Variable Modification by Section List"
+    title: ClassVar[str] = "Variable modification by section list"
 
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
@@ -162,11 +162,11 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
 class ByNeuronMechanismVariableNeuronalManipulation(Block):
     """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
-    title: ClassVar[str] = "Full Neuron Variable Modification"
+    title: ClassVar[str] = "Full neuron variable modification"
 
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
@@ -242,11 +242,11 @@ class CircuitBySectionListMechanismVariableNeuronalManipulation(
     [SectionList](https://nrn.readthedocs.io/en/latest/progref/modelspec/programmatic/topology.html)
     """
 
-    title: ClassVar[str] = "Variable Modification by Section List"
+    title: ClassVar[str] = "Variable modification by section list"
 
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -271,11 +271,11 @@ class CircuitByNeuronMechanismVariableNeuronalManipulation(
 ):
     """Modify a variable of an ion channel wherever the ion channel is present in the neuron."""
 
-    title: ClassVar[str] = "Full Neuron Variable Modification"
+    title: ClassVar[str] = "Full neuron variable modification"
 
     neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,

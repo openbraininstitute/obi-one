@@ -56,6 +56,14 @@ def test_channel_names_become_neuron_suffixes(name, suffix):
     assert neuron_safe_name(name) == suffix
 
 
+def test_at_most_3_recordings_are_fitted():
+    recordings = [{"id_str": str(uuid4())} for _ in range(4)]
+
+    IonChannelFittingScanConfig.Initialize(recordings=recordings[:3])
+    with pytest.raises(ValidationError, match="at most 3 items"):
+        IonChannelFittingScanConfig.Initialize(recordings=recordings)
+
+
 def test_recordings_are_kept_together_rather_than_scanned():
     annotation = IonChannelFittingScanConfig.Initialize.model_fields["recordings"].annotation
 
