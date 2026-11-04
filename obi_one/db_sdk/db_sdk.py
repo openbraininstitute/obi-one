@@ -126,7 +126,7 @@ def get_recording_protocols(
     by_recording: dict[str, list[str]] = {}
     for rid in recording_ids:
         entity = db_client.get_entity(
-            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_id=UUID(rid),
             entity_type=ElectricalCellRecording,
         )
         stimuli = entity.stimuli or []
@@ -166,7 +166,7 @@ def get_recording_amplitudes(
     combined: dict[str, set[float]] = {}
     for rid in recording_ids:
         entity = db_client.get_entity(
-            entity_id=rid,  # ty:ignore[invalid-argument-type]
+            entity_id=UUID(rid),
             entity_type=ElectricalCellRecording,
         )
         protocol_names = sorted({s.name for s in (entity.stimuli or []) if s.name})
@@ -222,7 +222,10 @@ def select_asset_content(
 ) -> bytes:
     """Select an asset from an entity and fetch its content."""
     if entity is None:
-        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
+        if entity_id is None or entity_type is None:
+            msg = "entity_id and entity_type are required when entity is not provided"
+            raise ValueError(msg)
+        entity = client.get_entity(entity_id=entity_id, entity_type=entity_type)
     asset = client.select_assets(
         entity=entity,
         selection=selection,
