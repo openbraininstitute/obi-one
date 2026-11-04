@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from entitysdk.client import Client
 from entitysdk.models import Simulation, SimulationCampaign, SimulationGeneration
+from entitysdk.types import AssetLabel, ContentType
 from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
@@ -288,8 +289,8 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             entity_id=self._campaign.id,
             entity_type=SimulationCampaign,
             file_path=output_root / SCAN_CONFIG_FILENAME,
-            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-            asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.campaign_generation_config,
         )
 
         return self._campaign
@@ -363,8 +364,8 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
             entity_id=self.single_entity.id,
             entity_type=Simulation,
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
-            file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-            asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
+            file_content_type=ContentType.application_json,
+            asset_label=AssetLabel.simulation_generation_config,
         )
 
         return self._single_entity

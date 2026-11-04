@@ -82,7 +82,7 @@ class SimulationExecutionTask(Task):
         execution_activity = None
         if execution_activity_id is not None:
             execution_activity = db_client.get_entity(
-                entity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
+                entity_id=UUID(str(execution_activity_id)),
                 entity_type=self.activity_type,
             )
             L.info("Activity: %s(id=%s)", type(execution_activity), execution_activity.id)

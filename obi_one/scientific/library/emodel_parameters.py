@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from entitysdk.models import EModel, MEModel
 from entitysdk.types import AssetLabel
@@ -140,7 +141,7 @@ def get_mechanism_variables_for_emodel(
         Tuple of (variables_list, channel_mapping) where channel_mapping shows
         which section lists each ion channel appears in based on emodel JSON.
     """
-    emodel = db_client.get_entity(entity_id=emodel_id, entity_type=EModel)  # ty:ignore[invalid-argument-type]
+    emodel = db_client.get_entity(entity_id=UUID(emodel_id), entity_type=EModel)
 
     optimized_params = _fetch_optimization_parameters(db_client, emodel)
     ion_channel_vars = _get_ion_channel_variables(emodel)

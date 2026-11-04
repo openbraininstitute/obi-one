@@ -1,6 +1,7 @@
 import abc
 import logging
 from typing import Annotated
+from uuid import UUID
 
 from entitysdk import Client
 from entitysdk.models import TaskActivity
@@ -31,7 +32,7 @@ class Task(OBIBaseModel, abc.ABC):
         if db_client and execution_activity_id:
             execution_activity = db_sdk.get_execution_activity(
                 client=db_client,
-                execution_activity_id=execution_activity_id,  # ty:ignore[invalid-argument-type]
+                execution_activity_id=UUID(execution_activity_id),
             )
         return execution_activity
 

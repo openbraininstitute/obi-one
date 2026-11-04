@@ -550,3 +550,26 @@ def test_select_json_asset_content(client, httpx_mock):
         selection={"label": AssetLabel.sonata_simulation_config},
     )
     assert res == content
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "entity_type"),
+    [
+        (None, Entity),
+        (uuid4(), None),
+        (None, None),
+    ],
+)
+def test_select_asset_content_requires_id_and_type_when_entity_missing(entity_id, entity_type):
+    client = Mock()
+
+    with pytest.raises(ValueError, match="entity_id and entity_type are required"):
+        test_module.select_asset_content(
+            client=client,
+            entity=None,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            selection={"label": AssetLabel.sonata_simulation_config},
+        )
+
+    client.get_entity.assert_not_called()
