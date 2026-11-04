@@ -8,7 +8,6 @@ import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
 import pytest
 import spikeinterface as si
 from entitysdk.types import AssetLabel, TaskResultType
@@ -37,16 +36,9 @@ from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.config 
 from obi_one.scientific.tasks.aind_ephys._03_spikesorting.spykingcircus2.task import (
     AINDEPhysSpikeSortingSpykingCircus2Task,
 )
-from obi_one.scientific.tasks.aind_ephys._04_postprocessing.blocks import QualityMetrics
-from obi_one.scientific.tasks.aind_ephys._04_postprocessing.config import (
-    AINDEPhysPostprocessingScanConfig,
-)
-from obi_one.scientific.tasks.aind_ephys._05_curation.blocks import UnitRefine
-from obi_one.scientific.tasks.aind_ephys._05_curation.config import AINDEPhysCurationScanConfig
-from obi_one.scientific.tasks.aind_ephys._05_curation.task import noise_mask
 from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs
 from obi_one.scientific.tasks.aind_ephys.toy_recording import PROBE_NAME, write_toy_nwb
-from obi_one.scientific.tasks.aind_ephys.utils import ERROR_FILE_NAME, load_analyzer
+from obi_one.scientific.tasks.aind_ephys.utils import ERROR_FILE_NAME
 
 NUM_CHANNELS = 32
 SINGLE_JOB = JobKwargs(n_jobs=1)
@@ -60,8 +52,6 @@ CONFIG_MODULES = [
         "_03_spikesorting.kilosort4",
         "_03_spikesorting.spykingcircus2",
         "_03_spikesorting.lupin",
-        "_04_postprocessing",
-        "_05_curation",
     )
 ]
 
@@ -108,39 +98,12 @@ def stages(tmp_path_factory) -> dict[str, Path]:
         ),
         root / "sorting",
     )
-    postprocessing = run_stage(
-        AINDEPhysPostprocessingScanConfig(
-            initialize=AINDEPhysPostprocessingScanConfig.Initialize(
-                preprocessing_output_path=preprocessing, spikesort_output_path=sorting
-            ),
-            job_kwargs=SINGLE_JOB,
-            quality_metrics=QualityMetrics(
-                presence_ratio_bin_duration_s=1.0,
-                firing_range_bin_size_s=1.0,
-                amplitude_cv_min_num_bins=1,
-                amplitude_cv_average_num_spikes_per_bin=5,
-            ),
-        ),
-        root / "postprocessing",
-    )
-    curation = run_stage(
-        AINDEPhysCurationScanConfig(
-            initialize=AINDEPhysCurationScanConfig.Initialize(
-                postprocessing_output_path=postprocessing, noise_strategy="bombcell"
-            ),
-            job_kwargs=SINGLE_JOB,
-            unitrefine=UnitRefine(noise_neural_classifier=None, sua_mua_classifier=None),
-        ),
-        root / "curation",
-    )
     return {
         "root": root,
         "nwb": nwb_path,
         "dispatch": dispatch,
         "preprocessing": preprocessing,
         "sorting": sorting,
-        "postprocessing": postprocessing,
-        "curation": curation,
     }
 
 
@@ -365,27 +328,6 @@ class TestStages:
 
         assert (folder / "spikesorted_skipped" / ERROR_FILE_NAME).is_file()
 
-    def test_postprocessing_computes_quality_metrics(self, stages):
-        name = only_name(stages["postprocessing"], "postprocessed_", ".zarr")
-
-        analyzer = load_analyzer(stages["postprocessing"] / f"postprocessed_{name}.zarr")
-        metrics = analyzer.get_extension("quality_metrics").get_data()
-
-        assert {"firing_rate", "presence_ratio", "snr", "rp_contamination"} <= set(metrics)
-        assert len(metrics) == len(analyzer.unit_ids)
-
-    def test_curation_labels_every_unit(self, stages):
-        name = only_name(stages["curation"], "unit_labels_", ".csv")
-        analyzer = load_analyzer(stages["postprocessing"] / f"postprocessed_{name}.zarr")
-
-        labels = pd.read_csv(stages["curation"] / f"unit_labels_{name}.csv")
-        curation = json.loads((stages["curation"] / f"curation_{name}.json").read_text())
-
-        assert labels["unit_id"].tolist() == analyzer.unit_ids.tolist()
-        assert {"default_qc", "bombcell_label"} <= set(labels.columns)
-        assert "unitrefine_label" not in labels.columns
-        assert curation["unit_ids"] == analyzer.unit_ids.tolist()
-
 
 class TestHelpers:
     def test_deep_merge_keeps_unset_nested_defaults(self):
@@ -398,30 +340,6 @@ class TestHelpers:
             "seed": 1,
         }
         assert defaults["detection"]["detect_threshold"] == 5
-
-    @pytest.mark.parametrize(
-        ("strategy", "expected"),
-        [
-            ("bombcell", [True, True, False]),
-            ("unitrefine", [True, False, True]),
-            ("bombcell+unitrefine", [True, False, False]),
-            (None, [False, False, False]),
-        ],
-    )
-    def test_noise_mask(self, strategy, expected):
-        labels = pd.DataFrame(
-            {
-                "bombcell_label": ["noise", "noise", "good"],
-                "unitrefine_label": ["noise", "sua", "noise"],
-            }
-        )
-
-        assert noise_mask(labels, strategy).tolist() == expected
-
-    def test_noise_mask_ignores_labels_that_were_not_computed(self):
-        labels = pd.DataFrame({"bombcell_label": ["noise", "good"]})
-
-        assert noise_mask(labels, "bombcell+unitrefine").tolist() == [True, False]
 
 
 def test_config_modules_do_not_import_spikeinterface():
