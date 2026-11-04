@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 from typing import Annotated
+from uuid import UUID
 
 import bluepysnap as snap
 import numpy as np
@@ -78,27 +79,27 @@ class TemporaryPartialCircuit:
     def __init__(self, db_client: Client, circuit_id: str, edge_population: str) -> None:
         """Initialize TemporaryPartialCircuit."""
         self._db_client = db_client
-        self._circuit_id = circuit_id
+        self._circuit_id = UUID(circuit_id)
         self._edge_population = edge_population
 
-    def _fetch_file(self, rel_path: str) -> Path:
+    def _fetch_file(self, rel_path: str | Path) -> Path:
         temp_file_path = Path(self.temp_dir.name) / rel_path
         if self.asset.id is None:
             msg = "Asset must have an id"
             raise ValueError(msg)
         self._db_client.fetch_file(
-            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
+            entity_id=self._circuit_id,
             entity_type=EntityCircuitModel,
             asset_id=self.asset.id,
             output_path=temp_file_path,
-            asset_path=rel_path,  # ty:ignore[invalid-argument-type]
+            asset_path=Path(rel_path),
             strategy=FetchFileStrategy.link_or_download,
         )
         return temp_file_path
 
     def _get_sonata_asset(self) -> Asset:
         circuit = self._db_client.get_entity(
-            entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
+            entity_id=self._circuit_id,
             entity_type=EntityCircuitModel,
         )
         sonata_assets = [
@@ -142,12 +143,12 @@ class TemporaryPartialCircuit:
             rel_path = Path(c.config["node_sets_file"]).relative_to(
                 Path(self.temp_dir.name).resolve()
             )
-            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
+            self._fetch_file(rel_path)
 
             # Fetch edge population
             edges_path = self._get_edges_path(c)
             rel_path = Path(edges_path).relative_to(Path(self.temp_dir.name).resolve())
-            self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
+            self._fetch_file(rel_path)
 
             # Fetch src/tgt node populations
             src_nodes = c.edges[self._edge_population].source.name
@@ -155,7 +156,7 @@ class TemporaryPartialCircuit:
             for npop in np.unique([src_nodes, tgt_nodes]):
                 nodes_path = self._get_nodes_path(c, npop)
                 rel_path = Path(nodes_path).relative_to(Path(self.temp_dir.name).resolve())
-                self._fetch_file(rel_path)  # ty:ignore[invalid-argument-type]
+                self._fetch_file(rel_path)
         except HTTPStatusError:
             self.temp_dir.__exit__(None, None, None)
             raise

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from entitysdk import models
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.db_sdk import circuit as test_module
 
@@ -88,7 +88,7 @@ class TestCircuitDbHelpers:
             circuit(existing),
             asset_label=AssetLabel.sonata_circuit,
             file_path=tmp_path / "circuit.json",
-            file_content_type="application/json",
+            file_content_type=ContentType.application_json,
         )
 
         assert result is existing
@@ -105,7 +105,7 @@ class TestCircuitDbHelpers:
             circuit(),
             asset_label=AssetLabel.sonata_circuit,
             file_path=tmp_path / "circuit.json",
-            file_content_type="application/json",
+            file_content_type=ContentType.application_json,
         )
 
         assert result is uploaded
@@ -124,7 +124,7 @@ class TestCircuitDbHelpers:
             circuit(first, second),
             asset_label=AssetLabel.sonata_circuit,
             file_path=tmp_path / "circuit.tar.gz",
-            file_content_type="application/gzip",
+            file_content_type=ContentType.application_gzip,
             transfer_config=object(),
         )
 
