@@ -6,7 +6,7 @@ custom analysis pipelines, or multiple measurements from the same trace).
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 import efel
 import numpy as np
@@ -58,7 +58,9 @@ def _count_bpap_spikes(
         "stim_end": [end],
     }
     with efel_settings({"Threshold": threshold}):
-        feature_results = efel.get_feature_values([trace], ["spike_count"])
+        feature_results = efel.get_feature_values(
+            [trace], ["spike_count"], parallel_map=None, return_list=True
+        )
 
     if not feature_results:
         return None
@@ -106,7 +108,10 @@ class HyperpolarizationTest(ValidationTest):
             "stim_end": [IDRestTimings.PRE_DELAY.value + IDRestTimings.DURATION.value],
         }
         features = efel.get_feature_values(
-            [trace], ["voltage_base", "steady_state_voltage_stimend"]
+            [trace],
+            ["voltage_base", "steady_state_voltage_stimend"],
+            parallel_map=None,
+            return_list=True,
         )
         rmp = features[0]["voltage_base"]
         ss_voltage = features[0]["steady_state_voltage_stimend"]
@@ -145,7 +150,9 @@ class RinTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.INPUT_RESISTANCE
 
-    def run(self, _template_params: Any, _rheobase: float, _out_dir: Path) -> TestResult:
+    @override
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
+        # Rin is measured during setup, so this test needs no simulation inputs.
         passed = bool(self.rin < _MAX_INPUT_RESISTANCE_MOHM)
 
         if passed:
@@ -229,7 +236,9 @@ class AISSpikingTest(ValidationTest):
             },
         ]
         with efel_settings({"Threshold": -40.0}):
-            features = efel.get_feature_values(traces, ["peak_time"])
+            features = efel.get_feature_values(
+                traces, ["peak_time"], parallel_map=None, return_list=True
+            )
         axon_spike_time = features[0]["peak_time"]
         soma_spike_time = features[1]["peak_time"]
 
