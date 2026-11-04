@@ -27,6 +27,11 @@ from obi_one.scientific.tasks.ion_channel_modeling import (
 )
 
 
+def test_get_range_params_stub_requires_ion_channel_builder():
+    with pytest.raises(NotImplementedError, match="ion_channel_builder is required"):
+        ion_channel_modeling.get_range_params_with_units({})
+
+
 def test_model_properties_default_to_the_recordings():
     initialize = IonChannelFittingScanConfig.Initialize(
         recordings=[{"id_str": "00000000-0000-0000-0000-000000000000"}]

@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import ClassVar
 
 import bluepysnap as snap
-import entitysdk.client
 import h5py
 import numpy as np
 from bluepysnap import BluepySnapError
+from bluepysnap.nodes import NodePopulation
+from entitysdk.client import Client
 from morph_tool import convert
 from morphio import MorphioError
 
@@ -69,9 +70,7 @@ class MorphologyContainerizationTask(Task):
         return list(filter(lambda f: Path(f).suffix.lower() == f".{ext}", file_list))
 
     @classmethod
-    def _load_node_population(
-        cls, c: snap.Circuit, npop: str
-    ) -> (snap.nodes.NodePopulation, np.ndarray):  # ty:ignore[invalid-type-form, possibly-missing-submodule]
+    def _load_node_population(cls, c: snap.Circuit, npop: str) -> (NodePopulation, np.ndarray):  # ty:ignore[invalid-type-form]
         nodes = c.nodes[npop]
         if nodes.type != "biophysical":
             morph_names = None
@@ -94,7 +93,7 @@ class MorphologyContainerizationTask(Task):
 
     @staticmethod
     def _check_morph_folders(
-        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        nodes: NodePopulation,
         morph_folders_to_delete: list,
     ) -> list:
         """Check existence and contents of morphology folders."""
@@ -220,7 +219,7 @@ class MorphologyContainerizationTask(Task):
         *,
         global_morph_entry: bool,
         cfg_dict: dict,
-        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        nodes: NodePopulation,
     ) -> None:
         """Set morphology entries individually per population."""
         if global_morph_entry is None:
@@ -344,7 +343,7 @@ class MorphologyContainerizationTask(Task):
 
     def _update_hoc_folder(
         self,
-        nodes: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+        nodes: NodePopulation,
         hoc_folders_updated: list,
     ) -> str:
         hoc_folder = nodes.config["biophysical_neuron_models_dir"]
@@ -358,7 +357,7 @@ class MorphologyContainerizationTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,  # ruff: ignore[unused-method-argument]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:

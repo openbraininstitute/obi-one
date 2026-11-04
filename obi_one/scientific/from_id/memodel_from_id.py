@@ -15,7 +15,7 @@ class MEModelFromID(EntityFromID[MEModel]):
 
     def morphio_morphology(
         self,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
     ) -> morphio.Morphology:
         """Load this ME-model's morphology through its CellMorphology entity."""
         memodel = self.entity(db_client)
@@ -25,7 +25,7 @@ class MEModelFromID(EntityFromID[MEModel]):
     def stage_circuit(
         self,
         *,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
         dest_dir: Path | None = None,
         entity_cache: bool = False,
     ) -> MEModelCircuit:

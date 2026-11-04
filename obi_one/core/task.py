@@ -37,7 +37,7 @@ class Task(OBIBaseModel, abc.ABC):
 
     @staticmethod
     def _update_execution_activity(
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         execution_activity: TaskActivity | None = None,
         generated: list[str] | None = None,
     ) -> TaskActivity | None:

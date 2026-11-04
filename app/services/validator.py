@@ -9,7 +9,8 @@ from typing import Any
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import entitysdk
+from entitysdk.client import Client
+from entitysdk.models import Simulation
 
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
@@ -17,14 +18,14 @@ from obi_one.core.scan_generation import GridScanGenerationTask
 
 
 class _WriteInterceptingClient:
-    """A wrapper around entitysdk.client.Client that intercepts write operations.
+    """A wrapper around Client that intercepts write operations.
 
     Read operations are delegated to the real client.
     Write operations (register_entity, upload_file, update_entity) return mocks.
     Thread-safe because each validation gets its own wrapper instance.
     """
 
-    def __init__(self, real_client: entitysdk.client.Client) -> None:
+    def __init__(self, real_client: Client) -> None:
         self._real_client = real_client
         self.register_call_count = 0
         self.upload_call_count = 0
@@ -32,8 +33,8 @@ class _WriteInterceptingClient:
 
     def register_entity(self, entity: Any) -> MagicMock:
         self.register_call_count += 1
-        if isinstance(entity, entitysdk.models.Simulation):  # ty:ignore[possibly-missing-submodule]
-            mock = MagicMock(spec=entitysdk.models.Simulation)  # ty:ignore[possibly-missing-submodule]
+        if isinstance(entity, Simulation):
+            mock = MagicMock(spec=Simulation)
             mock.id = uuid4()
             return mock
         mock = MagicMock(spec=["id"])
@@ -53,7 +54,7 @@ class _WriteInterceptingClient:
 
 def run_grid_scan_validation(
     config: ScanConfig,
-    db_client: entitysdk.client.Client,
+    db_client: Client,
     *,
     execute_single_config_task: bool,
 ) -> str | None:
