@@ -566,6 +566,12 @@ def _is_task_type_available(task_type: TaskType) -> bool:
     return task_spec.requires_package is None or _is_package_installed(task_spec.requires_package)
 
 
+def _is_task_class_importable(task_type: TaskType) -> bool:
+    """Return whether the task class imports here; its configs may import where it does not."""
+    package = TASK_SPECS[task_type].task_requires_package
+    return package is None or _is_package_installed(package)
+
+
 def get_task_spec_for_task_type(task_type: TaskType) -> TaskSpec:
     """Return the task spec for ``task_type`` without importing the task's classes."""
     if not _is_task_type_available(task_type):
@@ -640,7 +646,7 @@ def iter_task_refs() -> Iterator[ClassRef]:
     """
     seen: set[str] = set()
     for task_type, task_spec in TASK_SPECS.items():
-        if not _is_task_type_available(task_type):
+        if not _is_task_type_available(task_type) or not _is_task_class_importable(task_type):
             continue
         task_ref = task_spec.task_ref
         name = class_name(task_ref)

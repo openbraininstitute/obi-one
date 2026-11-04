@@ -1,4 +1,3 @@
-from importlib.util import find_spec
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -74,12 +73,6 @@ def skip_if_unavailable(task_type: TaskType) -> None:
         pytest.skip(f"{task_type!r} requires an optional dependency that is not installed")
 
 
-def task_class_is_importable(task_type: TaskType) -> bool:
-    """Whether the task class imports here; its configs may import where it does not."""
-    package = TASK_SPECS[task_type].task_requires_package
-    return package is None or find_spec(package) is not None
-
-
 def test_config_task_map_cases_partition_task_type_enum():
     mapped = set(CONFIG_TASK_MAP_CASES)
     unmapped = set(LAUNCH_SYSTEM_TASK_TYPES_WITHOUT_CONFIG_MAP)
@@ -99,7 +92,8 @@ def test_declared_class_ref_is_importable(task_type, class_ref):
     declarative registry got rid of: it catches typos, moved modules and renamed classes.
     """
     skip_if_unavailable(task_type)
-    if class_ref == TASK_SPECS[task_type].task_ref and not task_class_is_importable(task_type):
+    is_task = class_ref == TASK_SPECS[task_type].task_ref
+    if is_task and not test_module._is_task_class_importable(task_type):
         pytest.skip(f"{task_type!r}'s task needs an optional dependency that is not installed")
 
     cls = import_class(class_ref)
@@ -121,7 +115,7 @@ def test_config_task_map_spec_resolves(task_type: TaskType):
     skip_if_unavailable(task_type)
     task_spec = test_module.get_task_spec_for_task_type(task_type)
 
-    if task_class_is_importable(task_type):
+    if test_module._is_task_class_importable(task_type):
         assert issubclass(task_spec.task_cls, Task)
     assert issubclass(task_spec.single_config_cls, OBIBaseModel)
     assert test_module.get_task_spec_for_single_config(task_spec.single_config_cls) is task_spec
