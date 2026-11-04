@@ -363,7 +363,7 @@ def test_register_task_config_with_asset(tmp_path):
             description="desc",
             task_config_type="my_type",
             multiple_value_parameters_dictionary={"p": [1, 2]},
-            input_entities=[Mock(spec=Entity)],
+            input_entities=[uuid4()],
             task_config_file_path=config_path,
         )
 

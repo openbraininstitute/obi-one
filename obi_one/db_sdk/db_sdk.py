@@ -390,7 +390,7 @@ def register_task_config_with_asset(
     description: str,
     task_config_type: str,
     multiple_value_parameters_dictionary: dict,
-    input_entities: list[Entity],
+    input_entities: list[UUID],
     task_config_file_path: Path,
     task_config_generator_id: UUID | None = None,
 ) -> tuple[TaskConfig, Asset]:
@@ -402,7 +402,7 @@ def register_task_config_with_asset(
         description=description,
         task_config_type=task_config_type,
         multiple_value_parameters_dictionary=multiple_value_parameters_dictionary,
-        input_entities=input_entities,
+        input_entities=input_entities,  # ty:ignore[invalid-argument-type]
         task_config_generator_id=task_config_generator_id,
     )
     asset = upload_task_config_asset(

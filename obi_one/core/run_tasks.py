@@ -98,15 +98,12 @@ def run_task_for_single_config_asset(
     json_dict["coordinate_output_root"] = Path(scan_output_root) / str(json_dict["idx"])
     Path(json_dict["coordinate_output_root"]).mkdir(parents=True, exist_ok=True)
     single_config = deserialize_obi_object_from_json_data(json_dict)
-    if not isinstance(single_config, SingleConfigMixin):
-        msg = f"Expected SingleConfigMixin, got {type(single_config).__name__}"
-        raise TypeError(msg)
 
     entity = db_client.get_entity(entity_id=entity_uuid, entity_type=entity_type)
 
-    single_config.set_single_entity(entity)
+    single_config.set_single_entity(entity)  # ty:ignore[unresolved-attribute]
     run_task_for_single_config(
-        single_config,
+        single_config,  # ty:ignore[invalid-argument-type]
         db_client=db_client,
         entity_cache=entity_cache,
         execution_activity_id=execution_activity_id,

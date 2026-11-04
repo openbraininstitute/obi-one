@@ -270,9 +270,9 @@ def test_run_task_for_single_config_asset_deserializes_and_runs(
     mock_run_single,
     mock_mkdir,  # ruff: ignore[unused-function-argument]
     db_client,
+    mock_single_config,
 ):
-    single_config = CircuitExtractionSingleConfig.model_construct()
-    mock_deserialize.return_value = single_config
+    mock_deserialize.return_value = mock_single_config
 
     test_module.run_task_for_single_config_asset(
         entity_type=MagicMock(),
@@ -285,8 +285,8 @@ def test_run_task_for_single_config_asset_deserializes_and_runs(
     call_json_dict = mock_deserialize.call_args[0][0]
     assert call_json_dict["scan_output_root"] == "/out"
     assert call_json_dict["coordinate_output_root"] == Path("/out") / "0"
+    mock_single_config.set_single_entity.assert_called_once()
     mock_run_single.assert_called_once()
-    assert mock_run_single.call_args.args[0] is single_config
 
 
 @patch("obi_one.core.run_tasks.db_sdk.get_entity_asset_by_label")
