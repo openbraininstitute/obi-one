@@ -50,6 +50,15 @@ class TestHttpRangeFile:
             remote.read(1)
         assert server.requests == ["GET bytes=0-3"]
 
+    def test_an_error_status_is_an_oserror_without_the_signed_url(self):
+        """The URL is presigned and callers log the error, so it must not be in it."""
+        client = httpx2.Client(transport=httpx2.MockTransport(lambda _: httpx2.Response(403)))
+        remote = HttpRangeFile("https://s3/f.h5?X-Amz-Signature=secret", client, 10)
+        with pytest.raises(OSError, match="got 403") as excinfo:
+            remote.read(1)
+        assert "secret" not in str(excinfo.value)
+        assert excinfo.value.__cause__ is None
+
     def test_a_size_larger_than_the_file_is_an_error_not_short_bytes(self):
         """Storage answers a range past the end with the bytes it has, as S3 does."""
         remote = HttpRangeFile("http://s/f", _client(RangeServer(b"x" * 10)), 12)
