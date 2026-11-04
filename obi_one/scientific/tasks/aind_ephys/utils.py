@@ -2,8 +2,8 @@
 
 Stages hand over through folders laid out as in the AIND pipeline: ``job_<i>.json`` from dispatch,
 ``preprocessed_<name>/`` and ``binary_<name>.json`` from preprocessing, ``spikesorted_<name>/``
-from spike sorting. A stage that skips a recording writes its output folder with only an
-``error.txt`` inside, which later stages skip.
+from spike sorting and ``postprocessed_<name>.zarr`` from postprocessing. A stage that skips a
+recording writes its output folder with only an ``error.txt`` inside, which later stages skip.
 """
 
 import json
@@ -18,6 +18,8 @@ from spikeinterface.core.core_tools import SIJsonEncoder
 
 ERROR_FILE_NAME = "error.txt"
 JOB_FILE_PREFIX = "job_"
+# Analyzer extensions saved as pickles (fitted PCA models), which numcodecs refuses to decode.
+PICKLED_EXTENSIONS = ("principal_components",)
 
 
 @contextmanager
@@ -74,6 +76,24 @@ def load_recording(source: Path | dict, base_folder: Path | None = None) -> si.B
         msg = f"Expected a recording, loaded a {type(recording).__name__}."
         raise TypeError(msg)
     return recording
+
+
+def load_sorting(folder: Path) -> si.BaseSorting:
+    """Load a sorting saved into ``folder``."""
+    sorting = si.load(folder)
+    if not isinstance(sorting, si.BaseSorting):
+        msg = f"Expected a sorting in {folder}, loaded a {type(sorting).__name__}."
+        raise TypeError(msg)
+    return sorting
+
+
+def load_analyzer(folder: Path) -> si.SortingAnalyzer:
+    """Load a sorting analyzer saved into ``folder``, without its pickled extensions."""
+    analyzer = si.load_sorting_analyzer(folder, load_extensions=False)
+    for name in analyzer.get_saved_extension_names():
+        if name not in PICKLED_EXTENSIONS:
+            analyzer.load_extension(name)
+    return analyzer
 
 
 def load_dumped_recording(folder: Path, stem: str) -> si.BaseRecording:

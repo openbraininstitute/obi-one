@@ -483,6 +483,84 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
         single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
     ),
+    TaskType.aind_ephys_postprocessing: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._04_postprocessing.task", "AINDEPhysPostprocessingTask"),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._04_postprocessing.config",
+            "AINDEPhysPostprocessingSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._04_postprocessing.config",
+            "AINDEPhysPostprocessingScanConfig",
+        ),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_curation: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._05_curation.task", "AINDEPhysCurationTask"),
+        single_config_ref=(f"{_AIND_EPHYS}._05_curation.config", "AINDEPhysCurationSingleConfig"),
+        scan_config_ref=(f"{_AIND_EPHYS}._05_curation.config", "AINDEPhysCurationScanConfig"),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_visualization: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._06_visualization.task", "AINDEPhysVisualizationTask"),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._06_visualization.config",
+            "AINDEPhysVisualizationSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._06_visualization.config",
+            "AINDEPhysVisualizationScanConfig",
+        ),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_results_collector: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._07_results_collector.task", "AINDEPhysResultsCollectorTask"),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._07_results_collector.config",
+            "AINDEPhysResultsCollectorSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._07_results_collector.config",
+            "AINDEPhysResultsCollectorScanConfig",
+        ),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_processing_qc: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._08_processing_qc.task", "AINDEPhysProcessingQCTask"),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._08_processing_qc.config",
+            "AINDEPhysProcessingQCSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._08_processing_qc.config",
+            "AINDEPhysProcessingQCScanConfig",
+        ),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_qc_collector: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._09_qc_collector.task", "AINDEPhysQCCollectorTask"),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._09_qc_collector.config",
+            "AINDEPhysQCCollectorSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._09_qc_collector.config",
+            "AINDEPhysQCCollectorScanConfig",
+        ),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_ecephys_nwb: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._10_ecephys_nwb.task", "AINDEcephysNWBTask"),
+        single_config_ref=(f"{_AIND_EPHYS}._10_ecephys_nwb.config", "AINDEcephysNWBSingleConfig"),
+        scan_config_ref=(f"{_AIND_EPHYS}._10_ecephys_nwb.config", "AINDEcephysNWBScanConfig"),
+        asset_label=None,
+    ),
+    TaskType.aind_ephys_units_nwb: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._11_units_nwb.task", "AINDUnitsNWBTask"),
+        single_config_ref=(f"{_AIND_EPHYS}._11_units_nwb.config", "AINDUnitsNWBSingleConfig"),
+        scan_config_ref=(f"{_AIND_EPHYS}._11_units_nwb.config", "AINDUnitsNWBScanConfig"),
+        asset_label=None,
+    ),
 }
 
 
