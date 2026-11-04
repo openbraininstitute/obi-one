@@ -110,6 +110,9 @@ class HttpRangeFile(io.RawIOBase):
     def readinto(self, buffer: Buffer, /) -> int:
         """Copy bytes from the current position into ``buffer``; at most one request.
 
+        Args:
+            buffer: Writable buffer; up to ``len(buffer)`` bytes are copied into it.
+
         Returns:
             The number of bytes copied; 0 at the end of the file.
         """
@@ -128,7 +131,12 @@ class HttpRangeFile(io.RawIOBase):
         """Return a fetched block that holds bytes ``[start, start + length)``.
 
         The block already in memory is used when it covers the range; otherwise one is
-        fetched and kept, sorted by start so the next lookup is a binary search.
+        fetched and kept, sorted by start so the next lookup is a binary search. Only the
+        block starting closest before ``start`` is checked, so a range covered by an
+        earlier, longer block is fetched again.
+
+        Returns:
+            The block's start offset in the file, and the block's bytes.
         """
         index = bisect_right(self._starts, start) - 1
         if index >= 0:

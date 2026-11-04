@@ -37,7 +37,10 @@ _VALID_SECTION_LISTS: set[str] = {
 
 
 def expand_section_list(section_list: str) -> list[str]:
-    """Expand a section-list alias into concrete section lists."""
+    """Expand a section-list alias (e.g. ``all``) into concrete section lists.
+
+    A name that is not an alias is returned alone, unchanged.
+    """
     return _MULTILOC_MAP.get(section_list, [section_list])
 
 
