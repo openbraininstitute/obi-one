@@ -77,7 +77,7 @@ def submit_circuit_validation_job(
             "location": obi_one_repo,
             "ref": release_tag_ref(app_version),
             "path": f"{VALIDATION_LAUNCH_PATH}/main.py",
-            "dependencies": f"{VALIDATION_LAUNCH_PATH}/dependencies/bluecellulab.txt",
+            "dependencies": f"{VALIDATION_LAUNCH_PATH}/dependencies/default.txt",
         },
         "resources": {
             "type": "machine",

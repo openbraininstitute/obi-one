@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[bluerecording]==2026.11.1
+obi-one[bluerecording,bluecellulab]==2026.11.1
 # Pinned by neurodamus_image.override, not resolved:
 neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
 neurodamus==4.2.11
@@ -15,6 +15,7 @@ anyio==4.15.1
 asttokens==3.0.2
 attrs==26.1.0
 blosc2==4.14.1
+bluecellulab==2.6.112
 bluepyefe==2.3.63
 bluepysnap==3.0.9
 bluerecording==0.7.0
@@ -123,6 +124,7 @@ rich==15.0.0
 rpds-py==2026.6.3
 scikit-learn==1.9.1
 scipy==1.18.1
+seaborn==0.13.2
 setuptools==84.0.0
 six==1.17.0
 sortedcontainers==2.4.0
