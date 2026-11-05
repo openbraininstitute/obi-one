@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[nest]==2026.11.0
+obi-one[nest]==2026.11.1
 aiofiles==25.1.0
 annotated-types==0.8.0
 antlr4-python3-runtime==4.13.2
@@ -38,7 +38,7 @@ dask-mpi==2026.3.0
 deprecation==2.1.0
 distributed==2026.8.0
 efel==5.7.34
-entitysdk==0.19.35
+entitysdk==0.19.37
 executing==2.3.0
 find-libpython==0.5.1
 fonttools==4.68.0
@@ -90,7 +90,7 @@ neuron==9.0.2
 numexpr==2.14.2
 numpy==2.4.6
 obi-auth==1.2.1
-obp-accounting-sdk==0.6.9
+obp-accounting-sdk==0.6.10
 odetoolbox==3.0.0
 packaging==26.3
 pandas==2.3.3
