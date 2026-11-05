@@ -23,6 +23,7 @@ net.Simulate()             # runs for run.tstop ms
 - **Point neurons** are created per model template with its `params`, then the per-node `dynamics_params` from the nodes file.
 - **Virtual populations** become `spike_train_injector` nodes fed by the `synapse_replay` inputs targeting them.
 - **Synapses** get the template's `model` and `params`, then per-edge `syn_weight`/`delay`, then per-edge `dynamics_params` (e.g. `U`, `u`, `tau_rec`, `tau_fac`, `receptor_type`).
+- **Templates** are read as `<point_neuron_models_dir>/<model_template>.json`. The directory is set on each population in the circuit config, or once under `components` as a default for populations without their own (libsonata resolves the default). Node and edge populations that share a directory must use distinct template names.
 
 `run_simulation(simulation_config)` does all of the above and writes the spikes of every non-virtual population to the config's `output.spikes_file` as a SONATA spike report. Voltage `reports` are not supported and raise `NotImplementedError`.
 
@@ -32,10 +33,6 @@ net.Simulate()             # runs for run.tstop ms
 
 ## NESTML custom models
 
-A template whose `model` is `nestml:<name>` references `<model_template_dir>/<name>.nestml`. On first use the loader runs NESTML to generate and compile a NEST extension module, installs it and creates nodes with the generated model. Modules are cached by source hash under `<circuit>/.nestml_cache/`. The host needs `cmake`, `make` and a C++ compiler. Build failures raise `NestmlBuildError` with the path to the build output. Co-generated plastic (STDP) neuron/synapse pairs are not supported yet.
+A template whose `model` is `nestml:<name>` references `<point_neuron_models_dir>/<name>.nestml`. On first use the loader runs NESTML to generate and compile a NEST extension module, installs it and creates nodes with the generated model. Modules are cached by source hash under `<circuit>/.nestml_cache/`. The host needs `cmake`, `make` and a C++ compiler. Build failures raise `NestmlBuildError` with the path to the build output. Co-generated plastic (STDP) neuron/synapse pairs are not supported yet.
 
-`nestml_build.py` prepares the build against the installed NEST. A compile-capable NEST (source build, conda-forge) uses its own `nest-config`. The PyPI `nest-simulator` wheel needs workarounds: its `nest-config` reports a stale build path, so a replacement pointing at the wheel's headers is written, and modules are compiled with the wheel's C++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0`). The wheel also lacks the Boost and GSL headers that NEST's headers and GSL-integrated models include. They are taken from, in order:
-
-1. `NESTML_BOOST_INCLUDE` / `NESTML_GSL_INCLUDE` (directories containing `boost/` and `gsl/`);
-2. `/usr/include` or `/usr/local/include` (Boost only; GSL must match the wheel's bundled 1.15);
-3. a one-time, checksum-verified download of Boost 1.86 and GSL 1.15 into `OBI_NESTML_CACHE` (default `~/.cache/obi-one/nestml`, about 180 MB).
+`nestml_build.py` prepares the build against the installed NEST. A compile-capable NEST (source build, conda-forge) uses its own `nest-config`. The PyPI `nest-simulator` wheel needs workarounds: its `nest-config` reports a stale build path, so a replacement pointing at the wheel's headers is written, and modules are compiled with the wheel's C++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0`). obi-one does not check for Boost or GSL headers; the environment must provide them. Models whose ODEs have no analytic solution (e.g. AdEx) are integrated with GSL and need its headers.
