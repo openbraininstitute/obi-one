@@ -6,8 +6,7 @@ used as-is. The PyPI ``nest-simulator`` wheel needs these workarounds:
 
 1. Its ``nest-config`` reports a stale prefix: a replacement (the shim) is written to a cache
    directory and passed to NESTML as ``nest_path``.
-2. It uses the pre-C++11 ``std::string`` ABI, so modules need ``-D_GLIBCXX_USE_CXX11_ABI=0``.
-3. Its headers include Boost, and models with ODEs that have no analytic solution need the GSL
+2. Its headers include Boost, and models with ODEs that have no analytic solution need the GSL
    headers. Both must come from the environment; this module does not check for them.
 
 Nothing is linked: a module's NEST and GSL symbols resolve when ``nest.Install`` loads it.
@@ -24,11 +23,6 @@ from pydantic import BaseModel
 from pynestml.frontend.pynestml_frontend import generate_nest_target
 
 from obi_one.core.exception import OBIONEError
-
-OLD_ABI_FLAG = "-D_GLIBCXX_USE_CXX11_ABI=0"
-
-OLD_ABI_SYMBOL = b"_ZNK4nest24StructuralPlasticityNode21get_synaptic_elementsESs"
-NEW_ABI_SYMBOL = b"_ZNK4nest24StructuralPlasticityNode21get_synaptic_elementsENSt7__cxx11"
 
 
 class NestmlToolchainError(RuntimeError):
@@ -66,14 +60,6 @@ def find_nest_install() -> NestInstall:
     return NestInstall(package_dir=package_dir, prefix=prefix, nest_config=nest_config)
 
 
-def uses_old_cxx_abi(kernel_library: Path) -> bool:
-    """Return True if *kernel_library* exports NEST symbols built with the pre-C++11 string ABI."""
-    if not kernel_library.exists():
-        return False
-    data = kernel_library.read_bytes()
-    return OLD_ABI_SYMBOL in data and NEW_ABI_SYMBOL not in data
-
-
 def _query_nest_config(nest_config: Path | None, option: str) -> str:
     if nest_config is None:
         return ""
@@ -85,13 +71,10 @@ def _query_nest_config(nest_config: Path | None, option: str) -> str:
 
 def build_shim_options(install: NestInstall) -> dict[str, str]:
     cflags = _query_nest_config(install.nest_config, "--cflags") or "-O2 -std=c++20"
-    cflags_tokens = [t for t in shlex.split(cflags) if t != OLD_ABI_FLAG]
-    if uses_old_cxx_abi(install.package_dir / "nestkernel_api.so"):
-        cflags_tokens.append(OLD_ABI_FLAG)
     includes = [install.package_dir / "include" / "nest"]
     return {
         "--includes": " ".join(f"-I{d}" for d in includes),
-        "--cflags": " ".join(cflags_tokens),
+        "--cflags": cflags,
         "--libs": "",
         "--compiler": os.environ.get("CXX", "c++"),
         "--libdir": "lib",
