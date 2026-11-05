@@ -211,6 +211,28 @@ class TestPerNeuronExplicitLocations:
 
         assert len(result.compartment_sets["Locations"]["compartment_set"]) == 2
 
+    def test_a_node_id_outside_the_neuron_set_is_rejected(self, morphology_circuit, tmp_path):
+        """neurodamus silently drops such rows, so catch them at generation time instead."""
+        locations = PerNeuronExplicitMorphologyLocations(
+            locations=(NeuronMorphologyLocationPoint(node_id=5, section_id=1, offset=0.5),)
+        )
+        config = _locations_config(morphology_circuit, locations)
+
+        with pytest.raises(ConfigValidationError, match=r"node ids not in the simulated"):
+            generate(config, tmp_path)
+
+    def test_a_section_id_absent_from_the_morphology_is_rejected(
+        self, morphology_circuit, tmp_path
+    ):
+        """neurodamus raises for a missing section only once running, so check it up front."""
+        locations = PerNeuronExplicitMorphologyLocations(
+            locations=(NeuronMorphologyLocationPoint(node_id=0, section_id=99999, offset=0.5),)
+        )
+        config = _locations_config(morphology_circuit, locations)
+
+        with pytest.raises(ValueError, match=r"Section ID 99999 does not exist"):
+            generate(config, tmp_path)
+
     def test_it_does_not_take_a_neuron_set(self):
         """The target neurons are the ones named by the points."""
         assert "neuron_set" not in PerNeuronExplicitMorphologyLocations.model_fields

@@ -19,7 +19,9 @@ The value is an array of location rows. The field is required and the array must
 row (`minItems: 1`), so there is no empty or null state to represent: a block of locations that
 selects nothing has no meaning. Each row has:
 
-- `node_id`: the neuron the point sits on, a SONATA node id (integer, minimum 0).
+- `node_id`: the neuron the point sits on, a population-local SONATA node id in the circuit's
+  default biophysical population (integer, minimum 0). The viewer must not send an id from another
+  population.
 - `section_id`: the SONATA global section id, `0` for the soma and neurites following in
   `nrn_order` (integer, minimum 0).
 - `offset`: the normalized position along that section, `0.0` at its start and `1.0` at its end
@@ -71,6 +73,9 @@ class NeuronMorphologyLocationPoint(MorphologyLocationPoint):
 
     node_id: NonNegativeInt = Field(
         title="Node ID",
-        description="Identifier of the neuron this location belongs to.",
+        description=(
+            "Population-local id of the neuron this location belongs to, in the circuit's "
+            "default biophysical population."
+        ),
     )
 ```

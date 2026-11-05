@@ -16,7 +16,10 @@ class NeuronMorphologyLocationPoint(MorphologyLocationPoint):
 
     node_id: NonNegativeInt = Field(
         title="Node ID",
-        description="Identifier of the neuron this location belongs to.",
+        description=(
+            "Population-local id of the neuron this location belongs to, in the circuit's "
+            "default biophysical population."
+        ),
     )
 
 

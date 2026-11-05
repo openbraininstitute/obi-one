@@ -51,7 +51,15 @@ class MorphologyLocationPoint(BaseModel):
     offset: NormalizedSectionOffset
 
 
-def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> morphio.Section:
+def neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> morphio.Section:
+    """Return the neurite section a SONATA global section id names, or raise if it is absent.
+
+    The soma is section id 0; neurites follow in `nrn_order`, so neurite id ``n`` maps to
+    morphio section ``n - 1``.
+
+    Raises:
+        ValueError: if the id names no section on this morphology.
+    """
     try:
         return morphology.section(section_id - 1)
     except morphio.RawDataError:
@@ -80,7 +88,7 @@ def _point_on_section(
         msg = "A path-distance calculator is required for neurite locations."
         raise ValueError(msg)
 
-    section = _neurite_section_for_id(morphology, section_id)
+    section = neurite_section_for_id(morphology, section_id)
     segment_lengths = np.linalg.norm(np.diff(section.points, axis=0), axis=1)
     section_length = float(segment_lengths.sum())
     if section_length <= 0.0:

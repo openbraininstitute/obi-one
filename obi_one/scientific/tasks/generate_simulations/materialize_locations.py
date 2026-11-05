@@ -45,10 +45,15 @@ def materialize_locations_to_compartment_sets(
             continue
 
         if isinstance(locations_block, PerNeuronExplicitMorphologyLocations):
-            # The selected points already name their neurons, so there is nothing to expand.
+            # The selected points already name their neurons, so there is nothing to expand. The
+            # rows are hand-picked, so they are validated against the default neuron set and the
+            # targeted morphologies rather than produced by sampling.
             comp_set = build_compartment_set_from_selected_rows(
                 name=comp_set_name,
+                circuit=circuit,
+                node_population=node_population,
                 population=population,
+                neuron_set=single_config.default_neuron_set_reference,
                 locations_block=locations_block,
             )
         else:
