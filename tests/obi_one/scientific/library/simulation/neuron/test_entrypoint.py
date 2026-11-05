@@ -1,5 +1,8 @@
+import builtins
 import sys
+from contextlib import contextmanager
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -7,6 +10,20 @@ from obi_one.scientific.library.simulation.neuron import entrypoint as test_modu
 from obi_one.types import SimulationBackend
 
 from tests.obi_one.scientific.library.simulation.neuron._fakes import make_fake_resolution
+
+
+def _block_imports(monkeypatch, *blocked_names: str) -> None:
+    """Raise ImportError for the given top-level package names."""
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        root = name.split(".", maxsplit=1)[0]
+        if root in blocked_names:
+            msg = f"No module named {root!r}"
+            raise ImportError(msg)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
 
 
 def _patch_node_set_resolution(monkeypatch, per_node_set, *, node_set=None, **kwargs):
@@ -257,3 +274,62 @@ def test_gather_results_collects_and_gathers(monkeypatch):
     assert calls["payload_in"] == (sim.cells, [("popA", 1)], {"r": 1})
     assert calls["spikes_in"] == (sim, [("popA", 1)])
     assert calls["gather_in"] == (process.parallel_context, {"payload": 1}, {"spikes": 2})
+
+
+def test_ensure_bluecellulab_raises_when_missing(monkeypatch):
+    monkeypatch.setattr(test_module, "find_spec", lambda _name: None)
+    with pytest.raises(ImportError, match=r"obi-one\[bluecellulab\]"):
+        test_module._ensure_bluecellulab()
+
+
+def test_neuron_mpi_process_requires_neuron(monkeypatch):
+    _block_imports(monkeypatch, "neuron")
+    with (
+        pytest.raises(ImportError, match="requires NEURON"),
+        test_module.neuron_mpi_process("lib.so"),
+    ):
+        pass
+
+
+def test_run_bluecellulab_requires_extra(monkeypatch):
+    monkeypatch.setattr(test_module, "find_spec", lambda _name: None)
+    with pytest.raises(ImportError, match=r"obi-one\[bluecellulab\]"):
+        test_module.run_bluecellulab("cfg.json", libnrnmech_path="lib.so")
+
+
+def test_run_bluecellulab_imports_then_enters_mpi(monkeypatch):
+    """Cover the deferred bluecellulab imports before the MPI context."""
+    entered = []
+
+    @contextmanager
+    def fake_mpi(*_args, **_kwargs):
+        entered.append(True)
+        msg = "stop after enter"
+        raise RuntimeError(msg)
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(test_module, "neuron_mpi_process", fake_mpi)
+    with pytest.raises(RuntimeError, match="stop after enter"):
+        test_module.run_bluecellulab("cfg.json", libnrnmech_path="lib.so")
+    assert entered == [True]
+
+
+def test_save_reports_and_outputs(monkeypatch):
+    monkeypatch.setattr(
+        "bluecellulab.reports.utils.gather_recording_sites", lambda _sites: {"site": 1}
+    )
+    monkeypatch.setattr(
+        "bluecellulab.reports.utils.payload_to_cells", lambda _payload, _sites: {"cells": 1}
+    )
+    report_mgr = MagicMock()
+    monkeypatch.setattr(
+        "bluecellulab.reports.manager.ReportManager",
+        lambda *_args, **_kwargs: report_mgr,
+    )
+
+    sim = SimpleNamespace(circuit_access=SimpleNamespace(config={"reports": {}}), dt=0.025)
+    test_module._save_reports_and_outputs(sim, [{"site": 1}], [{"p": 1}], {"popA": {1: [0.1]}})
+
+    report_mgr.write_all.assert_called_once_with(
+        cells={"cells": 1}, spikes_by_pop={"popA": {1: [0.1]}}
+    )

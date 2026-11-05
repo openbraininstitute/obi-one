@@ -1,5 +1,6 @@
 """Tests for the MEModel calibration + validation helpers."""
 
+import builtins
 import json
 from pathlib import Path
 from unittest.mock import Mock
@@ -8,6 +9,19 @@ import numpy as np
 import pytest
 
 from obi_one.scientific.library import memodel_calibration_validation as calibration_validation
+
+
+def _block_bluecellulab(monkeypatch) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        root = name.split(".", maxsplit=1)[0]
+        if root == "bluecellulab":
+            msg = "No module named 'bluecellulab'"
+            raise ImportError(msg)
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
 
 
 class FakeProcess:
@@ -107,6 +121,37 @@ class TestJsonDefault:
         assert calibration_validation.json_default(np.bool_(flag)) is True
         assert calibration_validation.json_default(np.array([1, 2])) == [1, 2]
         assert calibration_validation.json_default(tmp_path) == str(tmp_path)
+
+
+class TestWorkersRequireBluecellulab:
+    def test_calibration_worker_missing_package(self, tmp_path, monkeypatch):
+        _block_bluecellulab(monkeypatch)
+        with pytest.raises(ImportError, match=r"calibration requires bluecellulab"):
+            calibration_validation.calibration_worker(
+                str(tmp_path),
+                "hoc.hoc",
+                "morph.swc",
+                0.0,
+                0.1,
+                str(tmp_path / "out.json"),
+            )
+
+    def test_validation_worker_missing_package(self, tmp_path, monkeypatch):
+        _block_bluecellulab(monkeypatch)
+        with pytest.raises(ImportError, match=r"validation requires bluecellulab"):
+            calibration_validation.validation_worker(
+                str(tmp_path),
+                "hoc.hoc",
+                "morph.swc",
+                "cell",
+                0.0,
+                0.1,
+                34.0,
+                -80.0,
+                1,
+                str(tmp_path / "figures"),
+                str(tmp_path / "out.json"),
+            )
 
 
 class TestComputeCalibrationAndValidation:
