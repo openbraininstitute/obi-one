@@ -67,7 +67,7 @@ def test_execute_local_skips_registration(
 
     mock_stage_circuit.assert_called_once()
     mock_stage_simulation.assert_called_once()
-    mock_run_simulation.assert_called_once_with(tmp_path / "simulation_config.json")
+    mock_run_simulation.assert_called_once_with(tmp_path / "simulation_config.json", num_threads=1)
     db_client.update_entity.assert_not_called()
 
 
@@ -110,3 +110,38 @@ def test_execute_tracked_registers_spike_report(
         entity_type=NestCircuitSimulationExecutionTask.activity_type,
         attrs_or_entity={"generated_ids": [str(generated_entity.id)]},
     )
+
+
+@pytest.mark.parametrize(("job_cpus", "expected"), [("6", 6), (None, 1), ("", 1)])
+@patch(f"{_LIB}.run_simulation")
+@patch(f"{_BASE}.stage_simulation")
+@patch(f"{_TASK}.stage_circuit")
+@patch(f"{_TASK}.db_sdk.get_identifiable")
+def test_execute_runs_nest_on_the_job_cpus(
+    mock_get_identifiable,
+    mock_stage_circuit,
+    mock_stage_simulation,
+    mock_run_simulation,
+    config,
+    db_client,
+    simulation_entity,
+    tmp_path,
+    monkeypatch,
+    job_cpus,
+    expected,
+):
+    """One NEST thread per CPU in JOB_CPUS; without it, a single thread."""
+    if job_cpus is None:
+        monkeypatch.delenv("JOB_CPUS", raising=False)
+    else:
+        monkeypatch.setenv("JOB_CPUS", job_cpus)
+    mock_get_identifiable.return_value = simulation_entity
+    mock_stage_circuit.return_value = MagicMock(path=tmp_path / "circuit.json")
+    mock_stage_simulation.return_value = tmp_path / "simulation_config.json"
+    mock_run_simulation.return_value = tmp_path / "spikes.h5"
+
+    NestCircuitSimulationExecutionTask(config=config).execute(
+        db_client=db_client, execution_activity_id=None
+    )
+
+    assert mock_run_simulation.call_args.kwargs == {"num_threads": expected}

@@ -8,34 +8,19 @@ import pytest
 from obi_one.scientific.library.simulation.nest import nestml_build as nb
 
 
-def _fake_kernel(tmp_path: Path, symbol: bytes) -> Path:
+def _fake_package_dir(tmp_path: Path) -> Path:
     package_dir = tmp_path / "nest"
     (package_dir / "include" / "nest").mkdir(parents=True)
-    (package_dir / "nestkernel_api.so").write_bytes(b"\x7fELF...." + symbol + b"\x00")
     return package_dir
 
 
-def test_detects_old_cxx_abi(tmp_path):
-    package_dir = _fake_kernel(tmp_path, nb.OLD_ABI_SYMBOL)
-    assert nb.uses_old_cxx_abi(package_dir / "nestkernel_api.so")
-
-
-def test_detects_new_cxx_abi(tmp_path):
-    package_dir = _fake_kernel(tmp_path, nb.NEW_ABI_SYMBOL + b"1112basic_string")
-    assert not nb.uses_old_cxx_abi(package_dir / "nestkernel_api.so")
-
-
-def test_missing_kernel_is_not_old_abi(tmp_path):
-    assert not nb.uses_old_cxx_abi(tmp_path / "missing.so")
-
-
 def test_shim_options_for_wheel(tmp_path):
-    package_dir = _fake_kernel(tmp_path, nb.OLD_ABI_SYMBOL)
+    package_dir = _fake_package_dir(tmp_path)
     install = nb.NestInstall(package_dir=package_dir, prefix=None, nest_config=None)
     options = nb.build_shim_options(install)
     assert not options["--libs"]
     assert options["--includes"] == f"-I{package_dir / 'include' / 'nest'}"
-    assert options["--cflags"].endswith(nb.OLD_ABI_FLAG)
+    assert options["--cflags"] == "-O2 -std=c++20"
     assert options["--static-libraries"] == "OFF"
 
 
