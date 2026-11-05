@@ -2482,7 +2482,6 @@ service = [
     { name = "uvicorn" },
 ]
 simplification = [
-    { name = "bluecellulab" },
     { name = "sonata-simplify", extra = ["reduction", "simulation"] },
 ]
 
@@ -2508,7 +2507,6 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "bluecellulab", marker = "extra == 'bluecellulab'", specifier = ">=2.6.104" },
     { name = "bluecellulab", marker = "extra == 'emodel'", specifier = ">=2.6.104" },
-    { name = "bluecellulab", marker = "extra == 'simplification'", specifier = ">=2.6.108" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
     { name = "bluepysnap", specifier = ">=3.0.9" },

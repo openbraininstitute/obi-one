@@ -59,7 +59,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # BLUECELLULAB - optional, needed for BlueCelluLab simulation, MEModel calibration/validation,
-# circuit HOC initialization checks, and circuit-simplification mechanism compilation
+# and circuit HOC initialization checks
 bluecellulab = ["bluecellulab>=2.6.104"]
 
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation).
@@ -73,8 +73,8 @@ connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 meshing = ["ultraliser>=2.1.9"]
 
 # SIMPLIFICATION - optional, private dependency needed to run circuit simplification.
-# Includes bluecellulab for mechanism compilation and provenance.
-simplification = ["sonata-simplify[simulation,reduction]>=0.2.6", "bluecellulab>=2.6.108"]
+# sonata-simplify already depends on bluecellulab.
+simplification = ["sonata-simplify[simulation,reduction]>=0.2.6"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
