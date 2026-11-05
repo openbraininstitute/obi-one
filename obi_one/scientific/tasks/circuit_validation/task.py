@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import h5py
 from bluepysnap.exceptions import BluepySnapError
-from entitysdk import Client, models
+from entitysdk import Client, models, types
 from entitysdk.staging.circuit import stage_circuit
 
 from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
@@ -123,10 +123,17 @@ def run_circuit_validation(
         fatal_errors.extend(hoc_errors)
 
         # SONATA structural validation (obi-one wrapper: ignore custom edge props, etc.)
-        L.info("Running circuit validation on %s", circuit_config_path)
-        snap_fatals, snap_warnings = run_validation(circuit_config_path, raise_on_error=False)
-        fatal_errors.extend(snap_fatals)
-        warning_messages.extend(snap_warnings)
+        # bluepysnap has no validation schema for NEST's point_neuron populations; the circuit
+        # has already been opened above.
+        if circuit.target_simulator == types.TargetSimulator.NEST:
+            warning_messages.append(
+                "SONATA structural validation skipped: bluepysnap has no schema for NEST circuits."
+            )
+        else:
+            L.info("Running circuit validation on %s", circuit_config_path)
+            snap_fatals, snap_warnings = run_validation(circuit_config_path, raise_on_error=False)
+            fatal_errors.extend(snap_fatals)
+            warning_messages.extend(snap_warnings)
 
         if fatal_errors:
             L.warning(

@@ -10,11 +10,20 @@ from unittest.mock import Mock
 import pytest
 
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import (
+    ALGORITHM_EXPORT_MAP,
+)
+from obi_one.scientific.tasks.circuit_simplification.utils import make_nest_export_loadable
+
+from tests.obi_one.scientific.tasks.circuit_simplification._nest_export import write_nest_export
 
 ROOT = Path(__file__).resolve().parents[5]
 NOTEBOOKS = ROOT / "examples/obi_one/scientific/tasks/circuit_simplification"
 LOCAL_NOTEBOOK = "run_simplification_local.ipynb"
 BENCHMARK_NOTEBOOK = "benchmark_simplification.ipynb"
+REGISTERED_CIRCUIT_CELL = 29
+BRIAN2_SIMULATION_CELL = 34
+PLOTS_CELL = 39
 
 
 def notebook_cells(name):
@@ -90,6 +99,33 @@ class TestSimplificationNotebooks:
                 for node in ast.walk(tree)
             )
 
+    def test_registered_nest_export_loads(self, tmp_path, capsys):
+        export_dir = tmp_path / "adex_nest" / "output_nest_aeif_cond_alpha"
+        make_nest_export_loadable(write_nest_export(export_dir).parent)
+        namespace: dict[str, Any] = {
+            "ALGORITHM_EXPORT_MAP": ALGORITHM_EXPORT_MAP,
+            "algorithm_name": "adex_nest",
+            "coord_root": tmp_path,
+        }
+
+        run_cell(LOCAL_NOTEBOOK, REGISTERED_CIRCUIT_CELL, namespace)
+
+        printed = capsys.readouterr().out
+        assert "neurons: point_neuron, 3 nodes" in printed
+        assert "VPM: virtual, 2 nodes" in printed
+        assert "sim_config=" in printed
+
+    def test_neuron_algorithm_registers_the_simplified_circuit(self, tmp_path, capsys):
+        namespace: dict[str, Any] = {
+            "ALGORITHM_EXPORT_MAP": ALGORITHM_EXPORT_MAP,
+            "algorithm_name": "single_compartment",
+            "coord_root": tmp_path,
+        }
+
+        run_cell(LOCAL_NOTEBOOK, REGISTERED_CIRCUIT_CELL, namespace)
+
+        assert "registers the simplified SONATA circuit" in capsys.readouterr().out
+
     def test_brian2_uses_simulation_config(self, tmp_path, monkeypatch):
         run = Mock()
         monkeypatch.setattr(subprocess, "run", run)
@@ -99,7 +135,7 @@ class TestSimplificationNotebooks:
             "output_root": tmp_path,
             "brian2_result": tmp_path / "export_brian2",
         }
-        run_cell(LOCAL_NOTEBOOK, 32, namespace)
+        run_cell(LOCAL_NOTEBOOK, BRIAN2_SIMULATION_CELL, namespace)
         args, kwargs = run.call_args
         assert "--simulation-config" in args[0]
         assert "--circuit-config" not in args[0]
@@ -110,7 +146,7 @@ class TestSimplificationNotebooks:
         monkeypatch.setattr(subprocess, "run", run)
         run_cell(
             LOCAL_NOTEBOOK,
-            32,
+            BRIAN2_SIMULATION_CELL,
             {"output_root": tmp_path, "brian2_result": None},
         )
         run.assert_not_called()
@@ -142,7 +178,7 @@ class TestSimplificationNotebooks:
             "brian2_results_dir": tmp_path / "brian2_simulation_results",
         }
         try:
-            run_cell(LOCAL_NOTEBOOK, 37, namespace)
+            run_cell(LOCAL_NOTEBOOK, PLOTS_CELL, namespace)
         finally:
             plt.close("all")
         assert set(namespace["sim_results"]) == {simulator}

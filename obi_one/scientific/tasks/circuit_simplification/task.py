@@ -23,13 +23,14 @@ from pydantic import PrivateAttr
 from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit import Circuit, get_mechanisms_dir
 from obi_one.scientific.library.simulation.neuron import process
 from obi_one.scientific.library.sonata_circuit_helpers import (
     write_circuit_node_set_file,
 )
 from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import (
     ALGORITHM_EXPORT_MAP,
+    SIMULATOR_NAMES,
 )
 from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     SimplificationAlgorithmUnion,
@@ -37,6 +38,7 @@ from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
 from obi_one.scientific.tasks.circuit_simplification.config import (
     CircuitSimplificationSingleConfig,
 )
+from obi_one.scientific.tasks.circuit_simplification.utils import make_nest_export_loadable
 from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
@@ -86,10 +88,15 @@ class CircuitSimplificationTask(Task):
         """
         parent = self._circuit_entity
 
-        # Read target_simulator from the output circuit_config.json
-        # (the pipeline/exporter sets it correctly: NEURON for single_compartment,
-        # NEST for point-neuron exports, Brian2 for Brian2 exports).
-        target_simulator = self._read_target_simulator(circuit_path)
+        # An exported circuit targets its exporter's simulator; a NEST export's circuit config no
+        # longer names it (see make_nest_export_loadable). NEURON outputs keep the value of their
+        # circuit config, which the pipeline inherits from the parent.
+        _, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
+        target_simulator = (
+            types.TargetSimulator(SIMULATOR_NAMES[exporter_name.split(":")[0]])
+            if exporter_name
+            else self._read_target_simulator(circuit_path)
+        )
 
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
         circuit_name = f"{parent.name}__{campaign_str}__{algorithm_name}{export_suffix}"  # ty:ignore[unresolved-attribute]
@@ -117,6 +124,9 @@ class CircuitSimplificationTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=DerivationType.circuit_simplification,
+            # bluepysnap has no validation schema for NEST's point_neuron populations; the export
+            # has already passed the loadability check.
+            skip_validation=target_simulator == types.TargetSimulator.NEST,
         )
 
     @staticmethod
@@ -266,15 +276,41 @@ class CircuitSimplificationTask(Task):
         return provenance_path
 
     @staticmethod
+    def _prepare_export_for_registration(
+        simplified_circuit_path: Path, exporter_name: str, algorithm_name: str
+    ) -> Path:
+        """The circuit config of an algorithm's export, ready to be registered.
+
+        The exporter writes next to the simplified circuit's directory, suffixed with its name.
+        A NEST export is made loadable by libsonata first (see make_nest_export_loadable).
+
+        Raises:
+            RuntimeError: If the export is missing.
+        """
+        simplified_output_dir = simplified_circuit_path.parent
+        export_dir = simplified_output_dir.parent / (
+            f"{simplified_output_dir.name}_{exporter_name.replace(':', '_')}"
+        )
+        registration_path = export_dir / "circuit_config.json"
+        if not registration_path.exists():
+            message = (
+                f"Expected {exporter_name} export at {registration_path}"
+                f" for algorithm '{algorithm_name}', but it was not found"
+            )
+            L.error(message)
+            raise RuntimeError(message)
+        L.info(f"Using exported circuit for registration: {registration_path}")
+        if exporter_name.startswith("nest:"):
+            make_nest_export_loadable(export_dir)
+        return registration_path
+
+    @staticmethod
     def _read_target_simulator(circuit_config_path: Path) -> types.TargetSimulator:
         """Read target_simulator from a circuit_config.json.
 
-        The pipeline/exporter sets this correctly in the output:
-        - ``single_compartment`` → ``NEURON`` (inherited from parent circuit)
-        - NEST exports → ``NEST``
-        - Brian2 exports → ``Brian2``
-
-        Falls back to the parent's target_simulator if the field is absent.
+        Used for the NEURON outputs (``single_compartment``, ``neuron_reduce``,
+        ``neat_reduction``), whose config inherits the parent's value. Defaults to ``NEURON``
+        when the field is absent or unknown.
         """
         with Path(circuit_config_path).open(encoding="utf-8") as f:
             cfg = json.load(f)
@@ -324,10 +360,9 @@ class CircuitSimplificationTask(Task):
 
             output_circuit_ids: list[str] = []
             if "single_compartment" in algorithm_names:
-                mechanisms_dirs = sorted(set(process.get_mechanisms_dirs(input_circuit_path)))
                 process.compile_mechanisms(
                     output_dir=Path(),
-                    mechanisms_dirs=mechanisms_dirs,
+                    mechanisms_dirs=[get_mechanisms_dir(input_circuit_path)],
                     simulation_backend=SimulationBackend.bluecellulab,
                 )
 
@@ -385,19 +420,9 @@ class CircuitSimplificationTask(Task):
                 registration_path = simplified_circuit_path
                 if exporter_name:
                     export_suffix = exporter_name.replace(":", "_")
-                    simplified_output_dir = simplified_circuit_path.parent
-                    export_dir = simplified_output_dir.parent / (
-                        f"{simplified_output_dir.name}_{export_suffix}"
+                    registration_path = self._prepare_export_for_registration(
+                        simplified_circuit_path, exporter_name, algorithm_name
                     )
-                    registration_path = export_dir / "circuit_config.json"
-                    if not registration_path.exists():
-                        message = (
-                            f"Expected {exporter_name} export at {registration_path}"
-                            f" for algorithm '{algorithm_name}', but it was not found"
-                        )
-                        L.error(message)
-                        raise RuntimeError(message)
-                    L.info(f"Using exported circuit for registration: {registration_path}")
 
                 # Smoke check the exact output that will be registered. This
                 # prevents an intermediate generic point-neuron output from

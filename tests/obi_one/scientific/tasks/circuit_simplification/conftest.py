@@ -70,14 +70,14 @@ def mock_pipeline(fake_simplified_circuit: Path):
 def mock_mechanism_compilation():
     """Mock the mechanism compilation step added by the task launch fix.
 
-    Patches ``process.get_mechanisms_dirs`` and ``process.compile_mechanisms``
+    Patches ``get_mechanisms_dir`` and ``process.compile_mechanisms``
     so tests that exercise ``execute()`` with ``single_compartment`` don't
     require a real circuit with MOD files.
     """
     with (
         patch(
-            "obi_one.scientific.tasks.circuit_simplification.task.process.get_mechanisms_dirs",
-            return_value=[Path("/fake/mod")],
+            "obi_one.scientific.tasks.circuit_simplification.task.get_mechanisms_dir",
+            return_value=Path("/fake/mod"),
         ),
         patch(
             "obi_one.scientific.tasks.circuit_simplification.task.process.compile_mechanisms",

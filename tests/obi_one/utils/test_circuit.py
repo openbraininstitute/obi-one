@@ -4,7 +4,9 @@ import json
 import shutil
 from unittest.mock import MagicMock, patch
 
+import h5py
 import libsonata
+import numpy as np
 import pytest
 from entitysdk import types
 from PIL import Image
@@ -323,6 +325,36 @@ def test_get_circuit_properties_small_circuit():
     assert has_spines is False
 
 
+def test_get_circuit_properties_ignores_morphology_names_without_morphologies(tmp_path):
+    """A point-neuron export keeps its source's morphology names but no morphology files."""
+    with h5py.File(tmp_path / "nodes.h5", "w") as f:
+        population = f.create_group("nodes/neurons")
+        population.create_dataset("node_type_id", data=np.zeros(2, dtype=np.int64))
+        for name, value in (
+            ("morphology", "dend-C1_axon-C2"),
+            ("model_template", "json:adex"),
+            ("model_type", "brian2_point"),
+        ):
+            population.create_dataset(f"0/{name}", data=[value] * 2, dtype=h5py.string_dtype())
+    config = {
+        "components": {"point_neuron_models_dir": "models"},
+        "networks": {
+            "nodes": [
+                {
+                    "nodes_file": str(tmp_path / "nodes.h5"),
+                    "populations": {"neurons": {"type": "brian2_point"}},
+                }
+            ],
+            "edges": [],
+        },
+    }
+    (tmp_path / "circuit_config.json").write_text(json.dumps(config))
+    c = Circuit(name="brian2", path=str(tmp_path / "circuit_config.json"))
+
+    # (has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines)
+    assert get_circuit_properties(c) == (False, True, True, False)
+
+
 def test_get_circuit_properties_pair_circuit():
     """Test properties for a pair circuit with morphologies and e-models."""
     circuit_path = str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json")
@@ -511,6 +543,24 @@ def test_copy_mod_files_copies_all_mod_files(tmp_path):
         assert (dest_dir / name).read_text() == f"NEURON {{ SUFFIX {name} }}"
 
 
+def test_copy_mod_files_from_mod_subdirectory_of_the_declared_dir(tmp_path):
+    """Files in `mod/` under the declared directory (e.g. the circuit root) keep that nesting."""
+    source_root = tmp_path / "source_circuit"
+    (source_root / "mod").mkdir(parents=True)
+    (source_root / "mod" / "Ih.mod").write_text("NEURON { SUFFIX Ih }")
+    dest_root = tmp_path / "dest_circuit"
+
+    original_circuit = MagicMock()
+    original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(source_root)
+    pop = MagicMock()
+    pop.config.get.return_value = str(dest_root)
+
+    copy_mod_files("pop_A", pop, original_circuit)
+
+    assert (dest_root / "mod" / "Ih.mod").read_text() == "NEURON { SUFFIX Ih }"
+    assert not (dest_root / "Ih.mod").exists()
+
+
 def test_copy_mod_files_skips_existing(tmp_path):
     """Test that existing files in destination are not overwritten."""
     mod_files = ["Ca_HVA2.mod"]
@@ -527,21 +577,21 @@ def test_copy_mod_files_skips_existing(tmp_path):
 
 
 def test_copy_mod_files_no_source_dir():
-    """Test early return when mechanisms_dir is not configured."""
+    """No configured mechanisms_dir is an error, before the destination is looked at."""
     original_circuit = MagicMock()
     original_circuit.nodes.__getitem__.return_value.config.get.return_value = None
 
     pop = MagicMock()
 
-    # Should return without error
-    copy_mod_files("pop_A", pop, original_circuit)
+    with pytest.raises(FileNotFoundError, match="pop_A"):
+        copy_mod_files("pop_A", pop, original_circuit)
 
     # dest_dir should never be accessed
     pop.config.get.assert_not_called()
 
 
 def test_copy_mod_files_source_dir_does_not_exist(tmp_path):
-    """Test early return when mechanisms_dir path does not exist on disk."""
+    """A mechanisms_dir missing on disk is an error, before the destination is looked at."""
     original_circuit = MagicMock()
     original_circuit.nodes.__getitem__.return_value.config.get.return_value = str(
         tmp_path / "nonexistent"
@@ -549,19 +599,19 @@ def test_copy_mod_files_source_dir_does_not_exist(tmp_path):
 
     pop = MagicMock()
 
-    # Should return without error
-    copy_mod_files("pop_A", pop, original_circuit)
+    with pytest.raises(FileNotFoundError, match="pop_A"):
+        copy_mod_files("pop_A", pop, original_circuit)
 
     pop.config.get.assert_not_called()
 
 
 def test_copy_mod_files_empty_source_dir(tmp_path):
-    """Test early return when source directory exists but has no .mod files."""
+    """A source directory without .mod files is an error, and nothing is created."""
     pop, original_circuit, _, dest_dir = _make_mock_circuit_with_mods(tmp_path, [])
 
-    copy_mod_files("pop_A", pop, original_circuit)
+    with pytest.raises(FileNotFoundError, match="No mechanisms"):
+        copy_mod_files("pop_A", pop, original_circuit)
 
-    # Destination directory should not be created
     assert not dest_dir.exists()
 
 

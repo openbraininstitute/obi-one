@@ -115,13 +115,15 @@ BASE_ALGORITHM_DESCRIPTIONS: dict[str, str] = {
 # Base algorithms that can simplify only a node set (sonata_simplify capability).
 NODE_SELECTION_ALGORITHMS = frozenset({"single_compartment"})
 
-_SIMULATOR_SUFFIX = {None: "NEURON", "nest": "NEST", "brian2": "Brian2"}
+# Simulator of each exporter family (the part of an exporter name before ":"); NEURON when an
+# algorithm has no exporter.
+SIMULATOR_NAMES: dict[str | None, str] = {None: "NEURON", "nest": "NEST", "brian2": "Brian2"}
 
 # Display titles for compound names, with the simulator suffix used by OBI-One.
 ALGORITHM_EXPORT_TITLES: dict[str, str] = {
     name: (
         f"{BASE_ALGORITHM_TITLES[base]}"
-        f" ({_SIMULATOR_SUFFIX[exporter.split(':')[0] if exporter else None]})"
+        f" ({SIMULATOR_NAMES[exporter.split(':')[0] if exporter else None]})"
     )
     for name, (base, exporter) in ALGORITHM_EXPORT_MAP.items()
 }

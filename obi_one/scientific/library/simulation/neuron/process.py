@@ -168,7 +168,10 @@ def _compile_neuron_mechanisms(
     *, output_dir: Path, mechanisms_dirs: list[Path]
 ) -> NeuronMechanismBuild:
     if len(mechanisms_dirs) != 1:
-        msg = "Only allowed a single mod file directory for NEURON"
+        msg = (
+            "Only allowed a single mod file directory for NEURON, got "
+            f"{len(mechanisms_dirs)}: {[str(d) for d in mechanisms_dirs]}"
+        )
         raise RuntimeError(msg)
 
     command = [
@@ -224,17 +227,3 @@ def _compile_neurodamus_mechanisms(
         libcorenrnmech_path=Path(env["CORENEURONLIB"]),
         special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )
-
-
-def get_mechanisms_dirs(circuit_config_path: Path) -> list[Path]:
-    config = libsonata.CircuitConfig.from_file(circuit_config_path)
-    if mechanisms_dirs := [
-        d
-        for pop in config.node_populations
-        if (d := config.node_population_properties(pop).mechanisms_dir)
-    ]:
-        return mechanisms_dirs
-
-    if (fallback := (circuit_config_path.parent / "mod")) and fallback.exists():
-        return [fallback]
-    return []
