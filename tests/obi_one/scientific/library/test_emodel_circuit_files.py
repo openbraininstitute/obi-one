@@ -409,6 +409,24 @@ class TestModUnits:
         )
         assert mechanism.units == {"decay": "ms", "cai": "mM"}
 
+    def test_one_line_blocks_do_not_run_into_the_next_block(self):
+        """rCA1's ``na3n.mod`` and nbS1's ``KdShu2007.mod`` write ``STATE { m h }`` on one
+        line; a block ended at the next ``}`` on its own line would swallow BREAKPOINT."""
+        mechanism = read_mod_mechanism(
+            "NEURON { SUFFIX na3 RANGE gbar, ar }\n"
+            "PARAMETER { gbar = 0.010 (mho/cm2) }\n"
+            "STATE { m h }\n"
+            "BREAKPOINT {\n  SOLVE states METHOD cnexp\n  ina = thegna * exp(v - ena)\n}\n"
+            "ASSIGNED {\n  ar (1)\n}\n"
+        )
+        assert mechanism.suffix == "na3"
+        assert mechanism.range_variables == ["gbar", "ar"]
+        assert mechanism.units == {"gbar": "mho/cm2", "ar": "1"}
+
+    def test_unbalanced_mod_block_raises(self):
+        with pytest.raises(HocTemplateError, match="unbalanced braces in PARAMETER block"):
+            read_mod_mechanism("NEURON {\n  SUFFIX x\n}\nPARAMETER {\n  g = 1 (S)\n")
+
     def test_comments_are_ignored(self):
         """A COMMENT block can quote a whole block; ``:`` comments can hide a name."""
         mechanism = read_mod_mechanism(

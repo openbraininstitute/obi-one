@@ -347,7 +347,8 @@ def mapped_circuit_properties_endpoint(
     summary="Resolve neuron set to node IDs",
     description="Returns the node IDs for a given neuron set selection in a circuit. "
     "Swept (list-valued) fields of the neuron set are expanded and the resulting "
-    "node IDs are unioned per population.",
+    "node IDs are unioned per population. Only top-level fields can be swept: a list "
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400.",
 )
 def neuron_set_node_ids(
     circuit_id: str,
@@ -382,7 +383,8 @@ def neuron_set_node_ids(
     description="Returns intersection of mechanism variables for neuronal manipulation blocks "
     "for a Circuit entity, resolved by neuron set. "
     "Swept (list-valued) fields of the neuron set are expanded and the resulting "
-    "node IDs are unioned per population. "
+    "node IDs are unioned per population. Only top-level fields can be swept: a list "
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400. "
     "MEModel entities should use /memodel-neuronal-manipulation-properties instead.",
 )
 def neuronal_manipulation_properties_endpoint_by_neuron_set(

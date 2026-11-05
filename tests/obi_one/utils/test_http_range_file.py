@@ -6,7 +6,7 @@ import httpx2
 import numpy as np
 import pytest
 
-from obi_one.utils.http_range_file import HttpRangeFile
+from obi_one.utils.http_range_file import HttpRangeFile, read_contiguous_dataset
 
 TINY_NODES = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6/S1nonbarrel_neurons/nodes.h5")
 
@@ -128,3 +128,88 @@ class TestHttpRangeFile:
         fetched = sum(len(block) for block in remote._blocks)
         assert fetched < len(blob)
         assert remote.requests == len(server.requests)
+
+    def test_a_large_read_is_not_kept_in_memory(self):
+        """A read larger than a block is a dataset read once: keeping it would hold MBs."""
+        blob = bytes(range(256)) * 16
+        server = RangeServer(blob)
+        remote = HttpRangeFile("http://s/f", _client(server), len(blob), block_size=512)
+        remote.seek(300)
+        assert remote.read(2000) == blob[300:2300]
+        assert remote._blocks == []
+        remote.seek(300)
+        assert remote.read(4) == blob[300:304]  # fetched again, as one block
+        assert server.requests == ["GET bytes=300-2299", "GET bytes=0-511"]
+
+    def test_close_frees_the_blocks_and_rejects_further_use(self):
+        remote = HttpRangeFile("http://s/f", _client(RangeServer(b"x" * 10)), 10, block_size=4)
+        assert remote.read(1) == b"x"
+        remote.close()
+        assert remote.closed
+        assert remote._blocks == []
+        for operation in (lambda: remote.read(1), remote.tell, lambda: remote.seek(0)):
+            with pytest.raises(ValueError, match="closed file"):
+                operation()
+        with pytest.raises(ValueError, match="closed file"):
+            remote.read_at(0, 1)
+        remote.close()  # idempotent, as the io contract asks
+
+    def test_a_full_body_answer_is_refused_before_its_body_is_read(self):
+        """A 200 means the Range header was dropped: the body is the whole file."""
+
+        class Body(httpx2.SyncByteStream):
+            read = False
+
+            def __iter__(self):
+                Body.read = True
+                yield b"x" * 10
+
+        transport = httpx2.MockTransport(lambda _: httpx2.Response(200, stream=Body()))
+        remote = HttpRangeFile("http://s/f", httpx2.Client(transport=transport), 10)
+        with pytest.raises(OSError, match="got 200"):
+            remote.read(1)
+        assert not Body.read
+
+    def test_read_at_is_one_exact_request_outside_the_cache(self):
+        blob = bytes(range(256)) * 4
+        server = RangeServer(blob)
+        remote = HttpRangeFile("http://s/f", _client(server), len(blob), block_size=512)
+        assert remote.read(4) == blob[:4]
+        assert remote.read_at(100, 8) == blob[100:108]
+        assert server.requests == ["GET bytes=0-511", "GET bytes=100-107"]
+        assert remote.tell() == 4  # the position is untouched
+        with pytest.raises(ValueError, match="past the file size"):
+            remote.read_at(1020, 8)
+
+
+class TestReadContiguousDataset:
+    def test_the_column_is_fetched_exactly_not_through_h5py(self):
+        """One exact request for the dataset's bytes: h5py's own read would be block-rounded
+        and would hold h5py's lock for its whole duration."""
+        blob = TINY_NODES.read_bytes()
+        server = RangeServer(blob)
+        remote = HttpRangeFile("http://s/f", _client(server), len(blob), block_size=4096)
+        with h5py.File(remote, "r") as h5:
+            column = h5["nodes/S1nonbarrel_neurons/0/model_template"]
+            offset, nbytes = column.id.get_offset(), column.nbytes
+            values = read_contiguous_dataset(column, remote)
+        with h5py.File(TINY_NODES, "r") as h5:
+            assert list(values) == list(h5["nodes/S1nonbarrel_neurons/0/model_template"][()])
+        assert server.requests[-1] == f"GET bytes={offset}-{offset + nbytes - 1}"
+
+    def test_variable_length_strings_are_read_through_h5py(self):
+        """Their bytes are heap pointers, so the raw dataset bytes are of no use."""
+        blob = TINY_NODES.read_bytes()
+        remote = HttpRangeFile("http://s/f", _client(RangeServer(blob)), len(blob))
+        with h5py.File(remote, "r") as h5:
+            library = h5["nodes/S1nonbarrel_neurons/0/@library/model_template"]
+            assert list(read_contiguous_dataset(library, remote)) == list(library[()])
+
+    def test_a_chunked_dataset_is_read_through_h5py(self, tmp_path):
+        path = tmp_path / "chunked.h5"
+        with h5py.File(path, "w") as h5:
+            h5.create_dataset("x", data=np.arange(1000), chunks=(100,), compression="gzip")
+        blob = path.read_bytes()
+        remote = HttpRangeFile("http://s/f", _client(RangeServer(blob)), len(blob))
+        with h5py.File(remote, "r") as h5:
+            assert list(read_contiguous_dataset(h5["x"], remote)) == list(range(1000))

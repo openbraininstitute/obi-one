@@ -2,13 +2,22 @@
 
 from uuid import UUID
 
-import h5py
 from entitysdk.client import Client
+from entitysdk.config import settings as entitysdk_settings
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.entity import Entity
 from entitysdk.route import get_assets_endpoint
+from entitysdk.utils.http import HTTPTimeout, RequestError
 
 from obi_one.utils.http_range_file import HttpRangeFile
+
+# Same timeouts as entitysdk's own requests.
+ENTITYSDK_TIMEOUT = HTTPTimeout(
+    connect=entitysdk_settings.connect_timeout,
+    read=entitysdk_settings.read_timeout,
+    write=entitysdk_settings.write_timeout,
+    pool=entitysdk_settings.pool_timeout,
+)
 
 
 def asset_download_url(
@@ -19,15 +28,11 @@ def asset_download_url(
     asset_id: UUID,
     asset_path: str,
 ) -> str:
-    """Return the storage URL of one file of a directory asset.
+    """Return the presigned storage URL of one file of a directory asset.
 
-    entitycore answers a download request with a redirect to a presigned storage URL.
-    entitysdk follows that redirect itself (``fetch_file``, ``fetch_content``) and has no
-    method that returns the URL, which a partial read needs. Until entitysdk offers one,
-    this function asks entitycore directly, with the client's own token, headers and HTTP
-    client, so authentication, timeouts and connection pooling stay the same.
-
-    The URL is signed and expires soon: use it right away and never store or log it.
+    entitysdk follows the download redirect itself and has no method that returns the
+    URL, so this asks entitycore directly with the client's token, headers and timeouts.
+    The URL is signed and short-lived: use it at once, never store or log it.
 
     Args:
         client: entitysdk client.
@@ -36,14 +41,11 @@ def asset_download_url(
         asset_id: The directory asset.
         asset_path: Path of the file inside the asset.
 
-    Returns:
-        The presigned storage URL.
-
     Raises:
-        EntitySDKError: entitycore answered without a redirect.
-
-    A network error or timeout of the request propagates from the HTTP client.
+        EntitySDKError: No redirect, or the request failed (network error, timeout).
     """
+    # TODO(entitysdk): private members. Use a public "download URL" method once entitysdk
+    # has one; tests/obi_one/db_sdk/test_assets.py uses a real Client so a rename fails CI.
     endpoint = get_assets_endpoint(
         api_url=client.api_url, entity_type=entity_type, entity_id=entity_id, asset_id=asset_id
     )
@@ -52,12 +54,17 @@ def asset_download_url(
         headers["project-id"] = str(client.project_context.project_id)
         if client.project_context.virtual_lab_id:
             headers["virtual-lab-id"] = str(client.project_context.virtual_lab_id)
-    response = client._http_client.get(  # ruff: ignore[private-member-access]
-        f"{endpoint}/download",
-        params={"asset_path": asset_path},
-        headers=headers,
-        follow_redirects=False,
-    )
+    try:
+        response = client._http_client.get(  # ruff: ignore[private-member-access]
+            f"{endpoint}/download",
+            params={"asset_path": asset_path},
+            headers=headers,
+            follow_redirects=False,
+            timeout=ENTITYSDK_TIMEOUT,
+        )
+    except RequestError as err:
+        msg = f"Request error: {err}"
+        raise EntitySDKError(msg) from err
     location = response.headers.get("location")
     if not response.is_redirect or location is None:
         msg = f"Expected a redirect to storage for {asset_path}, got {response.status_code}"
@@ -65,7 +72,7 @@ def asset_download_url(
     return location
 
 
-def open_asset_h5(
+def asset_range_file(
     client: Client,
     *,
     entity_id: UUID,
@@ -73,28 +80,24 @@ def open_asset_h5(
     asset_id: UUID,
     asset_path: str,
     size: int,
-) -> h5py.File:
-    """Open an HDF5 file of a directory asset, fetching only the bytes h5py reads.
+) -> HttpRangeFile:
+    """Open one file of a directory asset as a file object that fetches bytes on demand.
 
-    HDF5 files can be read in any order: h5py reads the few headers that lead to a dataset,
-    then the dataset itself. Each of those reads becomes a ``Range`` request to storage,
-    so reading one small dataset of a file of several GB costs a few MB.
+    For ``h5py.File(asset_range_file(...), "r")``: each h5py read becomes one ``Range``
+    request, so one small dataset of a multi-GB file costs a few MB. Read a large dataset
+    with ``read_contiguous_dataset`` so the request does not hold h5py's lock.
 
     Args:
         client: entitysdk client.
         entity_id: Entity that owns the asset.
         entity_type: Type of that entity, e.g. ``Circuit``.
         asset_id: The directory asset.
-        asset_path: Path of the HDF5 file inside the asset.
+        asset_path: Path of the file inside the asset.
         size: File size in bytes, from ``Client.list_directory``.
 
     Returns:
-        An open, read-only ``h5py.File``; close it, for example with ``with``.
-
-    Errors propagate: ``EntitySDKError`` when entitycore does not redirect to storage, and
-    ``OSError`` when storage does not serve byte ranges or ``size`` is wrong. The
-    ``OSError`` can come when the file is opened or later, on any read. Callers usually
-    fall back to a full download.
+        The file object. Nothing is fetched before the first read; close it after use.
+        A read raises ``OSError`` when storage does not serve ranges or ``size`` is wrong.
     """
     url = asset_download_url(
         client,
@@ -103,4 +106,4 @@ def open_asset_h5(
         asset_id=asset_id,
         asset_path=asset_path,
     )
-    return h5py.File(HttpRangeFile(url, client._http_client, size), "r")  # ruff: ignore[private-member-access]
+    return HttpRangeFile(url, client._http_client, size)  # ruff: ignore[private-member-access]
