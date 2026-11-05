@@ -35,9 +35,9 @@ def test_populations_parsed(circuit):
     net = NestSonataNetwork(circuit.simulation_config)
     exc = net.node_populations["exc"]
     assert exc["type"] == constants.TYPE_POINT_PROCESS
-    assert exc["model_template_dir"].name == "exc"
+    assert exc["point_neuron_models_dir"].name == "exc"
     assert net.node_populations["input"]["type"] == constants.TYPE_VIRTUAL
-    assert net.node_populations["input"]["model_template_dir"] is None
+    assert net.node_populations["input"]["point_neuron_models_dir"] is None
     assert net.edge_populations["exc__exc"]["type"] == constants.TYPE_CHEMICAL
 
 
@@ -47,6 +47,17 @@ def test_load_template(circuit):
     assert template["model"] == "nest:iaf_psc_alpha"
     with pytest.raises(FileNotFoundError):
         net.load_template("exc", "missing")
+
+
+def test_components_default_models_dir(circuit):
+    config = load_json(circuit.circuit_config)
+    del config["networks"]["nodes"][0]["populations"]["exc"]["point_neuron_models_dir"]
+    config["components"] = {"point_neuron_models_dir": "$BASE_DIR/model_templates/exc"}
+    write_json(config, circuit.circuit_config)
+    net = NestSonataNetwork(circuit.simulation_config)
+    assert net.node_populations["exc"]["point_neuron_models_dir"].name == "exc"
+    assert net.edge_populations["exc__exc"]["point_neuron_models_dir"].name == "exc__exc"
+    assert net.load_template("exc", "iaf_psc_alpha_type1")["model"] == "nest:iaf_psc_alpha"
 
 
 def test_rejects_non_nest_target(circuit):

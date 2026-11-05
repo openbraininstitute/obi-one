@@ -117,6 +117,7 @@ class CircuitSimplificationTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=DerivationType.circuit_simplification,
+            skip_validation=True,
         )
 
     @staticmethod

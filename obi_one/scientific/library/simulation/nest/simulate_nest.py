@@ -17,9 +17,7 @@ import h5py
 import libsonata
 import nest
 import numpy as np
-from pynestml.frontend.pynestml_frontend import generate_nest_target
 
-from obi_one.core.exception import OBIONEError
 from obi_one.scientific.library.simulation.nest import nestml_build
 from obi_one.scientific.library.simulation.nest.constants import (
     NODE_TYPES,
@@ -29,15 +27,8 @@ from obi_one.scientific.library.simulation.nest.constants import (
 )
 from obi_one.utils.io import load_json
 
-# Compiled NESTML modules (source hash -> .so) so a model is compiled once per interpreter.
-BUILT_NESTML_MODULES: dict[str, Path] = {}
-
 EDGE_WEIGHT = "syn_weight"
 EDGE_DELAY = "delay"
-
-
-class NestmlBuildError(RuntimeError):
-    """Raised when a NESTML custom model cannot be generated or compiled."""
 
 
 def _runs(values: list[str]) -> list[tuple[str, int, int]]:
@@ -118,17 +109,17 @@ class NestSonataNetwork:
                 "name": pop_name,
                 "type": props.type,
                 f"{kind}_file": Path(props.elements_path),
-                "model_template_dir": (
-                    Path(props.model_template_dir) if props.model_template_dir else None
+                "point_neuron_models_dir": (
+                    Path(props.point_neuron_models_dir) if props.point_neuron_models_dir else None
                 ),
             }
         return populations
 
     def load_template(self, population: str, template_name: str) -> dict:
         meta = self._node_populations.get(population) or self._edge_populations[population]
-        template_dir = meta["model_template_dir"]
+        template_dir = meta["point_neuron_models_dir"]
         if template_dir is None:
-            msg = f"Population '{population}' has no model_template_dir."
+            msg = f"Population '{population}' has no point_neuron_models_dir."
             raise ValueError(msg)
         path = template_dir / f"{template_name}.json"
         if path not in self._templates:
@@ -274,35 +265,30 @@ class NestSonataNetwork:
     def _resolve_model_name(self, population: str, model_ref: str) -> str:
         """Return the NEST model name for a template's ``model`` (``nest:``/``nestml:`` prefix).
 
-        A ``nestml:<name>`` model is compiled from ``<model_template_dir>/<name>.nestml`` once
+        A ``nestml:<name>`` model is compiled from ``<point_neuron_models_dir>/<name>.nestml`` once
         (cached by source hash) and installed into the kernel.
         """
         backend, model_name = split_model_template(model_ref)
         if backend != "nestml":
             return model_name
         meta = self._node_populations.get(population) or self._edge_populations[population]
-        return self._ensure_nestml_model(model_name, meta["model_template_dir"])
+        return self._ensure_nestml_model(model_name, meta["point_neuron_models_dir"])
 
     @staticmethod
-    def _nestml_source_path(model_name: str, model_template_dir: Path | None) -> Path:
-        if model_template_dir is not None:
-            candidate = model_template_dir / f"{model_name}.nestml"
+    def _nestml_source_path(model_name: str, models_dir: Path | None) -> Path:
+        if models_dir is not None:
+            candidate = models_dir / f"{model_name}.nestml"
             if candidate.exists():
                 return candidate
-        msg = f"Could not find NESTML source '{model_name}.nestml' under {model_template_dir}."
+        msg = f"Could not find NESTML source '{model_name}.nestml' under {models_dir}."
         raise FileNotFoundError(msg)
 
-    def _ensure_nestml_model(self, model_name: str, model_template_dir: Path | None) -> str:
-        source = self._nestml_source_path(model_name, model_template_dir)
+    def _ensure_nestml_model(self, model_name: str, models_dir: Path | None) -> str:
+        source = self._nestml_source_path(model_name, models_dir)
         digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
-        module_name = f"nestml_{digest}module"
-
-        library = BUILT_NESTML_MODULES.get(digest)
-        if library is None or not library.exists():
-            library = self._nestml_cache_dir / digest / f"{module_name}.so"
-            if not library.exists():
-                self._generate_nestml(source, library.parent, module_name)
-            BUILT_NESTML_MODULES[digest] = library
+        library = nestml_build.compile_nestml_module(
+            source, self._nestml_cache_dir / digest, f"nestml_{digest}module"
+        )
 
         name = self._nestml_model_name(model_name)
         # nest.ResetKernel() unloads installed modules, so reinstall when the model is missing
@@ -310,30 +296,6 @@ class NestSonataNetwork:
             nest.Install(str(library))
             name = self._nestml_model_name(model_name)
         return name
-
-    @staticmethod
-    def _generate_nestml(source: Path, target_dir: Path, module_name: str) -> None:
-        target_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            nest_path = nestml_build.resolve_nest_path()
-        except (nestml_build.NestmlToolchainError, OBIONEError, OSError) as exc:
-            msg = f"Could not prepare the NESTML build environment: {exc}"
-            raise NestmlBuildError(msg) from exc
-        try:
-            generate_nest_target(
-                input_path=str(source),
-                target_path=str(target_dir / "target"),
-                install_path=str(target_dir),
-                module_name=module_name,
-                logging_level="ERROR",
-                codegen_opts={"nest_path": str(nest_path)},
-            )
-        except Exception as exc:
-            msg = (
-                f"NESTML failed to generate/compile '{source.name}' against NEST at {nest_path}. "
-                f"Build output is under {target_dir / 'target'}."
-            )
-            raise NestmlBuildError(msg) from exc
 
     @staticmethod
     def _nestml_model_name(model_name: str) -> str:

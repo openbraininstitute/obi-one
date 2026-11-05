@@ -32,11 +32,9 @@ def test_missing_kernel_is_not_old_abi(tmp_path):
 def test_shim_options_for_wheel(tmp_path):
     package_dir = _fake_kernel(tmp_path, nb.OLD_ABI_SYMBOL)
     install = nb.NestInstall(package_dir=package_dir, prefix=None, nest_config=None)
-    extra = tmp_path / "boost"
-    options = nb.build_shim_options(install, [extra])
+    options = nb.build_shim_options(install)
     assert not options["--libs"]
-    assert f"-I{package_dir / 'include' / 'nest'}" in options["--includes"]
-    assert f"-I{extra}" in options["--includes"]
+    assert options["--includes"] == f"-I{package_dir / 'include' / 'nest'}"
     assert options["--cflags"].endswith(nb.OLD_ABI_FLAG)
     assert options["--static-libraries"] == "OFF"
 
@@ -64,22 +62,57 @@ def test_cache_root_env(monkeypatch, tmp_path):
     assert nb.cache_root() == tmp_path / "c"
 
 
-def test_boost_include_from_env(monkeypatch, tmp_path):
-    (tmp_path / "boost").mkdir()
-    (tmp_path / "boost" / "type_index.hpp").write_text("")
-    monkeypatch.setenv("NESTML_BOOST_INCLUDE", str(tmp_path))
-    assert nb.boost_include_dir() == tmp_path
-
-
-def test_invalid_env_include_raises(monkeypatch, tmp_path):
-    monkeypatch.setenv("NESTML_GSL_INCLUDE", str(tmp_path))
-    with pytest.raises(nb.NestmlToolchainError, match=r"gsl_errno\.h"):
-        nb.gsl_include_dir()
-
-
 def test_resolve_prefers_working_nest_config(monkeypatch, tmp_path):
     install = nb.NestInstall(
         package_dir=tmp_path, prefix=tmp_path / "prefix", nest_config=tmp_path / "nc"
     )
     monkeypatch.setattr(nb, "find_nest_install", lambda: install)
     assert nb.resolve_nest_path() == tmp_path / "prefix"
+
+
+def test_compile_returns_module_and_reuses_it(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_generate(**kwargs):
+        calls.append(kwargs)
+        Path(kwargs["install_path"], "nestml_x_module.so").write_bytes(b"")
+
+    monkeypatch.setattr(nb, "resolve_nest_path", lambda: tmp_path / "prefix")
+    monkeypatch.setattr(nb, "generate_nest_target", fake_generate)
+    source = tmp_path / "model.nestml"
+    source.write_text("")
+
+    library = nb.compile_nestml_module(source, tmp_path / "out", "nestml_x_module")
+    again = nb.compile_nestml_module(source, tmp_path / "out", "nestml_x_module")
+
+    assert library == tmp_path / "out" / "nestml_x_module.so"
+    assert again == library
+    assert len(calls) == 1
+    assert calls[0]["codegen_opts"] == {"nest_path": str(tmp_path / "prefix")}
+
+
+def test_compile_wraps_generator_failure(monkeypatch, tmp_path):
+    def failing_generate(**_kwargs):
+        msg = "cmake failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(nb, "resolve_nest_path", lambda: tmp_path / "prefix")
+    monkeypatch.setattr(nb, "generate_nest_target", failing_generate)
+    source = tmp_path / "model.nestml"
+    source.write_text("")
+
+    with pytest.raises(nb.NestmlBuildError, match=r"failed to generate/compile 'model\.nestml'"):
+        nb.compile_nestml_module(source, tmp_path / "out", "nestml_x_module")
+
+
+def test_compile_wraps_toolchain_failure(monkeypatch, tmp_path):
+    def no_toolchain():
+        msg = "nest-config missing"
+        raise nb.NestmlToolchainError(msg)
+
+    monkeypatch.setattr(nb, "resolve_nest_path", no_toolchain)
+    source = tmp_path / "model.nestml"
+    source.write_text("")
+
+    with pytest.raises(nb.NestmlBuildError, match="Could not prepare the NESTML build environment"):
+        nb.compile_nestml_module(source, tmp_path / "out", "nestml_x_module")

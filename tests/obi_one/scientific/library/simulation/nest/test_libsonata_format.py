@@ -16,8 +16,8 @@ def test_libsonata_loads_with_template_dirs(circuit):
     assert cc.target_simulator == libsonata.SimulatorType.NEST
     props = cc.node_population_properties("exc")
     assert props.type == "point_process"
-    assert props.model_template_dir.endswith("model_templates/exc")
-    assert cc.edge_population_properties("exc__exc").model_template_dir.endswith(
+    assert props.point_neuron_models_dir.endswith("model_templates/exc")
+    assert cc.edge_population_properties("exc__exc").point_neuron_models_dir.endswith(
         "model_templates/exc__exc"
     )
 
