@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
+from app.endpoints.scan_config import RESOURCE_CHECKS
 from app.services.validator import run_grid_scan_validation
 from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
@@ -161,6 +162,7 @@ async def validate_config(
                 config,
                 db_client,
                 execute_single_config_task=execute_task,
+                check_resources=RESOURCE_CHECKS.get(type(config)),
             ),
         )
         for config, execute_task in validations.values()

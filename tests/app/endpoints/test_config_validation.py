@@ -1,8 +1,14 @@
 """Tests for the config-validation endpoint's state-key wiring."""
 
+from types import SimpleNamespace
+from unittest.mock import Mock
+from uuid import uuid4
+
 import pytest
+from entitysdk.types import CircuitScale
 from pydantic import ValidationError
 
+from app.dependencies.entitysdk import get_client
 from app.endpoints.config_validation import (
     _VALIDATION_CONFIG,
     EModelOptimizationScanConfig,
@@ -180,3 +186,33 @@ def test_emodel_optimization_does_not_execute_the_task():
     does not cover, so executing it would perform a real write during validation.
     """
     assert _VALIDATION_CONFIG["emodel_optimization_config"] is False
+
+
+def test_weights_config_no_task_can_run_is_invalid(client, monkeypatch):
+    """Validation runs the same resource check as generation, before anything is registered."""
+    circuit = SimpleNamespace(
+        id=uuid4(), name="nbS1-O1", scale=CircuitScale.microcircuit, number_neurons=211_712
+    )
+    db_client = Mock()
+    db_client.get_entity.return_value = circuit
+    monkeypatch.setitem(client.app.dependency_overrides, get_client, lambda: db_client)
+    config = {
+        "info": {"campaign_name": "test", "campaign_description": "test"},
+        "initialize": {
+            "circuit": {"type": "CircuitFromID", "id_str": str(circuit.id)},
+            "calculation_method": "LineSource",
+        },
+        "electrode_locations": {
+            "Probe": {"type": "LinearExtracellularLocations", "n_electrodes": 200, "spacing": 20.0}
+        },
+    }
+
+    response = client.post(
+        "/config-validation/validate",
+        json={"state": {"create_extracellular_recording_array_config": config}},
+    )
+
+    assert response.status_code == 400, response.text
+    message = response.json()["detail"]["errors"]["create_extracellular_recording_array_config"]
+    assert "(211,712 cells, 200 electrodes) writes a weights file" in message
+    assert [name for name, *_ in db_client.method_calls] == ["get_entity"]
