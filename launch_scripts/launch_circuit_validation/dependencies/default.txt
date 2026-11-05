@@ -2,14 +2,13 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[bluecellulab]==2026.11.1
+obi-one==2026.11.1
 aiofiles==25.1.0
 annotated-types==0.8.0
 anyio==4.15.1
 asttokens==3.0.2
 attrs==26.1.0
 blosc2==4.14.1
-bluecellulab==2.6.106
 bluepyefe==2.3.63
 bluepysnap==3.0.9
 brainbuilder==0.20.9
@@ -35,7 +34,6 @@ distributed==2026.8.0
 efel==5.7.34
 entitysdk==0.19.37
 executing==2.2.1
-find-libpython==0.5.1
 fonttools==4.66.1
 fsspec==2026.9.0
 h11==0.16.0
@@ -79,7 +77,6 @@ ndindex==1.10.1
 neo==0.14.5
 networkx==3.7
 neurom==4.0.6
-neuron==9.0.2
 numexpr==2.14.2
 numpy==2.4.6
 obi-auth==1.2.1
@@ -118,7 +115,6 @@ rich==15.0.0
 rpds-py==2026.6.3
 scikit-learn==1.9.1
 scipy==1.18.1
-seaborn==0.13.2
 setuptools==84.0.0
 six==1.17.0
 sortedcontainers==2.4.0

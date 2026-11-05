@@ -172,13 +172,13 @@ Full circuit validation after merge:
 | `obi_one/scientific/validations/emodels.py` | Shared HOC/MOD validation functions |
 | `obi_one/utils/circuit_customization/staging.py` | Merge parent + overrides into staged directory |
 | `launch_scripts/launch_circuit_validation/main.py` | Entry point for the validation Docker job |
-| `launch_scripts/launch_circuit_validation/dependencies/default.txt` | ``obi-one`` (pip-installed on neurodamus image) |
+| `launch_scripts/launch_circuit_validation/dependencies/bluecellulab.txt` | ``obi-one[bluecellulab]`` (pip-installed on neurodamus image) |
 | `tests/integration/test_circuit_customization.py` | Integration tests |
 
 ## Executor Configuration
 
 ### Production (ECS)
-- Image: launch-system ``python_3_12_openmpi5_neuron9_neurodamus``; deps from ``dependencies/default.txt`` (``obi-one``)
+- Image: launch-system ``python_3_12_openmpi5_neuron9_neurodamus``; deps from ``dependencies/bluecellulab.txt`` (``obi-one[bluecellulab]``)
 - Job spec: `image_type: python_3_12_openmpi5_neuron9_neurodamus`, `ref: tag:<APP_VERSION>`
 - Auth: `PERSISTENT_TOKEN_ID` via auth-manager
 
