@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import override
 
@@ -13,6 +14,11 @@ from obi_one.scientific.tasks.simulation_execution.nest.config import (
 )
 from obi_one.scientific.tasks.simulation_execution.task import SimulationExecutionTask
 from obi_one.utils.filesystem import create_dir
+
+
+def simulation_thread_count() -> int:
+    """NEST threads: the CPUs the launch system allocated (JOB_CPUS), else 1."""
+    return int(os.environ.get("JOB_CPUS") or 1)
 
 
 class NestCircuitSimulationExecutionTask(SimulationExecutionTask):
@@ -58,6 +64,8 @@ class NestCircuitSimulationExecutionTask(SimulationExecutionTask):
         )
 
         return SimulationResults(
-            spike_report_file=run_simulation(simulation_config_path),
+            spike_report_file=run_simulation(
+                simulation_config_path, num_threads=simulation_thread_count()
+            ),
             voltage_report_files=[],
         )

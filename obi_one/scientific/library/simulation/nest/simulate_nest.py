@@ -43,7 +43,12 @@ def _runs(values: list[str]) -> list[tuple[str, int, int]]:
 
 
 class NestSonataNetwork:
-    def __init__(self, config: str | Path, sim_config: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        config: str | Path,
+        sim_config: str | Path | None = None,
+        num_threads: int = 1,
+    ) -> None:
         """Parse the configuration files with ``libsonata``.
 
         Args:
@@ -51,7 +56,13 @@ class NestSonataNetwork:
                 or a ``circuit_config.json`` when *sim_config* is given.
             sim_config: Simulation config to use with a circuit *config*; its ``network`` is
                 ignored.
+            num_threads: OpenMP threads of the NEST kernel. NEST ignores ``OMP_NUM_THREADS`` and
+                runs on one thread unless this is set.
         """
+        if num_threads < 1:
+            msg = f"num_threads must be at least 1, got {num_threads}."
+            raise ValueError(msg)
+        self._num_threads = num_threads
         if sim_config is None:
             sim_path = Path(config).resolve(strict=True)
             if "network" not in load_json(sim_path):
@@ -77,7 +88,14 @@ class NestSonataNetwork:
         self._sim = sim
         self._config_path = circuit_path
         self._base_dir = circuit_path.parent
-        self._run = {"dt": float(sim.run.dt), "tstop": float(sim.run.tstop)}
+        if sim.run.random_seed < 0:
+            msg = f"run.random_seed must not be negative, got {sim.run.random_seed}."
+            raise ValueError(msg)
+        self._run = {
+            "dt": float(sim.run.dt),
+            "tstop": float(sim.run.tstop),
+            "random_seed": int(sim.run.random_seed),
+        }
         self._node_sets_path = sim.node_sets_file or circuit.node_sets_path
 
         self._node_populations = self._collect_populations("nodes", NODE_TYPES)
@@ -169,9 +187,16 @@ class NestSonataNetwork:
     def dt(self) -> float:
         return float(self._run["dt"])
 
+    @property
+    def rng_seed(self) -> int:
+        """The NEST seed: ``run.random_seed`` plus one, because NEST rejects a seed of 0."""
+        return self._run["random_seed"] + 1
+
     def _reset_kernel(self) -> None:
         nest.ResetKernel()
         nest.resolution = self.dt
+        nest.local_num_threads = self._num_threads
+        nest.rng_seed = self.rng_seed
 
     def Create(self) -> dict:
         self._reset_kernel()
@@ -441,13 +466,14 @@ class NestSonataNetwork:
         return path
 
 
-def run_simulation(simulation_config: str | Path) -> Path:
+def run_simulation(simulation_config: str | Path, num_threads: int = 1) -> Path:
     """Build and simulate the circuit of *simulation_config*; write and return its spike report.
 
     Spikes of every non-virtual population go to the config's ``output.spikes_file``. Voltage
-    ``reports`` are not supported by the NEST loader and raise ``NotImplementedError``.
+    ``reports`` are not supported by the NEST loader and raise ``NotImplementedError``. NEST runs
+    on *num_threads* threads.
     """
-    network = NestSonataNetwork(simulation_config)
+    network = NestSonataNetwork(simulation_config, num_threads=num_threads)
     if network.report_names:
         msg = (
             f"Reports {sorted(network.report_names)} are not supported for NEST simulations; "
