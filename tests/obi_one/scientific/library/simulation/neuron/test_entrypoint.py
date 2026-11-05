@@ -1,5 +1,6 @@
 import builtins
 import sys
+import types
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -289,6 +290,28 @@ def test_neuron_mpi_process_requires_neuron(monkeypatch):
         test_module.neuron_mpi_process("lib.so"),
     ):
         pass
+
+
+def test_neuron_mpi_process_success(monkeypatch):
+    fake_h = MagicMock()
+    fake_pc = MagicMock()
+    fake_pc.id.return_value = 0
+    fake_pc.nhost.return_value = 1
+    fake_h.ParallelContext.return_value = fake_pc
+
+    neuron_mod = types.ModuleType("neuron")
+    neuron_mod.h = fake_h
+    monkeypatch.setitem(sys.modules, "neuron", neuron_mod)
+    monkeypatch.setattr(test_module, "_setup_mpi_logging", lambda **_kwargs: None)
+
+    with test_module.neuron_mpi_process("lib.so") as process:
+        assert process.rank == 0
+        assert process.size == 1
+
+    fake_h.nrn_load_dll.assert_called_once_with("lib.so")
+    fake_h.nrnmpi_init.assert_called_once()
+    fake_pc.barrier.assert_called_once()
+    fake_h.quit.assert_called_once()
 
 
 def test_run_bluecellulab_requires_extra(monkeypatch):
