@@ -21,7 +21,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import entitysdk
 from bluepyemodel.preprocessing import (
@@ -37,10 +37,6 @@ from obi_one.scientific.tasks.emodel_building import (
     utils as emodel_building_utils,
     validation_scoring,
 )
-from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
-    registration,
-    staging,
-)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
@@ -48,6 +44,15 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.utils im
     resolve_ion_channel_models,
 )
 from obi_one.utils.filesystem import chdir
+
+if TYPE_CHECKING:
+    # Imported lazily at runtime (inside the functions that use them) to avoid a
+    # package initialization cycle: the package __init__ imports this module, so
+    # importing sibling submodules through the package at load time would re-enter
+    # the partially initialized package.
+    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
+        registration,
+    )
 
 L = logging.getLogger(__name__)
 
@@ -265,7 +270,7 @@ def run_optimization_pipeline(
     species: str,
     brain_region: str,
     morphology_path: Path,
-) -> registration.OptimizationPipelineResults:
+) -> "registration.OptimizationPipelineResults":
     """Run BluePyEModel optimisation, plot, SONATA export, calibration, validation.
 
     Expects ``coord_root`` to already contain staged features, morphology, compiled
@@ -291,6 +296,10 @@ def run_optimization_pipeline(
     )
     from bluepyemodel.tools.checkpoint_hdf5 import (  # ruff: ignore[import-outside-top-level]
         convert_checkpoint,
+    )
+
+    from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (  # ruff: ignore[import-outside-top-level]
+        registration,
     )
 
     emodel = config.initialize.emodel
@@ -440,6 +449,11 @@ class EModelOptimizationTask(Task):
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> Path:
+        from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (  # ruff: ignore[import-outside-top-level]
+            registration,
+            staging,
+        )
+
         init = self.config.initialize
         coord_root = Path(self.config.coordinate_output_root).resolve()
         mtype = staging.derive_mtype(self.config, db_client)

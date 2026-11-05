@@ -28,7 +28,8 @@ or unrelated third-party packages), and the original entries are always
 restored, so this cannot leak state into other tests.
 """
 
-import importlib
+import importlib.abc
+import importlib.util
 import sys
 import types
 from collections.abc import Iterator
@@ -42,7 +43,10 @@ class _BlockBluePyEModel(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):  # ruff: ignore[unused-method-argument]
         if fullname == "bluepyemodel" or fullname.startswith("bluepyemodel."):
             msg = f"No module named {fullname!r} (blocked for test)"
-            raise ImportError(msg)
+            # Raise the same error type the real import machinery raises for a missing
+            # module, with ``name`` set, so guards that inspect ``error.name`` behave
+            # exactly as they would against a genuinely absent optional dependency.
+            raise ModuleNotFoundError(msg, name=fullname)
 
 
 # Only these modules are evicted from ``sys.modules`` before re-executing, so a fresh
@@ -96,6 +100,8 @@ def _exec_fresh(module_name: str) -> types.ModuleType:
     else importing ``module_name`` afterwards.
     """
     spec = importlib.util.find_spec(module_name)
+    assert spec is not None, f"could not find spec for {module_name!r}"
+    assert spec.loader is not None, f"spec for {module_name!r} has no loader"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -197,3 +203,50 @@ def test_unions_omit_emodel_validation_without_bluepyemodel():
         m.__name__ for m in scan_configs._SCAN_CONFIG_MEMBERS
     }
     assert "EModelValidationTask" not in {m.__name__ for m in tasks._TASK_MEMBERS}
+
+
+class _BlockInternalTask2Module(importlib.abc.MetaPathFinder):
+    """Make one internal Task 2 submodule unimportable to simulate a real code bug."""
+
+    def __init__(self, blocked_module: str) -> None:
+        self._blocked_module = blocked_module
+
+    def find_spec(self, fullname, path=None, target=None):  # ruff: ignore[unused-method-argument]
+        if fullname == self._blocked_module:
+            msg = f"No module named {fullname!r} (blocked for test)"
+            raise ModuleNotFoundError(msg, name=fullname)
+
+
+def test_task2_package_reraises_internal_import_errors():
+    """An internal (non-bluepyemodel) ImportError must propagate, not be swallowed.
+
+    The package guard narrows its ``except ImportError`` to a genuinely absent
+    ``bluepyemodel``. A broken internal submodule import therefore surfaces as a
+    real error instead of being silently reported as the optional feature being
+    unavailable (which would leave ``HAS_EMODEL_OPTIMIZATION`` False and the
+    actual bug hidden).
+    """
+    blocked = "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config"
+    blocker = _BlockInternalTask2Module(blocked)
+    evict = (
+        "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
+        blocked,
+    )
+    original_modules = {
+        name: module
+        for name, module in sys.modules.items()
+        if any(name == prefix or name.startswith(f"{prefix}.") for prefix in evict)
+    }
+    for name in original_modules:
+        del sys.modules[name]
+
+    sys.meta_path.insert(0, blocker)
+    try:
+        with pytest.raises(ModuleNotFoundError, match="config"):
+            _exec_fresh("obi_one.scientific.tasks.emodel_building.task2_emodel_optimization")
+    finally:
+        sys.meta_path.remove(blocker)
+        for name in list(sys.modules):
+            if any(name == prefix or name.startswith(f"{prefix}.") for prefix in evict):
+                del sys.modules[name]
+        sys.modules.update(original_modules)
