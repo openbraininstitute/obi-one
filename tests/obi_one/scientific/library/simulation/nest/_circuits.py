@@ -146,7 +146,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                         "populations": {
                             "exc": {
                                 "type": "point_process",
-                                "model_template_dir": "$BASE_DIR/model_templates/exc",
+                                "point_neuron_models_dir": "$BASE_DIR/model_templates/exc",
                             }
                         },
                     },
@@ -161,7 +161,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                         "populations": {
                             "input__exc": {
                                 "type": "chemical",
-                                "model_template_dir": "$BASE_DIR/model_templates/input__exc",
+                                "point_neuron_models_dir": "$BASE_DIR/model_templates/input__exc",
                             }
                         },
                     },
@@ -170,7 +170,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                         "populations": {
                             "exc__exc": {
                                 "type": "chemical",
-                                "model_template_dir": "$BASE_DIR/model_templates/exc__exc",
+                                "point_neuron_models_dir": "$BASE_DIR/model_templates/exc__exc",
                             }
                         },
                     },
@@ -238,7 +238,7 @@ def write_nestml_circuit(root: Path, model_name: str, tstop: float = 10.0) -> Pa
                         "populations": {
                             pop: {
                                 "type": "point_neuron",
-                                "model_template_dir": f"$BASE_DIR/model_templates/{pop}",
+                                "point_neuron_models_dir": f"$BASE_DIR/model_templates/{pop}",
                             }
                         },
                     }
