@@ -190,7 +190,7 @@ class NestSonataNetwork:
     @property
     def rng_seed(self) -> int:
         """The NEST seed: ``run.random_seed`` plus one, because NEST rejects a seed of 0."""
-        return self._run["random_seed"] + 1
+        return int(self._run["random_seed"]) + 1
 
     def _reset_kernel(self) -> None:
         nest.ResetKernel()
