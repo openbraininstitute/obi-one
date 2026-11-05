@@ -165,6 +165,9 @@ class TestJsonDefault:
 
 class TestWorkersRequireBluecellulab:
     def test_calibration_worker_missing_package(self, tmp_path, monkeypatch):
+        # Workers ``os.chdir`` for subprocess isolation; stub it so in-process
+        # unit tests do not leak a temp cwd into the rest of the suite.
+        monkeypatch.setattr(calibration_validation.os, "chdir", lambda _path: None)
         _block_bluecellulab(monkeypatch)
         with pytest.raises(ImportError, match=r"calibration requires bluecellulab"):
             calibration_validation.calibration_worker(
@@ -177,6 +180,7 @@ class TestWorkersRequireBluecellulab:
             )
 
     def test_validation_worker_missing_package(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(calibration_validation.os, "chdir", lambda _path: None)
         _block_bluecellulab(monkeypatch)
         with pytest.raises(ImportError, match=r"validation requires bluecellulab"):
             calibration_validation.validation_worker(
@@ -194,6 +198,7 @@ class TestWorkersRequireBluecellulab:
             )
 
     def test_calibration_worker_success_path(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(calibration_validation.os, "chdir", lambda _path: None)
         mocks = _install_fake_bluecellulab(monkeypatch)
         result_path = tmp_path / "out.json"
 
@@ -211,6 +216,7 @@ class TestWorkersRequireBluecellulab:
         assert json.loads(result_path.read_text(encoding="utf-8"))["rheobase"] == pytest.approx(0.2)
 
     def test_validation_worker_success_path(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(calibration_validation.os, "chdir", lambda _path: None)
         mocks = _install_fake_bluecellulab(monkeypatch, with_validation=True)
         figures = tmp_path / "figures"
         result_path = tmp_path / "out.json"
