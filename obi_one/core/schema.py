@@ -84,6 +84,7 @@ class UIElement(StrEnum):
     DISCRETE_PROBABILITIES = "discrete_probabilities"
     ENTITY_PROPERTY_DROPDOWN = "entity_property_dropdown"
     ENTITY_PROPERTY_DROPDOWN_SWEEP = "entity_property_dropdown_sweep"
+    ENTITY_PROPERTY_MULTI_SELECT = "entity_property_multi_select"
     ETYPE_SELECTOR = "etype_selector"
     FLOAT_INPUT = "float_input"
     FLOAT_OPTIONAL = "float_optional"

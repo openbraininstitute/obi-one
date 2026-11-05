@@ -45,7 +45,7 @@ RUN \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
-    uv sync --locked --no-install-project --extra connectivity --extra service --extra emodel
+    uv sync --locked --no-install-project --extra connectivity --extra service --extra emodel --extra spike-sorting
 
 # Step 2: install the project itself as a proper non-editable package (with metadata)
 # SETUPTOOLS_SCM_PRETEND_VERSION ensures metadata is generated correctly in CI
@@ -58,7 +58,7 @@ RUN \
     --mount=type=bind,source=obi_one,target=obi_one \
     --mount=type=bind,source=.git,target=.git \
     SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0 \
-    uv sync --locked --no-editable --no-cache --extra connectivity --extra service --extra emodel
+    uv sync --locked --no-editable --no-cache --extra connectivity --extra service --extra emodel --extra spike-sorting
 
 # run stage
 FROM python:$PYTHON_BASE

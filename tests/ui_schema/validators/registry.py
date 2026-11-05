@@ -22,6 +22,7 @@ from .distance_function_input import validate_distance_function_input
 from .distance_function_input_nullable import validate_distance_function_input_nullable
 from .distribution_parameter_list import validate_distribution_parameter_list
 from .entity_property_dropdown import validate_entity_property_dropdown
+from .entity_property_multi_select import validate_entity_property_multi_select
 from .etype_selector import validate_etype_selector
 from .float_input import validate_float_input
 from .float_optional import validate_float_optional
@@ -88,6 +89,7 @@ VALIDATOR_BY_UI_ELEMENT: dict[UIElement, BlockElementValidator] = {
     UIElement.FLOAT_OPTIONAL: validate_float_optional,
     UIElement.ION_CHANNEL_MODEL_PROPERTIES: validate_ion_channel_model_properties,
     UIElement.ENTITY_PROPERTY_DROPDOWN: validate_entity_property_dropdown,
+    UIElement.ENTITY_PROPERTY_MULTI_SELECT: validate_entity_property_multi_select,
     UIElement.REFERENCE: validate_reference,
     UIElement.NEURON_SET_COMBINATION: validate_neuron_set_combination,
     UIElement.STRING_SELECTION: validate_string_selection,

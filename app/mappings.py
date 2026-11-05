@@ -317,6 +317,38 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinition(
+        task_type=TaskType.aind_ephys_preprocessing,
+        config_type=TaskConfigType.aind_ephys_preprocessing__config,
+        activity_type=TaskActivityType.aind_ephys_preprocessing__execution,
+        code=_obi_one_code("aind_ephys.txt"),
+        resources=MachineResources(
+            cores=4,
+            memory=16,
+            timelimit="01:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
+        task_type=TaskType.aind_ephys_spikesorting_spykingcircus2,
+        config_type=TaskConfigType.aind_ephys_spikesorting__config,
+        activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
+        code=_obi_one_code("aind_ephys.txt"),
+        resources=MachineResources(
+            cores=8,
+            memory=32,
+            timelimit="02:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinition(
         task_type=TaskType.efeature_extraction,
         config_type=TaskConfigType.efeature_extraction__config,
         activity_type=TaskActivityType.efeature_extraction__execution,

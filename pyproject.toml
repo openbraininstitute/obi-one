@@ -33,7 +33,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.19.33",
+    "entitysdk>=0.19.36",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
@@ -96,8 +96,14 @@ service = [
     "uvicorn",
 ]
 
+# SPIKE SORTING - optional, needed for the AIND ephys spike sorting pipeline tasks
+spike-sorting = ["neuroconv>=0.10.2", "spikeinterface[full]>=0.105.4"]
+
+# KILOSORT - optional, the Kilosort4 sorter for the spike sorting task (pulls in torch)
+kilosort = ["kilosort>=4.1.7"]
+
 # ALL - convenience alias to install all optional dependencies
-all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
+all = ["obi-one[connectivity,emodel,meshing,notebooks,service,spike-sorting]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
@@ -223,6 +229,12 @@ builtins-ignorelist = ["license"]
     "unused-method-argument",
 ]
 "launch_scripts/**/*.py" = ["implicit-namespace-package"]
+# The AIND ephys tasks run each pipeline stage's capsule in a subprocess.
+"obi_one/scientific/tasks/aind_ephys/**/*.py" = [
+    "suspicious-subprocess-import",
+    "subprocess-without-shell-equals-true",
+    "start-process-with-partial-path",
+]
 "launch_scripts/tools/*.py" = [
     "print",                                # `print` found (this is a CLI tool)
     "suspicious-subprocess-import",         # `subprocess` module is possibly insecure

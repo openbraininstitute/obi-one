@@ -12,6 +12,7 @@ from entitysdk.models import (
     EMCellMesh,
     EMDenseReconstructionDataset,
     ETypeClass,
+    ExtracellularRecording,
     IonChannelModel,
     IonChannelRecording,
     MEModel,
@@ -36,6 +37,9 @@ from obi_one.scientific.from_id.etype_class_from_id import ETypeClassFromID
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
+from obi_one.scientific.from_id.extracellular_recording_from_id import (
+    ExtracellularRecordingFromID,
+)
 from obi_one.scientific.from_id.ion_channel_model_from_id import IonChannelModelFromID
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
@@ -56,6 +60,7 @@ ENTITYSDK_CLASS_CASES = (
     (EMDataSetFromID, EMDenseReconstructionDataset),
     (EMCellMeshFromID, EMCellMesh),
     (ElectricalCellRecordingFromID, ElectricalCellRecording),
+    (ExtracellularRecordingFromID, ExtracellularRecording),
     (IonChannelModelFromID, IonChannelModel),
     (IonChannelRecordingFromID, IonChannelRecording),
     (MEModelFromID, MEModel),

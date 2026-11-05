@@ -1,0 +1,950 @@
+"""The less-travelled paths of the AIND ephys stages, on small synthetic recordings."""
+
+import inspect
+import json
+import math
+import sys
+import uuid
+from pathlib import Path
+from typing import get_args
+from unittest.mock import MagicMock, patch
+
+import h5py
+import numpy as np
+import pytest
+import spikeinterface as si
+import spikeinterface.sorters as ss
+from pydantic import ValidationError
+from spikeinterface.preprocessing.motion import motion_options_preset
+from spikeinterface.sortingcomponents.clustering.iterative_hdbscan import (
+    IterativeHDBSCANClustering,
+)
+from spikeinterface.sortingcomponents.matching.wobble import WobbleParameters
+from spikeinterface.sortingcomponents.motion.motion_interpolation import (
+    InterpolateMotionRecording,
+)
+
+from obi_one.core.info import Info
+from obi_one.scientific.from_id.extracellular_recording_from_id import (
+    ExtracellularRecordingFromID,
+)
+from obi_one.scientific.library.extracellular_recording_properties import (
+    channel_key,
+    read_channel_options,
+)
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing import (
+    dispatch as dispatch_module,
+    task as preprocessing_task,
+)
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.blocks import (
+    BandpassFilterParams,
+    HighpassSpatialFilter,
+    JobDispatch,
+    MotionCorrection,
+)
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.config import (
+    AINDEPhysPreprocessingSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.dispatch import (
+    clip_segments,
+    dispatch_jobs,
+    read_nwb_recordings,
+    set_probe_from_electrode_groups,
+    timestamps_problem,
+)
+from obi_one.scientific.tasks.aind_ephys._01_preprocessing.task import (
+    AINDEPhysPreprocessingTask,
+    apply_steps,
+    bad_channel_labels,
+    clip,
+    estimate_motion,
+    split_concatenated,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting import task as sorting_task
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.kilosort4.blocks import (
+    Kilosort4DriftCorrection,
+    Kilosort4Templates,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.kilosort4.config import (
+    AINDEPhysSpikeSortingKilosort4SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.kilosort4.task import (
+    AINDEPhysSpikeSortingKilosort4Task,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.lupin.blocks import LupinPreprocessing
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.lupin.config import (
+    AINDEPhysSpikeSortingLupinSingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.lupin.task import (
+    AINDEPhysSpikeSortingLupinTask,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.blocks import (
+    CircusOmpMatching,
+    SpykingCircus2Clustering,
+    SpykingCircus2SpikeDetection,
+    WobbleMatching,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.config import (
+    AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.spykingcircus2.task import (
+    AINDEPhysSpikeSortingSpykingCircus2Task,
+)
+from obi_one.scientific.tasks.aind_ephys._02_spikesorting.task import (
+    SORTER_LOG_FILE_NAME,
+)
+from obi_one.scientific.tasks.aind_ephys.blocks import JobKwargs, MotionPreset
+from obi_one.scientific.tasks.aind_ephys.toy_recording import (
+    ELECTRICAL_SERIES_NAME,
+    write_toy_nwb,
+)
+from obi_one.scientific.tasks.aind_ephys.utils import (
+    ERROR_FILE_NAME,
+    dump_recording,
+    load_dumped_recording,
+    load_recording,
+    remove_outputs,
+    write_jobs,
+    write_skip,
+)
+
+FS = 30000.0
+SINGLE_JOB = JobKwargs(n_jobs=1)
+INFO = Info(campaign_name="Test campaign", campaign_description="Test campaign.")
+SERIES_PATH = f"acquisition/{ELECTRICAL_SERIES_NAME}"
+RECORDING_NAME = "rec"
+NUM_TOY_CHANNELS = 32
+RECORDING_KEY = f"block0_{SERIES_PATH.replace('/', '-')}_recording"
+
+
+@pytest.fixture(scope="module")
+def nwb_path(tmp_path_factory) -> Path:
+    path = tmp_path_factory.mktemp("aind_ephys_paths") / "toy.nwb"
+    write_toy_nwb(path)
+    return path
+
+
+def small_recording(durations=(2.0,), num_channels=4) -> si.BaseRecording:
+    return si.generate_recording(durations=list(durations), num_channels=num_channels, seed=0)
+
+
+def preprocessed_folder(root: Path, durations=(2.0,), num_channels=4) -> Path:
+    """A folder laid out as the preprocessing stage writes it, holding one recording."""
+    folder = root / "preprocessing"
+    binary = small_recording(durations, num_channels).save(
+        folder=folder / f"preprocessed_{RECORDING_NAME}"
+    )
+    dump_recording(binary, folder, f"binary_{RECORDING_NAME}", relative_to=folder)
+    return folder
+
+
+def fake_run_sorter(recording_durations=(2.0,)):
+    """Stands in for ``ss.run_sorter``: writes the sorter's log and returns a sorting."""
+
+    def run(_sorter_name, _recording, *, folder, **_params):
+        Path(folder).mkdir(parents=True)
+        (Path(folder) / SORTER_LOG_FILE_NAME).write_text("{}")
+        return si.generate_sorting(
+            num_units=2, durations=list(recording_durations), sampling_frequency=FS, seed=0
+        )
+
+    return run
+
+
+def preprocessing_form(root: Path, **kwargs) -> AINDEPhysPreprocessingSingleConfig:
+    form = AINDEPhysPreprocessingSingleConfig(
+        info=INFO,
+        **{
+            "job_kwargs": SINGLE_JOB,
+            "motion_correction": MotionCorrection(compute=False),
+            **kwargs,
+        },
+    )
+    form.coordinate_output_root = root
+    return form
+
+
+def sorting_form(
+    root: Path, config_class=AINDEPhysSpikeSortingSpykingCircus2SingleConfig, **initialize
+):
+    form = config_class(
+        info=INFO, initialize=config_class.Initialize(**initialize), job_kwargs=SINGLE_JOB
+    )
+    form.coordinate_output_root = root
+    return form
+
+
+def recording_with_time_diffs(diffs: np.ndarray) -> si.BaseRecording:
+    recording = si.NumpyRecording(
+        [np.zeros((len(diffs) + 1, 2), dtype="float32")], sampling_frequency=FS
+    )
+    recording.set_times(np.concatenate([[0.0], np.cumsum(diffs)]), with_warning=False)
+    return recording
+
+
+class TestChannelsToIgnore:
+    def test_the_options_are_the_keys_dispatch_understands(self, nwb_path):
+        with h5py.File(nwb_path, "r") as nwb:
+            options = read_channel_options(nwb)
+        recording = read_nwb_recordings(nwb_path, None, FS / 2)[RECORDING_KEY]
+
+        assert [option["value"] for option in options] == [
+            channel_key(ELECTRICAL_SERIES_NAME, channel_id) for channel_id in recording.channel_ids
+        ]
+
+    def test_a_chosen_channel_leaves_the_job(self, nwb_path):
+        with h5py.File(nwb_path, "r") as nwb:
+            first, second, *others = [option["value"] for option in read_channel_options(nwb)]
+
+        (job,) = dispatch_jobs(nwb_path, JobDispatch(), (first, second))
+        recording = si.load(job["recording_dict"], base_folder=Path(job["input_folder"]))
+
+        kept = [channel_key(ELECTRICAL_SERIES_NAME, c) for c in recording.channel_ids]
+        assert kept == others
+        assert recording.get_channel_locations().shape[0] == len(others)
+        assert recording.get_probe().get_contact_count() == len(others)
+
+    def test_a_channel_the_file_does_not_have_is_refused(self, nwb_path):
+        with pytest.raises(ValueError, match=r"does not have.*Other/1"):
+            read_nwb_recordings(nwb_path, None, FS / 2, ("Other/1",))
+
+    def test_a_series_with_every_channel_ignored_is_left_out(self, nwb_path):
+        with h5py.File(nwb_path, "r") as nwb:
+            every = tuple(option["value"] for option in read_channel_options(nwb))
+
+        with pytest.raises(ValueError, match="No raw recording"):
+            read_nwb_recordings(nwb_path, None, FS / 2, every)
+
+    def test_the_task_removes_them_before_any_step(self, nwb_path, tmp_path):
+        with h5py.File(nwb_path, "r") as nwb:
+            first = read_channel_options(nwb)[0]["value"]
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0, channels_to_ignore=(first,)
+            ),
+            motion_correction=MotionCorrection(compute=False),
+        )
+
+        folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        (record,) = folder.glob("data_process_preprocessing_*.json")
+        labels = json.loads(record.read_text())["outputs"]["channel_labels"]
+        assert len(labels) == NUM_TOY_CHANNELS - 1
+        (binary,) = folder.glob("binary_*.json")
+        channels = si.load(binary, base_folder=folder).channel_ids
+        assert first.rsplit("/", maxsplit=1)[-1] not in [str(c) for c in channels]
+
+
+class TestMotionCorrectionKwargs:
+    def test_unset_radii_leave_the_presets(self):
+        block = MotionCorrection()
+
+        assert "radius_um" not in block.detect_dict()
+        assert block.localize_dict() == {}
+
+    def test_set_radii_override_them(self):
+        block = MotionCorrection(detect_radius_um=30.0, localize_radius_um=40.0)
+
+        assert block.detect_dict()["radius_um"] == pytest.approx(30.0)
+        assert block.localize_dict() == {"radius_um": 40.0}
+
+    @pytest.mark.parametrize("preset", get_args(MotionPreset))
+    def test_the_detection_defaults_are_the_presets(self, preset):
+        ours = MotionCorrection(preset=preset).detect_dict()
+
+        assert ours.items() <= motion_options_preset[preset]["detect_kwargs"].items()
+
+    @pytest.mark.parametrize("preset", get_args(MotionPreset))
+    def test_the_estimation_defaults_are_the_presets(self, preset):
+        ours = MotionCorrection(preset=preset).estimate_motion_dict(probe_span_um=100.0)
+        theirs = motion_options_preset[preset]["estimate_motion_kwargs"]
+
+        assert ours["rigid"] == theirs["rigid"]
+        assert ours["direction"] == theirs.get("direction", "y")
+
+    def test_the_interpolation_defaults_are_spikeinterfaces(self):
+        parameters = inspect.signature(InterpolateMotionRecording.__init__).parameters
+
+        for name, value in MotionCorrection().interpolate_dict().items():
+            assert parameters[name].default == value
+
+    def test_the_explicit_kwargs_reach_the_motion_functions(self, nwb_path, tmp_path):
+        recording = si.load(
+            dispatch_jobs(nwb_path, JobDispatch())[0]["recording_dict"],
+            base_folder=nwb_path.parent,
+        )
+        block = MotionCorrection(
+            detect_threshold=5.0,
+            localize_radius_um=50.0,
+            direction="x",
+            apply=True,
+            border_mode="force_extrapolate",
+        )
+        # The real estimate segfaults under pytest on macOS, though not when the task runs alone.
+        motion = si.Motion(
+            displacement=np.zeros((10, 1)),
+            temporal_bins_s=np.arange(10) + 0.5,
+            spatial_bins_um=np.array([0.0]),
+        )
+
+        with patch.object(
+            preprocessing_task.spre, "compute_motion", return_value=motion
+        ) as compute:
+            corrected, notes = estimate_motion(recording, recording, block, tmp_path / "motion")
+
+        kwargs = compute.call_args.kwargs
+        assert not notes
+        assert kwargs["detect_kwargs"]["detect_threshold"] == pytest.approx(5.0)
+        assert kwargs["localize_peaks_kwargs"] == {"radius_um": 50.0}
+        assert kwargs["estimate_motion_kwargs"]["direction"] == "x"
+        assert corrected.get_num_channels() == recording.get_num_channels()
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="Segfaults under pytest on macOS.")
+    def test_the_explicit_kwargs_run_in_spikeinterface(self, nwb_path, tmp_path):
+        recording = si.load(
+            dispatch_jobs(nwb_path, JobDispatch())[0]["recording_dict"],
+            base_folder=nwb_path.parent,
+        )
+        block = MotionCorrection(
+            detect_threshold=5.0,
+            exclude_sweep_ms=0.5,
+            detect_radius_um=60.0,
+            localize_radius_um=50.0,
+            apply=True,
+            border_mode="force_extrapolate",
+        )
+
+        corrected, notes = estimate_motion(recording, recording, block, tmp_path / "motion")
+
+        assert not notes
+        assert corrected.get_num_channels() == recording.get_num_channels()
+
+
+class TestDispatch:
+    def test_series_below_the_sampling_frequency_are_not_dispatched(self, nwb_path):
+        with pytest.raises(ValueError, match="No raw recording"):
+            read_nwb_recordings(nwb_path, None, min_sampling_frequency=FS * 10)
+
+    def test_a_named_series_is_read(self, nwb_path):
+        recordings = read_nwb_recordings(nwb_path, SERIES_PATH, min_sampling_frequency=FS / 2)
+
+        assert list(recordings) == [f"block0_{SERIES_PATH.replace('/', '-')}_recording"]
+
+    def test_series_without_channel_locations_are_not_dispatched(self, nwb_path):
+        no_locations = si.NumpyRecording(
+            [np.zeros((10, 2), dtype="float32")], sampling_frequency=FS
+        )
+        with (
+            patch.object(dispatch_module.se, "read_nwb_recording", return_value=no_locations),
+            pytest.raises(ValueError, match="No raw recording"),
+        ):
+            read_nwb_recordings(nwb_path, SERIES_PATH, min_sampling_frequency=FS / 2)
+
+    def test_the_readers_probe_is_kept_when_the_groups_name_no_device(self, nwb_path):
+        recording = small_recording()
+        recording.set_channel_groups(np.full(recording.get_num_channels(), "unknown", dtype=object))
+        probe = recording.get_probe()
+
+        set_probe_from_electrode_groups(nwb_path, recording)
+
+        assert recording.get_probe().name == probe.name
+
+    @pytest.mark.parametrize(
+        ("index_and_diff", "reason"),
+        [
+            (None, None),
+            ((range(20), -0.001), "below"),
+            ((range(1), 0.005), "timestamp diff of"),
+            ((range(200), 0.0), "zero timestamp diffs"),
+        ],
+    )
+    def test_timestamps_problem(self, index_and_diff, reason):
+        diffs = np.full(2999, 1 / FS)
+        if index_and_diff is not None:
+            indices, diff = index_and_diff
+            diffs[list(indices)] = diff
+
+        problem = timestamps_problem(recording_with_time_diffs(diffs))
+
+        assert problem is None if reason is None else reason in problem
+
+    def test_clip_segments_keeps_each_segments_start(self):
+        clipped = clip_segments(small_recording(durations=(2.0, 1.0)), duration_s=1.5)
+
+        assert [clipped.get_num_samples(i) for i in range(2)] == [
+            int(1.5 * clipped.sampling_frequency),
+            int(1.0 * clipped.sampling_frequency),
+        ]
+
+    def test_debug_clips_each_job(self, nwb_path):
+        (job,) = dispatch_jobs(nwb_path, JobDispatch(debug=True, debug_duration=2.0))
+
+        assert job["debug"] is True
+        assert job["duration"] == pytest.approx(2.0)
+
+    def test_recordings_below_the_minimum_duration_are_not_dispatched(self, nwb_path):
+        with pytest.raises(ValueError, match="too short"):
+            dispatch_jobs(nwb_path, JobDispatch(min_recording_duration=1000.0))
+
+    def test_recordings_with_bad_timestamps_are_flagged(self, nwb_path):
+        with patch.object(dispatch_module, "timestamps_problem", return_value="bad"):
+            (job,) = dispatch_jobs(nwb_path, JobDispatch())
+
+        assert job["skip_times"] is True
+
+    def test_groups_and_segments_split_into_jobs(self, nwb_path):
+        recording = small_recording(durations=(1.0, 1.0), num_channels=4)
+        recording.set_channel_groups([0, 0, 1, 1])
+
+        with patch.object(
+            dispatch_module, "read_nwb_recordings", return_value={RECORDING_NAME: recording}
+        ):
+            names = [job["recording_name"] for job in dispatch_jobs(nwb_path, JobDispatch())]
+            unsplit = dispatch_jobs(nwb_path, JobDispatch(split_segments=False, split_groups=False))
+
+        assert names == [
+            f"{RECORDING_NAME}{segment}_group{group}" for segment in (1, 2) for group in (0, 1)
+        ]
+        assert [job["recording_name"] for job in unsplit] == [RECORDING_NAME]
+
+
+class TestPreprocessingHelpers:
+    def test_clip_without_bounds_returns_the_recording(self):
+        recording = small_recording()
+
+        assert clip(recording, None, None) is recording
+
+    def test_clip_keeps_the_window(self):
+        clipped = clip(small_recording(), 0.5, 1.5)
+
+        assert clipped.get_total_duration() == pytest.approx(1.0, abs=2 / FS)
+
+    def test_clip_leaves_multi_segment_recordings_whole(self):
+        recording = small_recording(durations=(1.0, 1.0))
+
+        assert clip(recording, 0.5, None) is recording
+
+    def test_apply_steps_drops_the_last_step_after_a_failure(self):
+        steps = {"highpass_filter": {"freq_min": 300.0}, "not_a_step": {}}
+
+        processed, notes = apply_steps(small_recording(), steps)
+
+        assert processed is not None
+        assert "Dropped not_a_step" in notes
+        assert "not_a_step" in steps
+
+    def test_apply_steps_gives_up_when_every_step_fails(self):
+        processed, notes = apply_steps(small_recording(), {"not_a_step": {}})
+
+        assert processed is None
+        assert "Dropped not_a_step" in notes
+
+    def test_bad_channel_labels_without_the_step(self):
+        assert bad_channel_labels(small_recording()) is None
+
+    def test_bad_channel_labels_are_read_from_the_chain(self):
+        recording = small_recording(num_channels=8)
+        processed = si.preprocessing.detect_and_remove_bad_channels(recording, method="std")
+
+        assert len(bad_channel_labels(processed)) == recording.get_num_channels()
+
+    def test_split_concatenated_restores_the_segments(self):
+        recording = small_recording(durations=(1.0, 2.0))
+        lengths = [recording.get_num_samples(i) for i in range(2)]
+
+        split = split_concatenated(si.concatenate_recordings([recording]), lengths)
+
+        assert [split.get_num_samples(i) for i in range(2)] == lengths
+
+    def test_the_pipeline_follows_the_chosen_blocks(self):
+        form = AINDEPhysPreprocessingSingleConfig(
+            info=INFO,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(nwb_path=Path("toy.nwb")),
+            temporal_filter=BandpassFilterParams(),
+            denoising=HighpassSpatialFilter(),
+        )
+
+        steps = form.preprocessing_pipeline(has_inter_sample_shift=True)
+
+        assert list(steps) == [
+            "phase_shift",
+            "bandpass_filter",
+            "detect_and_remove_bad_channels",
+            "highpass_spatial_filter",
+        ]
+
+    def test_motion_windows_scale_with_the_probe_span(self):
+        scaled = MotionCorrection(win_step_norm=0.1, win_scale_norm=0.2).estimate_motion_dict(
+            1000.0
+        )
+        rigid = MotionCorrection(win_step_norm=None, win_scale_norm=None).estimate_motion_dict(
+            1000.0
+        )
+
+        assert scaled["win_step_um"] == pytest.approx(100.0)
+        assert scaled["win_scale_um"] == pytest.approx(200.0)
+        assert "win_step_um" not in rigid
+
+    def test_job_kwargs_pass_on_the_multiprocessing_context(self):
+        assert JobKwargs(mp_context="spawn").to_dict()["mp_context"] == "spawn"
+        assert "mp_context" not in JobKwargs().to_dict()
+
+
+class TestPreprocessingTask:
+    def test_too_many_removed_channels_skip_the_recording(self, nwb_path, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0, max_bad_channel_fraction=0.0
+            ),
+        )
+
+        folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        (skipped,) = folder.glob("preprocessed_*")
+        assert "Too many bad channels" in (skipped / ERROR_FILE_NAME).read_text()
+
+    def test_failing_every_step_skips_the_recording(self, nwb_path, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0
+            ),
+        )
+
+        with patch.object(preprocessing_task, "apply_steps", return_value=(None, "- Failed.\n")):
+            folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        (skipped,) = folder.glob("preprocessed_*")
+        assert "Every preprocessing step failed" in (skipped / ERROR_FILE_NAME).read_text()
+
+    def test_motion_is_estimated_and_applied(self, nwb_path, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0
+            ),
+            motion_correction=MotionCorrection(apply=True),
+        )
+        # The real estimate segfaults under pytest on macOS, though not when the task runs alone.
+        motion = si.Motion(
+            displacement=np.zeros((10, 1)),
+            temporal_bins_s=np.arange(10) + 0.5,
+            spatial_bins_um=np.array([0.0]),
+        )
+
+        with patch.object(
+            preprocessing_task.spre, "compute_motion", return_value=motion
+        ) as compute:
+            folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        assert compute.call_args.kwargs["preset"] == form.motion_correction.preset
+        assert list(folder.glob("motioncorrected_*"))
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="Segfaults under pytest on macOS.")
+    def test_the_default_preset_runs_in_the_launch_jobs_packages(self, nwb_path, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0
+            ),
+            motion_correction=MotionCorrection(),
+        )
+
+        folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        (record,) = folder.glob("data_process_preprocessing_*.json")
+        assert not json.loads(record.read_text())["notes"]
+        assert list(folder.glob("motion_*/motion/displacement_seg0.npy"))
+
+    @pytest.mark.parametrize("preset", get_args(MotionPreset))
+    def test_the_offered_presets_do_not_need_torch(self, preset):
+        assert "dredge" not in motion_options_preset[preset]["estimate_motion_kwargs"]["method"]
+
+    def test_a_failed_motion_estimate_is_noted(self, nwb_path, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                nwb_path=nwb_path, min_preprocessing_duration=0.0
+            ),
+            motion_correction=MotionCorrection(apply=True),
+        )
+
+        with patch.object(preprocessing_task.spre, "compute_motion", return_value=None):
+            folder = AINDEPhysPreprocessingTask(config=form).execute()
+
+        (record,) = folder.glob("data_process_preprocessing_*.json")
+        assert "Motion estimation failed" in json.loads(record.read_text())["notes"]
+        assert not list(folder.glob("motioncorrected_*"))
+
+    def test_a_recording_entity_needs_a_db_client(self, tmp_path):
+        form = preprocessing_form(
+            tmp_path,
+            initialize=AINDEPhysPreprocessingSingleConfig.Initialize(
+                recording=ExtracellularRecordingFromID(id_str=str(uuid.uuid4()))
+            ),
+        )
+
+        with pytest.raises(ValueError, match="db_client"):
+            AINDEPhysPreprocessingTask(config=form).execute()
+
+
+class TestSortingTask:
+    def test_an_empty_input_folder_is_an_error(self, tmp_path):
+        form = sorting_form(tmp_path / "sorting", preprocessing_output_path=tmp_path)
+
+        with pytest.raises(FileNotFoundError, match="preprocessed_"):
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+    def test_recordings_preprocessing_skipped_are_skipped(self, tmp_path):
+        write_skip(tmp_path / f"preprocessed_{RECORDING_NAME}", "Too short")
+        form = sorting_form(tmp_path / "sorting", preprocessing_output_path=tmp_path)
+
+        folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        skip = folder / f"spikesorted_{RECORDING_NAME}" / ERROR_FILE_NAME
+        assert "Preprocessing skipped" in skip.read_text()
+
+    def test_a_failed_sorting_stops_the_task_by_default(self, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting", preprocessing_output_path=preprocessed_folder(tmp_path)
+        )
+
+        with (
+            patch.object(sorting_task.ss, "run_sorter", side_effect=RuntimeError("no sorter")),
+            pytest.raises(RuntimeError, match="no sorter"),
+        ):
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+    def test_a_failed_sorting_can_skip_the_recording(self, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+            raise_if_fails=False,
+        )
+
+        def fail(_sorter_name, _recording, *, folder, **_params):
+            Path(folder).mkdir(parents=True)
+            (Path(folder) / SORTER_LOG_FILE_NAME).write_text("{}")
+            msg = "no sorter"
+            raise RuntimeError(msg)
+
+        with patch.object(sorting_task.ss, "run_sorter", side_effect=fail):
+            folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        sorted_folder = folder / f"spikesorted_{RECORDING_NAME}"
+        assert "spykingcircus2 failed" in (sorted_folder / ERROR_FILE_NAME).read_text()
+        assert (sorted_folder / SORTER_LOG_FILE_NAME).exists()
+
+    def test_motion_correction_can_be_turned_off(self, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+            skip_motion_correction=True,
+            min_drift_channels=0,
+        )
+
+        with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()) as run:
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        assert run.call_args.kwargs["apply_motion_correction"] is False
+
+    def test_segments_are_sorted_together_and_split_back(self, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            preprocessing_output_path=preprocessed_folder(tmp_path, durations=(1.0, 1.0)),
+        )
+
+        with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()):
+            folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        sorting = si.load(folder / f"spikesorted_{RECORDING_NAME}")
+        assert sorting.get_num_segments() == 2
+
+    @pytest.mark.parametrize(
+        ("do_correction", "saved"),
+        [(True, True), (False, False)],
+    )
+    def test_kilosorts_motion_estimate_is_saved(self, do_correction, saved, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            config_class=AINDEPhysSpikeSortingKilosort4SingleConfig,
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+            min_drift_channels=0,
+        )
+        form.drift_correction = Kilosort4DriftCorrection(do_correction=do_correction)
+        motion = MagicMock()
+
+        with (
+            patch.object(sorting_task.ss, "get_default_sorter_params", return_value={}),
+            patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()),
+            patch.object(AINDEPhysSpikeSortingKilosort4Task, "sorter_motion", return_value=motion),
+        ):
+            folder = AINDEPhysSpikeSortingKilosort4Task(config=form).execute()
+
+        assert motion.save.called is saved
+        if saved:
+            motion.save.assert_called_once_with(folder / f"spikesortedmotion_{RECORDING_NAME}")
+
+    def test_other_sorters_leave_no_motion_to_save(self, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+            min_drift_channels=0,
+        )
+
+        with patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()):
+            folder = AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        assert not list(folder.glob("spikesortedmotion_*"))
+
+    def test_without_an_input_a_toy_recording_is_sorted(self, tmp_path):
+        form = sorting_form(tmp_path / "sorting")
+
+        with patch.object(
+            AINDEPhysSpikeSortingSpykingCircus2Task, "sort", return_value=None
+        ) as sort:
+            AINDEPhysSpikeSortingSpykingCircus2Task(config=form).execute()
+
+        source, name, _output = sort.call_args.args
+        assert source.is_relative_to(tmp_path / "sorting" / "toy_input")
+        assert (source / f"preprocessed_{name}").is_dir()
+
+    def test_kilosorts_motion_is_read_from_its_ops(self, tmp_path):
+        ops = {
+            "dshift": np.zeros((10, 3)),
+            "batch_size": 6000,
+            "fs": FS,
+            "yblk": np.array([0.0, 100.0, 200.0]),
+        }
+        np.save(tmp_path / "ops.npy", ops, allow_pickle=True)
+
+        motion = AINDEPhysSpikeSortingKilosort4Task.sorter_motion(tmp_path, small_recording())
+
+        assert motion.displacement[0].shape == (10, 3)
+        assert motion.temporal_bins_s[0][0] == pytest.approx(0.1)
+        assert motion.temporal_bins_s[0][-1] < 2.0
+
+    @pytest.mark.parametrize(
+        ("config_class", "sorter_name"),
+        [
+            (AINDEPhysSpikeSortingKilosort4SingleConfig, "kilosort4"),
+            (AINDEPhysSpikeSortingSpykingCircus2SingleConfig, "spykingcircus2"),
+            (AINDEPhysSpikeSortingLupinSingleConfig, "lupin"),
+        ],
+    )
+    def test_sorters_only_set_parameters_spikeinterface_knows(self, config_class, sorter_name):
+        if sorter_name == "kilosort4":
+            # spikeinterface reads these parameters from the package, an optional extra.
+            pytest.importorskip("kilosort")
+        form = config_class(info=INFO)
+        defaults = ss.get_default_sorter_params(sorter_name)
+
+        assert form.sorter_name == sorter_name
+        assert form.motion_correction_parameter in defaults
+        assert set(form.sorter_parameters()) <= set(defaults)
+
+    def test_the_blocks_of_a_sorter_merge_into_its_nested_parameters(self):
+        form = AINDEPhysSpikeSortingSpykingCircus2SingleConfig(
+            info=INFO,
+            spike_detection=SpykingCircus2SpikeDetection(detect_threshold=6.0, peak_sign="pos"),
+        )
+
+        parameters = form.sorter_parameters()
+
+        assert parameters["detection"] == {
+            "method": "matched_filtering",
+            "method_kwargs": {"peak_sign": "pos", "detect_threshold": 6.0},
+        }
+        assert parameters["general"] == {"radius_um": 100.0, "ms_before": 0.5, "ms_after": 1.5}
+        assert parameters["motion_correction"] == {"preset": "nonrigid_fast_and_accurate"}
+        assert parameters["apply_preprocessing"] is False
+        assert "type" not in parameters
+
+    @pytest.mark.parametrize(
+        ("config_class", "sorter_name", "left_to_the_platform"),
+        [
+            (
+                AINDEPhysSpikeSortingKilosort4SingleConfig,
+                "kilosort4",
+                {"pool_engine", "n_jobs", "chunk_duration", "progress_bar", "mp_context"}
+                | {"max_threads_per_worker"}
+                # The preprocessing stage has already removed the channels to ignore.
+                | {"bad_channels"},
+            ),
+            (
+                AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+                "spykingcircus2",
+                # spikeinterface passes the other selection and clustering methods too little to
+                # run, and reads ``matching_kwargs`` instead of ``method_kwargs``. The fields fill
+                # ``clustering.method_kwargs``, which is empty by default, key by key.
+                {"job_kwargs", "debug", "chunk_preprocessing.memory_limit"}
+                | {"cache_preprocessing.memory_limit", "selection.method", "clustering.method"}
+                | {"detection.pipeline_kwargs", "matching.pipeline_kwargs"}
+                | {"matching.method_kwargs", "clustering.method_kwargs"},
+            ),
+            (
+                AINDEPhysSpikeSortingLupinSingleConfig,
+                "lupin",
+                {"job_kwargs", "debug", "gather_mode", "save_array"},
+            ),
+        ],
+    )
+    def test_every_other_parameter_of_a_sorter_is_a_field(
+        self, config_class, sorter_name, left_to_the_platform
+    ):
+        if sorter_name == "kilosort4":
+            pytest.importorskip("kilosort")
+
+        def names(parameters, prefix=""):
+            found = set()
+            for key, value in parameters.items():
+                if isinstance(value, dict) and value:
+                    found |= names(value, f"{prefix}{key}.")
+                else:
+                    found.add(f"{prefix}{key}")
+            return found
+
+        ours = names(config_class(info=INFO).sorter_parameters())
+
+        assert names(ss.get_default_sorter_params(sorter_name)) - ours == left_to_the_platform
+
+    def test_kilosorts_drift_smoothing_is_one_parameter(self):
+        parameters = Kilosort4DriftCorrection(drift_smoothing_time=2.0).to_dict()
+
+        assert parameters["drift_smoothing"] == (0.5, 2.0, 0.5)
+        assert "drift_smoothing_time" not in parameters
+
+    def test_lupin_filters_internally_on_request(self):
+        assert LupinPreprocessing(filter_internally=True).to_dict()["preprocessing_dict"] is None
+        assert LupinPreprocessing().to_dict()["preprocessing_dict"] == {}
+
+    def test_kilosort_works_out_its_lateral_centres_at_zero(self):
+        assert Kilosort4Templates().to_dict()["x_centers"] is None
+        assert Kilosort4Templates(x_centers=4).to_dict()["x_centers"] == 4
+
+    def test_the_circus_clustering_is_given_its_split_whole(self):
+        kwargs = SpykingCircus2Clustering(min_cluster_size=30).to_dict()["clustering"][
+            "method_kwargs"
+        ]
+        defaults = IterativeHDBSCANClustering._default_params
+
+        assert kwargs["split"]["method_kwargs"]["clusterer"]["min_cluster_size"] == 30
+        assert kwargs["split"]["method_kwargs"]["clusterer"]["method"] == "hdbscan"
+        assert set(kwargs["split"]) == set(defaults["split"])
+        assert kwargs["merge_from_templates"].keys() == defaults["merge_from_templates"].keys()
+
+    def test_the_circus_clustering_defaults_are_spikeinterfaces(self):
+        kwargs = SpykingCircus2Clustering().to_dict()["clustering"]["method_kwargs"]
+        defaults = IterativeHDBSCANClustering._default_params
+
+        assert kwargs["split"] == defaults["split"]
+        assert kwargs["merge_from_templates"] == defaults["merge_from_templates"]
+
+    def test_circus_omp_has_no_amplitude_limit_by_default(self):
+        kwargs = CircusOmpMatching().to_dict()["matching"]["matching_kwargs"]
+
+        assert kwargs["amplitudes"] == [0.6, math.inf]
+        assert CircusOmpMatching(max_amplitude=2.0).to_dict()["matching"]["matching_kwargs"][
+            "amplitudes"
+        ] == [0.6, 2.0]
+
+    def test_wobble_is_given_its_parameters(self):
+        matching = WobbleMatching(threshold=30.0).to_dict()["matching"]
+
+        assert matching["method"] == "wobble"
+        parameters = WobbleParameters(**matching["matching_kwargs"]["parameters"])
+        assert parameters.threshold == pytest.approx(30.0)
+
+    @pytest.mark.parametrize(
+        ("block", "expected"),
+        [(CircusOmpMatching(), "circus-omp"), (WobbleMatching(), "wobble")],
+    )
+    def test_the_circus_config_runs_the_chosen_matching(self, block, expected):
+        form = AINDEPhysSpikeSortingSpykingCircus2SingleConfig(info=INFO, matching=block)
+
+        assert form.sorter_parameters()["matching"]["method"] == expected
+
+    def test_lupin_keeps_its_empty_preprocessing_dict(self):
+        assert (
+            AINDEPhysSpikeSortingLupinSingleConfig(info=INFO).sorter_parameters()[
+                "preprocessing_dict"
+            ]
+            == {}
+        )
+
+    @pytest.mark.parametrize(
+        ("config_class", "task_class"),
+        [
+            (AINDEPhysSpikeSortingKilosort4SingleConfig, AINDEPhysSpikeSortingKilosort4Task),
+            (
+                AINDEPhysSpikeSortingSpykingCircus2SingleConfig,
+                AINDEPhysSpikeSortingSpykingCircus2Task,
+            ),
+            (AINDEPhysSpikeSortingLupinSingleConfig, AINDEPhysSpikeSortingLupinTask),
+        ],
+    )
+    def test_each_sorter_runs_as_its_own_task(self, config_class, task_class, tmp_path):
+        form = sorting_form(
+            tmp_path / "sorting",
+            config_class=config_class,
+            preprocessing_output_path=preprocessed_folder(tmp_path),
+        )
+
+        with (
+            patch.object(sorting_task.ss, "get_default_sorter_params", return_value={}),
+            patch.object(sorting_task.ss, "run_sorter", side_effect=fake_run_sorter()) as run,
+        ):
+            task_class(config=form).execute()
+
+        assert run.call_args.args[0] == config_class.sorter_name
+
+    def test_a_task_refuses_the_config_of_another_sorter(self):
+        with pytest.raises(ValidationError):
+            AINDEPhysSpikeSortingLupinTask(
+                config=AINDEPhysSpikeSortingSpykingCircus2SingleConfig(info=INFO)
+            )
+
+
+class TestUtils:
+    def test_each_job_is_a_file_of_its_index(self, tmp_path):
+        jobs = [{"index": index} for index in range(12)]
+
+        paths = write_jobs(jobs, tmp_path)
+
+        assert [path.name for path in paths] == [f"job_{index}.json" for index in range(12)]
+        assert [json.loads(path.read_text()) for path in paths] == jobs
+
+    def test_a_recording_that_is_not_json_able_is_pickled(self, tmp_path):
+        binary = small_recording().save(folder=tmp_path / "binary")
+
+        with patch.object(
+            type(binary), "check_serializability", side_effect=lambda kind: kind != "json"
+        ):
+            path = dump_recording(binary, tmp_path, "dump", relative_to=tmp_path)
+
+        assert path.suffix == ".pkl"
+        assert load_dumped_recording(tmp_path, "dump").get_num_channels() == 4
+
+    def test_a_missing_dump_is_an_error(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="missing"):
+            load_dumped_recording(tmp_path, "missing")
+
+    def test_loading_the_wrong_kind_of_object_is_an_error(self, tmp_path):
+        sorting_folder = tmp_path / "sorting"
+        si.generate_sorting(num_units=2, durations=[1.0], seed=0).save(folder=sorting_folder)
+
+        with pytest.raises(TypeError, match="Expected a recording"):
+            load_recording(sorting_folder)
+
+    def test_remove_outputs_takes_files_and_folders(self, tmp_path):
+        file = tmp_path / "file"
+        file.write_text("")
+        folder = tmp_path / "folder"
+        folder.mkdir()
+
+        remove_outputs(file, folder, tmp_path / "absent")
+
+        assert not file.exists()
+        assert not folder.exists()

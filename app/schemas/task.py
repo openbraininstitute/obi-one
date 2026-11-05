@@ -103,11 +103,8 @@ class TaskLaunchInfo(TaskLaunchSubmit):
     job_id: UUID
 
 
-class TaskAccountingCreate(Schema):
+class TaskAccountingCreate(TaskLaunchSubmit):
     """Request model for task cost estimate."""
-
-    task_type: TaskType
-    config_id: UUID
 
 
 class TaskAccountingInfo(TaskAccountingCreate):

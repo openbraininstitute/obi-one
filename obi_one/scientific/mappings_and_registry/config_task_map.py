@@ -23,6 +23,7 @@ _TASKS = "obi_one.scientific.tasks"
 _NEURON_CONFIG = f"{_TASKS}.generate_simulations.config.neuron"
 _SIMULATION_EXECUTION = f"{_TASKS}.simulation_execution.neuron"
 _EMODEL_BUILDING = f"{_TASKS}.emodel_building"
+_AIND_EPHYS = f"{_TASKS}.aind_ephys"
 _GENERATE_SIMULATION_TASK_REF = (
     f"{_TASKS}.generate_simulations.task.task",
     "GenerateSimulationTask",
@@ -394,6 +395,87 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             TaskActivityType.optimized_emodel_analysis_validation__execution
         ),
         requires_package="bluepyemodel",
+    ),
+    TaskType.aind_ephys_preprocessing: TaskSpec(
+        task_ref=(f"{_AIND_EPHYS}._01_preprocessing.task", "AINDEPhysPreprocessingTask"),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._01_preprocessing.config",
+            "AINDEPhysPreprocessingSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._01_preprocessing.config",
+            "AINDEPhysPreprocessingScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.aind_ephys_preprocessing__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.aind_ephys_preprocessing__config_generation
+        ),
+        single_task_config_type=TaskConfigType.aind_ephys_preprocessing__config,
+        single_task_activity_type=TaskActivityType.aind_ephys_preprocessing__execution,
+    ),
+    TaskType.aind_ephys_spikesorting_kilosort4: TaskSpec(
+        task_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.kilosort4.task",
+            "AINDEPhysSpikeSortingKilosort4Task",
+        ),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.kilosort4.config",
+            "AINDEPhysSpikeSortingKilosort4SingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.kilosort4.config",
+            "AINDEPhysSpikeSortingKilosort4ScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.aind_ephys_spikesorting__config_generation
+        ),
+        single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
+        single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
+    ),
+    TaskType.aind_ephys_spikesorting_spykingcircus2: TaskSpec(
+        task_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.spykingcircus2.task",
+            "AINDEPhysSpikeSortingSpykingCircus2Task",
+        ),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.spykingcircus2.config",
+            "AINDEPhysSpikeSortingSpykingCircus2SingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.spykingcircus2.config",
+            "AINDEPhysSpikeSortingSpykingCircus2ScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.aind_ephys_spikesorting__config_generation
+        ),
+        single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
+        single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
+    ),
+    TaskType.aind_ephys_spikesorting_lupin: TaskSpec(
+        task_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.lupin.task",
+            "AINDEPhysSpikeSortingLupinTask",
+        ),
+        single_config_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.lupin.config",
+            "AINDEPhysSpikeSortingLupinSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_AIND_EPHYS}._02_spikesorting.lupin.config",
+            "AINDEPhysSpikeSortingLupinScanConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        campaign_task_config_type=TaskConfigType.aind_ephys_spikesorting__campaign,
+        campaign_generation_task_activity_type=(
+            TaskActivityType.aind_ephys_spikesorting__config_generation
+        ),
+        single_task_config_type=TaskConfigType.aind_ephys_spikesorting__config,
+        single_task_activity_type=TaskActivityType.aind_ephys_spikesorting__execution,
     ),
 }
 

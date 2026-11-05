@@ -1,0 +1,10 @@
+{
+  "default": [],
+  "description": "Channels removed before any processing.",
+  "items": { "type": "string" },
+  "property": "Channels",
+  "property_group": "ExtracellularRecording",
+  "title": "Channels to ignore",
+  "type": "array",
+  "ui_element": "entity_property_multi_select"
+}
