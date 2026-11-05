@@ -88,6 +88,17 @@ def _run_simulation(
     return sim_config, net
 
 
+def test_closed_loop_configs_are_refused(tmp_path):
+    config = {
+        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "target_simulator": "Brian2",
+        "network": str(DATA / "circuit_config.json"),
+        "neuromechfly": {},
+    }
+    with pytest.raises(ValueError, match="circuit_simulation_neuromechfly_machine"):
+        _run_simulation(tmp_path, config)
+
+
 def test_no_stim_or_report(tmp_path):
     config = {
         "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},

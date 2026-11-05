@@ -36,6 +36,9 @@ from app.schemas.task import (
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.library.simulation.neuromechfly.config import (
+    SECTION as NEUROMECHFLY_SECTION,
+)
 
 
 def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
@@ -94,7 +97,10 @@ def submit_task_job(
     all_callbacks = [failure_callback, *callbacks]
 
     match task_definition.task_type:
-        case TaskType.circuit_simulation_brian2_machine:
+        case (
+            TaskType.circuit_simulation_brian2_machine
+            | TaskType.circuit_simulation_neuromechfly_machine
+        ):
             executor_type = ExecutorType.single_node_job
             job_data = _brian2_job_data(
                 simulation_id=config_id,
@@ -476,7 +482,10 @@ def select_simulation_task(
     msg = f"Circuit scale: {circuit.scale}"
     L.info(msg)
 
+    closed_loop = NEUROMECHFLY_SECTION in json.loads(simulation_config_content)
     match target_simulator:
+        case TargetSimulator.Brian2 if closed_loop:
+            return TaskType.circuit_simulation_neuromechfly_machine
         case TargetSimulator.Brian2:
             return TaskType.circuit_simulation_brian2_machine
         case TargetSimulator.LearningEngine:

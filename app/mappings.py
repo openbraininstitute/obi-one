@@ -148,6 +148,29 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_neuromechfly_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=PythonRepositoryCode(
+            location=settings.OBI_ONE_REPO,
+            ref=release_tag_ref(settings.APP_VERSION),
+            path="obi_one/scientific/library/simulation/neuromechfly/simulate_neuromechfly.py",
+            dependencies="launch_scripts/launch_neuromechfly_simulation/dependencies/default.txt",
+            staged_directories=[],
+        ),
+        # Minnick et al. (2026) ran each closed-loop run of BANC on 2 cores and 12 GiB.
+        resources=MachineResources(
+            cores=2,
+            memory=16,
+            timelimit="04:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neuron,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,

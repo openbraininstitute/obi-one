@@ -29,6 +29,9 @@ from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization import (
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationScanConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_neuromechfly import (
+    Brian2NeuroMechFlySimulationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
     LearningEngineCircuitSimulationScanConfig,
 )
@@ -151,6 +154,7 @@ def activate_scan_config_endpoints() -> None:
     scan_configs: list[tuple[type[ScanConfig], str, str, bool]] = [
         (CircuitSimulationScanConfig, "generate", "", True),
         (Brian2CircuitSimulationScanConfig, "generate", "", True),
+        (Brian2NeuroMechFlySimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
         (MorphologyMetricsScanConfig, "run", "", True),

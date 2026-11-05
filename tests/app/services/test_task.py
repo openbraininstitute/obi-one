@@ -1014,10 +1014,12 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
         ("Brian2", "small", TaskType.circuit_simulation_brian2_machine),
     ],
 )
+@pytest.mark.parametrize("config", [{}])
 def test_select_simulation_task(
     target_simulator_name,
     circuit_scale,
     expected_task,
+    config,
 ):
     db_client = Mock()
     config_id = uuid4()
@@ -1031,7 +1033,7 @@ def test_select_simulation_task(
     db_client.get_entity.side_effect = [simulation, circuit]
 
     with (
-        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(test_module.db_sdk, "select_asset_content", return_value=json.dumps(config)),
         patch.object(
             test_module.libsonata,
             "SimulationConfig",
@@ -1049,6 +1051,13 @@ def test_select_simulation_task(
     assert task_type == expected_task
 
 
+def test_select_simulation_task_closed_loop():
+    """A Brian2 config with a `neuromechfly` section runs as a closed-loop job."""
+    test_select_simulation_task(
+        "Brian2", "small", TaskType.circuit_simulation_neuromechfly_machine, {"neuromechfly": {}}
+    )
+
+
 def test_select_simulation_task_falls_back_to_circuit_target_simulator():
     db_client = Mock()
     config_id = uuid4()
@@ -1064,7 +1073,7 @@ def test_select_simulation_task_falls_back_to_circuit_target_simulator():
     unspecified = libsonata.SimulationConfig.SimulatorType.UNSPECIFIED
 
     with (
-        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="{}"),
         patch.object(test_module.libsonata, "SimulationConfig") as mock_sim_config,
     ):
         mock_sim_config.return_value = SimpleNamespace(target_simulator=unspecified)
@@ -1091,7 +1100,7 @@ def test_select_simulation_task_raises_for_unsupported_target_simulator():
     db_client.get_entity.side_effect = [simulation, circuit]
 
     with (
-        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="{}"),
         patch.object(
             test_module.libsonata,
             "SimulationConfig",
@@ -1116,7 +1125,7 @@ def test_select_simulation_task_raises_api_error_for_invalid_config_format():
     sonata_error = test_module.libsonata.SonataError("invalid simulation config")
 
     with (
-        patch.object(test_module.db_sdk, "select_asset_content", return_value="config_json"),
+        patch.object(test_module.db_sdk, "select_asset_content", return_value="{}"),
         patch.object(test_module.libsonata, "SimulationConfig", side_effect=sonata_error),
         pytest.raises(ApiError) as exc_info,
     ):
