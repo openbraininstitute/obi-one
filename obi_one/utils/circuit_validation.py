@@ -6,8 +6,11 @@ from pathlib import Path
 import bluepysnap.circuit_validation as snap_circuit_validation
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_constants import SYNAPSE_PHYSIOLOGY_PROPERTIES
-from obi_one.utils.circuit import has_synapse_physiology
+from obi_one.scientific.library.circuit_constants import (
+    ELECTRICAL_MODEL_NODE_PROPERTIES,
+    SYNAPSE_PHYSIOLOGY_PROPERTIES,
+)
+from obi_one.utils.circuit import has_electrical_cell_models, has_synapse_physiology
 
 L = logging.getLogger(__name__)
 
@@ -23,21 +26,28 @@ IGNORE_EDGE_PROPERTIES: list[str] = [
 ]
 
 
-def _is_structural_only(circuit_path: str | Path) -> bool:
-    """Return True if the circuit is readable and has no synapse physiology properties.
+def _structural_ignore_properties(circuit_path: str | Path) -> tuple[list[str], list[str]]:
+    """Return (edge, node) property lists to ignore based on what the circuit lacks.
 
-    Falls back to False (strict validation) if the circuit cannot be opened, so that SNAP
-    reports the underlying problem instead of it being masked.
+    Synapse physiology properties are ignored when no edge population has them; electrical
+    cell model properties are ignored when no node population has an e-model. Falls back to
+    strict validation (ignore nothing) if the circuit cannot be opened, so that SNAP reports
+    the underlying problem instead of it being masked.
     """
     try:
-        return not has_synapse_physiology(Circuit(name="validation", path=str(circuit_path)))
+        c = Circuit(name="validation", path=str(circuit_path))
+        ignore_edge = [] if has_synapse_physiology(c) else list(SYNAPSE_PHYSIOLOGY_PROPERTIES)
+        ignore_node = (
+            [] if has_electrical_cell_models(c) else list(ELECTRICAL_MODEL_NODE_PROPERTIES)
+        )
     except Exception as e:  # ruff: ignore[blind-except]
         L.warning(
-            "Could not open %s to check for synapse physiology (%s); validating strictly",
+            "Could not open %s to check circuit properties (%s); validating strictly",
             circuit_path,
             e,
         )
-        return False
+        return [], []
+    return ignore_edge, ignore_node
 
 
 def run_validation(
@@ -48,9 +58,11 @@ def run_validation(
     """Run SONATA circuit validation with OBI-specific ignore rules.
 
     Wraps ``bluepysnap.circuit_validation.validate`` and always applies
-    ``IGNORE_EDGE_PROPERTIES``. For structural-only circuits (no synapse physiology),
-    ``SYNAPSE_PHYSIOLOGY_PROPERTIES`` are ignored as well. Unlike calling SNAP directly with
-    ``only_errors=True``, this collects both FATAL errors and WARNINGs.
+    ``IGNORE_EDGE_PROPERTIES``. For structural circuits, missing properties expected only on
+    parameterized circuits are ignored: ``SYNAPSE_PHYSIOLOGY_PROPERTIES`` when there is no
+    synapse physiology, and ``ELECTRICAL_MODEL_NODE_PROPERTIES`` when there are no electrical
+    cell models. Unlike calling SNAP directly with ``only_errors=True``, this collects both
+    FATAL errors and WARNINGs.
 
     Args:
         circuit_path: Path to ``circuit_config.json``.
@@ -62,9 +74,8 @@ def run_validation(
         ``(fatal_errors, warnings)`` as lists of string messages. Empty lists
         when validation is clean.
     """
-    ignore_edge_properties = list(IGNORE_EDGE_PROPERTIES)
-    if _is_structural_only(circuit_path):
-        ignore_edge_properties.extend(SYNAPSE_PHYSIOLOGY_PROPERTIES)
+    structural_edge_ignore, node_ignore = _structural_ignore_properties(circuit_path)
+    ignore_edge_properties = list(IGNORE_EDGE_PROPERTIES) + structural_edge_ignore
 
     errors = snap_circuit_validation.validate(
         str(circuit_path),
@@ -72,6 +83,7 @@ def run_validation(
         only_errors=False,
         print_errors=False,
         ignore_edge_properties=ignore_edge_properties,
+        ignore_node_properties=node_ignore,
     )
     fatal_errors = [str(e) for e in errors if e.level == "FATAL"]
     warnings = [str(e) for e in errors if e.level == "WARNING"]
