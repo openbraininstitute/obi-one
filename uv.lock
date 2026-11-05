@@ -243,43 +243,6 @@ wheels = [
 ]
 
 [[package]]
-name = "blueetl"
-version = "0.13.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "blueetl-core" },
-    { name = "bluepysnap" },
-    { name = "click" },
-    { name = "jsonschema" },
-    { name = "libsonata", marker = "sys_platform == 'darwin'" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "xarray" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/ff/6a40981ea0f4d1bd351bfc66b2da931149f3eafc310ad95daf4b315bc4d7/blueetl-0.13.4.tar.gz", hash = "sha256:83ba90bb3faeba9588594e5664e19e5b46389ab2f56a150c92cd3527bff20b39", size = 10677769, upload-time = "2024-12-05T16:31:01.348Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/fb/829c32801af998e40269f4bbdb9db6294f957e48c7c768985777baa4cc4c/blueetl-0.13.4-py3-none-any.whl", hash = "sha256:e27a244468bb7f78fea1fa7e778f0b13c8e988fae423dfe55b9db84ca1b4b727", size = 95466, upload-time = "2024-12-05T16:30:58.578Z" },
-]
-
-[[package]]
-name = "blueetl-core"
-version = "0.2.5"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "joblib" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/31/25efacef718b21b6cc00c56acc776901c8823aea624dd9ad2407bc14e790/blueetl_core-0.2.5.tar.gz", hash = "sha256:7287e5c897df0bfc6e5494a401a7ba382bf7bcc15a7c887d1b72a9111dc1165e", size = 212314, upload-time = "2024-12-04T13:09:14.769Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/70/efa9ef1da557d864b4ea64b1849637542c4f9194136b82607fb8d2da1b64/blueetl_core-0.2.5-py3-none-any.whl", hash = "sha256:3b917f2042332276e751e425d7a3de5ca813adb3bd2e45e8c92e8ded4be7b08d", size = 21983, upload-time = "2024-12-04T13:09:13.399Z" },
-]
-
-[[package]]
 name = "bluepyefe"
 version = "2.3.63"
 source = { registry = "https://pypi.org/simple" }
@@ -2434,8 +2397,6 @@ name = "obi-one"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
-    { name = "bluecellulab" },
-    { name = "blueetl" },
     { name = "bluepyefe" },
     { name = "bluepysnap" },
     { name = "brainbuilder" },
@@ -2460,6 +2421,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "bluecellulab" },
     { name = "bluepyemodel" },
     { name = "cachetools" },
     { name = "connectome-analysis" },
@@ -2481,6 +2443,9 @@ all = [
     { name = "ultraliser" },
     { name = "uvicorn" },
 ]
+bluecellulab = [
+    { name = "bluecellulab" },
+]
 bluerecording = [
     { name = "bluerecording" },
     { name = "neurodamus" },
@@ -2490,6 +2455,7 @@ connectivity = [
     { name = "networkx" },
 ]
 emodel = [
+    { name = "bluecellulab" },
     { name = "bluepyemodel" },
 ]
 meshing = [
@@ -2516,6 +2482,7 @@ service = [
     { name = "uvicorn" },
 ]
 simplification = [
+    { name = "bluecellulab" },
     { name = "sonata-simplify", extra = ["reduction", "simulation"] },
 ]
 
@@ -2539,8 +2506,9 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.104" },
-    { name = "blueetl" },
+    { name = "bluecellulab", marker = "extra == 'bluecellulab'", specifier = ">=2.6.104" },
+    { name = "bluecellulab", marker = "extra == 'emodel'", specifier = ">=2.6.104" },
+    { name = "bluecellulab", marker = "extra == 'simplification'", specifier = ">=2.6.108" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
     { name = "bluepysnap", specifier = ">=3.0.9" },
@@ -2568,7 +2536,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
-    { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["bluecellulab", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
     { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
     { name = "psutil", specifier = ">=6.1.0" },
@@ -2586,7 +2554,7 @@ requires-dist = [
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["bluecellulab", "emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3915,20 +3883,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bf/60/bc7a980fc78837d6ef8f5940cca4cadc433364503a4c4d42e2a7a0de3231/widgetsnbextension-4.0.16.tar.gz", hash = "sha256:adeea0ae78f0856ee4945f413299801b82a0a01416303301f39a704282a37b73", size = 1111094, upload-time = "2026-08-18T08:52:55.859Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/34/95/40e17e20046b7bc820d29d09ae84ec157ec8dd6e6f6cd722626292c31b2e/widgetsnbextension-4.0.16-py3-none-any.whl", hash = "sha256:a31a8774885b96fe825462f5d6496166f0c7cae111195b6465c801d230eb5a4e", size = 2225148, upload-time = "2026-08-18T08:52:53.736Z" },
-]
-
-[[package]]
-name = "xarray"
-version = "2026.9.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/f5/781c70b234f54e0401f4f7c4427a7486da38d50dbb138c7d7c55144b3d86/xarray-2026.9.0.tar.gz", hash = "sha256:6abc69694c22fa1f0fb2f357ff4e41d88beb4477ed71091f944b7dbf67ed54fe", size = 3176922, upload-time = "2026-09-29T23:06:25.807Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/44/3159af4fb3c868970a412e294320ed6bb1a9fbdfa6431050eda8e0b34b6e/xarray-2026.9.0-py3-none-any.whl", hash = "sha256:fe349fa871628b1a0a5217af3fe1283a2862d5485156e6eda354fffb81c3bb7c", size = 1445445, upload-time = "2026-09-29T23:06:23.686Z" },
 ]
 
 [[package]]

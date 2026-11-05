@@ -150,7 +150,8 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 - Package manager: **uv** (>=0.9.22)
 - entitysdk is always kept at latest version (`make compile-deps` enforces this)
-- Key scientific deps: bluepysnap, brainbuilder, neurom, bluecellulab, bluepyefe, connectome-utilities, caveclient
+- Key scientific deps: bluepysnap, brainbuilder, neurom, bluepyefe, connectome-utilities, caveclient
+- Optional scientific extras include `bluecellulab` (BlueCelluLab simulation / MEModel validation), `emodel` (bluepyemodel + bluecellulab), `simplification` (sonata-simplify + bluecellulab), `meshing`, `connectivity`, and `bluerecording`
 
 ## CI/CD
 

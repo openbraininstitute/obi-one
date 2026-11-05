@@ -9,27 +9,26 @@ import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
 import libsonata
-from bluecellulab import CircuitSimulation
-from bluecellulab.reports.manager import ReportManager
-from bluecellulab.reports.utils import (
-    collect_local_payload,
-    collect_local_spikes,
-    gather_payload_to_rank0,
-    gather_recording_sites,
-    payload_to_cells,
-    prepare_recordings_for_reports,
-)
-from neuron import h
 
 from obi_one.types import SimulationBackend
 from obi_one.utils.circuit import resolve_simulation_node_set_ids
 from obi_one.utils.io import load_json
 
 logger = logging.getLogger(__name__)
+
+_BLUECELLULAB_INSTALL_HINT = "Install with: pip install 'obi-one[bluecellulab]'"
+
+
+def _ensure_bluecellulab() -> None:
+    """Raise a clear error when the optional bluecellulab extra is missing."""
+    if find_spec("bluecellulab") is None:
+        msg = f"BlueCelluLab simulation requires bluecellulab. {_BLUECELLULAB_INSTALL_HINT}"
+        raise ImportError(msg)
 
 
 @dataclass
@@ -49,6 +48,12 @@ class MPIProcess:
 
 @contextmanager
 def neuron_mpi_process(libnrnmech_path: str) -> Generator[MPIProcess, None, None]:
+    try:
+        from neuron import h  # ruff: ignore[import-outside-top-level]
+    except ImportError as exc:
+        msg = f"BlueCelluLab simulation requires NEURON. {_BLUECELLULAB_INSTALL_HINT}"
+        raise ImportError(msg) from exc
+
     h.nrn_load_dll(libnrnmech_path)
     h.nrnmpi_init()
     parallel_context = h.ParallelContext()
@@ -179,6 +184,12 @@ def run_bluecellulab(
     libnrnmech_path: str,
 ) -> None:
     """Run a simulation using BlueCelluLab backend."""
+    _ensure_bluecellulab()
+    from bluecellulab import CircuitSimulation  # ruff: ignore[import-outside-top-level]
+    from bluecellulab.reports.utils import (  # ruff: ignore[import-outside-top-level]
+        prepare_recordings_for_reports,
+    )
+
     with neuron_mpi_process(libnrnmech_path=libnrnmech_path) as process:
         if process.rank == 0:
             logger.info("Initializing BlueCelluLab simulation")
@@ -304,6 +315,12 @@ def _gather_results(
     recording_index: Any,
     local_sites_index: Any,
 ) -> tuple[Any, Any, Any]:
+    from bluecellulab.reports.utils import (  # ruff: ignore[import-outside-top-level]
+        collect_local_payload,
+        collect_local_spikes,
+        gather_payload_to_rank0,
+    )
+
     gathered_sites = process.parallel_context.py_gather(local_sites_index, 0)
 
     local_payload = collect_local_payload(
@@ -325,9 +342,15 @@ def _save_reports_and_outputs(
     all_payload: list[dict[Any, Any]],
     all_spikes: dict[str, dict[int, list[float]]],
 ) -> None:
+    from bluecellulab.reports.manager import ReportManager  # ruff: ignore[import-outside-top-level]
+    from bluecellulab.reports.utils import (  # ruff: ignore[import-outside-top-level]
+        gather_recording_sites,
+        payload_to_cells,
+    )
+
     all_sites_index = gather_recording_sites(gathered_sites)
     cells_for_writer = payload_to_cells(all_payload, all_sites_index)  # ty:ignore[invalid-argument-type]
-    report_mgr = ReportManager(sim.circuit_access.config, sim.dt)  # type: ignore[name-defined]
+    report_mgr = ReportManager(sim.circuit_access.config, sim.dt)
     report_mgr.write_all(cells=cells_for_writer, spikes_by_pop=all_spikes)
 
 

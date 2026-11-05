@@ -224,9 +224,15 @@ def test_gather_results_collects_and_gathers(monkeypatch):
         calls["gather_in"] = (parallel_context, local_payload, local_spikes)
         return [{"merged": 3}], {"popA": {1: [0.1]}}
 
-    monkeypatch.setattr(test_module, "collect_local_payload", fake_collect_local_payload)
-    monkeypatch.setattr(test_module, "collect_local_spikes", fake_collect_local_spikes)
-    monkeypatch.setattr(test_module, "gather_payload_to_rank0", fake_gather_payload_to_rank0)
+    monkeypatch.setattr(
+        "bluecellulab.reports.utils.collect_local_payload", fake_collect_local_payload
+    )
+    monkeypatch.setattr(
+        "bluecellulab.reports.utils.collect_local_spikes", fake_collect_local_spikes
+    )
+    monkeypatch.setattr(
+        "bluecellulab.reports.utils.gather_payload_to_rank0", fake_gather_payload_to_rank0
+    )
 
     class _PC:
         @staticmethod
