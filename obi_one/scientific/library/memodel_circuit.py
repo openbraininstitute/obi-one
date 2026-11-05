@@ -55,8 +55,7 @@ def _build_mechanism_variables_by_ion_channel_response(
                     all_section_lists = {"somatic", "apical", "basal", "axonal"}
 
                 raw[channel] = {
-                    # Sorted: a set has no stable order, and the response must not change
-                    # between identical requests. Values are keyed by section list.
+                    # Sorted: the response must not change between identical requests.
                     "section_lists": sorted(all_section_lists),
                     "entity_id": None,  # Section properties don't have entity IDs
                     "variables": {},

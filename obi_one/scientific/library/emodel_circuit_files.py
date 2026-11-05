@@ -1,31 +1,19 @@
-"""Read a cell model's mechanism variables from the files inside a SONATA circuit.
+"""Read a cell model's mechanism variables from the hoc and mod files of a SONATA circuit.
 
-A biophysical circuit ships two kinds of model files:
+- ``.hoc`` cell template (one per ``model_template``): which mechanism is inserted in
+  which section list, and the value of each variable there.
+- ``.mod`` file (one per mechanism): its ``RANGE`` / ``GLOBAL`` variables and their units.
 
-- ``.hoc`` cell templates, one per ``model_template``, in ``biophysical_neuron_models_dir``.
-  They say which mechanism (ion channel) is inserted in which section list (``somatic``,
-  ``axonal``...) and the value of each variable there.
-- ``.mod`` files (NMODL), one per mechanism, in ``mechanisms_dir``. They name the
-  variables a mechanism exposes (``RANGE``, ``GLOBAL``) and their units.
-
-The hoc files are printed by BluePyEModel's Jinja template
-(``cell_template_neurodamus_*.jinja2``; format at
-https://sonata-extension.readthedocs.io/en/latest/hoc-emodel.html). Inside
-``proc insertChannel()`` and ``proc biophys()`` that template prints only three line shapes,
-and this module reads only those:
+The hoc files are printed by BluePyEModel's template (format:
+https://sonata-extension.readthedocs.io/en/latest/hoc-emodel.html). In ``insertChannel()``
+and ``biophys()`` it prints three line shapes, and only those are accepted:
 
 - ``insert <mechanism>`` inside ``forsec this.<section_list> { ... }``
 - ``<variable> = <number>`` inside ``forsec CellRef.<section_list> { ... }``
 - ``distribute_distance(CellRef.<section_list>, "<variable>", "<formula>")``
 
-Any other line in those two procedures raises ``HocTemplateError``: the file was not made
-by the template, and nothing is guessed. GLOBAL values come from the template's
-``check_parameter`` calls. Units come from the mod file's ``PARAMETER``, ``ASSIGNED`` and
-``STATE`` blocks. NEURON's built-in mechanisms (``pas``, ``hh``...) have no mod file and
-are described by ``BUILTIN_MECHANISMS``.
-
-The result has the same types as ``emodel_parameters.get_mechanism_variables_for_emodel``,
-so the response builder in ``memodel_circuit`` is shared by both.
+Any other line raises ``HocTemplateError``; nothing is guessed. The result has the same
+types as ``emodel_parameters.get_mechanism_variables_for_emodel``.
 """
 
 import re
@@ -40,15 +28,13 @@ from obi_one.scientific.library.emodel_parameters import (
     extract_section_properties,
 )
 
-# Limits given to every variable whose NEURON name starts with ``g`` (a conductance). The
-# files carry no limits; these match the ones ``emodel_parameters`` gives on the EModel path.
+# The files carry no limits; conductances (``g*``) get the same ones as the EModel path.
 CONDUCTANCE_LIMITS = [0.0, 10.0]
-# Built-in mechanisms with nothing settable through a ``<variable>_<mechanism>`` name:
-# ``capacitance`` sets ``cm``, already a section property, and ion mechanisms
-# (``na_ion`` and the like) are set directly, as ``ena = 50`` in biophys().
+# Built-ins with no ``<variable>_<mechanism>`` name: ``cm`` is a section property, and
+# ion variables (``ena``) are set directly in biophys().
 ION_MECHANISM_SUFFIX = "_ion"
 CAPACITANCE_MECHANISM = "capacitance"
-# Longest hoc line quoted in an error message; the message reaches the API response.
+# Error messages reach the API response.
 MAX_QUOTED_LINE = 120
 
 NUMBER_PATTERN = r"-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?"
@@ -57,16 +43,14 @@ INSERT_RE = re.compile(r"insert (\w+)")
 ASSIGN_RE = re.compile(rf"(\w+) = ({NUMBER_PATTERN})")
 DISTRIBUTE_RE = re.compile(r'distribute_distance\(CellRef\.(\w+), "(\w+)", "([^"]*)"\)')
 NUMBER_RE = re.compile(rf"[-+]?{NUMBER_PATTERN.removeprefix('-?')}")
-# BluePyOpt prints the distance to the soma into distribution formulas as this placeholder.
+# How BluePyOpt prints the distance to the soma in a distribution formula.
 DISTANCE = "%.17g"
-# A term built only from numbers, the distance, ``*`` and ``/``: the linear part of
-# BluePyEModel's ``linear_e_pas_apic`` distribution, ``({value}-5*{distance}/150)``.
+# Numbers, the distance, ``*`` and ``/`` only: the linear term of ``linear_e_pas_apic``.
 LINEAR_IN_DISTANCE_RE = re.compile(r"[0-9.eE*/()\s]+")
 LINEAR_DISTRIBUTION_TERMS = 2  # the value, and the term linear in the distance
 CHECK_PARAMETER_RE = re.compile(rf'check_parameter\("(\w+)", ({NUMBER_PATTERN}), \1\)')
-MOD_BLOCK_RE = re.compile(r"\b(NEURON|PARAMETER|ASSIGNED|STATE)\s*\{(.*?)\n\s*\}", re.DOTALL)
-# NMODL does not need a newline between NEURON block statements, so the block is split on
-# its keywords rather than its lines.
+MOD_BLOCK_START_RE = re.compile(r"\b(NEURON|PARAMETER|ASSIGNED|STATE)\s*\{")
+# NEURON block statements need no newline between them: split on keywords, not lines.
 MOD_NEURON_KEYWORD_RE = re.compile(
     r"\b(SUFFIX|POINT_PROCESS|ARTIFICIAL_CELL|RANGE|GLOBAL|USEION|NONSPECIFIC_CURRENT"
     r"|ELECTRODE_CURRENT|POINTER|BBCOREPOINTER|EXTERNAL|THREADSAFE|REPRESENTS)\b"
@@ -99,19 +83,12 @@ class ModMechanism:
 
     @property
     def settable_range_variables(self) -> list[str]:
-        """RANGE variables a user can set: all but the ionic currents (``ina``, ``ik``...).
-
-        A current is recognised by its name starting with ``i``, so a non-current RANGE
-        variable named like ``inact`` is hidden too.
-        """
-        # ponytail: name-prefix heuristic; reading USEION ... WRITE / NONSPECIFIC_CURRENT
-        # from the NEURON block would identify currents exactly.
+        """RANGE variables a user can set: all but the currents (``ina``, ``ik``...)."""
+        # TODO: ``i`` prefix is a heuristic; USEION ... WRITE / NONSPECIFIC_CURRENT is exact.
         return [name for name in self.range_variables if not name.startswith("i")]
 
 
-# Mechanisms NEURON ships without a mod file (the list BluePyEModel uses, minus
-# ``capacitance`` and the ``*_ion`` mechanisms, which ``has_variables`` excludes), with
-# their settable RANGE variables and units from the NEURON documentation.
+# Mechanisms NEURON ships without a mod file; variables and units from the NEURON docs.
 BUILTIN_MECHANISMS: dict[str, ModMechanism] = {
     name: ModMechanism(suffix=name, range_variables=variables, units=units)
     for name, variables, units in (
@@ -138,13 +115,13 @@ def has_variables(mechanism: str) -> bool:
 
 @dataclass
 class HocBiophysics:
-    """What a cell template's ``insertChannel()`` and ``biophys()`` procedures contain.
+    """What a cell template's ``insertChannel()`` and ``biophys()`` contain.
 
     Attributes:
         channels_by_section_list: Section list -> mechanisms inserted there, in file order.
-        assignments: (section list, variable) -> value set with ``<variable> = <number>``.
-        distributions: (section list, variable) -> value read from a
-            ``distribute_distance`` formula, or None when it cannot be read.
+        assignments: (section list, variable) -> value from ``<variable> = <number>``.
+        distributions: (section list, variable) -> value from ``distribute_distance``, or
+            None when the formula cannot be read.
         global_values: GLOBAL variable -> value, from ``check_parameter``.
         warnings: One message per value that could not be read.
     """
@@ -172,24 +149,12 @@ class HocBiophysics:
 
 
 def read_mod_mechanism(mod_text: str) -> ModMechanism:
-    """Read the mechanism name, its variables and their units from a ``.mod`` file.
-
-    Comments are removed first, so a block quoted in a ``COMMENT`` is not read.
-
-    Args:
-        mod_text: Content of the ``.mod`` file.
-
-    Returns:
-        The mechanism as the file declares it.
+    """Read the mechanism name, variables and units from the text of a ``.mod`` file.
 
     Raises:
-        HocTemplateError: The file has no ``NEURON`` block or no ``SUFFIX`` in it.
+        HocTemplateError: No ``NEURON`` block, no ``SUFFIX``, or unbalanced braces.
     """
-    # A block can appear more than once (``StochKv3.mod`` has two ASSIGNED blocks), so
-    # repeated blocks are joined rather than the last one replacing the others.
-    blocks: dict[str, str] = {}
-    for name, body in MOD_BLOCK_RE.findall(MOD_COMMENT_RE.sub("", mod_text)):
-        blocks[name] = f"{blocks.get(name, '')}\n{body}"
+    blocks = _mod_blocks(MOD_COMMENT_RE.sub("", mod_text))
     if "NEURON" not in blocks:
         msg = "mod file has no NEURON block"
         raise HocTemplateError(msg)
@@ -213,12 +178,7 @@ def read_mod_mechanism(mod_text: str) -> ModMechanism:
 
 
 def _declared_units(blocks: dict[str, str]) -> dict[str, str]:
-    """Variable -> unit, from the blocks that declare variables with a unit.
-
-    A variable is declared in ``PARAMETER`` (given by the user), ``ASSIGNED`` (computed,
-    e.g. a conductance) or ``STATE`` (solved over time, e.g. ``cai``). If several blocks
-    give a unit, ``PARAMETER`` wins.
-    """
+    """Variable -> unit from the ``STATE``, ``ASSIGNED`` and ``PARAMETER`` blocks; the last wins."""
     units: dict[str, str] = {}
     for block in ("STATE", "ASSIGNED", "PARAMETER"):
         for line in blocks.get(block, "").splitlines():
@@ -227,32 +187,54 @@ def _declared_units(blocks: dict[str, str]) -> dict[str, str]:
     return units
 
 
-def _proc_lines(hoc_text: str, name: str) -> list[str]:
-    """Non-empty stripped lines of ``proc <name>()``, found by brace matching.
+def _mod_blocks(mod_text: str) -> dict[str, str]:
+    """Block name -> body, by brace matching (``STATE { m h }`` fits on one line).
+
+    A repeated block (``StochKv3.mod`` has two ``ASSIGNED``) is joined, not replaced.
+    """
+    blocks: dict[str, str] = {}
+    position = 0
+    while match := MOD_BLOCK_START_RE.search(mod_text, position):
+        name = match.group(1)
+        body, position = _braced_body(mod_text, match.end() - 1, f"{name} block")
+        blocks[name] = f"{blocks.get(name, '')}\n{body}"
+    return blocks
+
+
+def _braced_body(text: str, open_brace: int, what: str) -> tuple[str, int]:
+    """Return the text inside the brace pair opened at ``open_brace`` and the index of its ``}``.
 
     Raises:
-        HocTemplateError: The procedure is missing or its braces do not balance.
+        HocTemplateError: The braces do not balance.
+    """
+    depth = 0
+    for index in range(open_brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[open_brace + 1 : index], index
+    msg = f"unbalanced braces in {what}"
+    raise HocTemplateError(msg)
+
+
+def _proc_lines(hoc_text: str, name: str) -> list[str]:
+    """Non-empty stripped lines of ``proc <name>()``.
+
+    Raises:
+        HocTemplateError: The procedure is missing.
     """
     start = hoc_text.find(f"proc {name}()")
     if start < 0:
         msg = f"hoc template has no 'proc {name}()'"
         raise HocTemplateError(msg)
-    open_brace = hoc_text.index("{", start)
-    depth = 0
-    for index in range(open_brace, len(hoc_text)):
-        if hoc_text[index] == "{":
-            depth += 1
-        elif hoc_text[index] == "}":
-            depth -= 1
-            if depth == 0:
-                body = hoc_text[open_brace + 1 : index]
-                return [line.strip() for line in body.splitlines() if line.strip()]
-    msg = f"unbalanced braces in 'proc {name}()'"
-    raise HocTemplateError(msg)
+    body, _end = _braced_body(hoc_text, hoc_text.index("{", start), f"'proc {name}()'")
+    return [line.strip() for line in body.splitlines() if line.strip()]
 
 
 def _raise_unexpected(proc_name: str, line: str) -> NoReturn:
-    """Reject a line the template cannot print, quoting at most MAX_QUOTED_LINE chars."""
+    """Reject a line the template cannot print."""
     msg = f"unexpected line in {proc_name}(): {line[:MAX_QUOTED_LINE]!r}"
     raise HocTemplateError(msg)
 
@@ -276,11 +258,10 @@ def _closing_paren(expr: str) -> int:
 
 
 def _is_binary_sign(expr: str, index: int) -> bool:
-    """Whether the ``+`` or ``-`` at ``index`` adds or subtracts, rather than being a sign."""
+    """Whether the ``+`` or ``-`` at ``index`` is an operator, not a sign (``-3``, ``1e-05``)."""
     before = expr[:index].rstrip()
     if not before or before[-1] in "(*/+-":
-        return False  # unary sign
-    # The sign of an exponent, as in 1.5e-05.
+        return False
     return not (
         before[-1] in "eE" and len(before) > 1 and (before[-2].isdigit() or before[-2] == ".")
     )
@@ -302,27 +283,20 @@ def _top_level_parts(expr: str, operators: str) -> list[str]:
 
 
 def _distribution_value(formula: str) -> float | None:
-    """Return the optimised value inside a printed distribution formula, or None.
+    """Return the optimised ``{value}`` of a printed distribution formula, or None.
 
-    BluePyOpt prints ``distribute_distance`` formulas from BluePyEModel distributions with
-    ``{value}`` (the optimised parameter) and ``{distance}`` substituted. Every built-in
-    distribution has one of two shapes, and the value is read only from those:
+    Every BluePyEModel distribution has one of two shapes, and only those are read:
 
-    - a product with ``{value}`` as one factor: ``exp``, ``exp_na_dend``,
-      ``linear_hd_apic``, ``sigmoid_kad_apic``, ``linear_hdpas`` end with ``*{value}``,
-      ``step`` starts with ``{value} *``. The value is the only top-level factor that
-      is a plain number; every other factor depends on the distance.
-    - ``linear_e_pas_apic``, ``({value}-5*{distance}/150)``: a number plus or minus a
-      term linear in the distance.
+    - a product where ``{value}`` is the only plain-number factor (``exp``, ``step``, ...)
+    - ``{value}`` plus or minus a term linear in the distance (``linear_e_pas_apic``)
 
-    Anything else (a sum with a function, two plain-number factors) has no single
-    reading, so None is returned rather than a guess.
+    Anything else has no single reading, so None is returned rather than a guess.
     """
     expr = _strip_parens(formula)
     if DISTANCE not in expr:
         return float(expr) if NUMBER_RE.fullmatch(expr) else None
     terms = _top_level_parts(expr, "+-")
-    if len(terms) > 1:  # a sum: only the linear_e_pas_apic shape has a readable value
+    if len(terms) > 1:
         if (
             len(terms) == LINEAR_DISTRIBUTION_TERMS
             and NUMBER_RE.fullmatch(terms[0])
@@ -379,14 +353,8 @@ def _read_biophys(hoc_text: str, result: HocBiophysics) -> None:
 def read_hoc_biophysics(hoc_text: str) -> HocBiophysics:
     """Read which channels a cell template inserts where, and the values it sets.
 
-    Args:
-        hoc_text: Content of the ``.hoc`` cell template.
-
-    Returns:
-        The two procedures' content, plus GLOBAL values and warnings.
-
-    A ``HocTemplateError`` propagates when a procedure is missing, its braces do not
-    balance, or it holds a line the BluePyEModel template cannot print.
+    ``HocTemplateError`` propagates when a procedure is missing or holds a line the
+    BluePyEModel template cannot print.
     """
     result = HocBiophysics()
     _read_insert_channel(hoc_text, result)
@@ -426,15 +394,14 @@ def mechanism_variables(
 
     Args:
         biophysics: The template's parsed hoc file.
-        mechanisms: Parsed ``.mod`` files keyed by suffix, for every mechanism in
-            ``biophysics.mod_file_mechanisms``.
+        mechanisms: Parsed mod files by suffix, covering ``biophysics.mod_file_mechanisms``.
 
     Returns:
-        The same ``(variables, channel_mapping)`` pair ``get_mechanism_variables_for_emodel``
+        The ``(variables, channel_mapping)`` pair ``get_mechanism_variables_for_emodel``
         returns. Channel ``entity_id`` is None: the files do not know database IDs.
 
     Raises:
-        HocTemplateError: A mod file for an inserted mechanism is missing.
+        HocTemplateError: An inserted mechanism has no mod file.
     """
     channel_sections = _channel_section_lists(biophysics)
     values = _values_by_section(biophysics)

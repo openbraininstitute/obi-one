@@ -1,17 +1,12 @@
 """Which mechanism variables a neuronal manipulation can change in a circuit.
 
-For a circuit and an optional neuron set, the steps are:
-
-1. Find the cell templates (``model_template`` values) of the selected neurons in
-   ``nodes.h5``. Without a neuron set, only that column is read, by byte ranges.
-2. Read each template's ``.hoc`` file and the ``.mod`` files of its mechanisms from the
-   circuit asset, all fetched in parallel.
+1. Find the ``model_template`` values of the selected neurons in ``nodes.h5``.
+2. Read each template's hoc file and the mod files of its mechanisms, fetched in parallel.
 3. Fill units the mod files leave undeclared from the ion channel model entities.
-4. For a template whose files cannot be read, use its emodel_circuit derivation instead.
-5. Keep the channels, variables and section lists common to all templates, and return
-   them in the MEModel response shape.
+4. A template whose files cannot be read uses its emodel_circuit derivation instead.
+5. Return the channels, variables and section lists common to all templates.
 
-See ``docs/neuronal-manipulation-properties.md`` for the data flow and its limits.
+See ``docs/neuronal-manipulation-properties.md``.
 """
 
 import logging
@@ -34,7 +29,7 @@ from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage
 
-from obi_one.db_sdk.assets import open_asset_h5
+from obi_one.db_sdk.assets import asset_range_file
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import CIRCUIT_MOD_DIR, Circuit as ObiCircuit
 from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
@@ -53,41 +48,35 @@ from obi_one.scientific.library.memodel_circuit import (
     MechanismVariableDetail,
     _build_mechanism_variables_by_ion_channel_response,
 )
-from obi_one.utils.log_redaction import RedactUrlQueries
+from obi_one.utils.http_range_file import read_contiguous_dataset
 
 L = logging.getLogger(__name__)
-# Storage failures are logged with their traceback, which can hold a presigned URL.
-L.addFilter(RedactUrlQueries())
 
-# One pool for every request in the process: the API serves many requests at once, so a
-# per-request pool would multiply threads and open connections with the request count.
-# 16 lets one request fetch a typical template's mod files in a single round; under load,
-# fetches queue here instead of piling onto entitycore and storage. The cap is fixed;
-# make it a setting if the API's request concurrency or entitycore's limits change.
+# One pool per process, shared by every request: bounds threads and open connections
+# however many requests arrive. 16 fetches a template's mod files in one round.
 FETCH_POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="circuit-file-fetch")
-# hoc and mod files are a few KB to tens of KB; anything far larger is not a cell model
-# and is refused before it is read into memory.
+# Bulkhead: whole nodes.h5 downloads (hundreds of MB) get their own pool, so they cannot
+# hold every FETCH_POOL thread while other requests' small fetches wait. 4 fill the link.
+NODES_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="circuit-nodes-fetch")
+# hoc and mod files are tens of KB at most; anything far larger is not a cell model.
 MAX_MODEL_FILE_BYTES = 1_000_000
-# Where circuits keep mod files when the config declares no mechanisms_dir, in order of
-# preference: OBI circuits use ``mod`` (see ``ensure_mechanisms_dir``), entitysdk's MEModel
-# staging writes ``mechanisms``. The first that holds a ``.mod`` file in the asset listing wins.
+# Where mod files live when the config declares no mechanisms_dir: OBI circuits use
+# ``mod``, entitysdk's MEModel staging writes ``mechanisms``. First with a .mod file wins.
 UNDECLARED_MOD_DIRS = (CIRCUIT_MOD_DIR, "mechanisms")
 
-# (population, node_id) -> a string per node. The value is the node's model_template,
-# except in ``_match_templates_to_emodels``'s output, where it is the matched EModel ID.
+# (population, node_id) -> model_template (or EModel ID after ``_match_templates_to_emodels``).
 TemplateNodes = dict[tuple[str, int], str]
 
 
 @dataclass
 class PopulationModelDirs:
-    """Where a population's cell templates and mechanisms live inside the circuit asset.
+    """Where a population's hoc and mod files live inside the circuit asset.
 
     Attributes:
         population_type: SONATA population type, e.g. ``biophysical`` or ``virtual``.
         hoc_dir: ``biophysical_neuron_models_dir`` as an asset path; None when unset or
             outside the asset.
-        mod_dirs: ``mechanisms_dir`` as an asset path, or ``UNDECLARED_MOD_DIRS`` when it is
-            unset or outside the asset.
+        mod_dirs: ``mechanisms_dir`` as an asset path, or ``UNDECLARED_MOD_DIRS``.
     """
 
     population_type: str
@@ -97,11 +86,11 @@ class PopulationModelDirs:
 
 @dataclass
 class TemplateModel:
-    """One cell template (``model_template`` value) read from the circuit's files.
+    """One cell template read from the circuit's files.
 
     Attributes:
         biophysics: The parsed hoc file.
-        mechanisms: Parsed mod files keyed by mechanism suffix, NEURON built-ins excluded.
+        mechanisms: Parsed mod files by suffix, NEURON built-ins excluded.
     """
 
     biophysics: HocBiophysics
@@ -112,10 +101,10 @@ def _get_circuit_asset(
     db_client: entitysdk.client.Client,
     circuit_id: str,
 ) -> tuple[Circuit, Asset]:
-    """Get circuit entity and its sonata_circuit directory asset.
+    """Get the circuit entity and its ``sonata_circuit`` directory asset.
 
-    The asset object, not its id, is passed on to ``fetch_file``: given an id, entitysdk
-    fetches the asset's metadata again before every file, one extra request per file.
+    The asset object is passed to ``fetch_file``: given only its id, entitysdk fetches the
+    asset's metadata again before every file.
     """
     circuit_entity = db_client.get_entity(
         entity_id=UUID(circuit_id),
@@ -145,13 +134,11 @@ def _stage_file(
     asset_path: str,
     strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
 ) -> Path:
-    """Stage a single file from the circuit's sonata_circuit asset into temp_dir.
-
-    A file already staged in this temp_dir is reused: one request stages each path once.
+    """Stage one file of the circuit asset into ``temp_dir``; an already staged file is reused.
 
     Raises:
-        ValueError: ``asset_path`` is absolute or climbs out of the asset with ``..``.
-            Paths are built from circuit content, so they are untrusted.
+        ValueError: ``asset_path`` is absolute or holds ``..``. Paths come from circuit
+            content, so they are untrusted.
     """
     relative = Path(asset_path)
     if relative.is_absolute() or ".." in relative.parts:
@@ -178,7 +165,7 @@ def _read_model_file(path: Path) -> str:
     if size > MAX_MODEL_FILE_BYTES:
         msg = f"{path.name} is {size} bytes, above the {MAX_MODEL_FILE_BYTES} byte limit"
         raise HocTemplateError(msg)
-    # Comments may hold non-UTF-8 author names; only ASCII syntax is read.
+    # Comments may hold non-UTF-8 author names.
     return path.read_text(encoding="utf-8", errors="replace")
 
 
@@ -201,17 +188,7 @@ def _stage_circuit_for_neuron_set(
     *,
     stage_nodes: bool = True,
 ) -> tuple[Path, dict[str, str], dict[str, PopulationModelDirs]]:
-    """Stage the files needed to resolve a neuron set against a circuit.
-
-    Copies circuit_config.json as a real file (not a symlink) so that
-    $BASE_DIR resolves to the temp directory rather than the S3 cache.
-    The node sets file the config declares (``node_sets_file``, any name) and the nodes.h5
-    of every population (or only those whose type is in ``population_types``) are then
-    staged concurrently on ``FETCH_POOL`` with link_or_download (symlinks to the S3 cache
-    where available, downloads otherwise).
-    A node sets file that is missing or outside the asset is skipped; it is optional in
-    SONATA. With ``stage_nodes=False`` neither is fetched: the nodes paths are returned
-    for the caller to read another way.
+    """Stage ``circuit_config.json``, the node sets file and the selected ``nodes.h5`` files.
 
     Args:
         db_client: entitysdk client.
@@ -219,16 +196,16 @@ def _stage_circuit_for_neuron_set(
         asset: The circuit's ``sonata_circuit`` asset.
         temp_dir_path: Resolved directory the files are staged into.
         population_types: Population types whose nodes.h5 to select; None selects all.
-        stage_nodes: Whether to fetch the selected nodes.h5 files and the node sets file.
+        stage_nodes: False returns the nodes.h5 paths without fetching them or the node
+            sets file.
 
     Returns:
         The config path, population -> nodes.h5 asset path for the selected populations,
-        and population -> type and hoc / mod directories for every population.
+        and population -> model directories for every population.
 
-    Errors propagate: ``EntitySDKError`` when fetching circuit_config.json or a nodes.h5
-    fails, and ``ValueError`` when the config points a nodes.h5 outside the asset.
+    ``EntitySDKError`` propagates when the config or a nodes.h5 cannot be fetched.
     """
-    # Copy config as a real file so $BASE_DIR resolves to temp_dir
+    # A real copy, not a symlink, so $BASE_DIR resolves to temp_dir.
     config_path = _stage_file(
         db_client,
         circuit_id,
@@ -238,8 +215,7 @@ def _stage_circuit_for_neuron_set(
         strategy=FetchFileStrategy.copy_or_download,
     )
 
-    # Load circuit — $BASE_DIR now resolves to temp_dir because config is a real file.
-    # Only the config is read here; node sets and nodes are read later, after staging.
+    # Reads only the config; node sets and nodes are read later.
     snap_circuit = SnapCircuit(str(config_path))
 
     pop_to_model_dirs: dict[str, PopulationModelDirs] = {}
@@ -260,9 +236,8 @@ def _stage_circuit_for_neuron_set(
         if population_types is None or dirs.population_type in population_types
     }
 
-    # The file bluepysnap reads node sets from (any name, e.g. node_sets_new.json); "" when
-    # the config declares none, in which case bluepysnap reads none either. Optional in
-    # SONATA, so a path outside the asset (e.g. absolute) is skipped like a missing file.
+    # The node sets file is optional in SONATA: none declared, or one outside the asset,
+    # is skipped.
     node_sets_path = snap_circuit.to_libsonata.node_sets_path
     node_sets_file = Path(node_sets_path).resolve() if node_sets_path else None
     node_sets_asset_path = (
@@ -277,16 +252,15 @@ def _stage_circuit_for_neuron_set(
         return _stage_file(db_client, circuit_id, asset, temp_dir_path, asset_path)
 
     def stage_node_sets(asset_path: str) -> None:
-        # Needed for neuron set resolution, but optional in SONATA.
         try:
             stage(asset_path)
         except Exception:  # ruff: ignore[blind-except]
             L.debug("%s not available, continuing without it", asset_path)
 
     if stage_nodes:
-        # Independent files: fetch together. A failed nodes.h5 re-raises from result().
+        # A failed nodes.h5 re-raises from result().
         futures: list[Future[Path | None]] = [
-            FETCH_POOL.submit(stage, path) for path in pop_to_nodes_path.values()
+            NODES_POOL.submit(stage, path) for path in pop_to_nodes_path.values()
         ]
         if node_sets_asset_path:
             futures.append(FETCH_POOL.submit(stage_node_sets, node_sets_asset_path))
@@ -297,10 +271,10 @@ def _stage_circuit_for_neuron_set(
 
 
 def _public_reason(err: object) -> str:
-    """Why a template could not be read, safe to return to the API caller.
+    """Why a template could not be read, safe for the API response.
 
-    Only our own parse errors are quoted. Other errors (HTTP, filesystem) may carry
-    signed storage URLs, so the caller gets the error type and the log gets the rest.
+    Only ``HocTemplateError`` is quoted; other errors may carry signed URLs, so only their
+    type is given.
     """
     return (
         str(err)
@@ -316,14 +290,9 @@ def _fetch_and_parse[K: Hashable, T](
 ) -> dict[K, T | Exception]:
     """Stage and parse one file per key concurrently on ``FETCH_POOL``.
 
-    Args:
-        keys: What to fetch, as ``stage`` understands it; duplicates are fetched once.
-        parse: Turns a key and its file's text into the parsed form.
-        stage: Stages the file of one key and returns the local file.
-
     Returns:
-        Key -> parsed result, or the exception that stopped it. Failures are returned so
-        one bad file does not fail the other templates.
+        Key -> parsed result, or the exception that stopped it, so one bad file does not
+        fail the other templates. Duplicate keys are fetched once.
     """
 
     def one(key: K) -> T | Exception:
@@ -334,7 +303,6 @@ def _fetch_and_parse[K: Hashable, T](
             return err
 
     unique = list(dict.fromkeys(keys))
-    # Each fetch is a few HTTP round trips (API, redirect, storage); threads overlap them.
     return dict(zip(unique, FETCH_POOL.map(one, unique), strict=True))
 
 
@@ -346,15 +314,11 @@ def _parse_model_file(path: str, text: str) -> HocBiophysics | ModMechanism:
 def _asset_files(
     db_client: entitysdk.client.Client, circuit_id: str, asset: Asset
 ) -> dict[str, int] | Exception:
-    """Return asset path -> size in bytes for every file of the circuit, or the error.
+    """Return asset path -> size for every file of the circuit, or the error.
 
-    One request lists the whole asset. The result serves two readers: the ``nodes.h5``
-    sizes let the byte-range read skip a ``HEAD`` request (storage refuses ``HEAD`` on
-    presigned URLs), and the paths show where the ``.mod`` files are.
-
-    A failure is logged and returned, not raised, like a failed file in
-    ``_fetch_and_parse``: ``nodes.h5`` is then downloaded whole, and every template
-    reports the reason.
+    One listing serves two readers: the ``nodes.h5`` sizes for the byte-range read, and
+    the paths of the mod files. A failure is logged and returned, not raised: the callers
+    fall back and report the reason.
     """
     try:
         listing = db_client.list_directory(
@@ -377,16 +341,14 @@ def _mod_files_by_dir(asset_paths: Iterable[str]) -> dict[str, list[str]]:
 
 @dataclass
 class ModIndex:
-    """The mod files of one mechanisms directory, found by the mechanism each defines.
+    """The mod files of one directory, indexed by the ``SUFFIX`` each declares.
 
-    NEURON names a mechanism by the ``SUFFIX`` written inside the file, not by the file
-    name (rCA1's ``kdrbca1.mod`` defines ``kdrb``). So every mod file of the directory is
-    read, and indexed by its ``SUFFIX``.
+    NEURON names a mechanism by its ``SUFFIX``, not its file name (rCA1's ``kdrbca1.mod``
+    defines ``kdrb``), so every file of the directory is read.
 
     Attributes:
         mechanisms: SUFFIX -> parsed mod file, or the error when two files define it.
-        unread: Errors of files that could not be fetched; which mechanisms they define
-            is unknown, so a mechanism missing from ``mechanisms`` is reported with one.
+        unread: Errors of files that could not be read; a missing mechanism may be in one.
     """
 
     mechanisms: dict[str, ModMechanism | Exception]
@@ -407,10 +369,9 @@ class ModIndex:
 def _mod_index(
     mod_paths: Iterable[str], files: dict[str, HocBiophysics | ModMechanism | Exception]
 ) -> ModIndex:
-    """Index the parsed mod files of one directory by their ``SUFFIX``.
+    """Index the parsed mod files of one directory by ``SUFFIX``.
 
-    A file that is not a mechanism this module reads (it has no ``SUFFIX`` line) is
-    skipped. A file that could not be fetched or is too large is kept in ``unread``.
+    A file with no ``SUFFIX`` is skipped; one that could not be read goes to ``unread``.
     """
     index = ModIndex(mechanisms={}, unread=[])
     for path in mod_paths:
@@ -432,12 +393,11 @@ def _template_hoc_paths(
 ) -> tuple[dict[str, str], dict[str, PopulationModelDirs], dict[str, str]]:
     """Find each template's hoc file and model directories.
 
-    A template name is assumed to mean the same hoc file in every population that uses
-    it, so the first population that lists it decides its directories.
+    The first population that lists a template decides its directories.
 
     Returns:
-        Template -> hoc asset path, template -> its population's directories, and
-        template -> why it has no hoc path (its population declares no hoc directory).
+        Template -> hoc asset path, template -> directories, and template -> why it has
+        no hoc path.
     """
     hoc_paths: dict[str, str] = {}
     template_dirs: dict[str, PopulationModelDirs] = {}
@@ -457,10 +417,7 @@ def _template_hoc_paths(
 def _mod_paths_per_dirs(
     candidates: Iterable[tuple[str, ...]], mod_files_by_dir: dict[str, list[str]]
 ) -> dict[tuple[str, ...], list[str]]:
-    """Pick, for each list of candidate directories, the mod files of the first one.
-
-    The first candidate that holds any ``.mod`` file wins; none gives an empty list.
-    """
+    """For each candidate list, the mod files of the first directory that has any."""
     return {
         mod_dirs: next((sorted(mod_files_by_dir[d]) for d in mod_dirs if d in mod_files_by_dir), [])
         for mod_dirs in dict.fromkeys(candidates)
@@ -478,11 +435,8 @@ def _read_template_models(
 ) -> dict[str, TemplateModel | str]:
     """Read every template from its hoc file and the mod files of its directory.
 
-    The listing gives the mod file paths, then all hoc and mod files are fetched and parsed
-    in one parallel batch. Reading the whole mechanisms directory (a few dozen small files)
-    costs less than looking for each mechanism's file one by one, and the mod files do not
-    depend on the hoc files, so nothing waits. Units the mod files leave undeclared are
-    then filled from the database (``_fill_units_from_database``).
+    All hoc and mod files go in one parallel batch: the whole mod directory (a few dozen
+    small files) is cheaper to fetch than to look up file by file.
 
     Args:
         db_client: entitysdk client.
@@ -491,7 +445,7 @@ def _read_template_models(
         temp_dir_path: Directory where files are staged for this request.
         templates_per_population: Population -> the templates to read.
         pop_to_model_dirs: Population -> where its hoc and mod files are.
-        asset_files: The asset listing from ``_asset_files``, or why it failed.
+        asset_files: The asset listing, or why it failed.
 
     Returns:
         Template -> its model, or the reason it could not be read.
@@ -546,7 +500,7 @@ def _undeclared_units(mechanism: ModMechanism) -> list[str]:
 
 
 def _normalized_unit(unit: str) -> str:
-    """Write a unit so that equal units compare equal: ``mho`` is the old name of ``S``."""
+    """Spell a unit one way: ``mho`` is the old name of ``S``."""
     return unit.replace("mho", "S").replace(" ", "")
 
 
@@ -558,23 +512,17 @@ def _entity_units(model: IonChannelModel) -> dict[str, str]:
 
 
 def _database_units(mechanism: ModMechanism, models: Iterable[IonChannelModel]) -> dict[str, str]:
-    """Find units for the mechanism's undeclared variables in entities with its suffix.
+    """Units for the mechanism's undeclared variables, from entities with its suffix.
 
-    Two mechanisms can share a suffix and still differ, so an entity is used only when
-    every unit that both it and the mod file declare is the same. A missing unit is taken
-    only when all those entities give the same one; otherwise it stays empty.
-
-    Example:
-        rCA1's ``kmb.mod`` declares ``gbar (mho/cm2)`` but no unit for ``tau``. An entity
-        with ``gbar: S/cm2`` and ``tau: ms`` matches (``mho`` is ``S``), so ``tau`` gets
-        ``ms``. An entity with ``gbar: mV`` is another mechanism and is ignored.
+    Two mechanisms can share a suffix, so an entity counts only when every unit it shares
+    with the mod file is equal, and a unit is taken only when all such entities agree.
 
     Returns:
-        Variable -> unit, only for the variables a unit was found for.
+        Variable -> unit, for the variables a unit was found for.
     """
     declared = {name: _normalized_unit(unit) for name, unit in mechanism.units.items()}
     missing = _undeclared_units(mechanism)
-    # Missing variable -> {normalized unit: unit as written}, over the matching entities.
+    # Missing variable -> {normalized unit: unit as written}.
     found: dict[str, dict[str, str]] = defaultdict(dict)
     for model in models:
         units = _entity_units(model)
@@ -589,20 +537,11 @@ def _database_units(mechanism: ModMechanism, models: Iterable[IonChannelModel]) 
 def _fill_units_from_database(
     db_client: entitysdk.client.Client, mechanisms: Iterable[ModMechanism]
 ) -> None:
-    """Fill the units the mod files leave undeclared, from ion channel model entities.
+    """Fill, in place, the units the mod files leave undeclared from ion channel entities.
 
-    Some circuits' mod files declare no unit for some variables (the rCA1 circuits miss
-    15, such as ``tau_kmb``), while the database entity of the same mechanism has it.
-    The ``mechanisms`` are updated in place.
-
-    There is one search per suffix that misses a unit, all sent in parallel on
-    ``FETCH_POOL``. One search for all suffixes is not possible: entitycore filters one
-    ``nmodl_suffix`` per request, and searching by name would miss a third of the
-    entities, whose name differs from their suffix. A failed search is logged and leaves
-    the units empty: a unit is shown to the user, it is not worth failing the template.
+    One search per suffix with a missing unit, in parallel: entitycore filters one
+    ``nmodl_suffix`` per request. A failed search is logged and leaves the unit empty.
     """
-    # The same parsed mod file is shared by every template that inserts it, so it can
-    # appear several times; filling it again gives the same units.
     by_suffix: dict[str, list[ModMechanism]] = defaultdict(list)
     for mechanism in mechanisms:
         if _undeclared_units(mechanism):
@@ -625,11 +564,7 @@ def _fill_units_from_database(
 
 
 def _template_model(biophysics: HocBiophysics, index: ModIndex) -> TemplateModel | str:
-    """Join a parsed hoc file with the mod files of the mechanisms it inserts.
-
-    Returns:
-        The template's model, or the reason when one mechanism has no usable mod file.
-    """
+    """Join a parsed hoc file with its mechanisms' mod files, or return why it cannot be."""
     mechanisms: dict[str, ModMechanism] = {}
     for channel in sorted(biophysics.mod_file_mechanisms):
         mod = index.lookup(channel)
@@ -639,28 +574,36 @@ def _template_model(biophysics: HocBiophysics, index: ModIndex) -> TemplateModel
     return TemplateModel(biophysics=biophysics, mechanisms=mechanisms)
 
 
-def _unique_templates(group: h5py.Group) -> set[str] | None:
+def _read_dataset(dataset: h5py.Dataset) -> np.ndarray:
+    """Read a whole dataset through h5py."""
+    return dataset[()]
+
+
+def _unique_templates(
+    group: h5py.Group, read_column: Callable[[h5py.Dataset], np.ndarray] = _read_dataset
+) -> set[str] | None:
     """Return the distinct, non-empty ``model_template`` values of one population.
 
-    Only the ``model_template`` column is read. Large circuits store it as a SONATA
-    enumeration: one small integer per node plus an ``@library`` list of the names, so
-    the integers are read and only the distinct ones are looked up. The same code works
-    on a local file and on a remote one read by byte ranges.
+    An enumerated column (integers plus an ``@library`` of names) costs one small read:
+    only the distinct integers are looked up.
 
     Args:
         group: The population's ``nodes/<population>/0`` group.
+        read_column: Reads the column dataset. A remote file passes
+            ``read_contiguous_dataset`` so the read does not hold h5py's lock.
 
     Returns:
         The template names, or None when the population has no ``model_template``.
     """
     if "model_template" not in group:
         return None
-    column = group["model_template"]
+    column = read_column(group["model_template"])
     if "@library" in group and "model_template" in group["@library"]:
         library = group["@library/model_template"].asstr()[:]
-        templates = {str(library[index]) for index in np.unique(column[:])}
+        templates = {str(library[index]) for index in np.unique(column)}
     else:
-        templates = {str(template) for template in column.asstr()[:]}
+        # Fixed-length strings are bytes, variable-length ones str.
+        templates = {t.decode() if isinstance(t, bytes) else str(t) for t in column}
     return templates - {""}
 
 
@@ -673,13 +616,10 @@ def _population_templates(
     nodes_relative: str,
     size: int | None,
 ) -> set[str] | None:
-    """Return one population's distinct ``model_template`` values, reading little data.
+    """Return one population's distinct ``model_template`` values, the cheapest way that works.
 
-    The first way that works is used:
-
-    1. A symlink to the mounted asset store: no transfer at all.
-    2. Byte-range reads of only the ``model_template`` column (a 743 MB ``nodes.h5``
-       costs about 34 MB). Needs the file ``size`` from the listing.
+    1. A symlink to the mounted asset store.
+    2. Byte-range reads of the column only (34 MB of a 743 MB file); needs ``size``.
     3. A full download, when ranges fail (logged) or the size is unknown.
 
     Returns:
@@ -697,15 +637,19 @@ def _population_templates(
     except EntitySDKError:
         if size is not None:
             try:
-                with open_asset_h5(
+                remote = asset_range_file(
                     db_client,
                     entity_id=UUID(circuit_id),
                     entity_type=Circuit,
                     asset_id=asset.id,
                     asset_path=nodes_relative,
                     size=size,
-                ) as h5:
-                    return _unique_templates(h5[f"nodes/{population}/0"])
+                )
+                with remote, h5py.File(remote, "r") as h5:
+                    return _unique_templates(
+                        h5[f"nodes/{population}/0"],
+                        lambda dataset: read_contiguous_dataset(dataset, remote),
+                    )
             except Exception:  # ruff: ignore[blind-except]
                 L.warning(
                     "Partial read of %s failed, downloading it", nodes_relative, exc_info=True
@@ -722,12 +666,7 @@ def _stage_circuit_for_neuron_set_resolution(
     asset: Asset,
     neuron_set: NeuronSet,
 ) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str]]:
-    """Stage circuit files, resolve neuron set to node IDs, read model_template.
-
-    Stages circuit_config.json, its node sets file, and the nodes.h5 of every population,
-    then resolves the neuron set (every scan value, see ``get_expanded_neuron_ids``) and
-    reads model_template for the resulting node IDs across all populations. The hoc and
-    mod files of every template found are read in the same staging directory.
+    """Stage the circuit, resolve the neuron set to node IDs and read their templates.
 
     Args:
         db_client: entitysdk client.
@@ -737,15 +676,14 @@ def _stage_circuit_for_neuron_set_resolution(
         neuron_set: Neuron set to resolve; swept fields are expanded.
 
     Returns:
-        Tuple of (population_names, {(population, node_id): model_template},
-        {model_template: TemplateModel or reason}). Node IDs are qualified by population
-        because populations can share local node IDs.
+        The populations, (population, node_id) -> model_template, and
+        model_template -> model or reason it could not be read.
 
     Raises:
-        ValueError: The neuron set resolves to no node IDs, a selected population has no
-            nodes file, or it has no ``model_template`` attribute.
+        ValueError: No node IDs, a population without a nodes file or without
+            ``model_template``.
     """
-    # Listed while the circuit is staged and the neuron set resolved: no extra wait.
+    # Listed while the circuit is staged: no extra wait.
     listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
@@ -824,14 +762,10 @@ def _collect_all_templates(
 ) -> tuple[dict[str, set[str]], dict[str, TemplateModel | str]]:
     """Return every template of every biophysical population, with its model.
 
-    Virtual populations are skipped: they have no ``model_template``, and their
-    ``nodes.h5`` can be large. Populations are read one after the other, since a circuit
-    has one or two biophysical ones. The asset listing runs while the config is fetched.
-
     Returns:
         Population -> its templates, and template -> its model or the reason it failed.
     """
-    # Listed while circuit_config.json is fetched: no extra wait.
+    # Listed while the config is fetched: no extra wait.
     listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
@@ -873,21 +807,14 @@ def _collect_all_templates(
 def get_expanded_neuron_ids(neuron_set: NeuronSet, circuit: ObiCircuit) -> dict[str, list[int]]:
     """Resolve a neuron set to node IDs per population, expanding swept fields.
 
-    A list in a block field is a parameter scan dimension: in a ScanConfig it produces
-    one single config per value. Declared endpoints receive no such expansion, so the
-    sweep is expanded here instead and the per-coordinate node IDs are unioned per
-    population — equivalent to resolving every scan point and merging its selection.
-
-    Args:
-        neuron_set: Neuron set to resolve (fields may hold swept list values).
-        circuit: The circuit to resolve against.
+    A list in a block field is a scan dimension. Endpoints get no scan expansion, so each
+    single-valued copy is resolved here and the node IDs are unioned per population.
 
     Returns:
-        Dict mapping population name to the sorted union of node IDs across all
-        expanded single-valued neuron sets.
+        Population -> sorted union of node IDs.
 
-    A ``ValueError`` propagates from ``Block.expand_multi_values`` when the sweep has too
-    many combinations or a swept value is nested below a top-level field.
+    ``ValueError`` propagates from ``Block.expand_multi_values`` for too many combinations
+    or a nested swept value.
     """
     ids_per_population: dict[str, set[int]] = {}
     for expanded in neuron_set.expand_multi_values():
@@ -902,21 +829,9 @@ def get_circuit_node_ids(
     circuit_id: str,
     neuron_set: NeuronSet,
 ) -> dict[str, list[int]]:
-    """Resolve a neuron set to node IDs for a circuit.
+    """Resolve a neuron set to node IDs per population (see ``get_expanded_neuron_ids``).
 
-    Swept fields of the neuron set are expanded and the resulting node IDs are
-    unioned per population.
-
-    Args:
-        db_client: entitysdk client.
-        circuit_id: Circuit entity ID.
-        neuron_set: Neuron set to resolve.
-
-    Returns:
-        Dict mapping population name to the sorted list of node IDs.
-
-    A ``ValueError`` propagates when the circuit has no single ``sonata_circuit`` asset or
-    the neuron set sweep cannot be expanded (see ``get_expanded_neuron_ids``).
+    ``ValueError`` propagates when the circuit has no single ``sonata_circuit`` asset.
     """
     circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
 
@@ -941,15 +856,11 @@ def _build_template_groups(
     template_models: dict[str, TemplateModel | str],
     template_to_nodes: dict[str, list[tuple[str, int]]],
 ) -> tuple[dict[str, dict], dict[str, str], list[str]]:
-    """Build one group of variables per template, from its circuit files.
-
-    Args:
-        template_models: Template -> its parsed files, or the reason they were not read.
-        template_to_nodes: Template -> the (population, node_id) keys that use it.
+    """Build one group of variables per template from its circuit files.
 
     Returns:
-        The groups, in the shape ``_build_emodel_groups`` returns; template -> reason for
-        the templates that could not be read; and warnings for values not readable.
+        The groups (same shape as ``_build_emodel_groups``), template -> reason for the
+        templates not read, and warnings for values not readable.
     """
     groups: dict[str, dict] = {}
     failed: dict[str, str] = {}
@@ -977,13 +888,10 @@ def _build_groups_with_fallback(
     node_to_template: TemplateNodes,
     template_models: dict[str, TemplateModel | str],
 ) -> tuple[dict[str, dict], list[str]]:
-    """Build groups from the circuit files, and from derivations for the templates left.
-
-    Each template that needed the derivation, or had none, gets one warning with the
-    reason its files could not be read.
+    """Build groups from the circuit files, then from derivations for the templates left.
 
     Returns:
-        The groups, and the warnings.
+        The groups, and one warning per template that needed the derivation or had none.
     """
     template_to_nodes: dict[str, list[tuple[str, int]]] = {}
     for key, template in node_to_template.items():
@@ -993,7 +901,6 @@ def _build_groups_with_fallback(
     if not failed:
         return groups, warnings
 
-    # Fallback kept for circuits whose files cannot be read this way.
     fallback_nodes = {key: tpl for key, tpl in node_to_template.items() if tpl in failed}
     label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
     node_key_to_emodel, unmatched = _match_templates_to_emodels(fallback_nodes, label_to_emodel_id)
@@ -1054,12 +961,11 @@ def _build_emodel_groups(
 ) -> dict[str, dict]:
     """Group nodes by emodel and fetch mechanism variables for each.
 
-    A failed fetch is logged and leaves that group's variables empty, so
-    ``_compute_common_mechanism_variables`` ignores it instead of failing the request.
+    A failed fetch is logged and leaves the group's variables empty, so the intersection
+    skips it instead of failing the request.
 
     Returns:
         EModel ID -> ``{"node_ids", "model_template", "mechanism_variables_by_ion_channel"}``.
-        When several labels map to one EModel, ``model_template`` is the first label.
     """
     emodel_to_nodes: dict[str, list[tuple[str, int]]] = {}
     for key, emodel_id in node_key_to_emodel.items():
@@ -1092,17 +998,10 @@ def _build_emodel_groups(
 def _compute_common_mechanism_variables(
     emodel_groups: dict[str, dict],
 ) -> dict[str, IonChannelVariables]:
-    """Compute the intersection of mechanism variables across all groups.
+    """Intersect the mechanism variables of all groups (templates or emodels).
 
-    A group is one template read from the circuit files, or one emodel from the
-    derivation fallback; both have the same shape.
-
-    Returns only channels and variables that are present in ALL groups.
-    For limits, takes the most restrictive range (max of lower bounds, min of upper bounds).
-    For section_lists, takes the intersection across groups.
-
-    Special case: if there is only one emodel group, returns its full variable set
-    with original values preserved.
+    Only channels, variables and section lists present in every group are kept; limits
+    take the most restrictive range. A single group is returned as is, values included.
     """
     if not emodel_groups:
         return {}
@@ -1165,8 +1064,9 @@ def _compute_common_mechanism_variables(
             else:
                 merged_limits = None
 
+            # A derivation group can leave the unit empty; the first group that has one wins.
             variables[var_name] = MechanismVariableDetail(
-                units=all_details[0].units,
+                units=next((d.units for d in all_details if d.units), ""),
                 limits=merged_limits,
                 variable_type=all_details[0].variable_type,
                 section_lists_original_values=dict.fromkeys(common_section_lists),
@@ -1196,33 +1096,25 @@ def get_circuit_manipulation_properties(
     circuit_id: str,
     neuron_set: NeuronSet | None = None,
 ) -> dict:
-    """Get neuronal manipulation properties for a circuit + neuron set.
+    """Mechanism variables common to the cell templates of a circuit, or of its neuron set.
 
-    Two modes:
-    1. neuron_set=None: every model_template of every biophysical population. If the
-       circuit files cannot be read at all, every emodel_circuit derivation is used.
-    2. neuron_set provided: the model_template of every node the neuron set selects.
-
-    Each template's variables come from its hoc and mod files inside the circuit.
-    Templates whose files cannot be read fall back to the emodel_circuit derivation.
-
-    Returns the intersection (common) of mechanism variables across all templates
-    in the selection.
+    Without a neuron set, every template of every biophysical population counts; with
+    one, the templates of the nodes it selects. Each template is read from its hoc and
+    mod files; one whose files cannot be read uses its emodel_circuit derivation instead,
+    with a warning.
 
     Args:
         db_client: entitysdk client.
         circuit_id: Circuit entity ID.
-        neuron_set: Neuron set to resolve (may span multiple populations).
+        neuron_set: Neuron set to resolve; may span several populations.
 
     Returns:
-        Dict with entity_type, populations, mechanism_variables_by_ion_channel,
-        and optional warnings. Each template that needed the derivation fallback, or
-        could not be resolved at all, gets one warning with the reason.
+        ``entity_type``, ``populations``, ``mechanism_variables_by_ion_channel`` and
+        ``warnings``.
 
-    With a neuron set, a ``ValueError`` propagates when the circuit has no single
-    sonata_circuit asset, the neuron set resolves to no nodes, or a selected population
-    has no model_template; the endpoint maps it to HTTP 400. Without one, a circuit
-    without that asset uses its emodel_circuit derivations, as the files cannot be read.
+    With a neuron set, ``ValueError`` propagates (HTTP 400) when the circuit has no single
+    sonata_circuit asset, the set resolves to no nodes, or a population has no
+    ``model_template``. Without one, such a circuit uses its derivations.
     """
     resolved_populations: list[str] | None = None
 
@@ -1233,8 +1125,7 @@ def get_circuit_manipulation_properties(
                 db_client, circuit_id, asset
             )
         except Exception as err:  # ruff: ignore[blind-except]
-            # No single sonata_circuit asset, or its files unreadable: the derivations are
-            # all that is left, as on the derivation-only path this replaced.
+            # No sonata_circuit asset or unreadable files: only the derivations are left.
             L.warning("Could not read templates of circuit %s", circuit_id, exc_info=True)
             label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
             if not label_to_emodel_id:

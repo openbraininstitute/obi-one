@@ -1,10 +1,9 @@
-"""Read parts of a remote file over HTTP without downloading the whole file.
+"""Read parts of a remote file with HTTP ``Range`` requests, not the whole file.
 
-An HTTP ``Range`` request asks a server for a slice of a file, for example
-``Range: bytes=0-4095`` for its first 4 KB, and the server answers ``206 Partial Content``
-with only those bytes. ``HttpRangeFile`` turns such a URL into a normal Python file object,
-so libraries that read files with ``seek`` and ``read`` (h5py, for example) work on it
-unchanged and fetch only the bytes they actually read.
+``HttpRangeFile`` makes a URL look like a seekable file, so h5py reads only the bytes it
+needs. h5py runs the file's reads inside its process-wide lock, so a long remote read
+blocks every other h5py call in the process (measured: N concurrent reads take N times as
+long). Read a large dataset with ``read_contiguous_dataset``, which fetches outside h5py.
 """
 
 import io
@@ -13,15 +12,14 @@ from bisect import bisect_right
 from collections.abc import Buffer
 from typing import override
 
+import h5py
+import numpy as np
 from entitysdk.utils.http import HTTPClient
 
 L = logging.getLogger(__name__)
 
-# Smallest amount fetched per request. HDF5 keeps its metadata (the file header and the
-# group and dataset headers) in small pieces close together, and h5py reads them a few
-# hundred bytes at a time. Fetching 4 MB at once covers many of those reads with one
-# request: opening a file costs a few requests instead of hundreds. A read larger than
-# this is fetched exactly, in one request.
+# Smallest fetch. HDF5 metadata sits in small pieces close together and h5py reads it a
+# few hundred bytes at a time; 4 MB blocks turn hundreds of reads into a few requests.
 DEFAULT_BLOCK_SIZE = 4 * 1024 * 1024
 HTTP_PARTIAL_CONTENT = 206
 
@@ -29,20 +27,15 @@ HTTP_PARTIAL_CONTENT = 206
 class HttpRangeFile(io.RawIOBase):
     """A read-only, seekable file whose bytes are fetched from a URL on demand.
 
-    Each read that is not already in memory sends one ``Range`` request. Fetched blocks
-    are kept until the object is dropped, so reading the same bytes twice costs one
-    request. Memory grows with the bytes read, not with the file size.
+    Small reads are served from ``block_size`` blocks kept until ``close()``. A read
+    larger than a block is fetched exactly and not kept. The caller gives the file size,
+    so no ``HEAD`` request is sent (S3 refuses ``HEAD`` on a presigned ``GET`` URL).
 
-    The caller passes the file size (for example from ``Client.list_directory``), so no
-    ``HEAD`` request is needed. S3 answers ``HEAD`` with 403 on a presigned URL signed for
-    ``GET`` only, while a ``Range`` ``GET`` on the same URL works.
-
-    A read fails with ``OSError`` when the server does not answer 206, or answers with a
-    different number of bytes than asked (a wrong ``size``). Falling back to the whole
-    file silently would hide the problem, so the caller decides what to do.
+    A read raises ``OSError`` when the server does not answer 206 or returns the wrong
+    number of bytes (a wrong ``size``); the caller decides whether to fall back.
 
     Example:
-        Read one dataset of a large remote HDF5 file::
+        ::
 
             remote = HttpRangeFile(url, http_client, size=742_603_632)
             with h5py.File(remote, "r") as h5:
@@ -64,7 +57,7 @@ class HttpRangeFile(io.RawIOBase):
         """Store the URL and the size; nothing is fetched before the first read.
 
         Args:
-            url: Address of the file. It must accept ``GET`` with a ``Range`` header.
+            url: Address of a file served with ``Range`` support.
             http_client: Client used for every request (connection pool, timeouts).
             size: File size in bytes.
             block_size: Smallest number of bytes fetched per request.
@@ -74,7 +67,7 @@ class HttpRangeFile(io.RawIOBase):
         self._http = http_client
         self._block_size = block_size
         self._position = 0
-        # Fetched windows sorted by start (parallel lists for bisect); they may overlap.
+        # Kept blocks sorted by start, as parallel lists for bisect.
         self._starts: list[int] = []
         self._blocks: list[bytes] = []
         self.requests = 0
@@ -89,11 +82,25 @@ class HttpRangeFile(io.RawIOBase):
         return True
 
     @override
+    def close(self) -> None:
+        self._starts.clear()
+        self._blocks.clear()
+        super().close()
+
+    def _check_open(self) -> None:
+        """Raise ``ValueError`` after ``close()``, as ``io`` requires."""
+        if self.closed:
+            msg = "I/O operation on closed file"
+            raise ValueError(msg)
+
+    @override
     def tell(self) -> int:
+        self._check_open()
         return self._position
 
     @override
     def seek(self, offset: int, whence: int = io.SEEK_SET, /) -> int:
+        self._check_open()
         try:
             base = {io.SEEK_SET: 0, io.SEEK_CUR: self._position, io.SEEK_END: self.size}[whence]
         except KeyError as err:
@@ -108,14 +115,15 @@ class HttpRangeFile(io.RawIOBase):
 
     @override
     def readinto(self, buffer: Buffer, /) -> int:
-        """Copy bytes from the current position into ``buffer``; at most one request.
+        """Fill ``buffer`` from the current position; at most one request.
 
-        Args:
-            buffer: Writable buffer; up to ``len(buffer)`` bytes are copied into it.
+        Never a short read: h5py calls ``readinto`` once and ignores the count returned,
+        so a partial fill would hand HDF5 uninitialised memory.
 
         Returns:
             The number of bytes copied; 0 at the end of the file.
         """
+        self._check_open()
         view = memoryview(buffer).cast("B")
         start = self._position
         length = min(len(view), self.size - start)
@@ -127,25 +135,35 @@ class HttpRangeFile(io.RawIOBase):
         self._position += length
         return length
 
+    def read_at(self, start: int, length: int) -> bytes:
+        """Fetch bytes ``[start, start + length)`` in one request, bypassing the cache.
+
+        Does not touch the file position, so it is safe while h5py has the file open.
+
+        Raises:
+            ValueError: The range ends past the end of the file.
+        """
+        self._check_open()
+        if start + length > self.size:
+            msg = f"range {start}-{start + length - 1} ends past the file size {self.size}"
+            raise ValueError(msg)
+        return self._fetch(start, start + length)
+
     def _block_covering(self, start: int, length: int) -> tuple[int, bytes]:
-        """Return a fetched block that holds bytes ``[start, start + length)``.
+        """Return ``(block start, block bytes)`` for a block holding ``[start, start+length)``.
 
-        The block already in memory is used when it covers the range; otherwise one is
-        fetched and kept, sorted by start so the next lookup is a binary search. Only the
-        block starting closest before ``start`` is checked, so a range covered by an
-        earlier, longer block is fetched again.
-
-        Returns:
-            The block's start offset in the file, and the block's bytes.
+        Only the kept block starting closest before ``start`` is checked. A block-sized
+        fetch is kept; a larger exact fetch is not.
         """
         index = bisect_right(self._starts, start) - 1
         if index >= 0:
             block_start, block = self._starts[index], self._blocks[index]
             if start + length <= block_start + len(block):
                 return block_start, block
-        # A small read starts at a block boundary, so the nearby reads that follow are
-        # already in memory. A read larger than a block is fetched as asked.
-        fetch_start = start if length >= self._block_size else start - start % self._block_size
+        if length >= self._block_size:
+            return start, self._fetch(start, min(start + length, self.size))
+        # Block-aligned, extended when the read crosses the block end.
+        fetch_start = start - start % self._block_size
         fetch_end = min(max(fetch_start + self._block_size, start + length), self.size)
         block = self._fetch(fetch_start, fetch_end)
         position = bisect_right(self._starts, fetch_start)
@@ -154,22 +172,44 @@ class HttpRangeFile(io.RawIOBase):
         return fetch_start, block
 
     def _fetch(self, start: int, end: int) -> bytes:
-        """Fetch bytes ``[start, end)`` of the file in one request.
+        """Fetch bytes ``[start, end)`` in one request.
 
         Raises:
-            OSError: The server answered anything but 206 (an error status too), or returned
-                a different length. The message leaves the URL out: it is signed.
+            OSError: Status other than 206, or wrong length. The signed URL is left out.
         """
         self.requests += 1
-        response = self._http.get(
-            self._url, headers={"Range": f"bytes={start}-{end - 1}"}, follow_redirects=True
-        )
-        # No raise_for_status(): its message holds the URL, which callers log.
-        if response.status_code != HTTP_PARTIAL_CONTENT:
-            msg = f"Expected 206 for a range request, got {response.status_code}"
+        # Streamed: a 200 (Range header dropped) is refused before its whole body is read.
+        # No raise_for_status(): its message holds the signed URL.
+        with self._http.stream(
+            "GET", self._url, headers={"Range": f"bytes={start}-{end - 1}"}, follow_redirects=True
+        ) as response:
+            if response.status_code != HTTP_PARTIAL_CONTENT:
+                msg = f"Expected 206 for a range request, got {response.status_code}"
+                raise OSError(msg)
+            content = response.read()
+        if len(content) != end - start:
+            msg = f"Expected {end - start} bytes, got {len(content)}: wrong file size?"
             raise OSError(msg)
-        if len(response.content) != end - start:
-            msg = f"Expected {end - start} bytes, got {len(response.content)}: wrong file size?"
-            raise OSError(msg)
-        L.debug("Range read %s-%s (%d bytes)", start, end - 1, len(response.content))
-        return response.content
+        L.debug("Range read %s-%s (%d bytes)", start, end - 1, len(content))
+        return content
+
+
+def read_contiguous_dataset(dataset: h5py.Dataset, remote: HttpRangeFile) -> np.ndarray:
+    """Read a whole dataset of a file opened on ``remote``, fetching its bytes outside h5py.
+
+    A contiguous, uncompressed dataset is one run of bytes: its offset and size give one
+    exact ``Range`` request that does not hold h5py's lock. Chunked, compressed and
+    variable-length-string datasets are read through h5py as usual.
+
+    Returns:
+        The dataset's values, as ``dataset[()]`` gives them.
+    """
+    offset = dataset.id.get_offset()
+    if (
+        offset is None
+        or dataset.dtype.kind == "O"
+        or dataset.id.get_storage_size() != dataset.nbytes
+    ):
+        return dataset[()]
+    raw = remote.read_at(offset, dataset.nbytes)
+    return np.frombuffer(raw, dtype=dataset.dtype).reshape(dataset.shape)

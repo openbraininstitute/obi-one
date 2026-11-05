@@ -129,26 +129,20 @@ class Block(OBIBaseModel, extra="forbid"):
                 raise TypeError(msg)
 
     def expand_multi_values(self, max_n: int = MAX_N_COORDINATES) -> list[Self]:
-        """Expands multi-value parameters into single-valued copies of this block.
+        """Expand multi-value parameters into single-valued copies of this block.
 
-        A list in a block field is a parameter scan dimension: a ScanConfig sweeps it
-        into one single config per value. This method performs the same expansion for a
-        standalone block, producing the Cartesian product of its multi-value parameters
-        (plain lists and ParametericMultiValue ranges) as single-valued copies. It is
-        used when a block is consumed outside a scan (e.g., by declared endpoints) but
-        may still carry swept fields.
+        The same Cartesian product a ScanConfig makes, for a block used outside a scan
+        (e.g. by an endpoint) that still carries swept fields.
 
         Args:
             max_n: Maximum number of single-valued blocks allowed.
 
         Returns:
-            Single-valued copies of this block. ``[self]`` when there are no
-            multi-value parameters.
+            Single-valued copies of this block; ``[self]`` when nothing is swept.
 
         Raises:
-            ValueError: If the number of combinations exceeds ``max_n``, or if a
-                multi-value parameter is nested inside a ComplexVariableHolder
-                (only top-level fields are supported).
+            ValueError: More than ``max_n`` combinations, or a swept value nested inside a
+                ComplexVariableHolder (only top-level fields are supported).
         """
         params = self.multiple_value_parameters(category_name="block")
         if not params:

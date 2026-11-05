@@ -440,6 +440,18 @@ class TestComputeCommonMechanismVariables:
         # Only emodel-1 has vars, so it's treated as single group
         assert "NaTg" in result
 
+    def test_units_come_from_the_first_group_that_has_one(self):
+        """A derivation group can leave a unit empty while a file-read group has it."""
+        groups = {
+            "a": _make_emodel_group(
+                [0], "t_a", {"NaTg": _make_channel(["somatic"], {"g": _make_var(units="")})}
+            ),
+            "b": _make_emodel_group(
+                [1], "t_b", {"NaTg": _make_channel(["somatic"], {"g": _make_var(units="S/cm2")})}
+            ),
+        }
+        assert _compute_common_mechanism_variables(groups)["NaTg"].variables["g"].units == "S/cm2"
+
 
 class TestMatchTemplatesToEmodels:
     """Tests for _match_templates_to_emodels."""
@@ -2179,7 +2191,7 @@ class TestPopulationTemplatesReadPath:
         )
         assert self._read(client, tmp_path) == self._expected(TINY_CIRCUIT_DIR)
         assert client.fetch_file.call_args.kwargs["strategy"] == FetchFileStrategy.link_only
-        client._http_client.get.assert_not_called()
+        assert client._http_client.mock_calls == []  # no range request of any kind
 
     def test_without_a_store_only_byte_ranges_are_read(self, tmp_path):
         client = _copying_client(TINY_CIRCUIT_DIR)
@@ -2195,7 +2207,7 @@ class TestPopulationTemplatesReadPath:
         assert self._read(client, tmp_path) == self._expected(TINY_CIRCUIT_DIR)
         strategies = [c.kwargs["strategy"] for c in client.fetch_file.call_args_list]
         assert strategies == [FetchFileStrategy.link_only, FetchFileStrategy.link_or_download]
-        client._http_client.get.assert_not_called()
+        assert client._http_client.mock_calls == []  # no range request of any kind
         assert "Partial read" not in caplog.text
 
     def test_storage_without_ranges_falls_back_to_the_download(self, tmp_path, caplog):
