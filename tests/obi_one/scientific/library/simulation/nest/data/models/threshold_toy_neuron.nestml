@@ -1,0 +1,18 @@
+model threshold_toy_neuron:
+    state:
+        V_m mV = -70 mV
+
+    parameters:
+        V_th mV = -55 mV
+
+    input:
+        spikes <- spike
+
+    output:
+        spike
+
+    update:
+        V_m = V_m + 1 mV
+        if V_m >= V_th:
+            V_m = -70 mV
+            emit_spike()

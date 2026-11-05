@@ -182,6 +182,22 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         ),
     ),
     TaskDefinitionLegacy(
+        task_type=TaskType.circuit_simulation_nest_machine,
+        config_type=models.Simulation,
+        activity_type=models.SimulationExecution,
+        code=_obi_one_code("nest.txt"),
+        resources=MachineResources(
+            cores=1,
+            memory=8,
+            timelimit="02:00",
+            compute_cell="local",
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
+    TaskDefinitionLegacy(
         task_type=TaskType.circuit_simulation_neurodamus_cluster,
         config_type=models.Simulation,
         activity_type=models.SimulationExecution,

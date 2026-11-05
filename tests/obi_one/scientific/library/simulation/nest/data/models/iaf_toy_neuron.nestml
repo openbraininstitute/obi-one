@@ -1,0 +1,23 @@
+model iaf_toy_neuron:
+    state:
+        V_m mV = -70 mV
+
+    equations:
+        V_m' = (-(V_m - E_L)) / tau_m
+
+    parameters:
+        E_L mV = -70 mV
+        tau_m ms = 10 ms
+        V_th mV = -55 mV
+
+    input:
+        spikes <- spike
+
+    output:
+        spike
+
+    update:
+        integrate_odes()
+        if V_m >= V_th:
+            V_m = E_L
+            emit_spike()

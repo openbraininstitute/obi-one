@@ -30,6 +30,15 @@ wheels = [
 ]
 
 [[package]]
+name = "antlr4-python3-runtime"
+version = "4.13.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/5f/2cdf6f7aca3b20d3f316e9f505292e1f256a32089bd702034c29ebde6242/antlr4_python3_runtime-4.13.2.tar.gz", hash = "sha256:909b647e1d2fc2b70180ac586df3933e38919c85f98ccc656a96cd3f25ef3916", size = 117467, upload-time = "2024-08-03T19:00:12.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/03/a851e84fcbb85214dc637b6378121ef9a0dd61b4c65264675d8a5c9b1ae7/antlr4_python3_runtime-4.13.2-py3-none-any.whl", hash = "sha256:fe3835eb8d33daece0e799090eda89719dbccee7aa39ef94eed3818cafa5a7e8", size = 144462, upload-time = "2024-08-03T19:00:11.134Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -95,6 +104,38 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b9/33/032cdc44182491aa708d06a68b62434140d8c50820a087fac7af37703357/arrow-1.4.0.tar.gz", hash = "sha256:ed0cc050e98001b8779e84d461b0098c4ac597e88704a655582b21d116e526d7", size = 152931, upload-time = "2025-10-18T17:46:46.761Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ed/c9/d7977eaacb9df673210491da99e6a247e93df98c715fc43fd136ce1d3d33/arrow-1.4.0-py3-none-any.whl", hash = "sha256:749f0769958ebdc79c173ff0b0670d59051a535fa26e8eba02953dc19eb43205", size = 68797, upload-time = "2025-10-18T17:46:45.663Z" },
+]
+
+[[package]]
+name = "astropy"
+version = "8.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "astropy-iers-data" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pyerfa" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/95/57/02089e6da0fc00846d309034ad74e13ebcadc67b1c5cef397ae0597473fa/astropy-8.0.2.tar.gz", hash = "sha256:e6af35823099ad6a40b57dbe5ff845f577374ea131925c9fa4b49eeab06c5310", size = 7178167, upload-time = "2026-10-15T21:44:45.383Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/ac/2a62e03b4bfb9dd679693cf8b149d202683005b8f5b75386f10e40c2f618/astropy-8.0.2-cp311-abi3-macosx_10_9_x86_64.whl", hash = "sha256:3d8492ac4987e2a0634610e387b14b79962b15e8dc5d51667d9100f770aa86e7", size = 6665519, upload-time = "2026-10-15T21:44:23.81Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/8c/a6b8e81d87268d79f3a7ed3e5deeaee8d96908f1b59955b0e36ea5e47b69/astropy-8.0.2-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:fd67922cca66b7557b58dfcc2271f3871957d85e67c65e712a129ce04ad9ed51", size = 6652674, upload-time = "2026-10-15T21:44:26.32Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/1a/0944850807ebddc690eb77dc07e8dbf7865c7dcdd86bcb81d2ff133e4e38/astropy-8.0.2-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d0e63e0011cc984426c478da8601fe177975fe4cb0b2a059ee88d26d60a0890f", size = 10405557, upload-time = "2026-10-15T21:44:29.516Z" },
+    { url = "https://files.pythonhosted.org/packages/42/c2/0e9849f6591dd113a1f217e061a9be1de766819bc076c7c7c8cb24851432/astropy-8.0.2-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:000d6998bcf4f097257b3776f29f1dafde0967bf1b091edbad95df564eee4eea", size = 10419022, upload-time = "2026-10-15T21:44:32.115Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/2a/1d84743c8be16846f8fbdc21b0af6f8ed1cff1db02026e19a4bf0cd3a87a/astropy-8.0.2-cp311-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:f462b80fe16e0603e813efd1098d4d6d94a487e64f95e2d9699e46b641577f8b", size = 10373480, upload-time = "2026-10-15T21:44:34.825Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/03/02f928891fdb2a89a7bdf10afc958e7c5c255c711d462e6b6aa0d387f95b/astropy-8.0.2-cp311-abi3-win32.whl", hash = "sha256:57b2388a229ec572437c5786e0387cb21a08ffe6001e5422ae59d2b8b9242001", size = 6412912, upload-time = "2026-10-15T21:44:37.63Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/ec/bfb4be449c689a0d80aa1b02cfa7c34e709556c9b58d8022366d67017d4a/astropy-8.0.2-cp311-abi3-win_amd64.whl", hash = "sha256:8baaf4451dc4fdbdf635e033378cbb626a9fd4755803c8fdc30ef520fb1688ba", size = 6547000, upload-time = "2026-10-15T21:44:40.442Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/00/4dfc968f9560fafee2cc04c31fb3abd9e39fd1bac7b0f81bf495db0c5740/astropy-8.0.2-cp311-abi3-win_arm64.whl", hash = "sha256:0827b3f83edbae1bda32ad5ab92d0b85f78dc71cfc2fd5c843c30d57de96d4cb", size = 6427839, upload-time = "2026-10-15T21:44:42.914Z" },
+]
+
+[[package]]
+name = "astropy-iers-data"
+version = "0.2026.11.2.0.34.55"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/e6/0f9740a39dbae6614444f4f29f71aa5fb977a75368e7bc74f998037fc496/astropy_iers_data-0.2026.11.2.0.34.55.tar.gz", hash = "sha256:20827b7431096723bbfac3f42eddc45df1bf35ea9bc6f3978837f65d8443cf6b", size = 2009267, upload-time = "2026-11-02T00:35:55.815Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/c1/79214b3d293c2a46869ba12ad4d20f3156653e15dabaddb02a6d644b0055/astropy_iers_data-0.2026.11.2.0.34.55-py3-none-any.whl", hash = "sha256:785cd5bc193d9206316bd7c786fe0647e212ebf017cd861beabedd91cbe585bf", size = 2007243, upload-time = "2026-11-02T00:35:53.226Z" },
 ]
 
 [[package]]
@@ -2260,6 +2301,42 @@ wheels = [
 ]
 
 [[package]]
+name = "nest-simulator"
+version = "3.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cython" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/f0/32302457ea87020dd295cbf8049f41ec21ba4ffafbe354d6683974434049/nest_simulator-3.10.0.tar.gz", hash = "sha256:8fbd7df4a3e941784d4b1d5825ded234bdc915238faac0982c62e4cb80134d52", size = 36252767, upload-time = "2026-06-10T08:27:24.246Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/f7/e0bd2ff702983cee997d4419c9b5bda03497c344f7ef0cfbf2792f0a7875/nest_simulator-3.10.0-cp312-cp312-macosx_15_0_arm64.whl", hash = "sha256:5c2a49270fcb1cf3017782e0a50f3016d7d835314b8ae3998091590ceaf7433d", size = 21891313, upload-time = "2026-06-10T08:26:38.939Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/7d/83389f962b61d7de49917e4838cb14cd66986a37785d592fbe2fbd3bbf96/nest_simulator-3.10.0-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:4cf6c8b5399b92cf346ec40149b5304df23ba69a82f93c70874164fba48d6edb", size = 23802183, upload-time = "2026-06-10T08:26:42.265Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/d2/03fad08b927de3ad19ce2fe2620ec2e243b73280847d5146e02a93e3b683/nest_simulator-3.10.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c44d650e5da79e3f9ae3ab4ac79d8f7cd982b27f99ffd49ac2ff456e043774f4", size = 33522233, upload-time = "2026-06-10T08:26:46.024Z" },
+    { url = "https://files.pythonhosted.org/packages/97/f6/066cb90dc9a62022d27e6056d0ede88c9b351fda7e30ff2e402243088db8/nest_simulator-3.10.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:cd9d2eb8b6d6546848eb0724415bc20e5d5cb22caa55457b6b59bffca6dc039b", size = 31267629, upload-time = "2026-06-10T08:26:50.253Z" },
+]
+
+[[package]]
+name = "nestml"
+version = "9.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "antlr4-python3-runtime" },
+    { name = "astropy" },
+    { name = "jinja2" },
+    { name = "numpy" },
+    { name = "odetoolbox" },
+    { name = "scipy" },
+    { name = "semver" },
+    { name = "setuptools" },
+    { name = "sympy" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/89/e734420e610359787b2132bd8ec696d0e13c4e953119aba19ab4630b6ead/nestml-9.0.1-py3-none-any.whl", hash = "sha256:e6331a9d7e484c87f745b42f22c860dfd31cd4fd4096142b6a04f865f087cea4", size = 49369778, upload-time = "2026-10-29T09:12:57.297Z" },
+]
+
+[[package]]
 name = "networkx"
 version = "3.7"
 source = { registry = "https://pypi.org/simple" }
@@ -2468,6 +2545,8 @@ all = [
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "nest-simulator" },
+    { name = "nestml" },
     { name = "networkx" },
     { name = "notebook" },
     { name = "obi-notebook" },
@@ -2494,6 +2573,10 @@ emodel = [
 ]
 meshing = [
     { name = "ultraliser" },
+]
+nest = [
+    { name = "nest-simulator" },
+    { name = "nestml" },
 ]
 notebooks = [
     { name = "ipykernel" },
@@ -2561,6 +2644,8 @@ requires-dist = [
     { name = "libsonata", specifier = ">=0.2.0" },
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
+    { name = "nest-simulator", marker = "extra == 'nest'", specifier = ">=3.8" },
+    { name = "nestml", marker = "extra == 'nest'", specifier = ">=8.0.0" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
     { name = "neurodamus", marker = "extra == 'bluerecording'", specifier = ">=4.2.11" },
     { name = "neurom" },
@@ -2568,9 +2653,9 @@ requires-dist = [
     { name = "numpy" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
-    { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
+    { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "nest", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obp-accounting-sdk", specifier = ">=0.6.10" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.10" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2586,7 +2671,7 @@ requires-dist = [
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["emodel", "connectivity", "meshing", "simplification", "nest", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2607,15 +2692,21 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.8"
+version = "0.6.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/4b/5c2839462cee59097a00830f471a11f225a2a138c236c9d145bc26043a1c/obp_accounting_sdk-0.6.8.tar.gz", hash = "sha256:dd895d3250a1767274550b714620e193196dfc52c834c8357234b6cd57697cf4", size = 37055, upload-time = "2026-10-14T10:24:18.303Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/e5/823725a5d847c4cbf0e61832a5ccf9ba7970178358f34b1a007b4d7a1787/obp_accounting_sdk-0.6.10.tar.gz", hash = "sha256:259c97fb907d48d0b08f6e8fa9e86ce866572283ea55365f4b49a05289602a53", size = 37278, upload-time = "2026-11-04T09:17:34.253Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/d0/8d16eff282e7730131e61fffc2c2c68cde56b473bf8331bf71ed637f7265/obp_accounting_sdk-0.6.8-py3-none-any.whl", hash = "sha256:ec746ff2d30d598722fe87d0d665c3be81ea2f221881e112383b473618c8013a", size = 27877, upload-time = "2026-10-14T10:24:16.684Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/f5/b0d0f7b5255c060aac6ee718026655403bd557fcad7818b5cea2a5c0f1a6/obp_accounting_sdk-0.6.10-py3-none-any.whl", hash = "sha256:609f300296dcddafc1fda41c22d0a708f923ec9875afff542db8b7b458f5dd29", size = 28095, upload-time = "2026-11-04T09:17:33.026Z" },
 ]
+
+[[package]]
+name = "odetoolbox"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/d7/5fcc10d4529f08fee46a22f9e4a6f6a2782474dedbc6f2f4a29301457365/odetoolbox-3.0.0.tar.gz", hash = "sha256:7008e4cb5fee72542b0a2c7d7ed88882845a2002713fab4a41eec458bd587279", size = 1632318, upload-time = "2026-08-26T11:14:07.869Z" }
 
 [[package]]
 name = "opentelemetry-api"
@@ -2945,6 +3036,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/68/ca/31c57507b13119d7d3cfa1576dad2911a4861e3be07b579395f4e9d393f9/pydantic_settings-2.15.0.tar.gz", hash = "sha256:694b793e84f766ba76a90ebdefc01d0a9a045dab0382bee70393da93712ad117", size = 261253, upload-time = "2026-08-07T09:24:57.419Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/30/a4/2bffa9f8e804325a09867f0e9d30795c80ea9f8d62560bd1b6ad6220eb2f/pydantic_settings-2.15.0-py3-none-any.whl", hash = "sha256:0ba092c291c94baceb5eff768aa0d56400a457585bc0175925a5a5510303da42", size = 69413, upload-time = "2026-08-07T09:24:55.839Z" },
+]
+
+[[package]]
+name = "pyerfa"
+version = "2.0.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/71/39/63cc8291b0cf324ae710df41527faf7d331bce573899199d926b3e492260/pyerfa-2.0.1.5.tar.gz", hash = "sha256:17d6b24fe4846c65d5e7d8c362dcb08199dc63b30a236aedd73875cc83e1f6c0", size = 818430, upload-time = "2024-11-11T15:22:30.852Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/d9/3448a57cb5bd19950de6d6ab08bd8fbb3df60baa71726de91d73d76c481b/pyerfa-2.0.1.5-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:b282d7c60c4c47cf629c484c17ac504fcb04abd7b3f4dfcf53ee042afc3a5944", size = 341818, upload-time = "2024-11-11T15:22:16.467Z" },
+    { url = "https://files.pythonhosted.org/packages/11/4a/31a363370478b63c6289a34743f2ba2d3ae1bd8223e004d18ab28fb92385/pyerfa-2.0.1.5-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:be1aeb70390dd03a34faf96749d5cabc58437410b4aab7213c512323932427df", size = 329370, upload-time = "2024-11-11T15:22:17.829Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/96/b6210fc624123c8ae13e1eecb68fb75e3f3adff216d95eee1c7b05843e3e/pyerfa-2.0.1.5-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b0603e8e1b839327d586c8a627cdc634b795e18b007d84f0cda5500a0908254e", size = 692794, upload-time = "2024-11-11T15:22:19.429Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/e0/050018d855d26d3c0b4a7d1b2ed692be758ce276d8289e2a2b44ba1014a5/pyerfa-2.0.1.5-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e43c7194e3242083f2350b46c09fd4bf8ba1bcc0ebd1460b98fc47fe2389906", size = 738711, upload-time = "2024-11-11T15:22:20.661Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/f5/ff91ee77308793ae32fa1e1de95e9edd4551456dd888b4e87c5938657ca5/pyerfa-2.0.1.5-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:07b80cd70701f5d066b1ac8cce406682cfcd667a1186ec7d7ade597239a6021d", size = 722966, upload-time = "2024-11-11T15:22:21.905Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/56/b22b35c8551d2228ff8d445e63787112927ca13f6dc9e2c04f69d742c95b/pyerfa-2.0.1.5-cp39-abi3-win32.whl", hash = "sha256:d30b9b0df588ed5467e529d851ea324a67239096dd44703125072fd11b351ea2", size = 339955, upload-time = "2024-11-11T15:22:23.087Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/11/97233cf23ad5411ac6f13b1d6ee3888f90ace4f974d9bf9db887aa428912/pyerfa-2.0.1.5-cp39-abi3-win_amd64.whl", hash = "sha256:66292d437dcf75925b694977aa06eb697126e7b86553e620371ed3e48b5e0ad0", size = 349410, upload-time = "2024-11-11T15:22:24.817Z" },
 ]
 
 [[package]]
@@ -3429,6 +3538,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/86/59/a451d7420a77ab0b98f7affa3a1d78a313d2f7281a57afb1a34bae8ab412/seaborn-0.13.2.tar.gz", hash = "sha256:93e60a40988f4d65e9f4885df477e2fdaff6b73a9ded434c1ab356dd57eefff7", size = 1457696, upload-time = "2024-01-25T13:21:52.551Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl", hash = "sha256:636f8336facf092165e27924f223d3c62ca560b1f2bb5dff7ab7fad265361987", size = 294914, upload-time = "2024-01-25T13:21:49.598Z" },
+]
+
+[[package]]
+name = "semver"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/f5/e1dfe8e1d91c54ce212fd93916eb01fd1c590f413be0a0978c39a97aa1bb/semver-3.1.0.tar.gz", hash = "sha256:14bc073439513d7773662a338f4db9829cf16c12b74b9568e2d2689975fbd7fc", size = 304162, upload-time = "2026-09-12T18:38:14.045Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/02/bce7a1d70e9d0f6ea8623c16386138c251b5855af6cd3a11433d3fba4e66/semver-3.1.0-py3-none-any.whl", hash = "sha256:6e4998f8b4762acdfea85f9bfd5b4032e0bb50038dc04bf82011b42d5d1145c5", size = 18783, upload-time = "2026-09-12T18:38:12.457Z" },
 ]
 
 [[package]]

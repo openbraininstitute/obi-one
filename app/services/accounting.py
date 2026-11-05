@@ -147,6 +147,11 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 count=1,
                 service_subtype=ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
             )
+        case TaskType.circuit_simulation_nest_machine:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.NEST_CIRCUIT_SIMULATION,
+            )
         case TaskType.em_synapse_mapping:
             return AccountingParameters(
                 count=1,

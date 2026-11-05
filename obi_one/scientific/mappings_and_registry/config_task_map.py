@@ -22,6 +22,7 @@ from obi_one.utils.lazy_import import ClassRef, class_name
 _TASKS = "obi_one.scientific.tasks"
 _NEURON_CONFIG = f"{_TASKS}.generate_simulations.config.neuron"
 _SIMULATION_EXECUTION = f"{_TASKS}.simulation_execution.neuron"
+_NEST_SIMULATION_EXECUTION = f"{_TASKS}.simulation_execution.nest"
 _EMODEL_BUILDING = f"{_TASKS}.emodel_building"
 _GENERATE_SIMULATION_TASK_REF = (
     f"{_TASKS}.generate_simulations.task.task",
@@ -339,6 +340,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             "CircuitSimulationExecutionSingleConfig",
         ),
         asset_label=None,
+    ),
+    TaskType.circuit_simulation_nest_machine: TaskSpec(
+        task_ref=(f"{_NEST_SIMULATION_EXECUTION}.task", "NestCircuitSimulationExecutionTask"),
+        single_config_ref=(
+            f"{_NEST_SIMULATION_EXECUTION}.config",
+            "NestCircuitSimulationExecutionSingleConfig",
+        ),
+        asset_label=None,
+        requires_package="nest",
     ),
     TaskType.circuit_single_build: TaskSpec(
         task_ref=(f"{_TASKS}.build_synaptome", "MEModelSynapticModelPlacementTask"),

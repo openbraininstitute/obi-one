@@ -479,6 +479,8 @@ def select_simulation_task(
     match target_simulator:
         case TargetSimulator.Brian2:
             return TaskType.circuit_simulation_brian2_machine
+        case TargetSimulator.NEST:
+            return TaskType.circuit_simulation_nest_machine
         case TargetSimulator.LearningEngine:
             return TaskType.circuit_simulation_inait_machine
         case TargetSimulator.NEURON | TargetSimulator.CORENEURON:

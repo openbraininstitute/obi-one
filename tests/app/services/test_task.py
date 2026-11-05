@@ -1012,6 +1012,8 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
         ("CORENEURON", "small", TaskType.circuit_simulation_neurodamus_machine),
         ("CORENEURON", "microcircuit", TaskType.circuit_simulation_neurodamus_cluster),
         ("Brian2", "small", TaskType.circuit_simulation_brian2_machine),
+        ("NEST", "small", TaskType.circuit_simulation_nest_machine),
+        ("NEST", "microcircuit", TaskType.circuit_simulation_nest_machine),
     ],
 )
 def test_select_simulation_task(

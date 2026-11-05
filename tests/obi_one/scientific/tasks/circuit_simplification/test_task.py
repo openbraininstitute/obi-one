@@ -187,7 +187,7 @@ class TestApiCompatibility:
         assert exporter is None
 
     def test_algorithm_export_map_nest_algorithms(self):
-        """Point-neuron algorithms with _nest suffix should map to NEST exporters."""
+        """Point-neuron algorithms with _nest suffix map to NEST exporters."""
         for name, (base, exporter) in ALGORITHM_EXPORT_MAP.items():
             if name.endswith("_nest"):
                 assert exporter is not None
