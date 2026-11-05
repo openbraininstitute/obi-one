@@ -351,7 +351,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.7"
+version = "3.0.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -366,7 +366,10 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/b1/58fefcd7212c9792ef2c3c544ae8c6f1825d429f16d8cafefc2ee9f4e132/bluepysnap-3.0.7.tar.gz", hash = "sha256:7671ef1e8a78dd19fb1b5743ae783a434264d5a165b37037868550d62db1577e", size = 969535, upload-time = "2026-07-24T12:07:56.578Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/c0/c80758a462adb33ec7714d16461d2d0a95c9c9c2adc595d1531d7b36a6ae/bluepysnap-3.0.9.tar.gz", hash = "sha256:ac379aadf13bc936a5a13921d20df685d53c410b7cb9965888bc6b6415b9f11c", size = 971877, upload-time = "2026-11-02T07:52:38.22Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/3d/803eaf7ed750095b57358cbb9805e43ed49b671b5ae316a12745269842a9/bluepysnap-3.0.9-py3-none-any.whl", hash = "sha256:3e9bcbcbee31bb87203cc2775c69ef209aac5b89881a9b1f41113b4c278bd324", size = 112102, upload-time = "2026-11-02T07:52:36.409Z" },
+]
 
 [[package]]
 name = "bluerecording"
@@ -2540,7 +2543,7 @@ requires-dist = [
     { name = "blueetl" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
-    { name = "bluepysnap", specifier = ">=3.0.7" },
+    { name = "bluepysnap", specifier = ">=3.0.9" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
     { name = "brainbuilder", specifier = ">=0.20.9" },
     { name = "brian2" },
