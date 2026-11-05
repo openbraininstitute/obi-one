@@ -278,7 +278,7 @@ def test_gather_results_collects_and_gathers(monkeypatch):
 
 
 def test_ensure_bluecellulab_raises_when_missing(monkeypatch):
-    monkeypatch.setattr(test_module, "find_spec", lambda _name: None)
+    _block_imports(monkeypatch, "bluecellulab")
     with pytest.raises(ImportError, match=r"obi-one\[bluecellulab\]"):
         test_module._ensure_bluecellulab()
 
@@ -315,7 +315,7 @@ def test_neuron_mpi_process_success(monkeypatch):
 
 
 def test_run_bluecellulab_requires_extra(monkeypatch):
-    monkeypatch.setattr(test_module, "find_spec", lambda _name: None)
+    _block_imports(monkeypatch, "bluecellulab")
     with pytest.raises(ImportError, match=r"obi-one\[bluecellulab\]"):
         test_module.run_bluecellulab("cfg.json", libnrnmech_path="lib.so")
 

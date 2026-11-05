@@ -9,7 +9,6 @@ import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +25,11 @@ _BLUECELLULAB_INSTALL_HINT = "Install with: pip install 'obi-one[bluecellulab]'"
 
 def _ensure_bluecellulab() -> None:
     """Raise a clear error when the optional bluecellulab extra is missing."""
-    if find_spec("bluecellulab") is None:
+    try:
+        import bluecellulab  # ruff: ignore[unused-import]  # ruff: ignore[import-outside-top-level]
+    except ImportError as exc:
         msg = f"BlueCelluLab simulation requires bluecellulab. {_BLUECELLULAB_INSTALL_HINT}"
-        raise ImportError(msg)
+        raise ImportError(msg) from exc
 
 
 @dataclass
