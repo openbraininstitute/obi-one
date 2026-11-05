@@ -39,6 +39,8 @@ Every URL query string (where the signature is) is replaced by `?<redacted>` in 
 
 With a neuron set, a circuit without exactly one `sonata_circuit` asset is a 400. Without one, it uses its derivations.
 
+A neuron set that selects no neurons is not an error. This happens, for example, with a node set copied from a larger circuit that has no cells in this one. The response has `populations: []`, no variables, and one warning naming the population and node sets, for example: "The neuron set selects no neurons in circuit 'rCA1-CYLINDER-REF-1PC-8PV-08' (population 'hippocampus_neurons'; node sets SLM_PPA, SO_BP, SO_BS), so there are no mechanism variables to list."
+
 Asset paths built from circuit content are refused when absolute or containing `..`.
 
 ## Differences from the derivation path

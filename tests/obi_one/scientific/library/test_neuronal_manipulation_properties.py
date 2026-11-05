@@ -22,6 +22,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
+from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.library import circuit as circuit_module
 from obi_one.scientific.library.circuit import Circuit as ObiCircuit
 from obi_one.scientific.library.emodel_circuit_files import HocTemplateError, ModMechanism
@@ -63,6 +64,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
     get_expanded_neuron_ids,
+    no_neurons_warning,
 )
 
 from tests.obi_one.db_sdk.test_assets import storage_transport
@@ -1224,24 +1226,6 @@ class TestStageCircuitForNeuronSetResolution:
                 neuron_set=neuron_set,
             )
 
-    def test_raises_when_neuron_set_resolves_to_no_nodes(self, mock_db_client):
-        """Empty node IDs raises ValueError."""
-        circuit_id = str(uuid4())
-        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
-
-        neuron_set = MagicMock()
-        neuron_set.expand_multi_values.return_value = [neuron_set]
-        neuron_set.get_neuron_ids.return_value = {}
-
-        with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _stage_circuit_for_neuron_set_resolution(
-                db_client=mock_db_client,
-                circuit_id=circuit_id,
-                circuit_entity=circuit_entity,
-                asset=asset,
-                neuron_set=neuron_set,
-            )
-
     def test_raises_when_model_template_missing(self, mock_db_client):
         """Missing model_template attribute raises ValueError."""
         circuit_id = str(uuid4())
@@ -1455,48 +1439,36 @@ class TestMultiPopulationRegression:
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
         assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
-    def test_empty_node_id_lists_rejected(self, mock_db_client):
-        """Neuron set returning {"pop": []} raises ValueError, not silent empty.
-
-        Before the fix, the empty check only caught {} but not a non-empty
-        dict with all-empty node-ID lists. This caused a silent empty response.
-        """
+    @pytest.mark.parametrize(
+        "ids_per_population",
+        [{}, {"S1nonbarrel_neurons": []}, {"pop_A": [], "pop_B": []}],
+        ids=["no_population", "one_empty_population", "all_populations_empty"],
+    )
+    def test_neuron_set_selecting_no_neurons_gives_empty_response(
+        self, mock_db_client, ids_per_population
+    ):
+        """No selected neuron is not an error: empty variables and a warning naming the set."""
         circuit_id = str(uuid4())
-        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.population = "S1nonbarrel_neurons"
+        neuron_set.node_set = ["SO_BS", "SO_BP"]
         neuron_set.expand_multi_values.return_value = [neuron_set]
-        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": []}
+        neuron_set.get_neuron_ids.return_value = ids_per_population
 
-        with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _stage_circuit_for_neuron_set_resolution(
-                db_client=mock_db_client,
-                circuit_id=circuit_id,
-                circuit_entity=circuit_entity,
-                asset=asset,
-                neuron_set=neuron_set,
-            )
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client,
+            circuit_id=circuit_id,
+            neuron_set=neuron_set,
+        )
 
-    def test_all_populations_empty_rejected(self, mock_db_client):
-        """Multiple populations all with empty lists also raises ValueError."""
-        circuit_id = str(uuid4())
-        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
-
-        neuron_set = MagicMock()
-        neuron_set.expand_multi_values.return_value = [neuron_set]
-        neuron_set.get_neuron_ids.return_value = {
-            "pop_A": [],
-            "pop_B": [],
-        }
-
-        with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _stage_circuit_for_neuron_set_resolution(
-                db_client=mock_db_client,
-                circuit_id=circuit_id,
-                circuit_entity=circuit_entity,
-                asset=asset,
-                neuron_set=neuron_set,
-            )
+        assert result["populations"] == []
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert len(result["warnings"]) == 1
+        warning = result["warnings"][0]
+        assert "selects no neurons" in warning
+        assert "population 'S1nonbarrel_neurons'" in warning
+        assert "node sets SO_BS, SO_BP" in warning
 
 
 class TestMemodelMechanismVariableResponse:
@@ -2324,3 +2296,22 @@ class TestUnitsFromTheDatabase:
         variables = result["MechanismVariablesByIonChannel"]["NaTg"].variables
         assert variables["slopem_NaTg"].units == "mV"
         assert not variables["slopeh_NaTg"].units
+
+
+class TestNoNeuronsWarning:
+    def test_names_population_and_node_set(self):
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            population="hippocampus_neurons", node_set="SO_BS"
+        )
+
+        assert no_neurons_warning(neuron_set, "rCA1") == (
+            "The neuron set selects no neurons in circuit 'rCA1'"
+            " (population 'hippocampus_neurons'; node sets SO_BS),"
+            " so there are no mechanism variables to list."
+        )
+
+    def test_without_population_or_node_set(self):
+        assert no_neurons_warning(AllBiophysicalNeurons(), "rCA1") == (
+            "The neuron set selects no neurons in circuit 'rCA1',"
+            " so there are no mechanism variables to list."
+        )

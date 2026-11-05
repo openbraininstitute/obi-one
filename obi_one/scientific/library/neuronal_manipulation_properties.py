@@ -677,11 +677,11 @@ def _stage_circuit_for_neuron_set_resolution(
 
     Returns:
         The populations, (population, node_id) -> model_template, and
-        model_template -> model or reason it could not be read.
+        model_template -> model or reason it could not be read. All three are empty when
+        the neuron set selects no neurons.
 
     Raises:
-        ValueError: No node IDs, a population without a nodes file or without
-            ``model_template``.
+        ValueError: A population without a nodes file or without ``model_template``.
     """
     # Listed while the circuit is staged: no extra wait.
     listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
@@ -698,9 +698,6 @@ def _stage_circuit_for_neuron_set_resolution(
         obi_circuit = ObiCircuit(name=circuit_entity.name or circuit_id, path=str(config_path))
 
         ids_per_population: dict[str, list[int]] = get_expanded_neuron_ids(neuron_set, obi_circuit)
-        if not ids_per_population:
-            msg = f"Neuron set resolved to no node IDs for circuit {circuit_id}."
-            raise ValueError(msg)
 
         node_to_template: TemplateNodes = {}
         populations: list[str] = []
@@ -739,8 +736,8 @@ def _stage_circuit_for_neuron_set_resolution(
             templates_per_population[population] = set(templates)
 
         if not populations:
-            msg = f"Neuron set resolved to no node IDs for circuit {circuit_id}."
-            raise ValueError(msg)
+            # No templates to read; the caller answers with a warning.
+            return [], {}, {}
 
         template_models = _read_template_models(
             db_client,
@@ -1081,14 +1078,31 @@ def _compute_common_mechanism_variables(
     return result
 
 
-def _empty_response(warning: str) -> dict:
+def _empty_response(warning: str, populations: list[str] | None = None) -> dict:
     """A response with no variables and one warning."""
     return {
         "entity_type": "circuit",
-        "populations": None,
+        "populations": populations,
         CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: {},
         "warnings": [warning],
     }
+
+
+def no_neurons_warning(neuron_set: NeuronSet, circuit_name: str) -> str:
+    """Say which selection matched no neurons, so the user can pick another one."""
+    selection = []
+    population = getattr(neuron_set, "population", None)
+    if population:
+        selection.append(f"population '{population}'")
+    node_sets = getattr(neuron_set, "node_set", None)
+    if node_sets:
+        names = [node_sets] if isinstance(node_sets, str) else node_sets
+        selection.append(f"node sets {', '.join(names)}")
+    details = f" ({'; '.join(selection)})" if selection else ""
+    return (
+        f"The neuron set selects no neurons in circuit '{circuit_name}'{details},"
+        " so there are no mechanism variables to list."
+    )
 
 
 def get_circuit_manipulation_properties(
@@ -1113,8 +1127,9 @@ def get_circuit_manipulation_properties(
         ``warnings``.
 
     With a neuron set, ``ValueError`` propagates (HTTP 400) when the circuit has no single
-    sonata_circuit asset, the set resolves to no nodes, or a population has no
-    ``model_template``. Without one, such a circuit uses its derivations.
+    sonata_circuit asset or a population has no ``model_template``; a set that selects no
+    neurons gives ``populations=[]``, no variables and a warning. Without one, such a
+    circuit uses its derivations.
     """
     resolved_populations: list[str] | None = None
 
@@ -1155,6 +1170,11 @@ def get_circuit_manipulation_properties(
                 neuron_set,
             )
         )
+        if not resolved_populations:
+            return _empty_response(
+                no_neurons_warning(neuron_set, circuit_entity.name or circuit_id),
+                populations=[],
+            )
 
     emodel_groups, warning_messages = _build_groups_with_fallback(
         db_client, circuit_id, node_to_template, template_models
