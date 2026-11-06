@@ -86,10 +86,10 @@ notebooks = [
 ]
 
 # SERVICE - optional, needed to run obi-one as a service.
-# The production Docker image and the service test suite (`make install-service`) install
-# only this extra (plus the default/dev dependency groups). Scientific optionals (emodel,
-# connectivity, …) are not included; use install-all / those extras for library/task work.
+# Includes connectivity and emodel (needed by the production image and service tests).
+# The Docker image and `make install-service` install this extra only (plus default/dev groups).
 service = [
+    "obi-one[connectivity,emodel]",
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
@@ -104,7 +104,8 @@ service = [
 ]
 
 # ALL - convenience alias to install all optional dependencies
-all = ["obi-one[bluecellulab,connectivity,emodel,meshing,notebooks,service]"]
+# (service already pulls connectivity + emodel)
+all = ["obi-one[bluecellulab,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.

@@ -2469,9 +2469,13 @@ notebooks = [
     { name = "obi-notebook" },
 ]
 service = [
+    { name = "bluecellulab" },
+    { name = "bluepyemodel" },
     { name = "cachetools" },
+    { name = "connectome-analysis" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "networkx" },
     { name = "obp-accounting-sdk" },
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
@@ -2534,7 +2538,8 @@ requires-dist = [
     { name = "numpy" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
-    { name = "obi-one", extras = ["bluecellulab", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["bluecellulab", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["connectivity", "emodel"], marker = "extra == 'service'" },
     { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
     { name = "psutil", specifier = ">=6.1.0" },
