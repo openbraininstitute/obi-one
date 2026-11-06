@@ -18,9 +18,12 @@ make run-local
 # Run all tests with coverage (obi_one then app)
 make test-local
 
-# obi_one suite (needs install-all); app suite (needs install-service)
+# obi_one suite on host (needs install-all); app suite on host (needs install-service)
 make test-obi_one-local
 make test-app-local
+
+# app suite in Docker (production image; CI uses this)
+make test-app-docker
 
 # Run a single test file
 make test-file FILE=tests/path/to/test_file.py
@@ -159,6 +162,6 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 ## CI/CD
 
-- PR checks: lint, pip-audit, parallel `obi_one` tests (`install-all`) and `app` tests (`install-service`), Codecov flags `obi_one` / `app`
+- PR checks: lint, pip-audit, parallel `obi_one` tests (host `install-all`) and `app` tests (Docker image), Codecov flags `obi_one` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
 - Docker: `make build` / `make publish`

@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-obi_one-local test-app-local test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-obi_one-local test-app-local test-app-docker test-docker run-local run-docker destroy
 
 OBI_ONE_TEST_PATHS := tests/obi_one tests/launch_scripts
 APP_TEST_PATHS := tests/app tests/ui_schema
@@ -127,7 +127,7 @@ test-app-local:  ## Run app tests locally with coverage (expects install-service
 		--cov-report=term-missing \
 		--cov-report=xml:.coverage/coverage-app.xml
 
-test-local: test-obi_one-local test-app-local  ## Run obi_one then app tests locally
+test-local: test-obi_one-local test-app-local  ## Run obi_one then app tests locally (host)
 
 test-file: ## Run tests in a single test file locally. Usage: make test-file FILE=path/to/test_file.py
 	@$(call load_env,test-local)
@@ -141,7 +141,13 @@ test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
-test-docker: test-local  ## Alias for test-local (no image build for tests)
+test-app-docker: build  ## Run app tests in Docker (production image, --extra service)
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-app.db \
+	PYTEST_ARGS="$(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
+	docker compose run --rm --remove-orphans test
+
+test-docker: test-app-docker  ## Run app tests in Docker (same as on main, app suite only)
 
 pip-audit:  ## Run package auditing
 	uv run --with pip-audit pip-audit --local --progress-spinner off --desc off \
