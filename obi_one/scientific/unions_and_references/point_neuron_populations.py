@@ -3,9 +3,10 @@ from typing import Annotated, Any, ClassVar, cast
 from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
+from obi_one.scientific.blocks.point_neuron_populations.pd14 import PD14PointNeuron
 from obi_one.scientific.blocks.point_neuron_populations.population import PointNeuronPopulation
 
-ATOMIC_POINT_NEURON_POPULATIONS = PointNeuronPopulation
+ATOMIC_POINT_NEURON_POPULATIONS = PointNeuronPopulation | PD14PointNeuron
 
 AtomicPointNeuronPopulationUnion = Annotated[
     ATOMIC_POINT_NEURON_POPULATIONS,
@@ -39,3 +40,6 @@ POINT_NEURON_POPULATION_REFERENCE_UNION = PointNeuronPopulationReference
 POINT_NEURON_POPULATION_REFERENCE_TYPES = BlockReference.get_class_names(
     POINT_NEURON_POPULATION_REFERENCE_UNION
 )
+
+# Union of all point-neuron population block types, used for the block-dictionary field.
+PointNeuronPopulationUnion = AtomicPointNeuronPopulationUnion

@@ -26,6 +26,7 @@ from obi_one.scientific.unions_and_references.pathway_connection_probabilities i
 )
 from obi_one.scientific.unions_and_references.point_neuron_populations import (
     POINT_NEURON_POPULATION_REFERENCE_TYPES,
+    PointNeuronPopulationUnion,
 )
 
 L = logging.getLogger(__name__)
@@ -187,9 +188,7 @@ class PD14NetworkWriteScanConfig(ScanConfig):
 
     initialize: Initialize
 
-    point_neuron_populations: dict[
-        str, Annotated[PointNeuronPopulation, Discriminator("type")]
-    ] = Field(
+    point_neuron_populations: dict[str, PointNeuronPopulationUnion] = Field(
         default_factory=dict,
         title="Point neuron populations",
         description="Neuronal populations of the network, keyed by block name.",
