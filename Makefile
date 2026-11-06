@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app build publish test-local test-lib-local test-app-local test-app-docker test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app build publish test-local test-lib-local test-app-local test-app-docker run-local run-docker destroy
 
 LIB_TEST_PATHS := tests/obi_one tests/launch_scripts
 APP_TEST_PATHS := tests/app tests/ui_schema
@@ -156,8 +156,6 @@ test-app-docker: build  ## Run app tests in Docker (production image, --extra se
 	COVERAGE_FILE=.coverage/coverage-app.db \
 	PYTEST_ARGS="$(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
 	docker compose run --rm --remove-orphans test
-
-test-docker: test-app-docker  ## Run app tests in Docker (same as on main, app suite only)
 
 pip-audit:  ## Run package auditing
 	uv run --with pip-audit pip-audit --local --progress-spinner off --desc off \
