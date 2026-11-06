@@ -1,5 +1,6 @@
 """Tests for obi_one.scientific.validations.emodels."""
 
+import builtins
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -160,4 +161,23 @@ class TestBluecelulabInitializable:
             patch("bluecellulab.circuit.circuit_access.definition.EmodelProperties"),
             pytest.raises(RuntimeError, match="NEURON error"),
         ):
+            bluecellulab_initializable(hoc_path=str(hoc), morphology_path=str(morph))
+
+    def test_missing_bluecellulab_raises_install_hint(self, tmp_path, monkeypatch):
+        hoc = tmp_path / "cell.hoc"
+        morph = tmp_path / "morph.swc"
+        hoc.write_text("fake")
+        morph.write_text("fake")
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            root = name.split(".", maxsplit=1)[0]
+            if root == "bluecellulab":
+                msg = "No module named 'bluecellulab'"
+                raise ImportError(msg)
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        with pytest.raises(ImportError, match=r"obi-one\[bluecellulab\]"):
             bluecellulab_initializable(hoc_path=str(hoc), morphology_path=str(morph))

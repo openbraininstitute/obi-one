@@ -94,13 +94,20 @@ def calibration_worker(
     ``{holding_current, rheobase, rin}`` to ``result_json_path`` for the parent.
     """
     os.chdir(coord_root)
-    from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
-    from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
-        EmodelProperties,
-    )
-    from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
-        compute_memodel_properties,
-    )
+    try:
+        from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
+        from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
+            EmodelProperties,
+        )
+        from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
+            compute_memodel_properties,
+        )
+    except ImportError as exc:
+        msg = (
+            "MEModel calibration requires bluecellulab. "
+            "Install with: pip install 'obi-one[bluecellulab]'"
+        )
+        raise ImportError(msg) from exc
 
     emodel_properties = EmodelProperties(
         threshold_current=threshold_current,
@@ -140,13 +147,20 @@ def validation_worker(
     ``result_json_path`` for the parent.
     """
     os.chdir(coord_root)
-    from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
-    from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
-        EmodelProperties,
-    )
-    from bluecellulab.validation.validation import (  # ruff: ignore[import-outside-top-level]
-        run_validations,
-    )
+    try:
+        from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
+        from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
+            EmodelProperties,
+        )
+        from bluecellulab.validation.validation import (  # ruff: ignore[import-outside-top-level]
+            run_validations,
+        )
+    except ImportError as exc:
+        msg = (
+            "MEModel validation requires bluecellulab. "
+            "Install with: pip install 'obi-one[bluecellulab]'"
+        )
+        raise ImportError(msg) from exc
 
     emodel_properties = EmodelProperties(
         threshold_current=threshold_current,

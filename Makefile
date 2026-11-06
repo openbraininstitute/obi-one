@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -26,6 +26,9 @@ help:  ## Show this help
 
 install:  ## Default installation (for running tasks and local scripts)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
+
+install-bluecellulab:  ## Install with BlueCelluLab (simulation, MEModel calibration/validation)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra bluecellulab
 
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
