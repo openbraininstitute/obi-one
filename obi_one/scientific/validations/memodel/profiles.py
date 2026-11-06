@@ -158,10 +158,11 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
     ) -> None:
         """Configure optional model-specific BPAP and rebound settings.
 
-        ``bpap_holding_current`` is used only by BPAP. When omitted, BPAP uses
-        the calibrated holding current carried by the model's template
-        parameters. Set this explicitly for trial protocols whose calibration
-        metadata is zero or unavailable, for example 0.065 nA for the Ecel1
+        ``bpap_holding_current`` overrides the BPAP holding current only; it does
+        not feed the pre-held tonic and depolarization-block tests, which always
+        use the model's calibrated holding current and require it to be present
+        and nonzero. When omitted, BPAP also uses that calibrated holding. Set it
+        to hold BPAP at a specific baseline, for example 0.065 nA for the Ecel1
         trial or 0.040 nA for Spp variants.
 
         ``bpap_amplitude_factor`` scales rheobase for the BPAP pulse. Used only
