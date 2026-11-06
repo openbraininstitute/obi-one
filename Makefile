@@ -12,7 +12,10 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-library-local test-service-local test-docker run-local run-docker destroy
+
+LIBRARY_TEST_PATHS := tests/obi_one tests/launch_scripts
+SERVICE_TEST_PATHS := tests/app tests/ui_schema
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -106,11 +109,25 @@ build:  ## Build the Docker image
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
 
-test-local:  ## Run tests locally
+test-library-local:  ## Run library tests locally with coverage
 	@$(call load_env,test-local)
-	uv run -m pytest
-	uv run -m coverage xml
-	uv run -m coverage html
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-library.db \
+	uv run -m pytest $(LIBRARY_TEST_PATHS) \
+		--cov=obi_one \
+		--cov-report=term-missing \
+		--cov-report=xml:.coverage/coverage-library.xml
+
+test-service-local:  ## Run service tests locally with coverage (expects install-service / --extra service)
+	@$(call load_env,test-local)
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-service.db \
+	uv run -m pytest $(SERVICE_TEST_PATHS) \
+		--cov=app \
+		--cov-report=term-missing \
+		--cov-report=xml:.coverage/coverage-service.xml
+
+test-local: test-library-local test-service-local  ## Run library then service tests locally
 
 test-file: ## Run tests in a single test file locally. Usage: make test-file FILE=path/to/test_file.py
 	@$(call load_env,test-local)
@@ -124,8 +141,7 @@ test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
-test-docker: build  ## Run tests in Docker
-	docker compose run --rm --remove-orphans test
+test-docker: test-local  ## Alias for test-local (no image build for tests)
 
 pip-audit:  ## Run package auditing
 	uv run --with pip-audit pip-audit --local --progress-spinner off --desc off \

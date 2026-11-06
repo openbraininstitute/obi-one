@@ -1,4 +1,4 @@
-"""Cover the ``bluepyemodel``-absent fallback branches.
+"""Cover the ``bluepyemodel``-absent fallback branches in the library.
 
 Task 2 (emodel optimization) requires the optional ``emodel`` extra
 (``bluepyemodel``). Importing ``obi_one`` must still succeed when that extra is
@@ -8,27 +8,15 @@ Task 2 imports, exposing ``None`` placeholders and ``HAS_EMODEL_OPTIMIZATION``).
 ``config_task_map.py``, ``scan_configs.py``, and ``tasks.py`` declare Task 2 by class path
 and gate it on ``requires_package="bluepyemodel"``, so they never import Task 2 at module
 import time and report the task type as unavailable when the extra is missing.
-The same applies to ``app/endpoints/ion_channel_properties.py``,
-``app/endpoints/scan_config.py`` and ``app/endpoints/config_validation.py``,
-which import ``fetch_variable_catalog`` and ``EModelOptimizationScanConfig``
-and are all pulled in by ``app.application`` at import time; ``import
-app.application`` (i.e. starting the FastAPI service) must succeed without
-``bluepyemodel`` too. ``config_validation.py`` is the sharpest case: it declares
-``emodel_optimization_config`` on a conditional subclass precisely because
-annotating a field as ``None | None`` raises ``TypeError`` while the class body
-is evaluated. These tests simulate ``bluepyemodel`` being absent by
-re-executing each module's real source with a blocking meta path finder, so the
-``except`` branches run for real instead of being mocked. Only these three
-``app.endpoints`` modules are covered directly (not ``app.application``
-itself); see the comment below the tests for why.
 
-Only the ``bluepyemodel``, Task 2, and affected ``app`` modules are evicted
-from ``sys.modules`` (never ``obi_one``/``app`` themselves in their entirety,
-or unrelated third-party packages), and the original entries are always
-restored, so this cannot leak state into other tests.
+These tests simulate ``bluepyemodel`` being absent by re-executing each module's real
+source with a blocking meta path finder, so the ``except`` branches run for real instead
+of being mocked. Matching app-endpoint coverage lives in
+``tests/app/test_optional_emodel_optimization.py``.
 """
 
 import importlib
+import importlib.util
 import sys
 import types
 from collections.abc import Iterator
@@ -55,10 +43,6 @@ _MODULES_TO_EVICT = (
     "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization",
     "obi_one.scientific.tasks.emodel_building.task3_emodel_validation",
     "obi_one.scientific.mappings_and_registry.config_task_map",
-    "app.endpoints.ion_channel_properties",
-    "app.endpoints.scan_config",
-    "app.endpoints.config_validation",
-    "app.application",
 )
 
 
@@ -96,6 +80,7 @@ def _exec_fresh(module_name: str) -> types.ModuleType:
     else importing ``module_name`` afterwards.
     """
     spec = importlib.util.find_spec(module_name)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -135,58 +120,6 @@ def test_config_task_map_omits_emodel_optimization_without_bluepyemodel():
     assert module._is_task_type_available(module.TaskType.emodel_optimization) is False
     with pytest.raises(KeyError, match="emodel_optimization"):
         module.get_task_spec_for_task_type(module.TaskType.emodel_optimization)
-
-
-@pytest.mark.usefixtures("bluepyemodel_blocked")
-def test_ion_channel_properties_endpoint_module_omits_variable_catalog_without_bluepyemodel():
-    module = _exec_fresh("app.endpoints.ion_channel_properties")
-
-    assert module.fetch_variable_catalog is None
-
-
-@pytest.mark.usefixtures("bluepyemodel_blocked")
-def test_scan_config_endpoint_module_omits_emodel_optimization_without_bluepyemodel():
-    module = _exec_fresh("app.endpoints.scan_config")
-
-    assert module.EModelOptimizationScanConfig is None
-
-
-@pytest.mark.usefixtures("bluepyemodel_blocked")
-def test_config_validation_omits_emodel_optimization_without_bluepyemodel():
-    """The shared-state model must drop the key rather than fail to import.
-
-    Declaring ``emodel_optimization_config: EModelOptimizationScanConfig | None`` directly
-    would raise ``TypeError: unsupported operand type(s) for |`` here, taking the whole
-    service down with it, so this also guards the conditional-subclass structure.
-
-    The field/``_VALIDATION_CONFIG`` equality is asserted again because CI installs the
-    ``emodel`` extra (``make install-all`` -> ``uv sync --extra all``), so the equivalent
-    assertion in ``tests/app/endpoints/test_config_validation.py`` only ever exercises the
-    bluepyemodel-*present* branch. This is the only coverage of the absent branch, where a
-    field gated without its ``_VALIDATION_CONFIG`` entry would be parsed and then silently
-    never validated.
-    """
-    module = _exec_fresh("app.endpoints.config_validation")
-
-    assert "emodel_optimization_config" not in module.SharedStatePartial.model_fields
-    assert set(module.SharedStatePartial.model_fields) == set(module._VALIDATION_CONFIG)
-
-
-# Deliberately no test re-imports `app.application` itself here. Unlike the narrower
-# modules above, `app.application` transitively pulls in many other `obi_one` modules
-# (e.g. `count_scan_coordinates.py` -> `unions_and_references/scan_configs.py`) that are
-# *not* in `_MODULES_TO_EVICT` and were already fully imported with `bluepyemodel` present
-# earlier in the test session (e.g. via `tests/conftest.py`). Re-importing `app.application`
-# in that state races against those already-cached modules and can non-deterministically
-# resolve the "fresh" `app.endpoints.scan_config` import back to the pre-eviction
-# `EModelOptimizationScanConfig` class, producing a false negative (or false positive)
-# depending on test run order. This was confirmed by direct experimentation: the same
-# reimport is reliable in a pristine interpreter that has never imported `bluepyemodel`,
-# but flaky inside a shared pytest session. `test_ion_channel_properties_endpoint_module_
-# omits_variable_catalog_without_bluepyemodel` and `test_scan_config_endpoint_module_omits_
-# emodel_optimization_without_bluepyemodel` above already cover the two files directly
-# responsible for the real bug (unconditional Task 2 imports in app/endpoints/), which is
-# what actually matters for `import app.application` to succeed without bluepyemodel.
 
 
 @pytest.mark.usefixtures("bluepyemodel_blocked")

@@ -85,7 +85,10 @@ notebooks = [
     "obi_notebook",
 ]
 
-# SERVICE - optional, needed to run obi-one as a service
+# SERVICE - optional, needed to run obi-one as a service.
+# The production Docker image and the service test suite (`make install-service`) install
+# only this extra (plus the default/dev dependency groups). Scientific optionals (emodel,
+# connectivity, …) are not included; use install-all / those extras for library/task work.
 service = [
     "cachetools>=5.5.2",
     "fastapi",
@@ -259,7 +262,6 @@ addopts = [
     "--import-mode=importlib",
     "-vv",
     "-ra",
-    "--cov=app",
     "--durations=10",
     "--durations-min=1.0",
     "-m not integration",
@@ -273,7 +275,7 @@ filterwarnings = ["error::pydantic.warnings.PydanticDeprecationWarning"]
 [tool.coverage.run]
 branch = true
 parallel = false
-source_pkgs = ["app", "obi_one"]
+# Package under measurement is selected per suite via pytest `--cov=` (obi_one or app).
 data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]

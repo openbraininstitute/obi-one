@@ -1,0 +1,27 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        flags:
+          - library
+          - service
+    patch:
+      default:
+        target: auto
+
+flag_management:
+  individual_flags:
+    - name: library
+      paths:
+        - obi_one/
+      carryforward: false
+    - name: service
+      paths:
+        - app/
+      carryforward: false
+
+comment:
+  layout: "header,diff,flags,files"
+  behavior: default
+  require_changes: false

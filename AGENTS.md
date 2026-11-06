@@ -15,8 +15,12 @@ make install
 # Run FastAPI service locally (http://127.0.0.1:8100/docs)
 make run-local
 
-# Run all tests with coverage
+# Run all tests with coverage (library then service)
 make test-local
+
+# Library suite (needs install-all); service suite (needs install-service)
+make test-library-local
+make test-service-local
 
 # Run a single test file
 make test-file FILE=tests/path/to/test_file.py
@@ -155,6 +159,6 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 ## CI/CD
 
-- PR checks: lint, test, pip-audit, codecov upload
+- PR checks: lint, pip-audit, parallel library tests (`install-all`) and service tests (`install-service`), Codecov flags `library` / `service`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
 - Docker: `make build` / `make publish`
