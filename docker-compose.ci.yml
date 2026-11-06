@@ -1,9 +1,0 @@
-# CI-only Compose override. Merged when GITHUB_ACTIONS is set (see Makefile `build`).
-# Requires docker/setup-buildx-action so the GHA cache exporter is available.
-services:
-  app:
-    build:
-      cache_from:
-      - type=gha
-      cache_to:
-      - type=gha,mode=max

@@ -24,17 +24,9 @@ openapi_schema = get_openapi(
     routes=app.routes,
 )
 
-# Building RefResolver.from_schema on this OpenAPI doc is expensive; reuse one instance.
-openapi_resolver = RefResolver.from_schema(openapi_schema)
 
-
-def resolve_ref(schema: dict, ref: str) -> dict:
-    """Resolve a JSON Schema ``$ref`` against an OpenAPI document.
-
-    Call sites pass the module ``openapi_schema``; that path uses the cached resolver. A different
-    schema object falls back to building a one-off resolver.
-    """
-    resolver = openapi_resolver if schema is openapi_schema else RefResolver.from_schema(schema)
+def resolve_ref(openapi_schema: dict, ref: str) -> dict:
+    resolver = RefResolver.from_schema(openapi_schema)
     _, resolved_node = resolver.resolve(ref)
     return resolved_node
 

@@ -1,12 +1,13 @@
 """Validator for the `neuron_ids` block UI element."""
 
-from jsonschema import Draft7Validator, ValidationError
+from jsonschema import Draft7Validator, RefResolver, ValidationError
 
-from .shared import openapi_resolver
+from .shared import openapi_schema
 
 
 def validate_neuron_ids(schema: dict, param: str, ref: str) -> None:
-    validator = Draft7Validator(schema, resolver=openapi_resolver)
+    resolver = RefResolver.from_schema(openapi_schema)
+    validator = Draft7Validator(schema, resolver=resolver)
 
     neuron_ids = {"elements": [1]}
     try:

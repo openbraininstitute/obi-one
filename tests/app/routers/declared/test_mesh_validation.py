@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.dependencies.auth import user_verified
 from app.endpoints.mesh_validation import (
+    MAX_FILE_SIZE,
     VALID_MESH_EXTENSIONS,
     FileTooLargeError,
     ValidationStatus,
@@ -235,15 +236,13 @@ def test_validate_mesh_reader_returns_mesh_on_success():
 
 
 def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream():
-    # Match the production 1 MiB read chunk: first chunk fits, second exceeds the limit.
-    max_size = 1024 * 1024 + 100
-    mock_file = MagicMock()
-    mock_file.file = BytesIO(b"x" * (max_size + 50))
+    chunk1 = b"x" * (MAX_FILE_SIZE - 10)
+    chunk2 = b"x" * 20
 
-    with (
-        patch("app.endpoints.mesh_validation.MAX_FILE_SIZE", max_size),
-        pytest.raises(FileTooLargeError),
-    ):
+    mock_file = MagicMock()
+    mock_file.file = BytesIO(chunk1 + chunk2)
+
+    with pytest.raises(FileTooLargeError):
         _save_upload_to_tempfile(mock_file, suffix=".obj")
 
 
