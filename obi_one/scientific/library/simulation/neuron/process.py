@@ -1,8 +1,11 @@
+import json
 import logging
 import math
 import os
 from pathlib import Path
 from typing import cast
+
+import libsonata
 
 from obi_one.scientific.library.simulation.neuron.schemas import (
     BluecellulabSimulationParameters,
@@ -14,7 +17,6 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     SimulationResults,
 )
 from obi_one.types import SimulationBackend
-from obi_one.utils.filesystem import find_file
 from obi_one.utils.process import run_and_log
 
 L = logging.getLogger(__name__)
@@ -40,7 +42,7 @@ def run_simulation(
             _run_neurodamus_simulation(
                 parameters=cast("NeurodamusSimulationParameters", parameters),
             )
-    return _collect_simulation_outputs(results_dir=results_dir)
+    return _collect_simulation_outputs(results_dir=results_dir, config_file=parameters.config_file)
 
 
 def _run_bluecellulab_simulation(
@@ -99,12 +101,30 @@ def _get_number_of_mpi_processes(num_cells: int) -> int:
     return min(max(math.floor(num_cells / 2), 1), 4)
 
 
-def _collect_simulation_outputs(results_dir: Path) -> SimulationResults:
+def _lfp_report_file_names(config_file: Path) -> set[str]:
+    """Names of the files the simulation's lfp reports are written to.
+
+    An lfp report holds the extracellular signal per electrode, not a voltage trace, so it is
+    registered apart from the others. The names are read through libsonata, as neurodamus does.
+    """
+    config = libsonata.SimulationConfig.from_file(str(config_file))
+    return {
+        Path(config.report(name).file_name).name
+        for name in config.list_report_names
+        if config.report(name).type == libsonata.SimulationConfig.Report.Type.lfp
+    }
+
+
+def _collect_simulation_outputs(results_dir: Path, config_file: Path) -> SimulationResults:
+    lfp_file_names = _lfp_report_file_names(config_file)
     spike_report_files = []
     voltage_report_files = []
-    for filepath in list(results_dir.glob("*.h5")) + list(results_dir.glob(".nwb")):
+    lfp_report_files = []
+    for filepath in list(results_dir.glob("*.h5")) + list(results_dir.glob("*.nwb")):
         if filepath.name == "spikes.h5":
             spike_report_files.append(filepath)
+        elif filepath.name in lfp_file_names:
+            lfp_report_files.append(filepath)
         else:
             voltage_report_files.append(filepath)
 
@@ -115,38 +135,47 @@ def _collect_simulation_outputs(results_dir: Path) -> SimulationResults:
     return SimulationResults(
         spike_report_file=spike_report_files[0],
         voltage_report_files=voltage_report_files,
+        lfp_report_files=lfp_report_files,
     )
 
 
 def compile_mechanisms(
     *,
     output_dir: Path,
-    mechanisms_dir: Path,
+    mechanisms_dirs: list[Path],
     simulation_backend: SimulationBackend,
+    cache_dir: Path | None = None,
 ) -> MechanismBuild:
 
     match simulation_backend:
         case SimulationBackend.bluecellulab:
             return _compile_neuron_mechanisms(
                 output_dir=output_dir,
-                mechanisms_dir=mechanisms_dir,
+                mechanisms_dirs=mechanisms_dirs,
             )
         case SimulationBackend.neurodamus:
             return _compile_neurodamus_mechanisms(
                 output_dir=output_dir,
-                mechanisms_dir=mechanisms_dir,
+                mechanisms_dirs=mechanisms_dirs,
+                cache_dir=cache_dir,
             )
         case _:
             msg = f"Unsupported simulation backend {simulation_backend}."
             raise RuntimeError(msg)
 
 
-def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> NeuronMechanismBuild:
+def _compile_neuron_mechanisms(
+    *, output_dir: Path, mechanisms_dirs: list[Path]
+) -> NeuronMechanismBuild:
+    if len(mechanisms_dirs) != 1:
+        msg = "Only allowed a single mod file directory for NEURON"
+        raise RuntimeError(msg)
+
     command = [
         "nrnivmodl",
         "-incflags",
         "-DDISABLE_REPORTINGLIB",
-        str(mechanisms_dir),
+        str(mechanisms_dirs[0]),
     ]
 
     compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
@@ -154,49 +183,58 @@ def _compile_neuron_mechanisms(*, output_dir: Path, mechanisms_dir: Path) -> Neu
     L.debug(compilation_output)
 
     try:
-        libnrnmech_path = next(output_dir.rglob("libnrnmech.so"))
+        libnrnmech_path = next(output_dir.rglob("libnrnmech.*"))
     except StopIteration as e:
-        msg = "Compiled mechanisms shared object libnrnmech.so was not found."
+        msg = "Compiled mechanisms shared object libnrnmech was not found."
         raise RuntimeError(msg) from e
 
     return NeuronMechanismBuild(libnrnmech_path=libnrnmech_path)
 
 
 def _compile_neurodamus_mechanisms(
-    *, output_dir: Path, mechanisms_dir: Path
+    *,
+    output_dir: Path,
+    mechanisms_dirs: list[Path],
+    cache_dir: Path | None = None,
 ) -> NeurodamusMechanismBuild:
     command = [
         "neurodamus-compile-mods",
-        "--input-dir",
-        str(mechanisms_dir),
+        *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d.absolute()))),
         "--output-dir",
         str(output_dir),
         "--with-internal-mods",
         "--simulator",
         "coreneuron",
+        "--output-type",
+        "json",
     ]
+    if cache_dir is not None:
+        command.extend(["--cache-dir", str(cache_dir.absolute())])
 
-    compilation_output = run_and_log(command, cwd=str(output_dir)).stdout  # ty:ignore[invalid-argument-type]
+    compilation_output = run_and_log(
+        command, cwd=output_dir, env={"PATH": f"/opt/obi/:{os.environ['PATH']}"}
+    ).stdout
 
     L.debug(compilation_output)
 
-    special_binary_path = find_file(
-        directory=output_dir,
-        pattern="special",
-        recursive=True,
-    )
-    libnrnmech_path = find_file(
-        directory=output_dir,
-        pattern="libnrnmech.so",
-        recursive=True,
-    )
-    libcorenrnmech_path = find_file(
-        directory=output_dir,
-        pattern="libcorenrnmech.so",
-        recursive=True,
-    )
+    env = json.loads(compilation_output)
+
     return NeurodamusMechanismBuild(
-        libnrnmech_path=libnrnmech_path,
-        libcorenrnmech_path=libcorenrnmech_path,
-        special_binary_path=special_binary_path,
+        libnrnmech_path=Path(env["NRNMECH_LIB_PATH"]),
+        libcorenrnmech_path=Path(env["CORENEURONLIB"]),
+        special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )
+
+
+def get_mechanisms_dirs(circuit_config_path: Path) -> list[Path]:
+    config = libsonata.CircuitConfig.from_file(circuit_config_path)
+    if mechanisms_dirs := [
+        d
+        for pop in config.node_populations
+        if (d := config.node_population_properties(pop).mechanisms_dir)
+    ]:
+        return mechanisms_dirs
+
+    if (fallback := (circuit_config_path.parent / "mod")) and fallback.exists():
+        return [fallback]
+    return []

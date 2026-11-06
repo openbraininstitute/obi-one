@@ -55,7 +55,7 @@ class TestScanConfigClassVars:
 
 
 class TestSingleConfigClass:
-    """The SingleConfig a ScanConfig expands into is resolved from TASK_MAP."""
+    """The SingleConfig a ScanConfig expands into is resolved from its task spec."""
 
     def test_resolved_from_task_map(self):
         config = FolderCompressionScanConfig(
@@ -66,8 +66,8 @@ class TestSingleConfigClass:
         assert config.single_config_class is FolderCompressionSingleConfig
 
     def test_unregistered_scan_config_raises(self):
-        """SchemaExampleScanConfig is deliberately absent from TASK_MAP."""
-        with pytest.raises(OBIONEError, match="no entry in TASK_MAP"):
+        """SchemaExampleScanConfig deliberately has no task spec."""
+        with pytest.raises(OBIONEError, match="no task spec"):
             _ = SchemaExampleScanConfig.model_construct().single_config_class
 
 

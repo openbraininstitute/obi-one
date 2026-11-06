@@ -108,7 +108,7 @@ class EMSynapseMappingScanConfig(InfoScanConfig):
             title="Neurons",
             description="Neurons to include in the circuit (>= 1).",
             json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_MULTIPLE,
+                SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER_GROUPED,
                 SchemaKey.ACCEPTED_INPUT_TYPES: [
                     AcceptedInputTypes.CELL_MORPHOLOGY_FROM_ID,
                     AcceptedInputTypes.ME_MODEL_FROM_ID,

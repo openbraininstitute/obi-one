@@ -1,22 +1,21 @@
 import logging
-from typing import Annotated, ClassVar
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.tasks.generate_simulations.config.base import (
     DEFAULT_DISTRIBUTION_NAME,
     DEFAULT_MORPHOLOGY_LOCATIONS_NAME,
     DEFAULT_TIMESTAMPS_NAME,
     BlockGroup,
-    CircuitFromID,
     SimulationSingleConfigMixin,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_base import (
     NeuronSimulationScanConfig,
 )
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
@@ -32,12 +31,21 @@ from obi_one.scientific.unions_and_references.manipulations import (
     SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationsReference,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import (
     BiophysicalNeuronSetReference,
     PointNeuronSetReference,
     VirtualNeuronSetReference,
+)
+from obi_one.scientific.unions_and_references.neuronal_manipulations import (
+    CircuitNeuronalManipulationReference,
+    CircuitNeuronalManipulationUnion,
+)
+from obi_one.scientific.unions_and_references.recordings import (
+    CircuitRecordingUnion,
+    RecordingReference,
 )
 from obi_one.scientific.unions_and_references.stimuli import (
     CircuitStimulusUnion,
@@ -46,8 +54,6 @@ from obi_one.scientific.unions_and_references.stimuli import (
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
 L = logging.getLogger(__name__)
-
-CircuitDiscriminator = Annotated[Circuit | CircuitFromID, Field(discriminator="type")]
 
 
 class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
@@ -80,6 +86,9 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
             MappedPropertiesGroup.MORPHOLOGY: ("/mapped-morphology-properties/{circuit_id}"),
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 
@@ -92,14 +101,32 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
             },
         )
-        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+        node_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
             default=None,
-            title="Neuron Set",
+            title="Neuron set",
             description="Neuron set to simulate.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
                 SchemaKey.REFERENCE_TYPES: NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
                 SchemaKey.PARAMETER_ORDER_PRIORITY: 99,
+            },
+        )
+        simulator: Literal["NEURON", "CORENEURON"] = Field(
+            default="NEURON",
+            title="Simulator",
+            description=(
+                "Simulator to run the simulation with. LFP recordings need CoreNEURON, and "
+                "electric field stimuli need NEURON."
+            ),
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION_ENHANCED,
+                SchemaKey.TITLE_BY_KEY: {"NEURON": "NEURON", "CORENEURON": "CoreNEURON"},
+                SchemaKey.DESCRIPTION_BY_KEY: {
+                    "NEURON": "Supports electric field stimuli, but not LFP recordings.",
+                    "CORENEURON": (
+                        "Required for LFP recordings, but cannot apply electric field stimuli."
+                    ),
+                },
             },
         )
 
@@ -114,6 +141,7 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
     )
 
     synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
+        title="Synaptic manipulations",
         default_factory=dict,
         description="Synaptic manipulations for the simulation.",
         json_schema_extra={
@@ -122,6 +150,19 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
             SchemaKey.SINGULAR_NAME: "Synaptic Manipulation",
             SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
             SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
+    neuronal_manipulations: dict[str, CircuitNeuronalManipulationUnion] = Field(
+        default_factory=dict,
+        title="Neuronal manipulations",
+        description="Neuronal manipulations for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [CircuitNeuronalManipulationReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Neuronal Manipulation",
+            SchemaKey.GROUP: BlockGroup.CIRCUIT_MANIPULATIONS_GROUP,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -138,6 +179,18 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
+    recordings: dict[str, CircuitRecordingUnion] = Field(
+        default_factory=dict,
+        description="Recordings for the simulation.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [RecordingReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Recording",
+            SchemaKey.GROUP: BlockGroup.STIMULI_RECORDINGS_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
     distributions: dict[str, AllDistributionsUnion] = Field(
         default_factory=dict,
         title="Distributions",
@@ -151,7 +204,8 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
-    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -163,9 +217,28 @@ class CircuitSimulationScanConfig(NeuronSimulationScanConfig):
         },
     )
 
+    # Narrowed to exclude explicit locations: a section id and offset name a different branch on
+    # every morphology, so hand-picked points are only meaningful for a single neuron.
+    morphology_locations: dict[str, CircuitMorphologyLocationUnion] = Field(
+        default_factory=dict,
+        title="Morphology locations",
+        description=(
+            "Reusable rules for selecting precise locations on neuronal morphologies. "
+            "Stimuli can reference these locations to target compartments instead of whole cells."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
+            SchemaKey.REFERENCE_TYPES: [MorphologyLocationsReference.__name__],
+            SchemaKey.SINGULAR_NAME: "Morphology Location",
+            SchemaKey.GROUP: BlockGroup.TARGETING_BLOCK_GROUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
+
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
         sonata_config = super().base_sonata_config(sonata_config)
+        sonata_config["target_simulator"] = self.initialize.simulator
 
         sonata_config["conditions"]["extracellular_calcium"] = (
             self.initialize.extracellular_calcium_concentration

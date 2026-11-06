@@ -1,20 +1,34 @@
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
+import morphio
 import pytest
 
-import obi_one as obi
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific import library
 from obi_one.scientific.library import circuit as test_module
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.morphology_containerization import (
+    MorphologyContainerizationScanConfig,
+)
 
 from tests.utils import CIRCUIT_DIR
 
 
+def _patch_connectivity_matrix(monkeypatch, fake_type: type) -> None:
+    monkeypatch.setattr("conntility.ConnectivityMatrix", fake_type, raising=False)
+
+
 class _FakePopulation:
-    def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None):
+    def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None, size=0):
         self.type = pop_type
         self.name = name
         self._node_ids = node_ids or []
         self.source = source
         self.target = target
+        self.size = size
 
     def ids(self):
         return self._node_ids
@@ -104,9 +118,7 @@ def fake_snap_circuit(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
     return test_module
 
@@ -144,9 +156,14 @@ def test_get_node_population_names_filters(fake_snap_circuit):
     )
 
 
-def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
+def test_default_population_name_cases(fake_snap_circuit, monkeypatch, tmp_path):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_population_name(c) == "bio"
+
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+    circuit = fake_snap_circuit.Circuit(name="c1", path=str(cfg))
+    assert circuit.default_population_name == "bio"
 
     def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         if not incl_point:
@@ -158,7 +175,10 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
         "get_node_population_names",
         staticmethod(fake_get_node_pop_names),
     )
-    assert fake_snap_circuit.Circuit._default_population_name(c) is None
+    with pytest.raises(ValueError, match="no biophysical or point node population"):
+        fake_snap_circuit.Circuit._default_population_name(c)
+    with pytest.raises(ValueError, match="no biophysical or point node population"):
+        _ = circuit.default_population_name
 
     def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
@@ -198,16 +218,18 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
     )
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) is None
 
-    # Add fake edge populations "a" and "b" both intrinsic to "bio" (default node pop)
+    # Two intrinsic pops, neither chemical nor name-matching: the larger one wins.
     c.edges._pops["a"] = _FakePopulation(
         "edges",
         source=_FakePopulation("biophysical", name="bio"),
         target=_FakePopulation("biophysical", name="bio"),
+        size=10,
     )
     c.edges._pops["b"] = _FakePopulation(
         "edges",
         source=_FakePopulation("biophysical", name="bio"),
         target=_FakePopulation("biophysical", name="bio"),
+        size=20,
     )
 
     def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
@@ -218,8 +240,7 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
         "get_edge_population_names",
         staticmethod(fake_get_edge_pop_names2),
     )
-    with pytest.raises(ValueError, match="Default edge population unknown"):
-        fake_snap_circuit.Circuit._default_edge_population_name(c)
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "b"
 
 
 def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeypatch):
@@ -248,6 +269,125 @@ def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeyp
     )
     # Should infer "bio__bio__chemical" because it starts with "bio__bio"
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
+def test_default_edge_population_name_prefers_chemical_over_electrical(
+    fake_snap_circuit, monkeypatch
+):
+    """Chemical + electrical both prefixed "bio__bio__": the chemical one is the default."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    c.edges._pops["bio__bio__chemical"] = _FakePopulation(
+        "chemical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["bio__bio__electrical"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__chemical", "bio__bio__electrical"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
+def test_default_edge_population_name_prefers_canonical_chemical_name(
+    fake_snap_circuit, monkeypatch
+):
+    """Two chemical pops ("..chemical" + "..chemical2"): the canonical name wins."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    c.edges._pops["bio__bio__chemical"] = _FakePopulation(
+        "chemical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["bio__bio__chemical2"] = _FakePopulation(
+        "chemical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__chemical", "bio__bio__chemical2"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
+def test_default_edge_population_name_falls_back_to_prefix(fake_snap_circuit, monkeypatch):
+    """No chemical/canonical match: the single prefix-matching population wins."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Both intrinsic and non-chemical; only one follows the "bio__bio__" naming convention.
+    c.edges._pops["bio__bio__gap"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["intrinsic_other"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__gap", "intrinsic_other"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__gap"
+
+
+def test_default_edge_population_name_falls_back_to_largest_then_first(
+    fake_snap_circuit, monkeypatch
+):
+    """No chemical/canonical/prefix match: pick the largest; ties go to the first in order."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Two intrinsic pops with no chemical/canonical/prefix match and different sizes.
+    c.edges._pops["x_edges"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+        size=5,
+    )
+    c.edges._pops["y_edges"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+        size=9,
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["x_edges", "y_edges"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    # Largest wins.
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "y_edges"
+
+    # Equal sizes: the first in population order wins.
+    c.edges._pops["x_edges"].size = 9
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "x_edges"
 
 
 def test_connectivity_matrix_none_raises(fake_snap_circuit, tmp_path):
@@ -289,9 +429,7 @@ def test_connectivity_matrix_compresses_multigraph(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
 
     c = test_module.Circuit(name="c1", path="x", matrix_path="m.h5")
@@ -321,9 +459,7 @@ def test_init_validates_connectivity_matrix_node_ids(monkeypatch):
                 raise AssertionError(msg)
 
     monkeypatch.setattr(test_module.snap, "Circuit", fake_circuit_factory, raising=True)
-    monkeypatch.setattr(
-        test_module, "ConnectivityMatrix", _FakeConnectivityMatrixType, raising=True
-    )
+    _patch_connectivity_matrix(monkeypatch, _FakeConnectivityMatrixType)
     monkeypatch.setattr(test_module.np, "testing", _FakeNumpyTesting, raising=True)
 
     with pytest.raises(AssertionError):
@@ -362,7 +498,7 @@ def test_mechanisms_dir_for_subclass(fake_snap_circuit, tmp_path):
 
 
 def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
-    circuit = obi.Circuit(
+    circuit = Circuit(
         name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
         path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
     )
@@ -378,6 +514,59 @@ def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
 
     assert morph_path.exists()
     assert morph_path.suffix in {".asc", ".swc", ".h5"}
+
+
+def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
+    """A containerized circuit declares no per-morphology file, only `alternate_morphologies`."""
+    source = Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+    hoc_path = Path(library.__file__).parent
+    scan_config = MorphologyContainerizationScanConfig(
+        initialize=MorphologyContainerizationScanConfig.Initialize(
+            circuit=[source],
+            hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
+            hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
+        )
+    )
+    grid_scan = GridScanGenerationTask(
+        form=scan_config,
+        output_root=tmp_path / "grid_scan",
+        coordinate_directory_option="VALUE",
+    )
+    grid_scan.execute()
+    run_tasks_for_generated_scan(grid_scan)
+
+    containerized = Circuit(
+        name=source.name,
+        path=str(tmp_path / grid_scan.output_root / source.name / "circuit_config.json"),
+    )
+    population = containerized.default_population_name
+
+    # Only an .h5 container is declared, so no per-morphology file path can be resolved.
+    pop_cfg = containerized._population_config(population)
+    assert pop_cfg["alternate_morphologies"]["h5v1"].endswith("merged-morphologies.h5")
+    with pytest.raises((FileNotFoundError, KeyError)):
+        containerized.get_morphology_path(node_id=0, population=population)
+
+    morphology = containerized.load_morphology(0, population=population)
+
+    assert len(morphology.sections) > 0
+
+
+def test_circuit_reports_when_no_morphology_source_provides_the_cell():
+    circuit = Circuit(
+        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
+        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
+    )
+
+    with (
+        patch.object(Circuit, "get_morphology_path", side_effect=FileNotFoundError),
+        patch.object(Circuit, "_alternate_morphology_base", return_value=None),
+        pytest.raises(FileNotFoundError, match="tried: none"),
+    ):
+        circuit.load_morphology(0, population=circuit.default_population_name)
 
 
 def test_circuit_resolves_morphology_name_that_already_includes_directory(monkeypatch, tmp_path):
@@ -423,3 +612,106 @@ def test_circuit_resolves_morphology_name_that_already_includes_directory(monkey
     circuit = test_module.Circuit(name="c1", path=str(cfg))
 
     assert circuit.get_morphology_path(node_id=0, population="All") == morph_path
+
+
+# swc and h5 with different section counts, so a loaded morphology names which format won.
+_SWC_TWO_SECTIONS = """\
+1 1 0 0 0 5 -1
+2 3 0 5 0 1 1
+3 3 0 10 0 1 2
+4 2 0 -5 0 1 1
+5 2 0 -10 0 1 4
+"""
+
+
+def _morphology_with_extra_dendrite() -> morphio.mut.Morphology:
+    """A morphology with one more section than `_SWC_TWO_SECTIONS`, so the two are told apart."""
+    morphology = morphio.mut.Morphology()
+    # A three-point soma contour: a single-point soma is not a valid h5 morphology.
+    morphology.soma.points = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+    morphology.soma.diameters = [10.0, 10.0, 10.0]
+    for points in ([[0.0, 5.0, 0.0], [0.0, 10.0, 0.0]], [[0.0, -5.0, 0.0], [0.0, -10.0, 0.0]]):
+        morphology.append_root_section(
+            morphio.PointLevel(points, [1.0, 1.0]), morphio.SectionType.basal_dendrite
+        )
+    morphology.append_root_section(
+        morphio.PointLevel([[5.0, 0.0, 0.0], [10.0, 0.0, 0.0]], [1.0, 1.0]),
+        morphio.SectionType.axon,
+    )
+    return morphology
+
+
+def _both_formats_circuit(tmp_path):
+    """A circuit whose one cell 'cell' is available as both an swc file and an h5 container."""
+    (tmp_path / "morphologies").mkdir()
+    (tmp_path / "morphologies" / "cell.swc").write_text(_SWC_TWO_SECTIONS)
+    (tmp_path / "alt").mkdir()
+    _morphology_with_extra_dendrite().write(tmp_path / "alt" / "cell.h5")
+
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+
+    class _Population:
+        type = "biophysical"
+
+        @staticmethod
+        def get(_node_id):
+            return SimpleNamespace(morphology="cell")
+
+    class _Nodes:
+        def __init__(self):
+            self.population_names = ["All"]
+            self.node_sets = SimpleNamespace(content={})
+
+        @staticmethod
+        def __getitem__(_population):
+            return _Population()
+
+    class _SnapCircuit:
+        def __init__(self):
+            self.nodes = _Nodes()
+            self.edges = _FakeEdges({})
+            self.node_sets = SimpleNamespace(content={})
+            self.config = {
+                "manifest": {"$BASE_DIR": "."},
+                "components": {},
+                "networks": {
+                    "nodes": [
+                        {
+                            "populations": {
+                                "All": {
+                                    "morphologies_dir": "$BASE_DIR/morphologies",
+                                    "alternate_morphologies": {"h5v1": "$BASE_DIR/alt"},
+                                }
+                            }
+                        }
+                    ]
+                },
+            }
+
+    return cfg, _SnapCircuit
+
+
+def test_load_morphology_prefers_h5_over_swc(monkeypatch, tmp_path):
+    """When both an h5 container and an swc file exist, the h5 is the one loaded."""
+    cfg, snap_circuit = _both_formats_circuit(tmp_path)
+    monkeypatch.setattr(test_module.snap, "Circuit", lambda _path: snap_circuit())
+    circuit = test_module.Circuit(name="c1", path=str(cfg))
+
+    morphology = circuit.load_morphology(0, population="All")
+
+    # The h5 carries three sections; the swc only two, so this can only be the h5.
+    assert len(morphology.sections) == 3
+
+
+def test_load_morphology_falls_back_to_swc_without_an_h5(monkeypatch, tmp_path):
+    """With no h5 alternate declared, the swc under morphologies_dir is loaded."""
+    cfg, snap_circuit = _both_formats_circuit(tmp_path)
+    instance = snap_circuit()
+    instance.config["networks"]["nodes"][0]["populations"]["All"].pop("alternate_morphologies")
+    monkeypatch.setattr(test_module.snap, "Circuit", lambda _path: instance)
+    circuit = test_module.Circuit(name="c1", path=str(cfg))
+
+    morphology = circuit.load_morphology(0, population="All")
+
+    assert len(morphology.sections) == 2

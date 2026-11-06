@@ -4,7 +4,7 @@
   "ui_element": "ion_channel_variable_modification_by_section_list",
   "title": "Ion channel variable manipulations by section type",
   "description_ui": "Ion channel RANGE variable modification by section list.",
-  "property_group": "Circuit",
+  "property_group": "NeuronalManipulation",
   "property": "MechanismVariablesByIonChannel",
   "data_model": {
     "type": "object",

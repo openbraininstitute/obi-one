@@ -3,22 +3,21 @@ from uuid import UUID
 
 import pytest
 
+import obi_one.scientific.tasks.simulation_execution.neuron.task as test_module
 from obi_one.scientific.library.simulation.neuron.schemas import (
     NeurodamusMechanismBuild,
     NeurodamusSimulationParameters,
     SimulationResults,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron import (
-    circuit_simulation_execution as test_module,
-)
-from obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution import (
+from obi_one.scientific.tasks.simulation_execution.neuron.config import (
     CircuitSimulationExecutionSingleConfig,
+)
+from obi_one.scientific.tasks.simulation_execution.neuron.task import (
     CircuitSimulationExecutionTask,
 )
 from obi_one.types import SimulationBackend
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
-_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution"
+_TASK = "obi_one.scientific.tasks.simulation_execution.neuron.task"
 
 
 @pytest.fixture
@@ -63,13 +62,13 @@ def _mechanism_build(tmp_path):
     )
 
 
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_CIRCUIT}.stage_circuit")
-@patch(f"{_CIRCUIT}.db_sdk.get_identifiable")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.stage_circuit")
+@patch(f"{_TASK}.db_sdk.get_identifiable")
+@patch(f"{_TASK}.create_dir")
 def test_execute_local_skips_registration(
     mock_create_dir,
     mock_get_identifiable,
@@ -108,9 +107,10 @@ def test_execute_local_skips_registration(
     task.execute(db_client=db_client, execution_activity_id=None)
 
     mock_compile.assert_called_once_with(
-        mechanisms_dir=staged_circuit.mechanisms_dir.resolve(),
+        mechanisms_dirs=[staged_circuit.mechanisms_dir.resolve()],
         output_dir=staged_circuit.directory.resolve(),
         simulation_backend=SimulationBackend.neurodamus,
+        cache_dir=None,
     )
     mock_get_params.assert_called_once_with(
         simulation_backend=SimulationBackend.neurodamus,
@@ -121,14 +121,14 @@ def test_execute_local_skips_registration(
     db_client.update_entity.assert_not_called()
 
 
-@patch(f"{_BASE}.register_simulation_results")
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_CIRCUIT}.stage_circuit")
-@patch(f"{_CIRCUIT}.db_sdk.get_identifiable")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.register_simulation_results")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.stage_circuit")
+@patch(f"{_TASK}.db_sdk.get_identifiable")
+@patch(f"{_TASK}.create_dir")
 def test_execute_tracked_registers_results(
     mock_create_dir,
     mock_get_identifiable,
@@ -162,6 +162,7 @@ def test_execute_tracked_registers_results(
     sim_results = SimulationResults(
         spike_report_file=tmp_path / "spikes.h5",
         voltage_report_files=[],
+        lfp_report_files=[tmp_path / "LFP.h5"],
     )
     mock_get_params.return_value = NeurodamusSimulationParameters(
         number_of_cells=2,
@@ -184,6 +185,7 @@ def test_execute_tracked_registers_results(
         entity_type=test_module.CircuitSimulationExecutionTask.activity_type,
     )
     mock_register.assert_called_once()
+    assert mock_register.call_args.kwargs["lfp_report_files"] == [tmp_path / "LFP.h5"]
     db_client.update_entity.assert_called_once_with(
         entity_id=execution_activity.id,
         entity_type=test_module.CircuitSimulationExecutionTask.activity_type,

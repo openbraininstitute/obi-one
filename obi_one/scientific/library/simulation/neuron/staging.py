@@ -1,12 +1,14 @@
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
+import libsonata
 from entitysdk import Client, models
 from entitysdk.staging.circuit import stage_circuit as stage_circuit_entity
 from entitysdk.staging.ion_channel_model import stage_sonata_from_config
 from entitysdk.staging.memodel import stage_sonata_from_memodel
 
+from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
@@ -19,10 +21,8 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     SimulationParameters,
 )
 from obi_one.types import SimulationBackend
+from obi_one.utils.circuit import count_cells_in_simulation_node_set
 from obi_one.utils.io import load_json
-
-if TYPE_CHECKING:
-    from entitysdk.models import MEModel
 
 L = logging.getLogger(__name__)
 
@@ -37,7 +37,10 @@ def stage_circuit(
         output_dir=output_dir,
         max_concurrent=max_concurrent,
     )
-    return Circuit(name=cast("str", model.name), path=str(circuit_config_path))
+    if model.name is None:
+        msg = f"Circuit {model.id!s} has no name"
+        raise OBIONEError(msg)
+    return Circuit(name=model.name, path=str(circuit_config_path))
 
 
 def stage_ion_channel_models_as_circuit(
@@ -88,6 +91,7 @@ def stage_memodel_as_circuit(
     client: Client,
     circuit: MEModelCircuit | MEModelFromID,
     output_dir: Path,
+    max_concurrent: int = 1,
 ) -> MEModelCircuit:
     """Stage a single-neuron ME-model circuit for simulation execution."""
     if isinstance(circuit, MEModelCircuit):
@@ -95,8 +99,9 @@ def stage_memodel_as_circuit(
 
     circuit_config_path = stage_sonata_from_memodel(
         client=client,
-        memodel=cast("MEModel", circuit.entity(db_client=client)),
+        memodel=circuit.entity(db_client=client),
         output_dir=output_dir,
+        max_concurrent=max_concurrent,
     )
     return _build_memodel_circuit(circuit_config_path)
 
@@ -110,16 +115,20 @@ def get_simulation_parameters(
     """Return simulation parameters."""
     config_data = load_json(simulation_config_file)
 
-    node_set_name = config_data.get("node_set", "All")
-    node_sets_file = simulation_config_file.parent / config_data["node_sets_file"]
+    # Resolve the node set to concrete cells via libsonata rather than reading the raw
+    # node sets file. The node set may be defined symbolically (e.g. by population,
+    # mtype or synapse_class) or as a compound reference -- in which case it has no
+    # explicit "node_id" list -- and it may live in the circuit's node sets or in the
+    # simulation's own node_sets_file. libsonata.SimulationConfig resolves the referenced
+    # circuit ("network") and manifest variables, and the circuit + simulation node sets
+    # are merged for resolution.
+    simulation_config = libsonata.SimulationConfig.from_file(str(simulation_config_file))
+    node_set_name = simulation_config.node_set
+    if not node_set_name:
+        msg = "No node set defined in the simulation config."
+        raise ValueError(msg)
+    num_cells = count_cells_in_simulation_node_set(simulation_config, node_set_name)
 
-    node_set_data = load_json(node_sets_file)
-
-    if node_set_name not in node_set_data:
-        msg = f"Node set '{node_set_name}' not found in node sets file"
-        raise KeyError(msg)
-
-    num_cells = len(node_set_data[node_set_name]["node_id"])
     tstop = config_data["run"]["tstop"]
 
     match simulation_backend:

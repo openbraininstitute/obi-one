@@ -1,17 +1,28 @@
 """What the task sends to entitycore when a database client is supplied.
 
 Generation is usable offline: with no client it only writes files. With one, it additionally
-records the neuron count on the Simulation entity and uploads the generated artefacts as labelled
-assets. Both the set of labels and the neuron count are part of the contract.
+records the neuron count on the Simulation entity, links it to the recording arrays its LFP
+reports read, and uploads the generated artefacts as labelled assets. The set of labels, the
+neuron count and the links are all part of the contract.
 """
 
 import entitysdk
 import pytest
 
-import obi_one as obi
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
+)
+from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecordingBlock,
+)
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
+    SimulatableExtracellularRecordingArrayFromID,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -25,6 +36,25 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     build_config,
     generate,
 )
+
+ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
+OTHER_ARRAY_ID = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed"
+# LFP recordings need CoreNEURON.
+CORENEURON = {"simulator": "CORENEURON"}
+
+
+def _lfp_recording(array_id):
+    return ExtracellularElectrodeArrayRecordingBlock(
+        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
+    )
+
+
+def _recording_array_links(db_client):
+    return [
+        call
+        for call in db_client.calls_to("update_entity")
+        if "recording_arrays" in call.kwargs["attrs_or_entity"]
+    ]
 
 
 class TestWithoutADatabaseClient:
@@ -73,13 +103,15 @@ class TestAssetUploads:
     def test_compartment_sets_are_uploaded_when_present(
         self, morphology_circuit, tmp_path, db_client
     ):
-        locations = obi.RandomMorphologyLocations(random_seed=0, number_of_locations=2)
+        locations = RandomMorphologyLocations(
+            random_seed=0, number_of_locations=2, section_types=(3, 4)
+        )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
             },
         )
 
@@ -90,14 +122,14 @@ class TestAssetUploads:
     def test_spike_replay_files_are_uploaded(self, circuit, tmp_path, db_client):
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Source": source,
-                "Spikes": lambda: obi.PoissonSpikeStimulus(source_neuron_set=source.ref),
+                "Spikes": lambda: PoissonSpikeStimulus(source_neuron_set=source.ref),
             },
         )
 
@@ -115,17 +147,15 @@ class TestAssetUploads:
     def test_one_replay_upload_per_spike_stimulus(self, circuit, tmp_path, db_client):
         source = VirtualPopulationIDNeuronSet(
             population=VIRTUAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+            neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
         )
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "Source": source,
-                "Poisson": lambda: obi.PoissonSpikeStimulus(source_neuron_set=source.ref),
-                "Synchronous": lambda: obi.FullySynchronousSpikeStimulus(
-                    source_neuron_set=source.ref
-                ),
+                "Poisson": lambda: PoissonSpikeStimulus(source_neuron_set=source.ref),
+                "Synchronous": lambda: FullySynchronousSpikeStimulus(source_neuron_set=source.ref),
             },
         )
 
@@ -145,7 +175,7 @@ class TestNeuronCount:
     def test_the_simulation_target_size_is_recorded(self, circuit, tmp_path, db_client):
         target = BiophysicalPopulationIDNeuronSet(
             population=BIOPHYSICAL_POPULATION,
-            neuron_ids=obi.NamedTuple(name="target", elements=[0, 1, 2, 3]),
+            neuron_ids=NamedTuple(name="target", elements=[0, 1, 2, 3]),
         )
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Target": target}
@@ -181,6 +211,77 @@ class TestNeuronCount:
         update = db_client.calls_to("update_entity")[0]
         assert update.kwargs["entity_id"] == config.single_entity.id
         assert update.kwargs["entity_type"] is entitysdk.models.Simulation
+
+
+class TestRecordingArrayLinks:
+    """entitysdk stages an LFP report's weight matrix at run time, from the arrays linked here."""
+
+    def test_the_simulation_is_linked_to_the_array_it_records_with(
+        self, circuit_config, tmp_path, db_client
+    ):
+        config = circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}, initialize=CORENEURON)
+
+        generate(config, tmp_path, db_client=db_client)
+
+        (link,) = _recording_array_links(db_client)
+        assert link.kwargs["attrs_or_entity"] == {"recording_arrays": [{"id": ARRAY_ID}]}
+        assert link.kwargs["entity_id"] == config.single_entity.id
+        assert link.kwargs["entity_type"] is entitysdk.models.Simulation
+
+    def test_each_array_is_linked_once(self, circuit_config, tmp_path, db_client):
+        config = circuit_config(
+            blocks={
+                "ProbeA": _lfp_recording(ARRAY_ID),
+                "ProbeB": _lfp_recording(ARRAY_ID),
+                "ProbeC": _lfp_recording(OTHER_ARRAY_ID),
+            },
+            initialize=CORENEURON,
+        )
+
+        generate(config, tmp_path, db_client=db_client)
+
+        (link,) = _recording_array_links(db_client)
+        linked = link.kwargs["attrs_or_entity"]["recording_arrays"]
+        assert sorted(array["id"] for array in linked) == sorted([ARRAY_ID, OTHER_ARRAY_ID])
+
+    def test_a_simulation_without_lfp_is_linked_to_nothing(
+        self, circuit_config, tmp_path, db_client
+    ):
+        generate(circuit_config(), tmp_path, db_client=db_client)
+
+        assert _recording_array_links(db_client) == []
+
+    def test_the_link_is_made_before_the_config_is_uploaded(
+        self, circuit_config, tmp_path, db_client
+    ):
+        """The SONATA config is the completion marker, so the entity is complete before it."""
+        generate(
+            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}, initialize=CORENEURON),
+            tmp_path,
+            db_client=db_client,
+        )
+
+        (link,) = _recording_array_links(db_client)
+        config_upload = next(
+            call
+            for call in db_client.calls_to("upload_file")
+            if call.kwargs["asset_label"] == "sonata_simulation_config"
+        )
+        assert db_client.calls.index(link) < db_client.calls.index(config_upload)
+
+    def test_the_weight_matrix_is_neither_downloaded_nor_uploaded(
+        self, circuit_config, tmp_path, db_client
+    ):
+        """FakeDBClient has no download methods, so any attempt would fail this test."""
+        result = generate(
+            circuit_config(blocks={"LFP": _lfp_recording(ARRAY_ID)}, initialize=CORENEURON),
+            tmp_path,
+            db_client=db_client,
+        )
+
+        assert db_client.uploaded_labels() == ["custom_node_sets", "sonata_simulation_config"]
+        assert list(result.directory.glob("*.h5")) == []
+        assert result.reports["LFP"]["electrodes_file"] == f"{ARRAY_ID}.h5"
 
 
 class TestPersistenceOrdering:

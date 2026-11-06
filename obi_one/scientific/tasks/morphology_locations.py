@@ -2,17 +2,17 @@ import logging
 from pathlib import Path
 from typing import ClassVar
 
-import entitysdk
 import morphio
-import neurom.io
-import neurom.view
 import numpy as np
 import pandas as pd
-from fastapi import HTTPException
+from entitysdk.client import Client
 from matplotlib import pyplot as plt
+from neurom.io.utils import Morphology
+from neurom.view import plot_morph
 from pydantic import Field
 
 from obi_one.core.block import Block
+from obi_one.core.exception import OBIONEError
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey
 from obi_one.core.single import SingleConfigMixin
@@ -82,7 +82,7 @@ class MorphologyLocationsTask(Task):
         ax = fig.gca()
 
         xyz = pd.concat([dataframe.apply(location_xyz, axis=1), dataframe[_PRE_IDX]], axis=1)
-        neurom.view.plot_morph(neurom.io.utils.Morphology(m), ax=ax)  # ty:ignore[possibly-missing-submodule]
+        plot_morph(Morphology(m), ax=ax)
         xyz.groupby(_PRE_IDX).apply(lambda _x: ax.scatter(_x["x"], _x["y"], s=6))
         plt.axis("equal")
         return fig
@@ -90,7 +90,7 @@ class MorphologyLocationsTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
@@ -98,7 +98,7 @@ class MorphologyLocationsTask(Task):
             if isinstance(self.config.initialize.morphology, Path):
                 m = load_morphology_nrn_order(self.config.initialize.morphology)
             else:
-                m = self.config.initialize.morphology.morphio_morphology  # ty:ignore[unresolved-attribute]
+                m = self.config.initialize.morphology.morphio_morphology(db_client=db_client)  # ty:ignore[unresolved-attribute]
             dataframe = self.config.morph_locations.points_on(m)
 
             fig = MorphologyLocationsTask.generate_plot(m, dataframe)
@@ -107,4 +107,5 @@ class MorphologyLocationsTask(Task):
 
         except Exception as e:
             L.error(f"An error occurred: {e}")
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") from e
+            message = f"Internal Server Error: {e}"
+            raise OBIONEError(message) from e

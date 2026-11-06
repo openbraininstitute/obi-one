@@ -27,7 +27,7 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 
 L = logging.getLogger(__name__)
 
-_MAX_PERCENT = 100.0
+MAX_SAMPLE_PERCENTAGE = 100.0
 
 
 class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
@@ -42,7 +42,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         | Annotated[list[Annotated[NonNegativeFloat, Field(le=100)]], Field(min_length=1)]
     ) = Field(
         default=100.0,
-        title="Sample (Percentage)",
+        title="Sample",
         description="Percentage of neurons to sample between 0 and 100%",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -52,7 +52,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
 
     sample_seed: int | list[int] = Field(
         default=1,
-        title="Sample Seed",
+        title="Sample seed",
         description="Seed for random sampling.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -88,7 +88,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
         """Returns list of neuron IDs per population (with subsampling, if specified)."""
         ids = np.array(self._resolve_ids(circuit))
 
-        if len(ids) > 0 and self.sample_percentage < _MAX_PERCENT:  # ty:ignore[unsupported-operator]
+        if len(ids) > 0 and self.sample_percentage < MAX_SAMPLE_PERCENTAGE:  # ty:ignore[unsupported-operator]
             rng = np.random.default_rng(self.sample_seed)
             num_sample = np.round((self.sample_percentage / 100.0) * len(ids)).astype(int)  # ty:ignore[unsupported-operator]
             ids = ids[rng.permutation([True] * num_sample + [False] * (len(ids) - num_sample))]
@@ -121,7 +121,7 @@ class PopulationBaseNeuronSet(NeuronSet, abc.ABC):
             force_resolve_ids: If True, always resolve to explicit neuron IDs
                 instead of preserving symbolic expressions.
         """
-        if self.sample_percentage == _MAX_PERCENT and not force_resolve_ids:
+        if self.sample_percentage == MAX_SAMPLE_PERCENTAGE and not force_resolve_ids:
             # Symbolic expression can be preserved
             expression = self._get_expression(circuit)
         else:

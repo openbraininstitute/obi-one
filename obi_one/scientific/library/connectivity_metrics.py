@@ -7,14 +7,13 @@ import numpy as np
 import pandas as pd
 from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
-from entitysdk.models import Asset
-from entitysdk.models.circuit import Circuit
+from entitysdk.models import Asset, Circuit as EntityCircuitModel
 from entitysdk.types import FetchFileStrategy
 from httpx import HTTPStatusError
 from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
 
-import obi_one as obi
+from obi_one.scientific.library.circuit import Circuit
 
 
 class ConnectivityMetricsRequest(BaseModel):
@@ -89,7 +88,7 @@ class TemporaryPartialCircuit:
             raise ValueError(msg)
         self._db_client.fetch_file(
             entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
-            entity_type=Circuit,
+            entity_type=EntityCircuitModel,
             asset_id=self.asset.id,
             output_path=temp_file_path,
             asset_path=rel_path,  # ty:ignore[invalid-argument-type]
@@ -100,7 +99,7 @@ class TemporaryPartialCircuit:
     def _get_sonata_asset(self) -> Asset:
         circuit = self._db_client.get_entity(
             entity_id=self._circuit_id,  # ty:ignore[invalid-argument-type]
-            entity_type=Circuit,
+            entity_type=EntityCircuitModel,
         )
         sonata_assets = [
             a for a in circuit.assets if a.is_directory and a.label.value == "sonata_circuit"
@@ -136,7 +135,7 @@ class TemporaryPartialCircuit:
         try:  # ruff: ignore[too-many-statements-in-try-clause]
             # Fetch circuit config
             circuit_config_file = self._fetch_file("circuit_config.json")
-            circuit = obi.Circuit(name=str(self._circuit_id), path=str(circuit_config_file))
+            circuit = Circuit(name=str(self._circuit_id), path=str(circuit_config_file))
             c = circuit.sonata_circuit
 
             # Fetch node sets file
@@ -190,7 +189,7 @@ def get_connectivity_metrics(
     # (incl. config, node sets, selected edges, src/tgt nodes of selected edges)
     with TemporaryPartialCircuit(db_client, circuit_id, edge_population) as cfg_path:
         # Load circuit
-        circuit = obi.Circuit(name=circuit_id, path=str(cfg_path))
+        circuit = Circuit(name=circuit_id, path=str(cfg_path))
         c = circuit.sonata_circuit
 
         # Check inputs

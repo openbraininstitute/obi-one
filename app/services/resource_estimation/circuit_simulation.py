@@ -1,11 +1,10 @@
 import math
-from typing import cast
 
 from entitysdk import Client, models
 
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import CLUSTER_INSTANCES_INFO
-from app.schemas.task import ClusterResources, TaskDefinition, TaskLaunchSubmit
+from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
 
 # This was chosen based off the simulations run and recorded here:
 # https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a
@@ -17,7 +16,7 @@ MEM_GB_PER_CELL = 0.03
 def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: Client,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     compute_cell: str,
 ) -> ClusterResources:
     if compute_cell not in CLUSTER_INSTANCES_INFO:
@@ -32,7 +31,7 @@ def estimate_task_resources(
         entity_id=json_model.config_id,
         entity_type=models.Simulation,
     )
-    number_of_neurons = cast("int", config.number_neurons)
+    number_of_neurons = config.number_neurons
 
     # get instance types that support the neuron number in ascending order
     instances = sorted(

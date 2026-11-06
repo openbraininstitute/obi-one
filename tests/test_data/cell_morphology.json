@@ -21,7 +21,7 @@
       "id": "bb07d774-216d-47d7-9fd8-549f9c5375a3",
       "agent": {
         "id": "36b621f5-5d56-45a2-9b49-f36261142cc4",
-        "pref_label": "École Polytechnique Fédérale de Lausanne",
+        "pref_label": "\u00c9cole Polytechnique F\u00e9d\u00e9rale de Lausanne",
         "alternative_name": "",
         "type": "organization"
       },
@@ -67,17 +67,15 @@
   "update_date": "2024-10-29T13:36:30.827776Z",
   "created_by": {
     "id": "bd143fa9-b714-410c-a65d-7435c1066932",
-    "given_name": "Jane",
-    "family_name": "Doe",
     "pref_label": "Jane Doe",
-    "type": "person"
+    "creation_date": "2024-01-01T00:00:00Z",
+    "update_date": "2024-01-01T00:00:00Z"
   },
   "updated_by": {
     "id": "7f81375e-ecc1-4b63-8773-3e847d718d73",
-    "given_name": "service-account-bbp-dke-data-pipelines-sa",
-    "family_name": "service-account-bbp-dke-data-pipelines-sa",
     "pref_label": "service-account-bbp-dke-data-pipelines-sa service-account-bbp-dke-data-pipelines-sa",
-    "type": "person"
+    "creation_date": "2024-01-01T00:00:00Z",
+    "update_date": "2024-01-01T00:00:00Z"
   },
   "brain_region": {
     "creation_date": "2025-06-27T11:10:27.186088Z",

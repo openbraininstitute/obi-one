@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import logging
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from pydantic import BaseModel, Field
 
+from obi_one.core.exception import ConfigValidationError
+
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Iterator
 
     import morphio
+    import pandas as pd
 
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
     from obi_one.scientific.library.circuit import Circuit
@@ -18,6 +21,8 @@ if TYPE_CHECKING:
     )
 
 L = logging.getLogger(__name__)
+
+MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES = 5_000
 
 
 class CompartmentLocation(BaseModel):
@@ -68,45 +73,156 @@ class MaterializedCompartmentSet(BaseModel):
         return cls(name=name, population=population, compartment_entries=tuple(triplets))
 
 
+def normalized_offset_column(points: pd.DataFrame) -> str:
+    """Return the column of a generated points table holding the offset along the section.
+
+    Args:
+        points: the table a `MorphologyLocationsBlock` returns from `points_on`.
+
+    Returns:
+        The name of the offset column, preferring `normalized_section_offset` over `offset`.
+
+    Raises:
+        KeyError: if the table carries no `section_id`, or neither offset column.
+    """
+    if "section_id" not in points.columns:
+        msg = (
+            "MorphologyLocationsBlock must return a DataFrame with a 'section_id' column. "
+            f"Got columns: {list(points.columns)}"
+        )
+        raise KeyError(msg)
+
+    for candidate in ("normalized_section_offset", "offset"):
+        if candidate in points.columns:
+            return candidate
+
+    msg = (
+        "MorphologyLocationsBlock must return a DataFrame with either "
+        "'normalized_section_offset' (preferred) or 'offset'. "
+        f"Got columns: {list(points.columns)}"
+    )
+    raise KeyError(msg)
+
+
+def sample_morphology_locations(
+    *,
+    locations_block: MorphologyLocationsBlock,
+    morphology: morphio.Morphology,
+) -> list[tuple[int, float]]:
+    """Evaluate a morphology-location block against one morphology.
+
+    Section ids are SONATA global ids, as they are in a materialized compartment set: 0 is the
+    soma and neurites follow in `nrn_order`.
+
+    Args:
+        locations_block: the block to evaluate. Parameter sweeps are rejected by `points_on`.
+        morphology: the morphology to place locations on.
+
+    Returns:
+        `(section_id, offset)` per generated location, in generation order.
+    """
+    points = locations_block.points_on(morphology)
+    offset_column = normalized_offset_column(points)
+    return [
+        (int(section_id), float(offset))
+        for section_id, offset in zip(points["section_id"], points[offset_column], strict=True)
+    ]
+
+
+def _validate_compartment_set_entry_count(*, name: str, entry_count: int) -> None:
+    if entry_count > MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES:
+        msg = (
+            f"Compartment set '{name}' would contain {entry_count:,} entries, which exceeds "
+            f"the maximum of {MAX_MATERIALIZED_COMPARTMENT_SET_ENTRIES:,}. Reduce the number "
+            "of locations or target a smaller neuron set."
+        )
+        raise ConfigValidationError(msg)
+
+
+def _raise_empty_compartment_set(
+    *, name: str, population: str, targeted: int, unloadable: int
+) -> NoReturn:
+    """Explain why a referenced compartment set came out empty."""
+    if unloadable == targeted:
+        detail = (
+            f"none of the {targeted:,} targeted neurons in population '{population}' had a "
+            "readable morphology. Check that the circuit's morphology files are present and in a "
+            "supported format."
+        )
+    elif unloadable:
+        detail = (
+            f"the morphology rule produced no locations on the {targeted - unloadable:,} of "
+            f"{targeted:,} targeted neurons whose morphologies could be read."
+        )
+    else:
+        detail = (
+            f"the morphology rule produced no locations on any of the {targeted:,} targeted "
+            "neurons. Check that the requested section types exist on these morphologies."
+        )
+
+    msg = f"Compartment set '{name}' is empty: {detail}"
+    raise ConfigValidationError(msg)
+
+
+def _iter_morphologies(
+    *,
+    circuit: Circuit,
+    node_ids: Iterable[int],
+    population: str,
+    unloadable: list[int],
+) -> Iterator[tuple[int, morphio.Morphology]]:
+    """Yield one morphology at a time, so only the morphology in use is held in memory.
+
+    Node ids whose morphology cannot be read are skipped and recorded in `unloadable`, so the
+    caller can tell an empty result apart from a partially skipped one.
+    """
+    for node_id in node_ids:
+        node_id_int = int(node_id)
+        try:
+            morph = circuit.load_morphology(node_id_int, population=population)
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            L.warning(
+                "Unable to load morphology for node %s in population '%s': %s",
+                node_id_int,
+                population,
+                exc,
+            )
+            unloadable.append(node_id_int)
+            continue
+
+        yield node_id_int, morph
+
+
 def build_compartment_set_from_locations_block(
     *,
     name: str,
     population: str,
     locations_block: MorphologyLocationsBlock,
-    morphologies: Mapping[int, morphio.Morphology],
+    morphology_items: Iterable[tuple[int, morphio.Morphology]],
 ) -> MaterializedCompartmentSet:
+    """Accumulate compartment rows from `(node_id, morphology)` pairs.
+
+    Pairs are consumed lazily so callers can release each morphology once its rows are read,
+    rather than holding every targeted morphology in memory at once.
+    """
     locations: list[CompartmentLocation] = []
 
-    for node_id, morph in morphologies.items():
-        df = locations_block.points_on(morph)
+    for node_id, morph in morphology_items:
+        rows = sample_morphology_locations(locations_block=locations_block, morphology=morph)
 
-        if "section_id" not in df.columns:
-            msg = (
-                "MorphologyLocationsBlock must return a DataFrame with a 'section_id' column. "
-                f"Got columns: {list(df.columns)}"
-            )
-            raise KeyError(msg)
+        _validate_compartment_set_entry_count(
+            name=name,
+            entry_count=len(locations) + len(rows),
+        )
 
-        if "normalized_section_offset" in df.columns:
-            offset_col = "normalized_section_offset"
-        elif "offset" in df.columns:
-            offset_col = "offset"
-        else:
-            msg = (
-                "MorphologyLocationsBlock must return a DataFrame with either "
-                "'normalized_section_offset' (preferred) or 'offset'. "
-                f"Got columns: {list(df.columns)}"
+        locations.extend(
+            CompartmentLocation(
+                node_id=int(node_id),
+                section_id=section_id,
+                offset=offset,
             )
-            raise KeyError(msg)
-
-        for _, row in df.iterrows():
-            locations.append(
-                CompartmentLocation(
-                    node_id=int(node_id),
-                    section_id=int(row["section_id"]),
-                    offset=float(row[offset_col]),
-                )
-            )
+            for section_id, offset in rows
+        )
 
     return MaterializedCompartmentSet.from_locations(
         name=name,
@@ -137,24 +253,42 @@ def build_compartment_set_for_neuron_set(
         )
         raise ValueError(msg) from exc
 
-    morphologies: dict[int, morphio.Morphology] = {}
-    for node_id in node_ids:
-        node_id_int = int(getattr(node_id, "id", node_id))
-        try:
-            morph = circuit.load_morphology(node_id_int, population=selected_population)
-        except (FileNotFoundError, KeyError, ValueError) as exc:
-            L.warning(
-                "Unable to load morphology for node %s in population '%s': %s",
-                node_id_int,
-                selected_population,
-                exc,
-            )
-            continue
-        morphologies[node_id_int] = morph
+    if len(node_ids) == 0:
+        msg = (
+            f"Compartment set '{name}' would be empty: its neuron set resolves to no neurons in "
+            f"population '{selected_population}'. Target a neuron set that selects at least one "
+            "neuron."
+        )
+        raise ConfigValidationError(msg)
 
-    return build_compartment_set_from_locations_block(
+    locations_per_morphology = locations_block.output_location_count()
+    if locations_per_morphology is not None:
+        _validate_compartment_set_entry_count(
+            name=name,
+            entry_count=len(node_ids) * locations_per_morphology,
+        )
+
+    unloadable: list[int] = []
+    compartment_set = build_compartment_set_from_locations_block(
         name=name,
         population=population,
         locations_block=locations_block,
-        morphologies=morphologies,
+        morphology_items=_iter_morphologies(
+            circuit=circuit,
+            node_ids=node_ids,
+            population=selected_population,
+            unloadable=unloadable,
+        ),
     )
+
+    # A materialized compartment set is only built when a stimulus or recording references it, so
+    # an empty one would silently target nothing at simulation time.
+    if not compartment_set.compartment_entries:
+        _raise_empty_compartment_set(
+            name=name,
+            population=selected_population,
+            targeted=len(node_ids),
+            unloadable=len(unloadable),
+        )
+
+    return compartment_set

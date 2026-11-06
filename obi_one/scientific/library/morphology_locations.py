@@ -1,14 +1,15 @@
 import warnings
+from typing import TYPE_CHECKING
 
 import morphio
 import numpy as np
-import pandas  # ruff: ignore[unconventional-import-alias]
 import pandas as pd
-from scipy import stats
-from scipy.stats._distn_infrastructure import rv_frozen
+
+if TYPE_CHECKING:
+    from scipy.stats._distn_infrastructure import rv_frozen
 
 try:
-    from conntility.subcellular import MorphologyPathDistanceCalculator
+    from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
@@ -28,10 +29,10 @@ _PRE_IDX = "source_index"
 def path_distance_all_segments_from(
     locs_ref: pd.DataFrame,
     m: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
     normalized_seg_loc: float = 0.5,
     lst_sec_types: list | None = None,
-) -> pandas.DataFrame:
+) -> pd.DataFrame:
     """Path distances from reference locations to all segments of a morphology.
 
     Calculates path distances from reference locations on a morphology to all segments of the
@@ -39,34 +40,50 @@ def path_distance_all_segments_from(
 
     Args:
         locs_ref (pd.DataFrame): Defines the reference locations. For details how, see
-        conntility.subcellular.MorphologyPathDistanceCalculator.
+        conntility.subcellular.OptimizedMorphologyPathDistanceCalculator.
         m (morphio.Morphology): Morphology to use.
-        path_distance_calculator (conntility.subcellular.MorphologyPathDistanceCalculator): \
-            Path distance calculator
-        must be created on morphology m.
+        path_distance_calculator (OptimizedMorphologyPathDistanceCalculator): Path distance \
+            calculator, must be created on morphology m.
         normalized_seg_loc (float, default: 0.5): Between 0 and 1. Normalized segment location.
         Path distances will be calculated to the part of each segment.
         lst_sec_types (list, default=None): List of section types to consider.
         If None, all types are considered.
     """
     kwargs = {"str_section_id": _SEC_ID, "str_segment_id": _SEG_ID, "str_offset": _SEG_OFF}
-    locs_all = pd.concat(
-        [
-            pd.DataFrame(
-                {
-                    _SEG_ID: np.arange(m.sections[i].n_points - 1),
-                    _SEC_ID: np.ones(m.sections[i].n_points - 1, dtype=int) * (i + 1),
-                    _SEC_TYP: np.ones(m.sections[i].n_points - 1, dtype=int)
-                    * int(m.sections[i].type),
-                    _SEG_LEN: np.linalg.norm(np.diff(m.sections[i].points, axis=0), axis=1),
-                }
-            )
-            for i in range(len(m.sections))
-        ],
-        axis=0,
-    ).reset_index(drop=True)
+
+    # ``m.sections`` is a property that rebuilds its result on every access, so indexing it
+    # repeatedly inside a loop (``m.sections[i]``) is O(n) per access and O(n^2) overall for a
+    # morphology with n sections -- this dominated the runtime on large morphologies. Caching it
+    # once avoids that. Building the segment table from flat numpy arrays instead of one tiny
+    # per-section DataFrame (previously concatenated n times) also avoids the matching per-row
+    # pandas construction overhead.
+    sections = list(m.sections)
+    n_segments_per_section = np.diff(m.section_offsets) - 1
+    sec_types_per_section = m.section_types.astype(int)
+    seg_lengths = np.concatenate(
+        [np.linalg.norm(np.diff(sec.points, axis=0), axis=1) for sec in sections]
+    )
+    seg_id = np.concatenate([np.arange(n) for n in n_segments_per_section])
+    sec_id = np.repeat(np.arange(1, len(sections) + 1), n_segments_per_section)
+    sec_typ = np.repeat(sec_types_per_section, n_segments_per_section)
+
+    locs_all = pd.DataFrame(
+        {
+            _SEG_ID: seg_id,
+            _SEC_ID: sec_id,
+            _SEC_TYP: sec_typ,
+            _SEG_LEN: seg_lengths,
+        },
+        copy=False,
+    )
+
     if lst_sec_types is not None:
         locs_all = locs_all.loc[locs_all[_SEC_TYP].isin(lst_sec_types)].reset_index(drop=True)
+
+    if locs_all.empty:
+        msg = "No morphology segments match the selected section types."
+        raise ValueError(msg)
+
     locs_all[_SEG_OFF] = normalized_seg_loc * locs_all[_SEG_LEN]
 
     path_distances = path_distance_calculator.path_distances(locs_ref, locs_all, **kwargs)
@@ -83,8 +100,8 @@ def path_distance_all_segments_from(
 
 
 def select_segments_as_cluster_centers(
-    n_pick: int, locs: pandas.DataFrame, distr: rv_frozen, lst_sec_types: list | None = None
-) -> pandas.DataFrame:
+    n_pick: int, locs: pd.DataFrame, distr: "rv_frozen", lst_sec_types: list | None = None
+) -> pd.DataFrame:
     p = distr.pdf(locs[_SOM_PAD])  # ty:ignore[unresolved-attribute]
     if lst_sec_types is not None:
         p = p * locs[_SEC_TYP].isin(lst_sec_types).astype(float)  # ruff: ignore[non-augmented-assignment]
@@ -162,7 +179,7 @@ def min_max_offset_for_center_segment(row: pd.Series, max_distance: float) -> pd
     )
 
 
-def candidate_segments_all_morphology(locs: pandas.DataFrame) -> pd.DataFrame:
+def candidate_segments_all_morphology(locs: pd.DataFrame) -> pd.DataFrame:
     """Creates a dataframe matching the format of 'candidate_segments_for_center' (*).
 
     * But where all parts of the morphology are admitted as candidates. \
@@ -179,7 +196,7 @@ def candidate_segments_for_center(
     locs: pd.DataFrame,
     max_dist: float,
     m: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
     lst_sec_types: list | None = None,
 ) -> pd.DataFrame:
     """Creates dataframe specifying candidate locations to be picked around center of a cluster.
@@ -198,8 +215,8 @@ def candidate_segments_for_center(
             segments
         max_dist (float): Maximum distance from the center allowed
         m (morphio.morphology): morphology to use
-        path_distance_calculator (conntility.subcellular.MorphologyPathDistanceCalculator): must \
-            be defined on 'm'
+        path_distance_calculator (OptimizedMorphologyPathDistanceCalculator): must be \
+            defined on 'm'
         lst_sec_types (list, default=None): List of section types allowed. If None, then all \
             types are allowed.
     """
@@ -250,9 +267,11 @@ def select_places_from_candidate_list(
             selected[_SEG_MAX] - selected[_SEG_MIN]
         )
 
+        # Keep the sampled index order: sorting the rows without sorting ``selected``
+        # associates offsets with the wrong segments.
         output = locs.loc[selected.index].drop(columns=[_SEG_OFF])
         output[_SEG_OFF] = selected.to_numpy()
-        return output
+        return output.sort_index()
 
     p = cands.diff(axis=1).to_numpy()[:, 1]
     p[np.isnan(p)] = 0
@@ -282,7 +301,7 @@ def map_presynaptic_ids(dataframe: pd.DataFrame, n_per_center: int) -> None:
 def add_normalized_section_offset(
     dataframe: pd.DataFrame,
     m: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
 ) -> None:
     """Adds the normalized section offset to a dataframe that defines morphology locations.
 
@@ -292,15 +311,17 @@ def add_normalized_section_offset(
 
         m (morphio.Morphology): morphology used
 
-        path_distance_calculator (conntility.subcellular.MorphologyPathDistanceCalculator): Must \
-            be defined on m.
+        path_distance_calculator (OptimizedMorphologyPathDistanceCalculator): Must be \
+            defined on m.
     """
     sec_lengths = np.array(
         [np.linalg.norm(np.diff(sec.points, axis=0), axis=1).sum() for sec in m.sections]
     )
-    sec_o = (
-        path_distance_calculator.offset[dataframe[_SEC_ID] - 1, dataframe[_SEG_ID]]
-        + dataframe[_SEG_OFF].to_numpy()
+    sec_o = path_distance_calculator.within_section_offsets(
+        dataframe,
+        str_section_id=_SEC_ID,
+        str_segment_id=_SEG_ID,
+        str_offset=_SEG_OFF,
     )
     sec_l = sec_lengths[dataframe[_SEC_ID] - 1]
     dataframe[_SEC_LOC] = sec_o / sec_l
@@ -378,7 +399,7 @@ def generate_neurite_locations_on(
     if seed is not None:
         np.random.seed(seed)  # ruff: ignore[numpy-legacy-random]
 
-    path_distance_calculator = MorphologyPathDistanceCalculator(m)
+    path_distance_calculator = OptimizedMorphologyPathDistanceCalculator(m)
 
     soma = pd.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0]})
 
@@ -397,6 +418,8 @@ def generate_neurite_locations_on(
             names=[_CEN_IDX],
         )
     else:
+        from scipy import stats  # ruff: ignore[import-outside-top-level]
+
         distr = stats.norm(center_path_distances_mean, center_path_distances_sd)
         centers = select_segments_as_cluster_centers(n_centers, locs, distr, lst_sec_types=None)
         lst_candidates_per_center = candidate_segments_for_center(
@@ -409,6 +432,13 @@ def generate_neurite_locations_on(
         )
 
     all_clusters = select_places_from_candidate_list(n_per_center, lst_candidates_per_center, locs)
+    all_clusters[_SOM_PAD] = path_distance_calculator.path_distances(
+        soma,
+        all_clusters,
+        str_section_id=_SEC_ID,
+        str_segment_id=_SEG_ID,
+        str_offset=_SEG_OFF,
+    )[0]
 
     # Which columns do you want in the output?
     relevant_cols = [_SEG_ID, _SEC_ID, _SEC_TYP, _SEG_OFF, _SOM_PAD]

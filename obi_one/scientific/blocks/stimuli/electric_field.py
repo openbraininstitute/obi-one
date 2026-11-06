@@ -1,6 +1,6 @@
+import math
 from typing import Annotated, ClassVar, Self
 
-import numpy as np
 from pydantic import Field, NonNegativeFloat, PrivateAttr, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
@@ -44,14 +44,14 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
         },
     }
 
-    title: ClassVar[str] = "Spatially Uniform Electric Field (Fixed Amplitude and Direction)"
+    title: ClassVar[str] = "Spatially uniform electric field (fixed amplitude and direction)"
 
     _module: str = "spatially_uniform_e_field"
     _input_type: str = "extracellular_stimulation"
 
-    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Neuron Set",
+        title="Neuron set",
         description="Neuron set to which the stimulus is applied.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -79,7 +79,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
             "Time over which the field linearly ramps up from zero to full amplitude, "
             "in milliseconds (ms). " + _RAMP_QAULIFIER_DESCRIPTION
         ),
-        title="Ramp Up (Duration)",
+        title="Ramp up (duration)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -92,7 +92,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
             "Time over which the field linearly ramps down from full amplitude to zero, "
             "in milliseconds (ms). " + _RAMP_QAULIFIER_DESCRIPTION
         ),
-        title="Ramp Down (Duration)",
+        title="Ramp down (duration)",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
@@ -147,7 +147,7 @@ class SpatiallyUniformElectricFieldStimulus(ContinuousStimulus):
                     "Ey": self.E_y,
                     "Ez": self.E_z,
                     "frequency": self._frequency,
-                    "phase": np.deg2rad(self._phase_degrees),
+                    "phase": math.radians(self._phase_degrees),
                 }
             ],
         }
@@ -164,7 +164,7 @@ class TemporallyCosineSpatiallyUniformElectricFieldStimulus(SpatiallyUniformElec
     parameters.
     """
 
-    title: ClassVar[str] = "Temporally Cosine Spatially Uniform Electric Field"
+    title: ClassVar[str] = "Temporally cosine spatially uniform electric field"
 
     frequency: (
         Annotated[

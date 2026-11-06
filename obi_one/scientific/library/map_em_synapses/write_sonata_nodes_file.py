@@ -1,11 +1,16 @@
 import os
+from pathlib import Path
 
+import h5py
+import numpy as np
 import pandas  # ruff: ignore[unconventional-import-alias]
 import voxcell
 from entitysdk import Client
+from pandas.api.types import is_string_dtype
 from voxcell import CellCollection
 
 from obi_one.scientific.from_id.em_dataset_from_id import EMDataSetFromID
+from obi_one.scientific.library.map_em_synapses.constants import MAX_COUNT_LIBRARY
 
 
 def get_specified_tables(
@@ -42,7 +47,7 @@ def assemble_collection_from_specs(
     cave_version: int,
     specs: dict,
     pt_root_mapping: pandas.DataFrame,
-) -> voxcell.CellCollection:
+) -> tuple[voxcell.CellCollection, list]:
     tables, lst_notices = get_specified_tables(em_dataset, db_client, cave_version, specs)
 
     out_cols = []
@@ -67,7 +72,7 @@ def assemble_collection_from_specs(
         if out_df[col].dtype.name in {"bool", "boolean"}:
             out_df[col] = out_df[col].astype(str)
 
-    return voxcell.CellCollection.from_dataframe(out_df), lst_notices  # ty:ignore[invalid-return-type]
+    return voxcell.CellCollection.from_dataframe(out_df), lst_notices
 
 
 def write_nodes(
@@ -75,6 +80,35 @@ def write_nodes(
     population_name: str,
     cell_collection: CellCollection,
     write_mode: str = "w",
+    override_library: bool = False,  # ruff: ignore[boolean-default-value-positional-argument,boolean-type-hint-positional-argument]
 ) -> None:
+    forced_library = None
+    if override_library:
+        is_string = cell_collection.properties.apply(is_string_dtype, axis=0)
+        under_thresh = cell_collection.properties.apply(
+            lambda col: len(col.drop_duplicates()) < MAX_COUNT_LIBRARY, axis=0
+        )
+        forced_library = cell_collection.properties.columns[is_string & under_thresh]
     cell_collection.population_name = population_name
-    cell_collection.save_sonata(fn_out, mode=write_mode)
+    cell_collection.save_sonata(fn_out, mode=write_mode, forced_library=forced_library)
+
+
+def write_virtual_nodes(fn_out: os.PathLike, population_name: str, count: int) -> None:
+    """Write a property-free SONATA virtual node population."""
+    if count <= 0:
+        msg = f"Virtual node count must be positive, got {count}."
+        raise ValueError(msg)
+    path = Path(fn_out)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with h5py.File(path, "w") as h5:
+        population = h5.create_group(f"nodes/{population_name}")
+        population.create_dataset("node_type_id", data=-np.ones(count, dtype=np.int64))
+        population.create_dataset("node_group_id", data=np.zeros(count, dtype=np.int64))
+        population.create_dataset("node_group_index", data=np.arange(count, dtype=np.uint64))
+        group = population.create_group("0")
+        string_dtype = h5py.string_dtype(encoding="utf-8")
+        group.create_dataset(
+            "model_type",
+            data=["virtual"] * count,
+            dtype=string_dtype,
+        )

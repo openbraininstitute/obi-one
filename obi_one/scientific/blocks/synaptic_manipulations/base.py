@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from pydantic import Field, PrivateAttr
 
@@ -27,9 +27,9 @@ _NEURON_SET_DESCRIPTION = (
 class InterNeuronSetSynapticManipulation(Block, ABC):
     """Base class for synaptic manipulation applied to all synapses between two neuron sets."""
 
-    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    presynaptic_neuron_set: ALL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Presynaptic Neuron Set",
+        title="Presynaptic neuron set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -38,9 +38,9 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         },
     )
 
-    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(
+    postsynaptic_neuron_set: NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION | None = Field(  # ty:ignore[no-matching-overload]
         default=None,
-        title="Postsynaptic Neuron Set",
+        title="Postsynaptic neuron set",
         description=_NEURON_SET_DESCRIPTION,
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
@@ -72,7 +72,8 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
 class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations applied to all mechanisms using the variable."""
 
-    def _get_synapse_configure(self) -> str:  # ty:ignore[empty-body]
+    @abstractmethod
+    def _get_synapse_configure(self) -> str:
         pass
 
     def _sonata_manipulations_list(self) -> dict:
@@ -87,10 +88,12 @@ class ModSpecificVariableInterNeuronSetSynapticManipulation(
 ):
     """Base class for synaptic manipulation of a single variable applied to a single mechanism."""
 
-    def _get_synapse_configure(self) -> str:  # ty:ignore[empty-body]
+    @abstractmethod
+    def _get_synapse_configure(self) -> str:
         pass
 
-    def _get_modoverride_name(self) -> str:  # ty:ignore[empty-body]
+    @abstractmethod
+    def _get_modoverride_name(self) -> str:
         pass
 
     def _sonata_manipulations_list(self) -> dict:
@@ -118,7 +121,7 @@ class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulati
 
     timestamp_offset: float | list[float] | None = Field(
         default=0.0,
-        title="Timestamp Offset",
+        title="Timestamp offset",
         description="An optional offset of the manipulation relative to each "
         "timestamp in milliseconds (ms).",
         json_schema_extra={
@@ -134,6 +137,9 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
     """Base class for synaptic manipulations with a weight change parameter."""
 
     _weight: float = PrivateAttr(default=0.0)
+
+    def _get_weight(self) -> float:
+        return self._weight
 
     def _sonata_manipulations_list(self) -> list:  # ty:ignore[invalid-method-override]
         timestamps_block = resolve_timestamps_ref_to_timestamps_block(
@@ -152,7 +158,7 @@ class WeightChangeDelayedInterNeuronSetSynapticManipulation(
             new_manipulation = manipulation.copy()
             new_manipulation["name"] = f"{name}_{t_ind}" if n_timestamps > 1 else name
             new_manipulation["delay"] = timestamp + self.timestamp_offset
-            new_manipulation["weight"] = self._weight
+            new_manipulation["weight"] = self._get_weight()
             manipulations_list.append(new_manipulation)
 
         return manipulations_list

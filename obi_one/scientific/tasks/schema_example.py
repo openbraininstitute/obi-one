@@ -11,9 +11,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
 )
-from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
-    CircuitDiscriminator,
-)
+from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminator
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     NEURONSimulationNeuronSetUnion,
@@ -24,7 +22,7 @@ class BlockGroup(StrEnum):
     """Block Groups."""
 
     SETUP = "Setup"
-    EXTRACTION_TARGET = "Extraction Target"
+    EXTRACTION_TARGET = "Extraction target"
 
 
 class EntityDependentBlockExample(Block):
@@ -68,7 +66,7 @@ class SchemaExampleScanConfig(ScanConfig):
                 SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT,
             },
             default=True,
-            title="Include Virtual Populations",
+            title="Include virtual populations",
             description="Include virtual neurons which target the cells contained in the specified"
             " neuron set (together with their connectivity onto the specified neuron set) in the"
             " extracted sub-circuit.",
@@ -147,7 +145,7 @@ class SchemaExampleScanConfig(ScanConfig):
         },
     )
     neuron_set: NEURONSimulationNeuronSetUnion = Field(
-        title="Neuron Set",
+        title="Neuron set",
         description="Set of neurons to be extracted from the parent circuit, including their"
         " connectivity.",
         json_schema_extra={
@@ -157,7 +155,8 @@ class SchemaExampleScanConfig(ScanConfig):
         },
     )
 
-    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
+        title="Neuron sets",
         default_factory=dict,
         description="Neuron sets for the simulation.",
         json_schema_extra={
@@ -170,7 +169,7 @@ class SchemaExampleScanConfig(ScanConfig):
     )
 
     entity_dependent_block_example: EntityDependentBlockExample = Field(
-        title="Entity Dependent Block Example",
+        title="Entity dependent block example",
         description="Example block which is only usable for certain circuits based on the value of"
         " the CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI property for that circuit.",
         json_schema_extra={

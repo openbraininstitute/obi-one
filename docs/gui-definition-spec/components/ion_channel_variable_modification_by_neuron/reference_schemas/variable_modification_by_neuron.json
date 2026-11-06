@@ -4,7 +4,7 @@
   "ui_element": "ion_channel_variable_modification_by_neuron",
   "title": "Ion channel variable manipulations by neuron",
   "description_ui": "Ion channel variable modification (RANGE or GLOBAL) by neuron.",
-  "property_group": "Circuit",
+  "property_group": "NeuronalManipulation",
   "property": "MechanismVariablesByIonChannel",
   "data_model": {
     "type": "object",

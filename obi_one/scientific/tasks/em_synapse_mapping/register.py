@@ -55,9 +55,20 @@ def register_output(
         description += notice + "\n"
 
     # Get publication links
-    publications = assemble_publication_links(db_client, em_entity, all_notices)  # ty:ignore[invalid-argument-type]
+    publications = assemble_publication_links(db_client, em_entity, all_notices)
 
-    # Register circuit (entity + assets + links)
+    # Each ME-model neuron's model_template (hoc:mdl_<emodel_id>) labels the
+    # EModel it was derived into, so neuronal manipulations can resolve the
+    # source EModel per node. ME-models sharing an EModel share a template and
+    # collapse to one derivation (unique on used/generated/type in entitycore).
+    emodel_by_label = {
+        str(rn.phys_node_props["model_template"][0]): rn.me_model_entity.emodel
+        for rn in resolved_neurons
+        if rn.me_model_entity is not None
+    }
+
+    # Register circuit (entity + assets + links + one emodel_circuit derivation
+    # per unique EModel, labelled by model_template)
     registered_circuit = circuit_registration.register_circuit(
         client=db_client,
         circuit_path=circuit_path,
@@ -68,8 +79,10 @@ def register_output(
         subject=source_dataset.subject,  # ty:ignore[invalid-argument-type]
         target_simulator=target_simulator,
         experiment_date=source_dataset.experiment_date,
-        license=em_entity.license,  # ty:ignore[unresolved-attribute]
+        license=em_entity.license,
         publications=publications,
+        derived_from_emodel=list(emodel_by_label.values()) or None,
+        derivation_label=list(emodel_by_label) or None,
         skip_additional_assets=False,
         skip_validation=True,
     )

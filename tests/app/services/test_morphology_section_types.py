@@ -11,8 +11,8 @@ from entitysdk.models import CellMorphology, Circuit, MEModel
 from entitysdk.types import AssetLabel, CircuitScale, ContentType
 
 from app.schemas.morphology_section_types import MorphologySectionTypeOption
+from app.services.circuit_visualization import load_cell_morphology
 from app.services.morphology_section_types import (
-    _load_cell_morphology,
     memodel_section_type_options,
     memodel_with_synapses_section_type_options,
     morphology_section_type_options,
@@ -23,6 +23,8 @@ from app.services.morphology_section_types import (
 from tests.utils import DATA_DIR, SINGLE_NEURON_CIRCUIT_DIR
 
 SERVICE_MODULE = "app.services.morphology_section_types"
+# The single-neuron-circuit morphology loading this service delegates to lives here.
+CIRCUIT_VISUALIZATION_MODULE = "app.services.circuit_visualization"
 
 
 def _values_and_labels(options):
@@ -91,7 +93,7 @@ def test_cell_morphology_requires_id():
     client = MagicMock(entitysdk.client.Client)
 
     with pytest.raises(ValueError, match="missing an id"):
-        _load_cell_morphology(client, morphology)
+        load_cell_morphology(client, morphology)
 
 
 def test_cell_morphology_requires_supported_asset():
@@ -107,7 +109,7 @@ def test_cell_morphology_requires_supported_asset():
     client = MagicMock(entitysdk.client.Client)
 
     with pytest.raises(ValueError, match="no supported SWC, H5, or ASC asset"):
-        _load_cell_morphology(client, morphology)
+        load_cell_morphology(client, morphology)
 
 
 def test_cell_morphology_asset_requires_id():
@@ -121,7 +123,7 @@ def test_cell_morphology_asset_requires_id():
     client = MagicMock(entitysdk.client.Client)
 
     with pytest.raises(ValueError, match="Morphology asset is missing an id"):
-        _load_cell_morphology(client, morphology)
+        load_cell_morphology(client, morphology)
 
 
 def test_memodel_section_type_options_uses_linked_morphology():
@@ -302,8 +304,8 @@ def test_memodel_with_synapses_sonata_asset_requires_id():
         memodel_with_synapses_section_type_options(client, circuit_id)
 
 
-@patch(f"{SERVICE_MODULE}.get_nodes", return_value=[])
-@patch(f"{SERVICE_MODULE}.download_circuit_config")
+@patch(f"{CIRCUIT_VISUALIZATION_MODULE}.get_nodes", return_value=[])
+@patch(f"{CIRCUIT_VISUALIZATION_MODULE}.download_circuit_config")
 def test_memodel_with_synapses_requires_one_biophysical_node(mock_download, mock_nodes):
     circuit_id = uuid4()
     circuit = Circuit.model_construct(
@@ -341,7 +343,7 @@ def test_morphology_dispatches_to_memodel(mock_options):
 
 
 @patch(f"{SERVICE_MODULE}.section_type_options")
-@patch(f"{SERVICE_MODULE}._load_cell_morphology")
+@patch(f"{SERVICE_MODULE}.load_cell_morphology")
 def test_morphology_dispatches_to_cell_morphology(mock_load, mock_options):
     entity_id = uuid4()
     morphology = CellMorphology.model_construct(id=entity_id, assets=[])

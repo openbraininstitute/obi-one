@@ -18,11 +18,16 @@ def add_node_set_to_circuit(
 ) -> None:
     """Adds the node set definition to a SONATA circuit object to make it accessible
     (in-place).
+
+    Re-adding a name that already maps to an identical definition is allowed: a symbolic
+    compound neuron set inlines the definitions of the sets it references, so the same
+    generated sub-definition legitimately arrives twice when a referenced set is also
+    registered in its own right. Only a genuine redefinition is an error.
     """
     existing_node_sets = sonata_circuit.node_sets.content
     if not overwrite_if_exists:
-        for k in node_set_dict:
-            if k in existing_node_sets:
+        for k, v in node_set_dict.items():
+            if k in existing_node_sets and existing_node_sets[k] != v:
                 msg = f"Node set '{k}' already exists!"
                 raise ValueError(msg)
     existing_node_sets.update(node_set_dict)
@@ -49,6 +54,7 @@ def write_circuit_node_set_file(
         if len(path.stem) == 0 or path.suffix.lower() != ".json":
             msg = "File name must be non-empty and of type .json!"
             raise ValueError(msg)
+    Path(output_path).mkdir(parents=True, exist_ok=True)
     output_file = Path(output_path) / file_name
 
     if not overwrite_if_exists and Path(output_file).exists():

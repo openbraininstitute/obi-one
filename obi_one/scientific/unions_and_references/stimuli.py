@@ -14,13 +14,15 @@ from obi_one.scientific.blocks.stimuli.ornstein_uhlenbeck import (
     RelativeOrnsteinUhlenbeckConductanceSomaticStimulus,
     RelativeOrnsteinUhlenbeckCurrentSomaticStimulus,
 )
-from obi_one.scientific.blocks.stimuli.spike import (
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import (
     FullySynchronousSpikeStimulus,
-    PoissonSpikeStimulus,
-    SinusoidalPoissonSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
     InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.sinusoidal_poisson import (
+    SinusoidalPoissonSpikeStimulus,
 )
 from obi_one.scientific.blocks.stimuli.spike.time_distribution import (
     SpikeTimeDistributionSpikeStimulus,
@@ -36,6 +38,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
     RelativeLinearCurrentClampSomaticStimulus,
     RelativeNormallyDistributedCurrentClampSomaticStimulus,
     SEClampSomaticStimulus,
+    SimulationDtSinusoidalCurrentClampSomaticStimulus,
     SinusoidalCurrentClampSomaticStimulus,
     SubthresholdCurrentClampSomaticStimulus,
 )
@@ -76,7 +79,18 @@ _FIELD_STIMULI = (
 
 _SE_CLAMP_STIMULI = SEClampSomaticStimulus | MultiLevelSEClampSomaticStimulus
 
-_BRIAN2_STIMULI = Brian2DirectPoissonStimulus
+# The Brian2 runner turns SONATA `linear`, `pulse` and `sinusoidal` inputs into current
+# injections, `poisson` into a direct membrane kick, and `synapse_replay` into a
+# SpikeGeneratorGroup wired through the circuit's own connectivity. Relative-to-threshold, noise,
+# electric field and voltage clamp modules have no counterpart there.
+_BRIAN2_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SimulationDtSinusoidalCurrentClampSomaticStimulus
+    | Brian2DirectPoissonStimulus
+    | _SPIKE_STIMULI
+)
 
 _LE_ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus

@@ -8,12 +8,39 @@ from uuid import uuid4
 import pytest
 from entitysdk.types import FetchFileStrategy
 
-from obi_one.scientific.library.circuit_metrics import (
+from obi_one.scientific.library.circuit_constants import (
     CircuitStatsLevelOfDetail,
+    EdgePopulationType,
+    NodePopulationType,
+)
+from obi_one.scientific.library.circuit_metrics import (
+    _build_edge_populations,
+    _build_node_populations,
     get_circuit_metrics,
 )
 
 TINY_CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
+
+_NODE_PROPS = {
+    "pop_a": {
+        "population_length": 10,
+        "property_list": ["mtype"],
+        "property_unique_values": {"mtype": ["L5_TPC"]},
+        "property_value_counts": {"mtype": {"L5_TPC": 10}},
+        "dynamics_param_names": ["gNa"],
+    }
+}
+
+_EDGE_PROPS = {
+    "edge_a": {
+        "number_of_edges": 5,
+        "source_name": "src",
+        "target_name": "tgt",
+        "property_list": ["delay"],
+        "property_stats": {"delay": {"mean": 1.0}},
+        "degrees": None,
+    }
+}
 
 
 def _make_fetch_file_side_effect(circuit_dir: Path):
@@ -61,3 +88,49 @@ def test_get_circuit_metrics_basic(db_client):
     # Verify fetch_file was called with the correct strategy
     for call in db_client.fetch_file.call_args_list:
         assert call.kwargs["strategy"] == FetchFileStrategy.link_or_download
+
+
+class TestBuildNodePopulations:
+    def test_missing_name_yields_none_slot(self):
+        result = _build_node_populations(
+            ["pop_a", "missing"],
+            _NODE_PROPS,
+            NodePopulationType.biophysical,
+            include_dynamics_params=True,
+        )
+        assert result[0] is not None
+        assert result[0].dynamics_param_names == ["gNa"]
+        assert result[1] is None
+
+    def test_dynamics_params_omitted_when_flag_false(self):
+        result = _build_node_populations(
+            ["pop_a"],
+            _NODE_PROPS,
+            NodePopulationType.virtual,
+            include_dynamics_params=False,
+        )
+        assert result[0] is not None
+        assert result[0].dynamics_param_names is None
+        assert result[0].population_type == NodePopulationType.virtual
+
+
+class TestBuildEdgePopulations:
+    def test_missing_name_yields_none_slot(self):
+        result = _build_edge_populations(
+            ["edge_a", "missing"],
+            _EDGE_PROPS,
+            EdgePopulationType.chemical,
+        )
+        assert result[0] is not None
+        assert result[0].number_of_edges == 5
+        assert result[0].source_name == "src"
+        assert result[1] is None
+
+    def test_electrical_population_type(self):
+        result = _build_edge_populations(
+            ["edge_a"],
+            _EDGE_PROPS,
+            EdgePopulationType.electrical,
+        )
+        assert result[0] is not None
+        assert result[0].population_type == EdgePopulationType.electrical

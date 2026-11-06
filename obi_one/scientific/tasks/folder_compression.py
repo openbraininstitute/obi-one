@@ -12,6 +12,7 @@ from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
+from obi_one.utils.io import compressed_archive_filename
 
 L = logging.getLogger(__name__)
 
@@ -33,11 +34,19 @@ class FolderCompressionScanConfig(ScanConfig):
         file_name: str | list[str | None] | None = "compressed"
         archive_name: str | None = None
 
+        @property
+        def output_filename(self) -> str:
+            """Archive filename, e.g. "circuit.tar.gz"."""
+            return compressed_archive_filename(self.file_name, self.file_format)  # ty:ignore[invalid-argument-type]
+
     initialize: Initialize
 
 
 class FolderCompressionSingleConfig(FolderCompressionScanConfig, SingleConfigMixin):
-    pass
+    @property
+    def output_path(self) -> Path:
+        """Full path where the compressed archive is written."""
+        return Path(self.coordinate_output_root) / self.initialize.output_filename
 
 
 class FolderCompressionTask(Task):
@@ -48,7 +57,7 @@ class FolderCompressionTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,  # ruff: ignore[unused-method-argument]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
@@ -66,10 +75,7 @@ class FolderCompressionTask(Task):
             )
             raise ValueError(msg)
 
-        output_file = (
-            Path(self.config.coordinate_output_root)
-            / f"{self.config.initialize.file_name}.{self.config.initialize.file_format}"
-        )
+        output_file = self.config.output_path
         if Path(output_file).exists():
             msg = f"Output file '{output_file}' already exists!"
             raise ValueError(msg)
@@ -87,7 +93,13 @@ class FolderCompressionTask(Task):
             or Path(self.config.initialize.folder_path.path).name  # ty:ignore[unresolved-attribute]
         )
 
-        with tarfile.open(output_file, f"w:{self.config.initialize.file_format}") as tar:  # ty:ignore[no-matching-overload]
+        # dereference=True follows symlinks and archives the files they point to, rather
+        # than the links themselves. Circuits staged by the launch-system are symlinks into
+        # the mounted EFS asset store, so without this the archive would contain only dangling
+        # links once extracted elsewhere.
+        with tarfile.open(  # ty:ignore[no-matching-overload]
+            output_file, f"w:{self.config.initialize.file_format}", dereference=True
+        ) as tar:
             tar.add(
                 self.config.initialize.folder_path.path,  # ty:ignore[unresolved-attribute]
                 arcname=archive_name,

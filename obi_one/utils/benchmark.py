@@ -5,7 +5,7 @@ import logging
 import threading
 import time
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import ClassVar
 
@@ -49,6 +49,16 @@ class BenchmarkTracker:
         return cls._enabled
 
     @classmethod
+    def _rss_mb(cls) -> float:
+        """RSS of this process and of every process it has started, in MB."""
+        rss = cls._process.memory_info().rss
+        for child in cls._process.children(recursive=True):
+            # A child can end between being listed and being read.
+            with suppress(psutil.NoSuchProcess):
+                rss += child.memory_info().rss
+        return rss / 1024 / 1024
+
+    @classmethod
     def reset(cls) -> None:
         """Reset all benchmark data."""
         cls._benchmarks = {}
@@ -67,6 +77,8 @@ class BenchmarkTracker:
     def section(cls, name: str, poll_interval: float = 0.1) -> Generator[None, None, None]:
         """Context manager for benchmarking a code section.
 
+        Memory counts the processes the section starts too, such as an MPI job's processes.
+
         Args:
             name: Name of the section being benchmarked
             poll_interval: How often to poll memory usage in seconds (default: 0.1)
@@ -81,9 +93,7 @@ class BenchmarkTracker:
             yield
             return
 
-        # Get memory info before (RSS from process)
-        mem_info_before = cls._process.memory_info()
-        mem_before_mb = mem_info_before.rss / 1024 / 1024
+        mem_before_mb = cls._rss_mb()
 
         # Start timing
         start_time = time.perf_counter()
@@ -96,7 +106,7 @@ class BenchmarkTracker:
             nonlocal peak_mem_mb
             while not stop_monitoring.is_set():
                 try:
-                    current_mem = cls._process.memory_info().rss / 1024 / 1024
+                    current_mem = cls._rss_mb()
                     peak_mem_mb = max(peak_mem_mb, current_mem)
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass  # Process might be in weird state, ignore
@@ -116,9 +126,7 @@ class BenchmarkTracker:
             end_time = time.perf_counter()
             duration = end_time - start_time
 
-            # Get memory info after (RSS from process)
-            mem_info_after = cls._process.memory_info()
-            mem_after_mb = mem_info_after.rss / 1024 / 1024
+            mem_after_mb = cls._rss_mb()
             mem_delta_mb = mem_after_mb - mem_before_mb
 
             # Final check for peak (in case it's at the end)

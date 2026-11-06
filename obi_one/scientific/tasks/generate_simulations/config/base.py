@@ -3,9 +3,10 @@ import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
-import entitysdk
+from entitysdk.client import Client
+from entitysdk.models import Simulation, SimulationCampaign, SimulationGeneration
 from libsonata import SimulatorType
 from pydantic import Field, NonNegativeFloat, PositiveFloat
 
@@ -44,6 +45,9 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
     VirtualNeuronSetReference,
 )
 
+if TYPE_CHECKING:
+    from obi_one.scientific.library.circuit import Circuit
+
 SONATA_VERSION = 2.4
 
 L = logging.getLogger(__name__)
@@ -51,17 +55,17 @@ L = logging.getLogger(__name__)
 
 DEFAULT_TIMESTAMPS_NAME = "Default: Simulation Start (0 ms)"
 DEFAULT_DISTRIBUTION_NAME = "Default: Exponential, scale 50 ms"
-DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: No Locations"
+DEFAULT_MORPHOLOGY_LOCATIONS_NAME = "Default: Soma (no explicit compartment)"
 
 
 class BlockGroup(StrEnum):
     """Enumeration of block groups for simulation configuration."""
 
     SETUP_BLOCK_GROUP = "Setup"
-    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & Recordings"
+    STIMULI_RECORDINGS_BLOCK_GROUP = "Stimuli & recordings"
     TARGETING_BLOCK_GROUP = "Targets"
     DISTRIBUTIONS_BLOCK_GROUP = "Distributions"
-    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit Components"
+    CIRCUIT_COMPONENTS_BLOCK_GROUP = "Circuit components"
     CIRCUIT_MANIPULATIONS_GROUP = "Manipulations"
     EVENTS_GROUP = "Events"
 
@@ -72,7 +76,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     name: ClassVar[str] = "Simulation Campaign"
     description: ClassVar[str] = "SONATA simulation campaign"
 
-    _campaign: entitysdk.models.SimulationCampaign = None  # ty:ignore[possibly-missing-submodule]
+    _campaign: SimulationCampaign | None = None
     _sonata_version: ClassVar[float] = SONATA_VERSION
     _target_simulator: ClassVar[SimulatorType] = None
     _timestep: ClassVar[None] = None
@@ -129,6 +133,9 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.PROPERTY_ENDPOINTS: {
             MappedPropertiesGroup.CIRCUIT: "/mapped-circuit-properties/{circuit_id}",
+            MappedPropertiesGroup.NEURONAL_MANIPULATION: (
+                "/circuit-neuronal-manipulation-properties-by-neuron-set"
+            ),
         },
     }
 
@@ -162,7 +169,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
         v_init: float | list[float] = Field(
             default=-80.0,
-            title="Initial Voltage",
+            title="Initial voltage",
             description="Initial membrane potential in millivolts (mV).",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -171,7 +178,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
         random_seed: int | list[int] = Field(
             default=1,
-            title="Random Seed",
+            title="Random seed",
             description="Random seed for the simulation.",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -179,6 +186,21 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         )
 
     initialize: Initialize
+
+    def validate_circuit(self, circuit: "Circuit | None") -> None:
+        """Check the resolved circuit can be simulated by this configuration's simulator.
+
+        Called by the generation task once the circuit is staged. The default accepts anything;
+        simulators with structural requirements override it to fail early with a clear message.
+        """
+
+    def validate_recordings(self, circuit: "Circuit") -> None:
+        """Check the simulator's job can hold every recording this configuration asks for.
+
+        Called by the generation task once every recording has a neuron set, so the recorded
+        neurons can be counted. The default accepts anything; simulators whose recordings are
+        bounded by the job's memory override it to fail before anything is launched.
+        """
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
         """Returns the base SONATA configuration for the simulation campaign."""
@@ -238,12 +260,13 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
             msg = "self.initialize.circuit must have an id_str attribute."
             raise OBIONEError(msg) from err
 
-    def create_campaign_entity_with_config(
+    def create_campaign_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
         output_root: Path,
         multiple_value_parameters_dictionary: dict | None = None,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
-    ) -> entitysdk.models.SimulationCampaign:  # ty:ignore[possibly-missing-submodule]
+        *,
+        db_client: Client,
+    ) -> SimulationCampaign:
         """Initializes the simulation campaign in the database."""
         L.info("1. Initializing simulation campaign in the database...")
         if multiple_value_parameters_dictionary is None:
@@ -252,7 +275,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         L.info("-- Register SimulationCampaign Entity")
 
         self._campaign = db_client.register_entity(
-            entitysdk.models.SimulationCampaign(  # ty:ignore[possibly-missing-submodule]
+            SimulationCampaign(
                 name=self.info.campaign_name,
                 description=self.info.campaign_description,
                 entity_id=self.entity_id_for_campaign_entity_generation(),
@@ -263,7 +286,7 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         L.info("-- Upload campaign_generation_config")
         _ = db_client.upload_file(
             entity_id=self._campaign.id,
-            entity_type=entitysdk.models.SimulationCampaign,  # ty:ignore[possibly-missing-submodule]
+            entity_type=SimulationCampaign,
             file_path=output_root / SCAN_CONFIG_FILENAME,
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
             asset_label="campaign_generation_config",  # ty:ignore[invalid-argument-type]
@@ -273,14 +296,14 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
 
     def create_campaign_generation_entity(
         self,
-        simulations: list[entitysdk.models.Simulation],  # ty:ignore[possibly-missing-submodule]
-        db_client: entitysdk.client.Client,
-    ) -> None:  # ty:ignore[invalid-method-override]
+        simulations: list[Simulation],
+        db_client: Client,
+    ) -> SimulationGeneration:  # ty:ignore[invalid-method-override]
         L.info("3. Saving completed simulation campaign generation")
 
         L.info("-- Register SimulationGeneration Entity")
-        db_client.register_entity(
-            entitysdk.models.SimulationGeneration(  # ty:ignore[possibly-missing-submodule]
+        return db_client.register_entity(
+            SimulationGeneration(
                 start_time=datetime.now(UTC),
                 used=[self._campaign],
                 generated=simulations,
@@ -295,11 +318,11 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
     to register a Simulation entity instead of a generic TaskConfig.
     """
 
-    def create_single_entity_with_config(
+    def create_single_entity_with_config(  # ty:ignore[invalid-method-override]
         self,
-        campaign: entitysdk.models.SimulationCampaign,  # ty:ignore[possibly-missing-submodule]
-        db_client: entitysdk.client.Client,
-    ) -> entitysdk.models.Simulation:  # ty:ignore[possibly-missing-submodule]
+        campaign: SimulationCampaign,
+        db_client: Client,
+    ) -> Simulation:
         """Saves the simulation to the database."""
         L.info(f"2.{self.idx} Saving simulation {self.idx} to database...")
 
@@ -325,7 +348,7 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
 
         L.info("-- Register Simulation Entity")
         self._single_entity = db_client.register_entity(
-            entitysdk.models.Simulation(  # ty:ignore[possibly-missing-submodule]
+            Simulation(
                 name=f"Simulation {self.idx}",
                 description=f"Simulation {self.idx}",
                 scan_parameters=self.single_coordinate_scan_params.dictionary_representation(),
@@ -338,8 +361,10 @@ class SimulationSingleConfigMixin(SingleConfigMixin):
         L.info("-- Upload simulation_generation_config")
         _ = db_client.upload_file(
             entity_id=self.single_entity.id,
-            entity_type=entitysdk.models.Simulation,  # ty:ignore[possibly-missing-submodule]
+            entity_type=Simulation,
             file_path=Path(self.coordinate_output_root, COORDINATE_CONFIG_FILENAME),
             file_content_type="application/json",  # ty:ignore[invalid-argument-type]
             asset_label="simulation_generation_config",  # ty:ignore[invalid-argument-type]
         )
+
+        return self._single_entity

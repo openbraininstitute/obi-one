@@ -16,11 +16,14 @@ from app.logger import L
 from app.schemas.accounting import AccountingParameters
 from app.schemas.auth import UserContext
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
-from app.schemas.task import TaskAccountingInfo, TaskDefinition
+from app.schemas.task import LaunchableTaskDefinition, TaskAccountingInfo
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
 from obi_one.db_sdk.db_sdk import select_json_asset_content
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
+from obi_one.scientific.tasks.circuit_simplification.estimate import (
+    estimate_circuit_simplification_count,
+)
 from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
 
 CIRCUIT_SCALE_TO_SERVICE_SUBTYPE = {
@@ -78,7 +81,7 @@ def estimate_task_cost(
     *,
     db_client: Client,
     config_id: UUID,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
     project_context: ProjectContext,
     accounting_factory: AccountingSessionFactory,
 ) -> TaskAccountingInfo:
@@ -100,18 +103,18 @@ def estimate_task_cost(
     )
 
     return TaskAccountingInfo(
-        cost=cost_estimate,  # ty:ignore[invalid-argument-type]
+        cost=cost_estimate,
         config_id=config_id,
         parameters=accounting_parameters,
         task_type=task_definition.task_type,
     )
 
 
-def _evaluate_accounting_parameters(
+def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many-branches, too-many-return-statements]
     *,
     db_client: Client,
     config_id: UUID,
-    task_definition: TaskDefinition,
+    task_definition: LaunchableTaskDefinition,
 ) -> AccountingParameters:
     """Evaluate accounting parameters from the task configuration.
 
@@ -126,6 +129,9 @@ def _evaluate_accounting_parameters(
         case TaskType.circuit_extraction:
             count = estimate_circuit_extraction_count(db_client=db_client, config_id=config_id)
             service_subtype = ServiceSubtype.CIRCUIT_EXTRACTION
+        case TaskType.circuit_simplification:
+            count = estimate_circuit_simplification_count(db_client=db_client, config_id=config_id)
+            service_subtype = ServiceSubtype.CIRCUIT_SIMPLIFICATION
         case (
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_machine
@@ -145,6 +151,46 @@ def _evaluate_accounting_parameters(
             return AccountingParameters(
                 count=1,
                 service_subtype=ServiceSubtype.EM_SYNAPSE_MAPPING,
+            )
+        case TaskType.circuit_single_build:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SYNAPTOME_BUILD,
+            )
+        case TaskType.efeature_extraction:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
+            )
+        case TaskType.emodel_optimization:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_OPTIMISATION,
+            )
+        case TaskType.emodel_validation:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EMODEL_VALIDATION,
+            )
+        case TaskType.circuit_synaptic_physiology_assignment:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SYNAPSE_PARAMETERIZATION_SMALL,
+            )
+        case TaskType.extracellular_recording_weights_calculation:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.EXTRACELLULAR_RECORDING_ARRAY_BUILD,
+            )
+        case TaskType.ion_channel_fitting:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.ION_CHANNEL_BUILD,
+            )
+        case TaskType.memodel_build:
+            return AccountingParameters(
+                count=1,
+                service_subtype=ServiceSubtype.SINGLE_CELL_BUILD,
             )
         case TaskType.ion_channel_model_simulation_execution:
             count = 1

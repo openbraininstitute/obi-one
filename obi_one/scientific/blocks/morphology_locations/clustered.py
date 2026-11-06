@@ -1,4 +1,5 @@
-from typing import Annotated, ClassVar
+import math
+from typing import Annotated, ClassVar, cast
 
 import morphio
 import pandas as pd
@@ -7,7 +8,7 @@ from pydantic import Field, NonNegativeFloat, PositiveInt
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
 from obi_one.scientific.blocks.morphology_locations.base import (
-    MorphologyLocationsBlock,
+    GeneratedMorphologyLocationsBlock,
 )
 from obi_one.scientific.blocks.morphology_locations.random import (
     RandomGroupedMorphologyLocations,
@@ -21,14 +22,14 @@ _MIN_PD_SD = 0.1
 PathDistanceStandardDeviationParameter = Annotated[float, Field(ge=_MIN_PD_SD)]
 
 
-class ClusteredMorphologyLocations(MorphologyLocationsBlock):
+class ClusteredMorphologyLocations(GeneratedMorphologyLocationsBlock):
     """Clustered locations with cluster centers randomly distributed across selected neurites."""
 
-    title: ClassVar[str] = "Random Clustered Morphology Locations"
+    title: ClassVar[str] = "Random clustered morphology locations"
 
     n_clusters: PositiveInt | list[PositiveInt] = Field(
         default=5,
-        title="Number of Clusters",
+        title="Number of clusters",
         description=(
             "Number of randomly placed clusters to generate. The total number of locations is "
             "divided across these clusters."
@@ -39,7 +40,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     )
     cluster_max_distance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=50.0,
-        title="Maximum Distance from Cluster Center",
+        title="Maximum distance from cluster center",
         description=(
             "Maximum soma path distance between each generated location and its cluster center. "
             "Locations are sampled uniformly from valid morphology intervals within this distance."
@@ -51,12 +52,12 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        # TODO: This rounds down. Could make missing points
-        # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
+        count = cast("int", self.number_of_locations)
+        n_clusters = cast("int", self.n_clusters)
+        n_per_cluster = math.ceil(count / n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_centers=n_clusters,
             n_per_center=n_per_cluster,
             srcs_per_center=1,
             center_path_distances_mean=0.0,
@@ -65,6 +66,7 @@ class ClusteredMorphologyLocations(MorphologyLocationsBlock):
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
+        locs = locs.iloc[:count]
         return locs
 
     def _check_parameter_values(self) -> None:
@@ -86,15 +88,15 @@ class ClusteredGroupedMorphologyLocations(
 ):
     """Clustered random locations, grouped in to conceptual groups."""
 
-    title: ClassVar[str] = "Clustered Grouped Morphology Locations"
+    title: ClassVar[str] = "Clustered grouped morphology locations"
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        # TODO: This rounds down. Could make missing points
-        # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
+        count = cast("int", self.number_of_locations)
+        n_clusters = cast("int", self.n_clusters)
+        n_per_cluster = math.ceil(count / n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_centers=n_clusters,
             n_per_center=n_per_cluster,
             srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=0.0,
@@ -103,6 +105,7 @@ class ClusteredGroupedMorphologyLocations(
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         ).drop(columns=[_CEN_IDX])
+        locs = locs.iloc[:count]
         return locs
 
     def _check_parameter_values(self) -> None:
@@ -115,11 +118,11 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     around a specified soma path distance.
     """
 
-    title: ClassVar[str] = "Clustered Path Distance Morphology Locations"
+    title: ClassVar[str] = "Clustered path distance morphology locations"
 
     path_dist_mean: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
-        title="Cluster Path Distance Sampling Mean",
+        title="Cluster path distance sampling mean",
         description=("Target soma path distance used to bias where cluster centers are selected."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
@@ -130,7 +133,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
         PathDistanceStandardDeviationParameter | list[PathDistanceStandardDeviationParameter]
     ) = Field(
         default=50.0,
-        title="Cluster Path Distance Standard Deviation",
+        title="Cluster path distance standard deviation",
         description=(
             "Standard deviation of the soma path-distance distribution used to select "
             "cluster centers."
@@ -142,7 +145,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     )
     n_groups_per_cluster: PositiveInt | list[PositiveInt] = Field(
         default=1,
-        title="Groups per Cluster",
+        title="Groups per cluster",
         description=("Number of conceptual groups to assign within each generated cluster."),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP,
@@ -150,12 +153,12 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        # TODO: This rounds down. Could make missing points
-        # in a second call to generate_neurite_locations_on
-        n_per_cluster = int(self.number_of_locations / self.n_clusters)  # ty:ignore[unsupported-operator]
+        count = cast("int", self.number_of_locations)
+        n_clusters = cast("int", self.n_clusters)
+        n_per_cluster = math.ceil(count / n_clusters)
         locs = generate_neurite_locations_on(
             morphology,
-            n_centers=self.n_clusters,  # ty:ignore[invalid-argument-type]
+            n_centers=n_clusters,
             n_per_center=n_per_cluster,
             srcs_per_center=self.n_groups_per_cluster,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
@@ -164,7 +167,7 @@ class ClusteredPathDistanceMorphologyLocations(ClusteredMorphologyLocations):
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
         )
-        return locs
+        return locs.iloc[:count]
 
     def _check_parameter_values(self) -> None:
         super()._check_parameter_values()

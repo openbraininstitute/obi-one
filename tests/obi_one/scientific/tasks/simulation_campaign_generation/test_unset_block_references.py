@@ -1,11 +1,12 @@
-"""Blocks whose every block-reference field is left unset.
+"""Blocks whose optional block-reference fields are left unset.
 
-Reference fields are all optional and all default to ``None``, so "the user added a block and
-targeted nothing" is the most common config there is. Resolving those ``None``s is spread across
-several places -- the task fills some in on the block itself before generating, while others stay
-``None`` and are resolved to a bare node set *name* inside the block's own ``config()``. These
-tests pin what an unset reference currently produces, so that consolidating the two mechanisms
-can be checked against real output rather than by reading.
+Most reference fields default to ``None``, so "the user added a block and targeted nothing" is the
+most common config there is. Specialized blocks may require a target and are covered by dedicated
+tests rather than the untargeted sweeps below. Resolving those ``None``s is spread across several
+places -- the task fills some in on the block itself before generating, while others stay ``None``
+and are resolved to a bare node set *name* inside the block's own ``config()``. These tests pin
+what an unset reference currently produces, so that consolidating the two mechanisms can be
+checked against real output rather than by reading.
 
 The parametrised sweeps build their cases from the block unions themselves, so a newly added
 block type is covered here without anyone editing this file.
@@ -13,7 +14,7 @@ block type is covered here without anyone editing this file.
 
 import pytest
 
-import obi_one as obi
+from obi_one.scientific.blocks.neuron_sets.combined import BiophysicalCombinedNeuronSet
 from obi_one.scientific.blocks.neuron_sets.deprecated import AllNeurons
 from obi_one.scientific.blocks.neuron_sets.population import PointPopulationNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
@@ -22,8 +23,21 @@ from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations imp
     BySectionListMechanismVariableNeuronalManipulation,
     BySectionListModification,
 )
+from obi_one.scientific.blocks.recordings.soma import (
+    SomaVoltageRecording,
+    TimeWindowSomaVoltageRecording,
+)
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
+from obi_one.scientific.blocks.stimuli.stimulus import (
+    ConstantCurrentClampSomaticStimulus,
+    HyperpolarizingCurrentClampSomaticStimulus,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.demo import (
+    ScaleAcetylcholineUSESynapticManipulation,
+    SynapticMgManipulation,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -32,6 +46,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
 )
 from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
 from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
     MorphologyLocationUnion,
 )
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
@@ -42,7 +57,6 @@ from obi_one.scientific.unions_and_references.stimuli import CircuitStimulusUnio
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
     DEFAULT_BIOPHYSICAL_NODE_SET,
-    DEFAULT_BRIAN2_STIMULUS_NODE_SET,
     DEFAULT_POINT_NODE_SET,
     DEFAULT_VIRTUAL_NODE_SET,
     POINT_POPULATION,
@@ -50,15 +64,18 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     generate,
     reference_field_names,
     reference_types_in,
+    union_block_class,
     union_member_names,
 )
 
-# Every block in these unions is constructible with no arguments, so "all references unset" is
-# just the default construction.
+# Most blocks in these unions are constructible with no arguments, so "all references unset" is
+# the default construction. Required-target blocks are kept out of the untargeted sweeps below.
 CIRCUIT_STIMULI = sorted(union_member_names(CircuitStimulusUnion))
 RECORDINGS = sorted(union_member_names(RecordingUnion))
 SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
-MORPHOLOGY_LOCATIONS = sorted(union_member_names(MorphologyLocationUnion))
+# Explicit locations are excluded: they name points on a single neuron, so they carry no
+# neuron-set reference and are not offered for circuit configurations.
+MORPHOLOGY_LOCATIONS = sorted(union_member_names(CircuitMorphologyLocationUnion))
 COMBINED_NEURON_SETS = sorted(
     name for name in union_member_names(NEURONSimulationNeuronSetUnion) if "Combined" in name
 )
@@ -72,26 +89,44 @@ ALL_BLOCK_UNIONS = (
     NEURONSimulationNeuronSetUnion,
 )
 
-BLOCK_CLASSES = {
-    name: cls
-    for union in ALL_BLOCK_UNIONS
-    for name in union_member_names(union)
-    for cls in [
-        getattr(obi, name, None)
-        or {
-            "ByNeuronMechanismVariableNeuronalManipulation": (
-                ByNeuronMechanismVariableNeuronalManipulation
-            ),
-            "BySectionListMechanismVariableNeuronalManipulation": (
-                BySectionListMechanismVariableNeuronalManipulation
-            ),
-            "AllNeurons": AllNeurons,
-        }[name]
-    ]
+_BLOCK_CLASS_OVERRIDES = {
+    "ByNeuronMechanismVariableNeuronalManipulation": (
+        ByNeuronMechanismVariableNeuronalManipulation
+    ),
+    "BySectionListMechanismVariableNeuronalManipulation": (
+        BySectionListMechanismVariableNeuronalManipulation
+    ),
+    "AllNeurons": AllNeurons,
 }
 
-# Every reference-holding field a simulation-generation block can have, each with a case below.
-# Seven name neuron sets, one names timestamps, one names a distribution.
+
+def _block_class(name: str) -> type:
+    try:
+        return union_block_class(name, *ALL_BLOCK_UNIONS)
+    except LookupError:
+        return _BLOCK_CLASS_OVERRIDES[name]
+
+
+BLOCK_CLASSES = {
+    name: _block_class(name) for union in ALL_BLOCK_UNIONS for name in union_member_names(union)
+}
+
+# A recording whose reference field has no default cannot be constructed untargeted, so it is
+# derived rather than listed: a new such block excludes itself from the sweeps below.
+REQUIRED_TARGET_RECORDINGS = {
+    name
+    for name in RECORDINGS
+    if any(
+        BLOCK_CLASSES[name].model_fields[field_name].is_required()
+        for field_name in reference_field_names(BLOCK_CLASSES[name])
+    )
+}
+UNTARGETED_RECORDINGS = sorted(
+    name for name in RECORDINGS if name not in REQUIRED_TARGET_RECORDINGS
+)
+
+# Seven named neuron sets, one names timestamps, one names a distribution, and one names
+# morphology locations (the latter is required by its specialized recording block).
 COVERED_REFERENCE_FIELDS = {
     "neuron_set",
     "source_neuron_set",
@@ -103,6 +138,7 @@ COVERED_REFERENCE_FIELDS = {
     "initialize.node_set",
     "timestamps",
     "distribution",
+    "morphology_locations",
 }
 
 # Neuronal manipulations take a required `modification`, so each needs a factory rather than
@@ -135,7 +171,12 @@ EXPECTED_COMBINED_DEFAULTS = {
 
 def _block(name: str):
     """Construct a block by class name with every field, references included, left at default."""
-    return getattr(obi, name)()
+    cls = BLOCK_CLASSES[name]
+    kwargs = {}
+    # section_types has no default and is required on generated morphology-location blocks.
+    if "section_types" in cls.model_fields:
+        kwargs["section_types"] = (3, 4)
+    return cls(**kwargs)
 
 
 def _input_entry(result, name: str) -> dict:
@@ -189,10 +230,10 @@ class TestEveryReferenceFieldIsExercised:
 
     @pytest.mark.parametrize(
         "name",
-        CIRCUIT_STIMULI + RECORDINGS + SYNAPTIC_MANIPULATIONS + MORPHOLOGY_LOCATIONS,
+        CIRCUIT_STIMULI + UNTARGETED_RECORDINGS + SYNAPTIC_MANIPULATIONS + MORPHOLOGY_LOCATIONS,
     )
     def test_every_reference_field_defaults_to_none(self, name):
-        block_class = getattr(obi, name)
+        block_class = BLOCK_CLASSES[name]
         fields = reference_field_names(block_class)
 
         assert fields, f"{name} was expected to have at least one reference field"
@@ -202,13 +243,13 @@ class TestEveryReferenceFieldIsExercised:
     @pytest.mark.parametrize("name", COMBINED_NEURON_SETS)
     def test_a_combined_neuron_set_starts_with_no_operands(self, name):
         """``combined_with`` is the one reference field that defaults to empty rather than None."""
-        block_class = getattr(obi, name)
+        block_class = BLOCK_CLASSES[name]
 
         assert block_class.model_fields["base_neuron_set"].default is None
         assert block_class.model_fields["combined_with"].default == ()
 
     def test_a_block_constructed_with_no_arguments_has_no_targets(self):
-        stimulus = obi.ConstantCurrentClampSomaticStimulus()
+        stimulus = ConstantCurrentClampSomaticStimulus()
 
         assert stimulus.neuron_set is None
         assert stimulus.timestamps is None
@@ -227,7 +268,7 @@ class TestUnsetReferencesResolveToTheDefault:
 
         assert _input_entry(result, "Stim")["node_set"] == DEFAULT_BIOPHYSICAL_NODE_SET
 
-    @pytest.mark.parametrize("name", RECORDINGS)
+    @pytest.mark.parametrize("name", UNTARGETED_RECORDINGS)
     def test_recording_records_the_default_neuron_set(self, name, circuit, tmp_path):
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Rec": _block(name)}
@@ -288,7 +329,7 @@ class TestUnsetReferencesResolveToTheDefault:
         """``combined_with`` entries are ``(reference, operation)`` pairs whose reference can
         also be unset, and each one is filled with the same population default as the base."""
         is_point = name == "PointCombinedNeuronSet"
-        combined = getattr(obi, name)(
+        combined = BLOCK_CLASSES[name](
             base_neuron_set=None, combined_with=((None, "union"), (None, "union"))
         )
         blocks: dict = {"Combined": combined}
@@ -322,7 +363,7 @@ class TestUnsetReferencesResolveToTheDefault:
             circuit=morphology_circuit,
             blocks={
                 "Locations": locations,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(neuron_set=locations.ref),
             },
         )
 
@@ -382,7 +423,7 @@ class TestNoDanglingNodeSetReferences:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Manip": obi.SynapticMgManipulation()},
+            blocks={"Manip": SynapticMgManipulation()},
         )
 
         result = generate(config, tmp_path)
@@ -396,13 +437,13 @@ class TestNoDanglingNodeSetReferences:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
-                "Spikes": obi.PoissonSpikeStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
-                "Window": obi.TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0),
-                "Magnesium": obi.SynapticMgManipulation(),
-                "Acetylcholine": obi.ScaleAcetylcholineUSESynapticManipulation(),
-                "Combined": obi.BiophysicalCombinedNeuronSet(),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
+                "Spikes": PoissonSpikeStimulus(),
+                "Voltage": SomaVoltageRecording(),
+                "Window": TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0),
+                "Magnesium": SynapticMgManipulation(),
+                "Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(),
+                "Combined": BiophysicalCombinedNeuronSet(),
             },
         )
 
@@ -413,8 +454,8 @@ class TestNoDanglingNodeSetReferences:
     def test_untargeted_me_model_blocks_leave_nothing_dangling(self, me_model_config, tmp_path):
         config = me_model_config(
             blocks={
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
+                "Voltage": SomaVoltageRecording(),
             }
         )
 
@@ -423,21 +464,18 @@ class TestNoDanglingNodeSetReferences:
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_brian2_stimulus_leaves_nothing_dangling(self, brian2_config, tmp_path):
-        """Brian2 resolves two different defaults, and both node sets have to be written."""
+        """Brian2 resolves one default, shared by the simulation and the stimulus."""
         config = brian2_config(blocks={"DirectPoisson": Brian2DirectPoissonStimulus()})
 
         result = generate(config, tmp_path)
 
-        assert result.referenced_node_sets() == {
-            DEFAULT_POINT_NODE_SET,
-            DEFAULT_BRIAN2_STIMULUS_NODE_SET,
-        }
+        assert result.referenced_node_sets() == {DEFAULT_POINT_NODE_SET}
         assert result.dangling_node_sets() == set()
 
     def test_untargeted_learning_engine_stimulus_leaves_nothing_dangling(
         self, learning_engine_config, tmp_path
     ):
-        config = learning_engine_config(blocks={"Clamp": obi.ConstantCurrentClampSomaticStimulus()})
+        config = learning_engine_config(blocks={"Clamp": ConstantCurrentClampSomaticStimulus()})
 
         result = generate(config, tmp_path)
 
@@ -449,9 +487,9 @@ class TestNoDanglingNodeSetReferences:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "First": obi.ConstantCurrentClampSomaticStimulus(),
-                "Second": obi.HyperpolarizingCurrentClampSomaticStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
+                "First": ConstantCurrentClampSomaticStimulus(),
+                "Second": HyperpolarizingCurrentClampSomaticStimulus(),
+                "Voltage": SomaVoltageRecording(),
             },
         )
 
@@ -475,8 +513,8 @@ class TestWhichReferencesAreFilledInPlace:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
+                "Voltage": SomaVoltageRecording(),
             },
         )
 
@@ -489,7 +527,7 @@ class TestWhichReferencesAreFilledInPlace:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Spikes": obi.PoissonSpikeStimulus()},
+            blocks={"Spikes": PoissonSpikeStimulus()},
         )
 
         generate(config, tmp_path)
@@ -503,7 +541,7 @@ class TestWhichReferencesAreFilledInPlace:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Clamp": obi.ConstantCurrentClampSomaticStimulus()},
+            blocks={"Clamp": ConstantCurrentClampSomaticStimulus()},
         )
 
         result = generate(config, tmp_path)
@@ -516,7 +554,7 @@ class TestWhichReferencesAreFilledInPlace:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Magnesium": obi.SynapticMgManipulation()},
+            blocks={"Magnesium": SynapticMgManipulation()},
         )
 
         result = generate(config, tmp_path)
@@ -557,8 +595,8 @@ class TestConfigWithoutANeuronSetsDictionary:
     def test_references_stay_unset_on_the_blocks(self, me_model_config, tmp_path):
         config = me_model_config(
             blocks={
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
+                "Voltage": SomaVoltageRecording(),
             }
         )
         assert not hasattr(config, "neuron_sets")
@@ -571,8 +609,8 @@ class TestConfigWithoutANeuronSetsDictionary:
     def test_the_output_still_names_the_default(self, me_model_config, tmp_path):
         config = me_model_config(
             blocks={
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
-                "Voltage": obi.SomaVoltageRecording(),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
+                "Voltage": SomaVoltageRecording(),
             }
         )
 
@@ -608,7 +646,7 @@ class TestUnsetTimestampsAndDistributions:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Clamp": obi.ConstantCurrentClampSomaticStimulus()},
+            blocks={"Clamp": ConstantCurrentClampSomaticStimulus()},
         )
 
         result = generate(config, tmp_path)
@@ -616,12 +654,17 @@ class TestUnsetTimestampsAndDistributions:
         assert set(result.inputs) == {"Clamp_0"}
 
     @pytest.mark.parametrize(
-        "name", ["ConnectSynapticManipulation", "DisconnectSynapticManipulation"]
+        "name",
+        [
+            "ConnectSynapticManipulation",
+            "DisconnectSynapticManipulation",
+            "ScaleWeightSynapticManipulation",
+        ],
     )
     def test_a_delayed_manipulation_without_timestamps_applies_at_zero(
         self, name, circuit, tmp_path
     ):
-        """These two are the only manipulations carrying a timestamps reference."""
+        """These are the only manipulations carrying a timestamps reference."""
         config = build_config(
             CircuitSimulationSingleConfig, circuit=circuit, blocks={"Manip": _block(name)}
         )
@@ -659,7 +702,7 @@ class TestUnsetReferencesAcrossEveryBlockAtOnce:
     def test_a_config_of_entirely_untargeted_blocks_generates_valid_sonata(self, circuit, tmp_path):
         """The end state this module is really about: nothing anywhere points at anything."""
         blocks = {name: _block(name) for name in CIRCUIT_STIMULI}
-        blocks |= {name: _block(name) for name in RECORDINGS}
+        blocks |= {name: _block(name) for name in UNTARGETED_RECORDINGS}
         blocks |= {name: _block(name) for name in SYNAPTIC_MANIPULATIONS}
 
         config = build_config(CircuitSimulationSingleConfig, circuit=circuit, blocks=blocks)
@@ -669,7 +712,7 @@ class TestUnsetReferencesAcrossEveryBlockAtOnce:
         assert result.dangling_node_sets() == set()
         assert result.referenced_node_sets() == {DEFAULT_BIOPHYSICAL_NODE_SET}
         assert len(result.inputs) == len(CIRCUIT_STIMULI)
-        assert len(result.reports) == len(RECORDINGS)
+        assert len(result.reports) == len(UNTARGETED_RECORDINGS)
         assert len(result.sonata_config["connection_overrides"]) == len(SYNAPTIC_MANIPULATIONS)
 
     def test_spike_stimuli_are_the_only_ones_that_can_target_a_virtual_source(
@@ -683,7 +726,7 @@ class TestUnsetReferencesAcrossEveryBlockAtOnce:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Spikes": obi.PoissonSpikeStimulus()},
+            blocks={"Spikes": PoissonSpikeStimulus()},
         )
 
         result = generate(config, tmp_path)

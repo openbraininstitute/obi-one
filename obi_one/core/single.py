@@ -13,9 +13,11 @@ from pydantic import Field, field_validator
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block import Block
 from obi_one.core.param import SingleValueScanParam
-from obi_one.core.registry import task_registry
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.mappings_and_registry.config_task_map import (
+    get_task_spec_for_single_config,
+)
 
 L = logging.getLogger(__name__)
 
@@ -94,8 +96,8 @@ class SingleConfigMixin:
 
     @property
     def single_task_config_type(self) -> TaskConfigType | None:
-        registration = task_registry.get_registration_for_single_config(type(self))
-        return registration.single_task_config_type if registration is not None else None
+        task_spec = get_task_spec_for_single_config(type(self))
+        return task_spec.single_task_config_type if task_spec is not None else None
 
     def create_single_entity_with_config(
         self,

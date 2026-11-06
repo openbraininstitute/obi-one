@@ -1,8 +1,7 @@
 """Circuit registration utilities for entitycore."""
 
 from obi_one.db_sdk.registration.circuit.assets import (
-    CIRCUIT_ASSET_MAPPING,
-    register_asset,
+    register_sonata_circuit_asset,
 )
 from obi_one.db_sdk.registration.circuit.generate import (
     generate_additional_circuit_assets,
@@ -11,6 +10,14 @@ from obi_one.db_sdk.registration.circuit.generate import (
     generate_connectivity_plot_assets,
     generate_overview_image_asset,
     generate_sim_designer_image_asset,
+)
+from obi_one.db_sdk.registration.circuit.launch_jobs import (
+    submit_circuit_asset_generation_job,
+    submit_circuit_validation_job,
+)
+from obi_one.db_sdk.registration.circuit.lifecycle import (
+    is_validation_allowed,
+    validation_blocked_detail,
 )
 from obi_one.db_sdk.registration.circuit.links import (
     register_contributions,
@@ -39,7 +46,6 @@ from obi_one.db_sdk.registration.circuit.resolve import (
 )
 
 __all__ = [
-    "CIRCUIT_ASSET_MAPPING",
     "check_hierarchy_species",
     "check_if_circuit_exists",
     "find_agent",
@@ -60,10 +66,14 @@ __all__ = [
     "get_publications",
     "get_root_circuit",
     "get_subject",
-    "register_asset",
+    "is_validation_allowed",
     "register_circuit",
     "register_circuit_from_metadata",
     "register_contributions",
     "register_derivation",
     "register_publication_links",
+    "register_sonata_circuit_asset",
+    "submit_circuit_asset_generation_job",
+    "submit_circuit_validation_job",
+    "validation_blocked_detail",
 ]

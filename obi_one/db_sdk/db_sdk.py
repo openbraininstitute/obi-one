@@ -5,17 +5,23 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
-from entitysdk import Client, models
+from entitysdk import Client
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
-from entitysdk.types import ActivityStatus, AssetLabel, ContentType, ExecutorType, TaskActivityType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    ContentType,
+    ExecutorType,
+    FetchFileStrategy,
+    TaskActivityType,
+)
+from entitysdk.utils.filesystem import create_dir
 
 from obi_one.core.exception import OBIONEError
-from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.library.circuit import Circuit
 
 L = logging.getLogger(__name__)
 
@@ -52,6 +58,13 @@ def get_task_config_asset(*, client: Client, config: Entity) -> Asset:
     )
 
 
+def get_task_config_asset_content(*, client: Client, config: TaskConfig) -> dict:
+    """Return task config JSON as a dict."""
+    return select_json_asset_content(
+        client=client, entity=config, selection={"label": AssetLabel.task_config}
+    )
+
+
 def create_activity(
     *,
     client: Client,
@@ -77,19 +90,19 @@ def fetch_asset_by_label(
     entity: Entity,
     asset_label: AssetLabel,
     output_path: Path,
+    strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
 ) -> Path:
     """Fetch a single asset matching the given label to output_path.
 
     Uses fetch_assets (checks local data store first).
     Returns the path to the fetched file.
     """
-    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
-
     output_dir = create_dir(output_path)
     asset = client.fetch_assets(
         entity,
         selection={"label": asset_label},
         output_path=output_dir,
+        strategy=strategy,
     ).one()
     return asset.path
 
@@ -185,8 +198,6 @@ def fetch_directory_asset_by_label(
     Uses fetch_assets (checks local data store first).
     Returns the path to the fetched directory.
     """
-    from entitysdk.utils.filesystem import create_dir  # ruff: ignore[import-outside-top-level]
-
     output_dir = create_dir(output_path)
     asset = client.fetch_assets(
         entity,
@@ -342,7 +353,7 @@ def register_task_config_entity(
         TaskConfig(
             name=name,
             description=description,
-            task_config_type=task_config_type,  # ty:ignore[invalid-argument-type]
+            task_config_type=task_config_type,
             meta=multiple_value_parameters_dictionary,
             inputs=input_entities,
             task_config_generator_id=task_config_generator_id,
@@ -425,51 +436,3 @@ def get_execution_activity(
         entity_id=execution_activity_id,
         entity_type=TaskActivity,
     )
-
-
-def resolve_circuit(
-    circuit: Circuit | CircuitFromID,
-    *,
-    db_client: Client,
-    entity_cache: bool,
-    cache_root: Path,
-    temp_dir: Path,
-) -> tuple[Circuit, models.Circuit | None]:
-    """Resolve a circuit object into a staged local circuit.
-
-    Handles both local Circuit instances and CircuitFromID references that
-    need to be staged from entitycore.
-
-    Args:
-        circuit: A Circuit instance (local) or CircuitFromID (remote).
-        db_client: The entitycore SDK client.
-        entity_cache: If True, stage into a persistent cache directory under
-            cache_root; otherwise stage into temp_dir.
-        cache_root: Root path for the entity cache (e.g., scan_output_root).
-        temp_dir: Temporary directory path to use when entity_cache is False.
-
-    Returns:
-        Tuple of (resolved Circuit, circuit entity or None).
-    """
-    if isinstance(circuit, Circuit):
-        L.info("Circuit is a local Circuit instance.")
-        return circuit, None
-
-    if isinstance(circuit, CircuitFromID):
-        L.info("Circuit is a CircuitFromID instance.")
-        circuit_id = circuit.id_str
-
-        if entity_cache:
-            L.info("Use entity cache")
-            dest_dir = cache_root / "entity_cache" / "sonata_circuit" / circuit_id
-        else:
-            dest_dir = temp_dir / "sonata_circuit"
-
-        staged_circuit = circuit.stage_circuit(
-            db_client=db_client, dest_dir=dest_dir, entity_cache=entity_cache
-        )
-        circuit_entity = circuit.entity(db_client=db_client)
-        return staged_circuit, circuit_entity  # ty:ignore[invalid-return-type]
-
-    msg = f"Unsupported circuit type: {type(circuit)}"
-    raise OBIONEError(msg)

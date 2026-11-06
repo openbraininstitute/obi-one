@@ -1,4 +1,4 @@
-import pytest
+from pathlib import Path
 
 from obi_one.utils import filesystem as test_module
 
@@ -19,15 +19,23 @@ def test_filter_extension():
     assert test_module.filter_extension(files, "json") == []
 
 
-def test_find_file(tmp_path):
-    target = tmp_path / "subdir" / "special"
-    target.parent.mkdir()
-    target.write_text("x")
+def test_chdir(tmp_path):
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    with test_module.chdir(nested):
+        assert Path.cwd() == nested.resolve()
+    assert Path.cwd() != nested.resolve()
 
-    assert test_module.find_file(directory=tmp_path, pattern="**/special") == target
-    assert test_module.find_file(directory=tmp_path / "subdir", pattern="special") == target
 
+def test_copy_tree_file_and_dir(tmp_path):
+    source_dir = tmp_path / "src"
+    source_dir.mkdir()
+    (source_dir / "a.txt").write_text("hello", encoding="utf-8")
+    source_file = tmp_path / "file.txt"
+    source_file.write_text("world", encoding="utf-8")
 
-def test_find_file_not_found(tmp_path):
-    with pytest.raises(FileNotFoundError, match="No file found for pattern"):
-        test_module.find_file(directory=tmp_path, pattern="missing.txt")
+    test_module.copy_tree(source_dir, tmp_path / "dst" / "copied_dir")
+    test_module.copy_tree(source_file, tmp_path / "dst" / "copied_file.txt")
+
+    assert (tmp_path / "dst" / "copied_dir" / "a.txt").read_text(encoding="utf-8") == "hello"
+    assert (tmp_path / "dst" / "copied_file.txt").read_text(encoding="utf-8") == "world"

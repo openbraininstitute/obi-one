@@ -14,7 +14,7 @@ from obi_one.scientific.library.entity_property_types import (
 class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """A current injection based on the Ornstein-Uhlenbeck process."""
 
-    title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Absolute)"
+    title: ClassVar[str] = "Ornstein-Uhlenbeck current clamp (absolute)"
 
     _module: str = "ornstein_uhlenbeck"
     _input_type: str = "current_clamp"
@@ -31,7 +31,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
 
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.1,
-        title="Mean Amplitude",
+        title="Mean amplitude",
         description="The mean value of current to inject. Given in nanoamps (nA).",
         json_schema_extra={
             SchemaKey.UNITS: Units.NANOAMPS,
@@ -41,7 +41,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
 
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
         default=0.05,
-        title="Standard Deviation",
+        title="Standard deviation",
         description="The standard deviation of current to inject. Given in nanoamps (nA).",
         json_schema_extra={
             SchemaKey.UNITS: Units.NANOAMPS,
@@ -67,7 +67,7 @@ class OrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
 class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     """A conductance injection based on the Ornstein-Uhlenbeck process."""
 
-    title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Absolute)"
+    title: ClassVar[str] = "Ornstein-Uhlenbeck conductance clamp (absolute)"
 
     _module: str = "ornstein_uhlenbeck"
     _input_type: str = "conductance"
@@ -84,7 +84,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     mean_amplitude: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=0.001,
-        title="Mean Amplitude",
+        title="Mean amplitude",
         description="The mean value of conductance to inject. Given in microsiemens (μS).",
         json_schema_extra={
             SchemaKey.UNITS: Units.MICROSIEMENS,
@@ -94,7 +94,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     standard_deviation: PositiveFloat | list[PositiveFloat] = Field(
         default=0.001,
-        title="Standard Deviation",
+        title="Standard deviation",
         description="The standard deviation of conductance to inject. Given in microsiemens (μS).",
         json_schema_extra={
             SchemaKey.UNITS: Units.MICROSIEMENS,
@@ -104,7 +104,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     reversal_potential: float | list[float] = Field(
         default=0.0,
-        title="Reversal Potential",
+        title="Reversal potential",
         description="The reversal potential of the conductance injection.",
         json_schema_extra={
             SchemaKey.UNITS: Units.MILLIVOLTS,
@@ -131,7 +131,7 @@ class OrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck current injection as a percentage of each cell's threshold current."""
 
-    title: ClassVar[str] = "Ornstein-Uhlenbeck Current Clamp (Relative)"
+    title: ClassVar[str] = "Ornstein-Uhlenbeck current clamp (relative)"
 
     _module: str = "relative_ornstein_uhlenbeck"
     _input_type: str = "current_clamp"
@@ -148,7 +148,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
 
     mean_percentage_of_threshold_current: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
-        title="Mean Percentage of Threshold Current",
+        title="Mean percentage of threshold current",
         description="Signal mean as percentage of a cell's threshold current.",
         json_schema_extra={
             SchemaKey.UNITS: Units.PERCENT,
@@ -158,7 +158,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
 
     standard_deviation_percentage_of_threshold: PositiveFloat | list[PositiveFloat] = Field(
         default=5.0,
-        title="Standard Deviation",
+        title="Standard deviation",
         description="Signal standard deviation as percentage of a cell's threshold current.",
         json_schema_extra={
             SchemaKey.UNITS: Units.PERCENT,
@@ -184,7 +184,7 @@ class RelativeOrnsteinUhlenbeckCurrentSomaticStimulus(ContinuousStimulus):
 class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
     """Ornstein-Uhlenbeck conductance injection as a percentage of each cell's input conductance."""
 
-    title: ClassVar[str] = "Ornstein-Uhlenbeck Conductance Clamp (Relative)"
+    title: ClassVar[str] = "Ornstein-Uhlenbeck conductance clamp (relative)"
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.BLOCK_USABILITY_DICTIONARY: {
@@ -210,7 +210,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     mean_percentage_of_cells_input_conductance: NonNegativeFloat | list[NonNegativeFloat] = Field(
         default=100.0,
-        title="Mean Percentage of Cells' Input Conductance",
+        title="Mean percentage of cells' input conductance",
         description="Signal mean as percentage of a cell's input conductance.",
         json_schema_extra={
             SchemaKey.UNITS: Units.PERCENT,
@@ -222,7 +222,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
         PositiveFloat | list[PositiveFloat]
     ) = Field(
         default=5.0,
-        title="Standard Deviation",
+        title="Standard deviation",
         description="Signal standard deviation as percentage of a cell's input conductance.",
         json_schema_extra={
             SchemaKey.UNITS: Units.PERCENT,
@@ -232,7 +232,7 @@ class RelativeOrnsteinUhlenbeckConductanceSomaticStimulus(ContinuousStimulus):
 
     reversal_potential: float | list[float] = Field(
         default=0.0,
-        title="Reversal Potential",
+        title="Reversal potential",
         description="The reversal potential of the conductance injection.",
         json_schema_extra={
             SchemaKey.UNITS: Units.MILLIVOLTS,

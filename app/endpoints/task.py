@@ -1,6 +1,9 @@
 from http import HTTPStatus
 from uuid import UUID
 
+import entitysdk.client
+import entitysdk.exception
+from entitysdk import models
 from fastapi import APIRouter, Depends, Response
 from starlette.responses import StreamingResponse
 
@@ -13,7 +16,7 @@ from app.dependencies.entitysdk import DatabaseClientDep
 from app.dependencies.launch_system import LaunchSystemAsyncClientDep, LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
-from app.mappings import TASK_DEFINITIONS
+from app.mappings import TASK_DEFINITIONS, get_launchable_task_definition
 from app.schemas.job import JobRead
 from app.schemas.task import (
     TaskAccountingCreate,
@@ -24,6 +27,27 @@ from app.schemas.task import (
 )
 from app.services import accounting as accounting_service, job as job_service, task as task_service
 from app.types import TaskType
+
+
+def _check_circuit_is_active(db_client: entitysdk.client.Client, config_id: UUID) -> None:
+    """Block simulation launch if the circuit is not yet validated."""
+    try:
+        simulation = db_client.get_entity(entity_id=config_id, entity_type=models.Simulation)
+        circuit = db_client.get_entity(entity_id=simulation.entity_id, entity_type=models.Circuit)
+    except entitysdk.exception.EntitySDKError:
+        return
+
+    lifecycle_status = getattr(circuit, "lifecycle_status", None)
+    if lifecycle_status != "active":
+        raise ApiError(
+            message=(
+                f"Circuit is not ready for simulation (lifecycle_status={lifecycle_status!r})."
+                " Validation may still be pending or may have failed."
+            ),
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+
 
 router = APIRouter(
     prefix="/declared/task",
@@ -63,7 +87,15 @@ def task_launch_endpoint(
         msg = f"Mapped circuit_simulation -> {task_type}"
         L.info(msg)
 
-    task_definition = TASK_DEFINITIONS[json_model.task_type]
+    task_definition = get_launchable_task_definition(json_model.task_type)
+
+    # Gate: block simulation of customized circuits still in "draft" status
+    if json_model.task_type in {
+        TaskType.circuit_simulation,
+        TaskType.circuit_simulation_neuron,
+        TaskType.circuit_simulation_neurodamus_cluster,
+    }:
+        _check_circuit_is_active(db_client, json_model.config_id)
 
     accounting_info = accounting_service.estimate_task_cost(
         db_client=db_client,
@@ -72,6 +104,17 @@ def task_launch_endpoint(
         task_definition=task_definition,
         accounting_factory=accounting_factory,
     )
+    # Before reserving credits, and outside the try below, so that a task no machine can run
+    # is refused with the estimator's own error rather than a generic submission failure.
+    updated_resources = task_service.estimate_task_resources(
+        json_model=json_model,
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell=compute_cell,
+        accounting_parameters=accounting_info.parameters,
+    )
+    task_definition = task_definition.model_copy(update={"resources": updated_resources})
+
     accounting_session = accounting_service.make_task_reservation(
         user_context=user_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
@@ -86,15 +129,6 @@ def task_launch_endpoint(
         callback_url=callback_url,
     )
     try:
-        updated_resources = task_service.estimate_task_resources(
-            json_model=json_model,
-            db_client=db_client,
-            task_definition=task_definition,
-            compute_cell=compute_cell,
-            accounting_parameters=accounting_info.parameters,
-        )
-        task_definition = task_definition.model_copy(update={"resources": updated_resources})
-
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -151,7 +185,7 @@ def estimate_endpoint(
         config_id=json_model.config_id,
         project_context=db_client.project_context,  # ty:ignore[invalid-argument-type]
         accounting_factory=accounting_factory,
-        task_definition=TASK_DEFINITIONS[json_model.task_type],
+        task_definition=get_launchable_task_definition(json_model.task_type),
     )
 
 
@@ -168,13 +202,13 @@ def task_failure_endpoint(
     activity_id: UUID,
     db_client: DatabaseClientDep,
     _user_context: UserContextWithProjectIdDep,
-) -> None:
+) -> Response:
     task_service.handle_task_failure_callback(
         db_client=db_client,
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
+    return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @router.post(
@@ -186,7 +220,7 @@ def task_success_endpoint(
     json_model: TaskCallBackSuccessRequest,
     accounting_factory: AccountingSessionFactoryDep,
     user_context: UserContextWithProjectIdDep,
-) -> None:
+) -> Response:
     accounting_service.finish_accounting_session(
         accounting_job_id=json_model.job_id,
         service_subtype=json_model.accounting_service_subtype,
@@ -194,7 +228,7 @@ def task_success_endpoint(
         project_id=user_context.project_id,
         http_client=accounting_factory._http_client,  # ruff: ignore[private-member-access]  # ty:ignore[invalid-argument-type]
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
+    return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @router.get(

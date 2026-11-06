@@ -6,7 +6,7 @@ These tests use minimal concrete subclasses to avoid importing scientific module
 from typing import Annotated, Any, ClassVar
 
 import pytest
-from pydantic import Discriminator, Field
+from pydantic import Discriminator, Field, ValidationError
 
 from obi_one.core.block import Block
 from obi_one.core.block_reference import BlockReference
@@ -189,7 +189,7 @@ class TestFillBlockReferences:
 
     def test_block_reference_bad_dict_name_raises(self):
         holder = RefHolder(ref_field=TestRef(block_dict_name="nonexistent_dict", block_name="x"))
-        with pytest.raises(KeyError):
+        with pytest.raises(ValidationError, match="nonexistent_dict"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
                 blocks={},
@@ -198,7 +198,7 @@ class TestFillBlockReferences:
 
     def test_block_reference_bad_block_name_raises(self):
         holder = RefHolder(ref_field=TestRef(block_dict_name="blocks", block_name="missing"))
-        with pytest.raises(KeyError, match="missing"):
+        with pytest.raises(ValidationError, match="missing"):
             ConfigWithRefBlock(
                 initialize=ConfigWithRefBlock.Initialize(),
                 blocks={"other": BlockTypeA()},

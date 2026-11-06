@@ -23,8 +23,8 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.s
     Settings,
 )
 
-# Base of the eFEL feature documentation; the frontend appends ``#<efel_name>``
-# to deep-link a specific feature.
+# Base of the eFEL feature documentation; the frontend appends
+# ``#<efel_doc_anchor>`` to deep-link a specific feature.
 EFEL_DOC_BASE_URL = "https://efel.readthedocs.io/en/latest/eFeatures.html"
 
 # Root of the eFEL docs' figure directory. Each feature class names its own

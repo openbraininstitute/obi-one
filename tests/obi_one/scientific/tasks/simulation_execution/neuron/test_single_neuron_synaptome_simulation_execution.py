@@ -14,13 +14,14 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
     MEModelWithSynapsesCircuitSimulationScanConfig,
     MEModelWithSynapsesCircuitSimulationSingleConfig,
 )
-from obi_one.scientific.tasks.simulation_execution.neuron.single_neuron_synaptome_simulation_execution import (  # ruff: ignore[line-too-long]
+from obi_one.scientific.tasks.simulation_execution.neuron.config import (
     SingleNeuronSynaptomeSimulationExecutionSingleConfig,
+)
+from obi_one.scientific.tasks.simulation_execution.neuron.task import (
     SingleNeuronSynaptomeSimulationExecutionTask,
 )
 
-_BASE = "obi_one.scientific.tasks.simulation_execution.neuron.base"
-_CIRCUIT = "obi_one.scientific.tasks.simulation_execution.neuron.circuit_simulation_execution"
+_TASK = "obi_one.scientific.tasks.simulation_execution.neuron.task"
 
 
 @pytest.fixture
@@ -80,13 +81,13 @@ def _neurodamus_mechanism_build(tmp_path):
     )
 
 
-@patch(f"{_BASE}.run_simulation")
-@patch(f"{_BASE}.get_simulation_parameters")
-@patch(f"{_BASE}.compile_mechanisms")
-@patch(f"{_BASE}.stage_simulation")
-@patch(f"{_CIRCUIT}.stage_circuit")
-@patch(f"{_CIRCUIT}.db_sdk.get_identifiable")
-@patch(f"{_BASE}.create_dir")
+@patch(f"{_TASK}.run_simulation")
+@patch(f"{_TASK}.get_simulation_parameters")
+@patch(f"{_TASK}.compile_mechanisms")
+@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_TASK}.stage_circuit")
+@patch(f"{_TASK}.db_sdk.get_identifiable")
+@patch(f"{_TASK}.create_dir")
 def test_execute_local_skips_registration(
     mock_create_dir,
     mock_get_identifiable,

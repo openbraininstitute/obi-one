@@ -49,7 +49,20 @@ except ImportError as e:  # pragma: no cover
 L = logging.getLogger(__name__)
 CANONICAL_EXC = "exc"
 CANONICAL_INH = "inh"
-CANONICAL_NA = "na"
+CANONICAL_NA = "n/a"
+
+# A matplotlib colour, either a named/hex string or an RGBA tuple (as returned by a Colormap).
+Color = str | tuple[float, float, float, float]
+
+# N/A nodes are always drawn in a neutral grey, independent of the active colormap, so
+# that "unknown" groups read as unknown rather than as a real colour from the scale.
+CANONICAL_NA_COLOR: Color = (0.5, 0.5, 0.5, 1.0)
+
+
+def is_na_value(value: str) -> bool:
+    """Return whether a grouping-property value denotes an unknown/N/A group."""
+    return value.strip().lower() == CANONICAL_NA
+
 
 # Stats functions
 
@@ -71,25 +84,66 @@ def find_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
     return canon_mapping
 
 
+def map_canonical_synapse_classes(prop_values: list[str]) -> dict[str, str]:
+    """Map each node property value to its canonical synapse class where possible.
+
+    Unlike find_canonical_synapse_classes, this does not require both EXC and INH to
+    be present, so single-class circuits can still be coloured consistently.
+
+    Args:
+        prop_values: The distinct node property values to classify.
+
+    Returns:
+        A mapping from each recognised property value to its canonical class
+        (CANONICAL_EXC, CANONICAL_INH, or CANONICAL_NA). Values that match no
+        canonical class beyond a single N/A are omitted.
+    """
+    value_to_canonical = {}
+    na_assigned = False
+    for val in prop_values:
+        lowered = val.lower()
+        if CANONICAL_EXC in lowered:
+            value_to_canonical[val] = CANONICAL_EXC
+        elif CANONICAL_INH in lowered:
+            value_to_canonical[val] = CANONICAL_INH
+        elif not na_assigned:
+            value_to_canonical[val] = CANONICAL_NA
+            na_assigned = True
+        else:
+            L.warning("More than one string could be mapped to N/A.")
+    return value_to_canonical
+
+
 def assemble_property_colormapping(
     conn: ConnectivityMatrix, cmap: Colormap, color_property: str = "synapse_class"
-) -> dict[str, str]:
+) -> dict[str, Color]:
     color_values = list(conn.vertices[color_property].drop_duplicates())
-    try:  # We attempt to display EXC / INH
-        canon_map = find_canonical_synapse_classes(color_values)
-        if CANONICAL_NA in canon_map:
-            color_values = [
-                canon_map[CANONICAL_INH],
-                canon_map[CANONICAL_NA],
-                canon_map[CANONICAL_EXC],
-            ]
-        else:
-            color_values = [canon_map[CANONICAL_INH], canon_map[CANONICAL_EXC]]
-    except ValueError:  # Fallback: Whatever is available
-        pass
-    col_idx_ = np.linspace(0, cmap.N, len(color_values)).astype(int)
-    color_map = {val_: cmap(idx_) for val_, idx_ in zip(color_values, col_idx_, strict=True)}
-    return color_map
+
+    # Synapse-class properties get E/I anchoring: INH at the cool end, EXC at the warm
+    # end, so a class keeps its colour regardless of how many classes are present (an
+    # EXC-only circuit still shows EXC as warm, not at index 0). Only attempt this when
+    # the values actually look like E/I classes, so generic properties (e.g. layer) are
+    # not forced through synapse-class classification.
+    looks_like_ei = any(
+        CANONICAL_EXC in val.lower() or CANONICAL_INH in val.lower() for val in color_values
+    )
+    value_to_canonical = map_canonical_synapse_classes(color_values) if looks_like_ei else {}
+    if looks_like_ei and len(value_to_canonical) == len(color_values):
+        canonical_index = {CANONICAL_INH: 0, CANONICAL_EXC: cmap.N}
+
+        def canonical_color(canonical: str) -> Color:
+            if canonical == CANONICAL_NA:
+                return CANONICAL_NA_COLOR
+            return cmap(canonical_index[canonical])
+
+        return {val: canonical_color(value_to_canonical[val]) for val in color_values}
+
+    # Generic grouping property: spread the real groups evenly across the colormap, but
+    # always draw N/A groups in grey so unknowns do not read as a real value.
+    scale_values = [val for val in color_values if not is_na_value(val)]
+    col_idx_ = np.linspace(0, cmap.N, len(scale_values)).astype(int)
+    color_map = dict(zip(scale_values, (cmap(idx) for idx in col_idx_), strict=True))
+    return {val: color_map.get(val, CANONICAL_NA_COLOR) for val in color_values}
 
 
 def connection_probability_pathway(
@@ -328,13 +382,19 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
 
     # Group categories with percentages ≤ 2% into "Other"
     total = category_counts.sum()
-    percentages = (category_counts / total) * 100
     small_categories_threshold = 2
-    small_categories = percentages[percentages <= small_categories_threshold].index
+    initial_percentages = (category_counts / total) * 100
+    small_categories = initial_percentages[initial_percentages <= small_categories_threshold].index
     if len(small_categories) > 1:
         other_count = category_counts[small_categories].sum()
         category_counts = category_counts.drop(small_categories)
         category_counts["Other"] = other_count
+
+    # Order slices alphabetically by category label so e.g. layers read 1, 2, 3, ...
+    # rather than in count order. Sort on the string form because the index may be a
+    # pandas Categorical, whose native order is not alphabetical.
+    category_counts = category_counts.reindex(sorted(category_counts.index, key=str))
+    percentages = (category_counts / total) * 100
 
     # Define colors
     cmap = cmaps[grouping_prop]
@@ -343,10 +403,28 @@ def make_pie_plot(  # ruff: ignore[too-many-locals]
         color_map = assemble_property_colormapping(conn, cmap, color_property=grouping_prop)
         colors = [color_map.get(key, cmap(i)) for i, key in enumerate(category_counts.index)]
     else:
-        colors = [cmap(i) for i in range(len(category_counts))[::-1]]
+        # Draw N/A grey, and spread the colormap only over the real categories so N/A
+        # does not consume a colour slot. Indexing just the real groups keeps the used
+        # indices in 0..n_real-1, avoiding trailing colours (e.g. Dark2's grey entry).
+        real_keys = [key for key in category_counts.index if not is_na_value(str(key))]
+        real_color = {
+            key: cmap(idx)
+            for key, idx in zip(real_keys, reversed(range(len(real_keys))), strict=True)
+        }
+        colors = [
+            CANONICAL_NA_COLOR if is_na_value(str(key)) else real_color[key]
+            for key in category_counts.index
+        ]
 
-    # Create the pie chart without percentages inside
-    wedges, _ = ax.pie(category_counts, startangle=140, colors=colors, textprops={"fontsize": 8})  # ty:ignore[invalid-assignment]
+    # Create the pie chart without percentages inside. counterclock=False draws the
+    # sorted categories clockwise, so labels increase in the clockwise direction.
+    wedges, _ = ax.pie(
+        category_counts,
+        startangle=140,
+        counterclock=False,
+        colors=colors,
+        textprops={"fontsize": 8},
+    )
 
     # Add annotations outside the pie chart to avoid overlapping
     for i, wedge in enumerate(wedges):
@@ -790,7 +868,7 @@ def plot_smallMC_network_stats(  # ruff: ignore[too-many-locals, too-many-statem
 
 
 def plot_growing_circles(
-    fig: plt.Figure, ax: plt.Axes, radii: list[float], y1: float = 0.5, color: str = "black"
+    fig: plt.Figure, ax: plt.Axes, radii: list[float], y1: float = 0.5, color: Color = "black"
 ) -> plt.Axes:
     # Get axis aspect ratio to make circles instead of ellipses
     bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
@@ -1125,7 +1203,7 @@ def plot_network_legends(
     fig: plt.Figure,
     ax_edge: plt.Axes,
     ax_node_size: plt.Axes,
-    axes_tuples: list[tuple[plt.Axes, str, str]],
+    axes_tuples: list[tuple[plt.Axes, str, Color]],
     *,
     largest_radius: float = 0.1,
     y_position: float = 0.75,
@@ -1300,6 +1378,7 @@ def plot_smallMC(  # ruff: ignore[too-many-locals]
         title=title,
         title_fontsize=textsize,
     )
+    node_legend_axes = [ax7, ax8]
     try:
         canon_map = find_canonical_synapse_classes(list(color_map_nodes.keys()))
         axes_specs = [
@@ -1309,8 +1388,15 @@ def plot_smallMC(  # ruff: ignore[too-many-locals]
     except ValueError:
         axes_specs = [
             (ax_, label, color_map_nodes[label])
-            for ax_, label in zip([ax7, ax8], color_map_nodes.keys(), strict=False)
+            for ax_, label in zip(node_legend_axes, color_map_nodes.keys(), strict=False)
         ]
+
+    # Hide any node-legend axis without a spec (e.g. a single-class circuit leaves one unused),
+    # otherwise its empty frame renders where the second legend would be.
+    used_axes = {spec[0] for spec in axes_specs}
+    for ax_ in node_legend_axes:
+        if ax_ not in used_axes:
+            ax_.set_axis_off()
 
     # Add network legends
     plot_network_legends(

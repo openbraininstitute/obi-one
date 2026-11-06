@@ -20,20 +20,20 @@ User flow:
 1. Pick a channel + variable from the dropdown.
 2. Enter one value per section list shown by the UI.
 
-The variable picker is populated from mapped circuit properties using:
+The variable picker is populated from the dedicated MEModel neuronal-manipulation endpoint using:
 
-- `property_group = "Circuit"`
+- `property_group = "NeuronalManipulation"`
 - `property = "MechanismVariablesByIonChannel"`
 
 ### Example Pydantic implementation
 
 ```py
 class BySectionListMechanismVariableNeuronalManipulation(Block):
-    title: ClassVar[str] = "Variable Modification by Section List"
+    title: ClassVar[str] = "Variable modification by section list"
 
     neuron_set: NeuronSetReference | None = Field(
         default=None,
-        title="Neuron Set (Target)",
+        title="Neuron set (target)",
         description="Neuron set to which modification is applied.",
         exclude=True,
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
@@ -44,7 +44,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
         description="Ion channel RANGE variable modification by section list.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.ION_CHANNEL_VARIABLE_MODIFICATION_BY_SECTION_LIST,
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.NEURONAL_MANIPULATION,
             SchemaKey.PROPERTY: CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL,
         },
     )

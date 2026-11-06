@@ -34,12 +34,22 @@ class BuiltinScript(StrEnum):
     """Builtin script."""
 
     circuit_simulation = auto()
+    emodel_optimisation = auto()
 
 
 class MachineExecutorImageType(StrEnum):
     python_3_12_compiler = auto()
     python_3_12_inait = auto()
     python_3_12_openmpi5_neuron9_neurodamus = auto()
+
+
+class MachinePlacementType(StrEnum):
+    """Machine executor placement, mirroring launch-system's ExecutorPlacementType."""
+
+    fargate = auto()
+    ecs_managed_instances = auto()
+    ecs_ec2 = auto()
+    azure_container_apps = auto()
 
 
 class IdentifierType(StrEnum):

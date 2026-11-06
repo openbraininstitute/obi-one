@@ -38,6 +38,7 @@ from obi_one.scientific.blocks.neuron_sets.property import (
 from obi_one.scientific.blocks.neuron_sets.specific import (
     AllBiophysicalNeurons,
     AllPointNeurons,
+    AllVirtualNeurons,
 )
 
 # Deprecated neuron sets predate the population-typed taxonomy: back then a neuron set carried no
@@ -78,6 +79,7 @@ ATOMIC_VIRTUAL_NEURON_SETS = (
     VirtualPopulationPropertyNeuronSet
     | VirtualPopulationIDNeuronSet
     | VirtualPopulationNeuronSet
+    | AllVirtualNeurons
     | VirtualPopulationPredefinedNeuronSet
     | _DEPRECATED_NEURON_SETS
 )
@@ -175,7 +177,7 @@ class NeuronSetReference(BlockReference):
 
     @property
     def block(self) -> NeuronSet:
-        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+        raise ValueError(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
     @block.setter
     def block(self, value: NeuronSet) -> None:  # ruff: ignore[unused-method-argument, no-self-use]
@@ -183,7 +185,7 @@ class NeuronSetReference(BlockReference):
         # `fill_block_references_and_names` assigns resolved blocks to references). Raising here
         # ensures that loading any config containing a deprecated NeuronSetReference fails with a
         # clear migration message instead of a confusing "has no setter" AttributeError.
-        raise DeprecationWarning(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
+        raise ValueError(_DEPRECATED_NEURON_SET_REFERENCE_MESSAGE)
 
 
 ATOMIC_ALL_NEURON_SETS_REFERENCE_UNION = (

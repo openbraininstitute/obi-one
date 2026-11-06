@@ -9,12 +9,35 @@ import h5py
 import numpy as np
 import pytest
 
-import obi_one as obi
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.distributions.constant import (
+    FloatConstantDistribution,
+    IntConstantDistribution,
+)
+from obi_one.scientific.blocks.distributions.discrete import IntDiscreteDistribution
+from obi_one.scientific.blocks.distributions.exponential import ExponentialDistribution
+from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.distributions.lognormal import LogNormalDistribution
+from obi_one.scientific.blocks.distributions.normal import NormalDistribution
+from obi_one.scientific.blocks.distributions.poisson import PoissonDistribution
+from obi_one.scientific.blocks.distributions.uniform import (
+    FloatUniformDistribution,
+    IntUniformDistribution,
+)
 from obi_one.scientific.blocks.neuron_sets.id import VirtualPopulationIDNeuronSet
+from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
+    InterSpikeIntervalDistributionSpikeStimulus,
+)
+from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions_and_references.distributions import AllDistributionsUnion
+from obi_one.scientific.unions_and_references.distributions import (
+    AllDistributionsReference,
+    AllDistributionsUnion,
+)
 from obi_one.scientific.unions_and_references.timestamps import TimestampsUnion
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
@@ -25,25 +48,23 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 )
 
 TIMESTAMPS = {
-    "SingleTimestamp": obi.SingleTimestamp(start_time=0.0),
-    "RegularTimestamps": obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=2, interval=25.0
-    ),
+    "SingleTimestamp": SingleTimestamp(start_time=0.0),
+    "RegularTimestamps": RegularTimestamps(start_time=0.0, number_of_repetitions=2, interval=25.0),
 }
 
 # Distributions that produce non-negative samples, so they can stand in for an inter-spike
 # interval. The integer-valued ones are included because the union accepts them.
 DISTRIBUTIONS = {
-    "FloatConstantDistribution": obi.FloatConstantDistribution(value=10.0),
-    "FloatUniformDistribution": obi.FloatUniformDistribution(low=5.0, high=15.0),
-    "ExponentialDistribution": obi.ExponentialDistribution(scale=10.0),
-    "GammaDistribution": obi.GammaDistribution(shape=2.0, scale=5.0),
-    "NormalDistribution": obi.NormalDistribution(mean=10.0, standard_deviation=1.0, min=0.1),
-    "LogNormalDistribution": obi.LogNormalDistribution(mean=2.0, sigma=0.5),
-    "PoissonDistribution": obi.PoissonDistribution(rate=10.0, min=1.0),
-    "IntConstantDistribution": obi.IntConstantDistribution(value=10),
-    "IntUniformDistribution": obi.IntUniformDistribution(low=5, high=15),
-    "IntDiscreteDistribution": obi.IntDiscreteDistribution(
+    "FloatConstantDistribution": FloatConstantDistribution(value=10.0),
+    "FloatUniformDistribution": FloatUniformDistribution(low=5.0, high=15.0),
+    "ExponentialDistribution": ExponentialDistribution(scale=10.0),
+    "GammaDistribution": GammaDistribution(shape=2.0, scale=5.0),
+    "NormalDistribution": NormalDistribution(mean=10.0, standard_deviation=1.0, min=0.1),
+    "LogNormalDistribution": LogNormalDistribution(mean=2.0, sigma=0.5),
+    "PoissonDistribution": PoissonDistribution(rate=10.0, min=1.0),
+    "IntConstantDistribution": IntConstantDistribution(value=10),
+    "IntUniformDistribution": IntUniformDistribution(low=5, high=15),
+    "IntDiscreteDistribution": IntDiscreteDistribution(
         values=[5, 10, 20], probabilities=[0.3, 0.4, 0.3]
     ),
 }
@@ -52,7 +73,7 @@ DISTRIBUTIONS = {
 def _distribution_driven_config(circuit, distribution):
     source = VirtualPopulationIDNeuronSet(
         population=VIRTUAL_POPULATION,
-        neuron_ids=obi.NamedTuple(name="source", elements=[0, 1, 2]),
+        neuron_ids=NamedTuple(name="source", elements=[0, 1, 2]),
     )
     return build_config(
         CircuitSimulationSingleConfig,
@@ -60,9 +81,9 @@ def _distribution_driven_config(circuit, distribution):
         blocks={
             "Source": source,
             "Distribution": distribution,
-            "Spikes": lambda: obi.InterSpikeIntervalDistributionSpikeStimulus(
+            "Spikes": lambda: InterSpikeIntervalDistributionSpikeStimulus(
                 source_neuron_set=source.ref,
-                distribution=obi.AllDistributionsReference(
+                distribution=AllDistributionsReference(
                     block_dict_name="distributions", block_name="Distribution"
                 ),
                 duration=100.0,
@@ -88,7 +109,7 @@ class TestTimestamps:
             circuit=circuit,
             blocks={
                 "When": timestamps,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                     timestamps=timestamps.ref, duration=5.0
                 ),
             },
@@ -99,13 +120,13 @@ class TestTimestamps:
         assert len(result.inputs) == len(timestamps.timestamps())
 
     def test_regular_timestamps_are_evenly_spaced(self, circuit, tmp_path):
-        timestamps = obi.RegularTimestamps(start_time=10.0, number_of_repetitions=4, interval=15.0)
+        timestamps = RegularTimestamps(start_time=10.0, number_of_repetitions=4, interval=15.0)
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
                 "When": timestamps,
-                "Clamp": lambda: obi.ConstantCurrentClampSomaticStimulus(
+                "Clamp": lambda: ConstantCurrentClampSomaticStimulus(
                     timestamps=timestamps.ref, duration=5.0
                 ),
             },
@@ -121,10 +142,8 @@ class TestTimestamps:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Unused": obi.RegularTimestamps(
-                    start_time=0.0, number_of_repetitions=5, interval=10.0
-                ),
-                "Clamp": obi.ConstantCurrentClampSomaticStimulus(),
+                "Unused": RegularTimestamps(start_time=0.0, number_of_repetitions=5, interval=10.0),
+                "Clamp": ConstantCurrentClampSomaticStimulus(),
             },
         )
 
@@ -148,7 +167,7 @@ class TestDistributions:
 
     def test_a_constant_interval_produces_regularly_spaced_spikes(self, circuit, tmp_path):
         """A constant inter-spike interval is the one case with a predictable spike train."""
-        config = _distribution_driven_config(circuit, obi.FloatConstantDistribution(value=10.0))
+        config = _distribution_driven_config(circuit, FloatConstantDistribution(value=10.0))
 
         result = generate(config, tmp_path)
 
@@ -162,7 +181,7 @@ class TestDistributions:
             assert np.allclose(intervals, 10.0)
 
     def test_an_unused_distribution_changes_nothing(self, circuit_config, tmp_path):
-        config = circuit_config(blocks={"Unused": obi.ExponentialDistribution(scale=10.0)})
+        config = circuit_config(blocks={"Unused": ExponentialDistribution(scale=10.0)})
 
         result = generate(config, tmp_path)
 

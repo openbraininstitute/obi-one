@@ -4,14 +4,27 @@ import h5py
 import numpy as np
 import pytest
 
-import obi_one as obi
+from obi_one.core.exception import OBIONEError
+from obi_one.core.info import Info
+from obi_one.core.run_tasks import run_tasks_for_generated_scan
+from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
 )
 from obi_one.scientific.blocks.stimuli.spike.base import SpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
+from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
 from obi_one.scientific.blocks.stimuli.spike.sinusoidal_poisson import (
+    SinusoidalPoissonSpikeStimulus,
     _draw_inhomogeneous_poisson_interval_ms,
+)
+from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationScanConfig,
 )
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
@@ -22,7 +35,7 @@ CIRCUIT_NAME = "N_10__top_nodes_dim6"
 
 
 def _make_circuit():
-    return obi.Circuit(name=CIRCUIT_NAME, path=CIRCUIT_PATH)
+    return Circuit(name=CIRCUIT_NAME, path=CIRCUIT_PATH)
 
 
 def _make_timestamps_ref(block):
@@ -49,9 +62,9 @@ def _read_spike_file(path, population):
 class TestFullySynchronousSpikeStimulus:
     def test_all_gids_spike_at_all_timestamps(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=100.0, number_of_repetitions=3, interval=100.0)
+            RegularTimestamps(start_time=100.0, number_of_repetitions=3, interval=100.0)
         )
-        stim = obi.FullySynchronousSpikeStimulus(timestamps=ts_ref)
+        stim = FullySynchronousSpikeStimulus(timestamps=ts_ref)
         gids = [0, 1, 2]
         result = stim.generate_spikes_by_gid(gids)
 
@@ -61,9 +74,9 @@ class TestFullySynchronousSpikeStimulus:
 
     def test_timestamp_offset_applied(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=2, interval=1000.0)
+            RegularTimestamps(start_time=0.0, number_of_repetitions=2, interval=1000.0)
         )
-        stim = obi.FullySynchronousSpikeStimulus(timestamp_offset=50.0, timestamps=ts_ref)
+        stim = FullySynchronousSpikeStimulus(timestamp_offset=50.0, timestamps=ts_ref)
         gids = [5, 10]
         result = stim.generate_spikes_by_gid(gids)
 
@@ -72,23 +85,23 @@ class TestFullySynchronousSpikeStimulus:
             assert result[gid] == expected
 
     def test_single_gid_single_timestamp(self):
-        ts_ref = _make_timestamps_ref(obi.SingleTimestamp(start_time=500.0))
-        stim = obi.FullySynchronousSpikeStimulus(timestamps=ts_ref)
+        ts_ref = _make_timestamps_ref(SingleTimestamp(start_time=500.0))
+        stim = FullySynchronousSpikeStimulus(timestamps=ts_ref)
         result = stim.generate_spikes_by_gid([42])
         assert result[42] == [500.0]
 
     def test_empty_gids(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=100.0, number_of_repetitions=2, interval=100.0)
+            RegularTimestamps(start_time=100.0, number_of_repetitions=2, interval=100.0)
         )
-        stim = obi.FullySynchronousSpikeStimulus(timestamps=ts_ref)
+        stim = FullySynchronousSpikeStimulus(timestamps=ts_ref)
         result = stim.generate_spikes_by_gid([])
         assert len(result) == 0
 
 
 class TestPoissonSpikeStimulus:
     def test_reproducibility_with_same_seed(self):
-        stim = obi.PoissonSpikeStimulus(duration=500.0, frequency=10.0, random_seed=42)
+        stim = PoissonSpikeStimulus(duration=500.0, frequency=10.0, random_seed=42)
         gids = [0, 1, 2]
         r1 = stim.generate_spikes_by_gid(gids)
         r2 = stim.generate_spikes_by_gid(gids)
@@ -97,17 +110,17 @@ class TestPoissonSpikeStimulus:
 
     def test_different_seeds_give_different_spikes(self):
         gids = [0]
-        stim_a = obi.PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=1)
-        stim_b = obi.PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=2)
+        stim_a = PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=1)
+        stim_b = PoissonSpikeStimulus(duration=1000.0, frequency=20.0, random_seed=2)
         r_a = stim_a.generate_spikes_by_gid(gids)
         r_b = stim_b.generate_spikes_by_gid(gids)
         assert r_a[0] != r_b[0]
 
     def test_spikes_within_time_window(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=100.0, number_of_repetitions=2, interval=400.0)
+            RegularTimestamps(start_time=100.0, number_of_repetitions=2, interval=400.0)
         )
-        stim = obi.PoissonSpikeStimulus(
+        stim = PoissonSpikeStimulus(
             duration=200.0, frequency=10.0, random_seed=0, timestamps=ts_ref
         )
         gids = list(range(5))
@@ -118,7 +131,7 @@ class TestPoissonSpikeStimulus:
                 assert in_window, f"Spike at {t} outside expected windows"
 
     def test_timestamp_offset_shifts_window(self):
-        stim = obi.PoissonSpikeStimulus(
+        stim = PoissonSpikeStimulus(
             duration=100.0, frequency=20.0, random_seed=7, timestamp_offset=50.0
         )
         result = stim.generate_spikes_by_gid([0])
@@ -126,15 +139,15 @@ class TestPoissonSpikeStimulus:
             assert 50.0 <= t <= 150.0
 
     def test_zero_duration_produces_no_spikes(self):
-        stim = obi.PoissonSpikeStimulus(duration=0.0, frequency=10.0, random_seed=0)
+        stim = PoissonSpikeStimulus(duration=0.0, frequency=10.0, random_seed=0)
         result = stim.generate_spikes_by_gid([0, 1])
         for gid in [0, 1]:
             assert result[gid] == []
 
     def test_spike_count_scales_with_frequency(self):
         gids = list(range(3))
-        stim_low = obi.PoissonSpikeStimulus(duration=2000.0, frequency=5.0, random_seed=10)
-        stim_high = obi.PoissonSpikeStimulus(duration=2000.0, frequency=50.0, random_seed=10)
+        stim_low = PoissonSpikeStimulus(duration=2000.0, frequency=5.0, random_seed=10)
+        stim_high = PoissonSpikeStimulus(duration=2000.0, frequency=50.0, random_seed=10)
         r_low = stim_low.generate_spikes_by_gid(gids)
         r_high = stim_high.generate_spikes_by_gid(gids)
         total_low = sum(len(v) for v in r_low.values())
@@ -143,19 +156,19 @@ class TestPoissonSpikeStimulus:
 
     def test_exceeding_max_spikes_raises(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=100, interval=1.0)
+            RegularTimestamps(start_time=0.0, number_of_repetitions=100, interval=1.0)
         )
-        stim = obi.PoissonSpikeStimulus(
+        stim = PoissonSpikeStimulus(
             duration=5000.0, frequency=50000.0, random_seed=0, timestamps=ts_ref
         )
-        with pytest.raises(obi.OBIONEError, match="maximum allowed"):
+        with pytest.raises(OBIONEError, match="maximum allowed"):
             stim.generate_spikes_by_gid(list(range(100)))
 
     def test_multiple_timestamps_produce_spikes_in_each_window(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=500.0)
+            RegularTimestamps(start_time=0.0, number_of_repetitions=3, interval=500.0)
         )
-        stim = obi.PoissonSpikeStimulus(
+        stim = PoissonSpikeStimulus(
             duration=100.0, frequency=50.0, random_seed=99, timestamps=ts_ref
         )
         gids = [0]
@@ -169,7 +182,7 @@ class TestPoissonSpikeStimulus:
 
 class TestSinusoidalPoissonSpikeStimulus:
     def test_reproducibility(self):
-        stim = obi.SinusoidalPoissonSpikeStimulus(
+        stim = SinusoidalPoissonSpikeStimulus(
             duration=500.0,
             minimum_rate=1.0,
             maximum_rate=20.0,
@@ -183,8 +196,8 @@ class TestSinusoidalPoissonSpikeStimulus:
             assert r1[gid] == r2[gid]
 
     def test_spikes_within_time_window(self):
-        ts_ref = _make_timestamps_ref(obi.SingleTimestamp(start_time=100.0))
-        stim = obi.SinusoidalPoissonSpikeStimulus(
+        ts_ref = _make_timestamps_ref(SingleTimestamp(start_time=100.0))
+        stim = SinusoidalPoissonSpikeStimulus(
             duration=300.0,
             minimum_rate=1.0,
             maximum_rate=10.0,
@@ -199,11 +212,11 @@ class TestSinusoidalPoissonSpikeStimulus:
 
     def test_max_less_than_min_raises(self):
         with pytest.raises(ValueError, match="Maximum rate must be greater"):
-            obi.SinusoidalPoissonSpikeStimulus(minimum_rate=20.0, maximum_rate=5.0)
+            SinusoidalPoissonSpikeStimulus(minimum_rate=20.0, maximum_rate=5.0)
 
     def test_phase_offset_changes_spike_pattern(self):
         gids = [0]
-        stim_0 = obi.SinusoidalPoissonSpikeStimulus(
+        stim_0 = SinusoidalPoissonSpikeStimulus(
             duration=1000.0,
             minimum_rate=0.00001,
             maximum_rate=20.0,
@@ -211,7 +224,7 @@ class TestSinusoidalPoissonSpikeStimulus:
             phase_degrees=0.0,
             random_seed=42,
         )
-        stim_90 = obi.SinusoidalPoissonSpikeStimulus(
+        stim_90 = SinusoidalPoissonSpikeStimulus(
             duration=1000.0,
             minimum_rate=0.00001,
             maximum_rate=20.0,
@@ -225,9 +238,9 @@ class TestSinusoidalPoissonSpikeStimulus:
 
     def test_exceeding_max_spikes_raises(self):
         ts_ref = _make_timestamps_ref(
-            obi.RegularTimestamps(start_time=0.0, number_of_repetitions=100, interval=1.0)
+            RegularTimestamps(start_time=0.0, number_of_repetitions=100, interval=1.0)
         )
-        stim = obi.SinusoidalPoissonSpikeStimulus(
+        stim = SinusoidalPoissonSpikeStimulus(
             duration=5000.0,
             minimum_rate=0.00001,
             maximum_rate=50.0,
@@ -241,7 +254,7 @@ class TestSinusoidalPoissonSpikeStimulus:
     def test_lambda_t_ms_peak_and_trough(self):
         # At the peak of the sinusoid, lambda should be close to maximum_rate
         # sin(pi/2) = 1 => lambda = min + (max - min) * (1 + 1)/2 = max
-        lam_peak = obi.SinusoidalPoissonSpikeStimulus._lambda_t_ms(
+        lam_peak = SinusoidalPoissonSpikeStimulus._lambda_t_ms(
             t_ms=0.0,
             minimum_rate=1.0,
             maximum_rate=10.0,
@@ -251,7 +264,7 @@ class TestSinusoidalPoissonSpikeStimulus:
         assert lam_peak == pytest.approx(10.0, abs=1e-10)
 
         # sin(-pi/2) = -1 => lambda = min + (max - min) * (-1 + 1)/2 = min
-        lam_trough = obi.SinusoidalPoissonSpikeStimulus._lambda_t_ms(
+        lam_trough = SinusoidalPoissonSpikeStimulus._lambda_t_ms(
             t_ms=0.0,
             minimum_rate=1.0,
             maximum_rate=10.0,
@@ -261,7 +274,7 @@ class TestSinusoidalPoissonSpikeStimulus:
         assert lam_trough == pytest.approx(1.0, abs=1e-10)
 
     def test_timestamp_offset_applied(self):
-        stim = obi.SinusoidalPoissonSpikeStimulus(
+        stim = SinusoidalPoissonSpikeStimulus(
             duration=200.0,
             minimum_rate=1.0,
             maximum_rate=20.0,
@@ -332,31 +345,29 @@ class TestWriteSpikeFile:
 
 def _build_sim_config_with_all_neuron_sets():
     """Build config with all neuron sets explicitly specified."""
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="SpikeTest", campaign_description="Spike stimuli test")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="SpikeTest", campaign_description="Spike stimuli test")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 3000.0
 
     sim_neuron_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="AllIDs", elements=range(10)),
+        neuron_ids=NamedTuple(name="AllIDs", elements=range(10)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(sim_neuron_set, name="SimNeurons")
 
     source_neuron_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)),
+        neuron_ids=NamedTuple(name="SourceIDs", elements=range(5)),
         population="VPM",
     )
     sim_conf.add(source_neuron_set, name="SourceNeurons")
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=2, interval=1000.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=2, interval=1000.0)
     sim_conf.add(regular_timestamps, name="Timestamps")
 
-    poisson = obi.PoissonSpikeStimulus(
+    poisson = PoissonSpikeStimulus(
         duration=500.0,
         timestamps=regular_timestamps.ref,
         frequency=10.0,
@@ -366,14 +377,14 @@ def _build_sim_config_with_all_neuron_sets():
     )
     sim_conf.add(poisson, name="PoissonStim")
 
-    sync = obi.FullySynchronousSpikeStimulus(
+    sync = FullySynchronousSpikeStimulus(
         timestamps=regular_timestamps.ref,
         source_neuron_set=source_neuron_set.ref,
         targeted_neuron_set=sim_neuron_set.ref,
     )
     sim_conf.add(sync, name="SyncStim")
 
-    sinusoidal = obi.SinusoidalPoissonSpikeStimulus(
+    sinusoidal = SinusoidalPoissonSpikeStimulus(
         duration=500.0,
         timestamps=regular_timestamps.ref,
         minimum_rate=1.0,
@@ -385,7 +396,7 @@ def _build_sim_config_with_all_neuron_sets():
     )
     sim_conf.add(sinusoidal, name="SinusoidalStim")
 
-    initialize = obi.CircuitSimulationScanConfig.Initialize(
+    initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit, node_set=sim_neuron_set.ref, simulation_length=sim_duration
     )
     sim_conf.set(initialize, name="initialize")
@@ -407,13 +418,13 @@ class TestSimulationCampaignWithAllSpikeTypes:
         sim_conf = _build_sim_config_with_all_neuron_sets()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "all_types_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         source_ids = set(range(5))
         for instance in scan.single_configs:
@@ -453,25 +464,23 @@ class TestSimulationCampaignWithAllSpikeTypes:
 
 def _build_config_no_source_neuron_set():
     """Config where spike stimuli have no source_neuron_set (should default to AllNeurons)."""
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoSource", campaign_description="Test missing source")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="NoSource", campaign_description="Test missing source")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
     target_set = BiophysicalPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="TargetIDs", elements=range(10)),
+        neuron_ids=NamedTuple(name="TargetIDs", elements=range(10)),
         population="S1nonbarrel_neurons",
     )
     sim_conf.add(target_set, name="TargetNeurons")
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=1, interval=500.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
     sim_conf.add(regular_timestamps, name="Timestamps")
 
-    poisson = obi.PoissonSpikeStimulus(
+    poisson = PoissonSpikeStimulus(
         duration=200.0,
         timestamps=regular_timestamps.ref,
         frequency=10.0,
@@ -481,14 +490,14 @@ def _build_config_no_source_neuron_set():
     )
     sim_conf.add(poisson, name="PoissonNoSource")
 
-    sync = obi.FullySynchronousSpikeStimulus(
+    sync = FullySynchronousSpikeStimulus(
         timestamps=regular_timestamps.ref,
         source_neuron_set=None,
         targeted_neuron_set=target_set.ref,
     )
     sim_conf.add(sync, name="SyncNoSource")
 
-    initialize = obi.CircuitSimulationScanConfig.Initialize(
+    initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit, node_set=target_set.ref, simulation_length=sim_duration
     )
     sim_conf.set(initialize, name="initialize")
@@ -498,25 +507,23 @@ def _build_config_no_source_neuron_set():
 
 def _build_config_no_target_neuron_set():
     """Config where spike stimuli have no targeted_neuron_set (should default to AllNeurons)."""
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoTarget", campaign_description="Test missing target")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="NoTarget", campaign_description="Test missing target")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
     source_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(5)),
+        neuron_ids=NamedTuple(name="SourceIDs", elements=range(5)),
         population="VPM",
     )
     sim_conf.add(source_set, name="SourceNeurons")
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=1, interval=500.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
     sim_conf.add(regular_timestamps, name="Timestamps")
 
-    poisson = obi.PoissonSpikeStimulus(
+    poisson = PoissonSpikeStimulus(
         duration=200.0,
         timestamps=regular_timestamps.ref,
         frequency=10.0,
@@ -526,7 +533,7 @@ def _build_config_no_target_neuron_set():
     )
     sim_conf.add(poisson, name="PoissonNoTarget")
 
-    initialize = obi.CircuitSimulationScanConfig.Initialize(
+    initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit, simulation_length=sim_duration
     )
     sim_conf.set(initialize, name="initialize")
@@ -536,19 +543,17 @@ def _build_config_no_target_neuron_set():
 
 def _build_config_no_neuron_sets_at_all():
     """Config where spike stimuli have neither source nor target neuron sets."""
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoNeuronSets", campaign_description="Test no neuron sets")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="NoNeuronSets", campaign_description="Test no neuron sets")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=1, interval=500.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
     sim_conf.add(regular_timestamps, name="Timestamps")
 
-    poisson = obi.PoissonSpikeStimulus(
+    poisson = PoissonSpikeStimulus(
         duration=200.0,
         timestamps=regular_timestamps.ref,
         frequency=10.0,
@@ -556,12 +561,12 @@ def _build_config_no_neuron_sets_at_all():
     )
     sim_conf.add(poisson, name="PoissonDefault")
 
-    sync = obi.FullySynchronousSpikeStimulus(
+    sync = FullySynchronousSpikeStimulus(
         timestamps=regular_timestamps.ref,
     )
     sim_conf.add(sync, name="SyncDefault")
 
-    sinusoidal = obi.SinusoidalPoissonSpikeStimulus(
+    sinusoidal = SinusoidalPoissonSpikeStimulus(
         duration=200.0,
         timestamps=regular_timestamps.ref,
         minimum_rate=1.0,
@@ -571,7 +576,7 @@ def _build_config_no_neuron_sets_at_all():
     )
     sim_conf.add(sinusoidal, name="SinusoidalDefault")
 
-    initialize = obi.CircuitSimulationScanConfig.Initialize(
+    initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit, simulation_length=sim_duration
     )
     sim_conf.set(initialize, name="initialize")
@@ -581,32 +586,30 @@ def _build_config_no_neuron_sets_at_all():
 
 def _build_config_no_node_set_on_initialize():
     """Config where initialize.node_set is None (should use default AllNeurons)."""
-    sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-    info = obi.Info(campaign_name="NoNodeSet", campaign_description="Test missing node_set")
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    info = Info(campaign_name="NoNodeSet", campaign_description="Test missing node_set")
     sim_conf.set(info, name="info")
 
     circuit = _make_circuit()
     sim_duration = 1000.0
 
     source_set = VirtualPopulationIDNeuronSet(
-        neuron_ids=obi.NamedTuple(name="SourceIDs", elements=range(3)),
+        neuron_ids=NamedTuple(name="SourceIDs", elements=range(3)),
         population="VPM",
     )
     sim_conf.add(source_set, name="SourceNeurons")
 
-    regular_timestamps = obi.RegularTimestamps(
-        start_time=0.0, number_of_repetitions=1, interval=500.0
-    )
+    regular_timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
     sim_conf.add(regular_timestamps, name="Timestamps")
 
-    sync = obi.FullySynchronousSpikeStimulus(
+    sync = FullySynchronousSpikeStimulus(
         timestamps=regular_timestamps.ref,
         source_neuron_set=source_set.ref,
     )
     sim_conf.add(sync, name="SyncStim")
 
     # node_set=None should trigger default AllNeurons
-    initialize = obi.CircuitSimulationScanConfig.Initialize(
+    initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit, node_set=None, simulation_length=sim_duration
     )
     sim_conf.set(initialize, name="initialize")
@@ -619,13 +622,13 @@ class TestSimCampaignMissingSourceNeuronSet:
         sim_conf = _build_config_no_source_neuron_set()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_source_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         for instance in scan.single_configs:
             sim_dir = tmp_path / scan.output_root / str(instance.idx)
@@ -653,13 +656,13 @@ class TestSimCampaignMissingTargetNeuronSet:
         sim_conf = _build_config_no_target_neuron_set()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_target_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         for instance in scan.single_configs:
             sim_dir = tmp_path / scan.output_root / str(instance.idx)
@@ -683,13 +686,13 @@ class TestSimCampaignNoNeuronSetsAtAll:
         sim_conf = _build_config_no_neuron_sets_at_all()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_nsets_scan",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         default_nset = "Default: All Biophysical Neurons"
 
@@ -728,13 +731,13 @@ class TestSimCampaignMissingInitializeNodeSet:
         sim_conf = _build_config_no_node_set_on_initialize()
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "no_init_nset",
             coordinate_directory_option="ZERO_INDEX",
         )
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         default_nset = "Default: All Biophysical Neurons"
 
@@ -758,23 +761,23 @@ class TestSimCampaignMissingInitializeNodeSet:
 
 class TestSpikeStimParameterSweep:
     def test_poisson_frequency_sweep(self, tmp_path):
-        sim_conf = obi.CircuitSimulationScanConfig.empty_config()
-        info = obi.Info(campaign_name="Sweep", campaign_description="Frequency sweep")
+        sim_conf = CircuitSimulationScanConfig.empty_config()
+        info = Info(campaign_name="Sweep", campaign_description="Frequency sweep")
         sim_conf.set(info, name="info")
 
         circuit = _make_circuit()
 
         neuron_set = BiophysicalPopulationIDNeuronSet(
-            neuron_ids=obi.NamedTuple(name="IDs", elements=range(10)),
+            neuron_ids=NamedTuple(name="IDs", elements=range(10)),
             population="S1nonbarrel_neurons",
         )
         sim_conf.add(neuron_set, name="Neurons")
 
-        ts = obi.RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
+        ts = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
         sim_conf.add(ts, name="Timestamps")
 
         # Sweep over two frequencies
-        poisson = obi.PoissonSpikeStimulus(
+        poisson = PoissonSpikeStimulus(
             duration=500.0,
             timestamps=ts.ref,
             frequency=[5.0, 50.0],
@@ -784,14 +787,14 @@ class TestSpikeStimParameterSweep:
         )
         sim_conf.add(poisson, name="PoissonSweep")
 
-        initialize = obi.CircuitSimulationScanConfig.Initialize(
+        initialize = CircuitSimulationScanConfig.Initialize(
             circuit=circuit, node_set=neuron_set.ref, simulation_length=1000.0
         )
         sim_conf.set(initialize, name="initialize")
 
         validated = sim_conf.validated_config()
 
-        scan = obi.GridScanGenerationTask(
+        scan = GridScanGenerationTask(
             form=validated,
             output_root=tmp_path / "freq_sweep",
             coordinate_directory_option="ZERO_INDEX",
@@ -799,7 +802,7 @@ class TestSpikeStimParameterSweep:
         assert len(scan.multiple_value_parameters()) == 1
         assert len(scan.coordinate_parameters()) == 2
         scan.execute()
-        obi.run_tasks_for_generated_scan(scan)
+        run_tasks_for_generated_scan(scan)
 
         # Compare spike counts between low and high frequency
         pop = circuit.default_population_name

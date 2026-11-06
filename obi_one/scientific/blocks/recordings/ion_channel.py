@@ -86,11 +86,11 @@ class IonChannelVariableForRecording(OBIBaseModel):
 class IonChannelVariableRecording(Recording):
     """Records a variable of an ion channel model for the full length of the experiment."""
 
-    title: ClassVar[str] = "Ion Channel Variable Recording (Full Experiment)"
+    title: ClassVar[str] = "Ion channel variable recording (full experiment)"
 
     # RECORDABLE_VARIABLES has shape {model name: [IonChannelVariableForRecording, ...]}
     variable: IonChannelVariableForRecording = Field(
-        title="Ion Channel Variable Name",
+        title="Ion channel variable name",
         description="Name of the variable to record with its unit, "
         "grouped by ion channel model name.",
         json_schema_extra={

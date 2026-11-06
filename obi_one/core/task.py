@@ -1,16 +1,23 @@
 import abc
 import logging
+from typing import Annotated
 
 from entitysdk import Client
 from entitysdk.models import TaskActivity
+from pydantic import ConfigDict, Field
 
 from obi_one.core.base import OBIBaseModel
 from obi_one.db_sdk import db_sdk
+from obi_one.utils.shared_cache import SharedCache
 
 L = logging.getLogger(__name__)
 
 
 class Task(OBIBaseModel, abc.ABC):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    shared_cache: Annotated[SharedCache | None, Field(exclude=True)] = None
+
     @staticmethod
     def _get_execution_activity(
         db_client: Client | None = None,
@@ -30,7 +37,7 @@ class Task(OBIBaseModel, abc.ABC):
 
     @staticmethod
     def _update_execution_activity(
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         execution_activity: TaskActivity | None = None,
         generated: list[str] | None = None,
     ) -> TaskActivity | None:
