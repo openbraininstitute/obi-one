@@ -36,8 +36,11 @@ _VALID_SECTION_LISTS: set[str] = {
 }
 
 
-def _expand_section_list(section_list: str) -> list[str]:
-    """Expand a section-list alias into concrete section lists."""
+def expand_section_list(section_list: str) -> list[str]:
+    """Expand a section-list alias (e.g. ``all``) into concrete section lists.
+
+    A name that is not an alias is returned alone, unchanged.
+    """
     return _MULTILOC_MAP.get(section_list, [section_list])
 
 
@@ -45,7 +48,7 @@ def _expand_section_lists(section_lists: list[str]) -> list[str]:
     """Expand aliases in a list of section lists and keep order unique."""
     expanded: list[str] = []
     for section_list in section_lists:
-        expanded.extend(_expand_section_list(section_list))
+        expanded.extend(expand_section_list(section_list))
     return list(dict.fromkeys(expanded))
 
 
@@ -181,7 +184,7 @@ def get_mechanism_variables_for_emodel(
     ]
 
     # Add section properties (cm and Ra) for all section lists
-    section_properties = _extract_section_properties(channel_mapping)
+    section_properties = extract_section_properties(channel_mapping)
     merged.extend(section_properties)
 
     return merged, channel_mapping
@@ -258,7 +261,7 @@ def _parse_optimization_parameters(
         # Determine variable type: GLOBAL only if in neuron_block.global_, otherwise RANGE
         variable_type = "GLOBAL" if _is_global_variable(emodel, neuron_variable) else "RANGE"
 
-        expanded_section_lists = _expand_section_list(section_list)
+        expanded_section_lists = expand_section_list(section_list)
         parsed.extend(
             MechanismVariable(
                 neuron_variable=neuron_variable,
@@ -493,7 +496,7 @@ def _get_ion_channel_variables(emodel: EModel) -> list[MechanismVariable]:
     return variables
 
 
-def _extract_section_properties(
+def extract_section_properties(
     channel_mapping: ChannelSectionListMapping,
 ) -> list[MechanismVariable]:
     r"""Extract cm and Ra properties for all section lists.

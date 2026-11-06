@@ -1,5 +1,7 @@
+import itertools
 import logging
-from typing import TYPE_CHECKING
+import math
+from typing import TYPE_CHECKING, Self
 
 from pydantic import GetJsonSchemaHandler, PrivateAttr
 from pydantic.json_schema import JsonSchemaValue
@@ -8,7 +10,7 @@ from pydantic_core import CoreSchema
 from obi_one.core.base import OBIBaseModel
 from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.param import MultiValueScanParam
-from obi_one.core.parametric_multi_values import ParametericMultiValue
+from obi_one.core.parametric_multi_values import MAX_N_COORDINATES, ParametericMultiValue
 from obi_one.utils.pydantic import order_schema_properties
 
 if TYPE_CHECKING:
@@ -125,3 +127,47 @@ class Block(OBIBaseModel, extra="forbid"):
             if isinstance(value, ParametericMultiValue):
                 msg = f"Attribute '{key}' must not be a ParametericMultiValue."
                 raise TypeError(msg)
+
+    def expand_multi_values(self, max_n: int = MAX_N_COORDINATES) -> list[Self]:
+        """Expand multi-value parameters into single-valued copies of this block.
+
+        The same Cartesian product a ScanConfig makes, for a block used outside a scan
+        (e.g. by an endpoint) that still carries swept fields.
+
+        Args:
+            max_n: Maximum number of single-valued blocks allowed.
+
+        Returns:
+            Single-valued copies of this block; ``[self]`` when nothing is swept.
+
+        Raises:
+            ValueError: More than ``max_n`` combinations, or a swept value nested inside a
+                ComplexVariableHolder (only top-level fields are supported).
+        """
+        params = self.multiple_value_parameters(category_name="block")
+        if not params:
+            return [self]
+
+        top_level_location_len = 2  # [category_name, field_name]
+        for param in params:
+            if len(param.location_list) != top_level_location_len:
+                msg = f"Cannot expand nested multi-value parameter '{param.location_str}'."
+                raise ValueError(msg)
+
+        n_combinations = math.prod(len(param.values) for param in params)
+        if n_combinations > max_n:
+            msg = (
+                f"Number of single-valued blocks {n_combinations} exceeds maximum allowed {max_n}."
+            )
+            raise ValueError(msg)
+
+        return [
+            self.model_copy(
+                update={
+                    param.location_list[1]: value
+                    for param, value in zip(params, combination, strict=True)
+                },
+                deep=True,
+            )
+            for combination in itertools.product(*(param.values for param in params))
+        ]
