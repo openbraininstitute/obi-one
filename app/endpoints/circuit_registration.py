@@ -342,11 +342,17 @@ def validate_circuit_endpoint(
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
     compute_cell: ComputeCellDep,
     force: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
+    generate_assets: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument]
 ) -> dict:
     """Trigger (re-)validation for a circuit.
 
     By default only ``draft`` circuits are validated. Pass ``force=true`` to
     re-validate an active or disqualified circuit.
+
+    Pass ``generate_assets=true`` to trigger asset generation once the validation
+    succeeded (as the ``/circuit/register`` flow does). This is used by
+    ``register_circuit_with_remote_validation`` for circuits registered directly
+    through the SDK, which have no generated assets yet.
 
     Returns ``job_id`` so clients can follow progress and logs via
     ``GET /declared/task/{job_id}`` and ``GET /declared/task/{job_id}/stream``
@@ -367,7 +373,7 @@ def validate_circuit_endpoint(
         virtual_lab_id=db_client.project_context.virtual_lab_id,  # ty:ignore[unresolved-attribute, invalid-argument-type]
         compute_cell=compute_cell,
         force=force,
-        generate_assets_on_success=False,
+        generate_assets_on_success=generate_assets,
     )
     if job_id is None:
         raise HTTPException(
