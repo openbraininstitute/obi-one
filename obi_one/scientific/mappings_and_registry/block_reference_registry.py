@@ -73,6 +73,10 @@ _BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         f"{_BLOCK_REFERENCES}.extracellular_locations",
         "ExtracellularLocationsReference",
     ),
+    "PathwayStructuralConnModelReference": (
+        f"{_BLOCK_REFERENCES}.structural_conn_models",
+        "PathwayStructuralConnModelReference",
+    ),
 }
 
 

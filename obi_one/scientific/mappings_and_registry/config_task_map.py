@@ -333,6 +333,12 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_config_type=TaskConfigType.circuit_simplification__config,
         single_task_activity_type=TaskActivityType.circuit_simplification__execution,
     ),
+    TaskType.circuit_rewiring: TaskSpec(
+        task_ref=(f"{_TASKS}.circuit_rewiring.task", "CircuitRewiringTask"),
+        single_config_ref=(f"{_TASKS}.circuit_rewiring.config", "CircuitRewiringSingleConfig"),
+        scan_config_ref=(f"{_TASKS}.circuit_rewiring.config", "CircuitRewiringScanConfig"),
+        asset_label=None,
+    ),
     TaskType.circuit_simulation_neurodamus_machine: TaskSpec(
         task_ref=(f"{_SIMULATION_EXECUTION}.task", "CircuitSimulationExecutionTask"),
         single_config_ref=(
