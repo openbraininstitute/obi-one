@@ -12,7 +12,7 @@ bigrandomgraphs==0.1.1
 blosc2==4.14.1
 bluecellulab==2.6.111
 bluepyefe==2.3.63
-bluepysnap==3.0.9
+bluepysnap==3.0.10
 brainbuilder==0.20.9
 brian2==2.10.1
 cached-property==2.0.1
