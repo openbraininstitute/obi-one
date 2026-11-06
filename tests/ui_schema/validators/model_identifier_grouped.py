@@ -1,8 +1,8 @@
 """Validator for the `model_identifier_grouped` block UI element."""
 
-from jsonschema import Draft7Validator, RefResolver, ValidationError
+from jsonschema import Draft7Validator, ValidationError
 
-from .shared import openapi_schema, resolve_ref
+from .shared import get_ref_resolver, openapi_schema, resolve_ref
 
 
 def validate_model_identifier_grouped(schema: dict, param: str, ref: str) -> None:
@@ -51,8 +51,9 @@ def validate_model_identifier_grouped(schema: dict, param: str, ref: str) -> Non
         raise ValidationError(msg)
 
     # Each element must validate a model-identifier ({"id_str": ...}) object.
-    resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(elements.get("items", {}), resolver=resolver)
+    validator = Draft7Validator(
+        elements.get("items", {}), resolver=get_ref_resolver(openapi_schema)
+    )
     obj = {"id_str": "model_id"}
     try:
         validator.validate(obj)

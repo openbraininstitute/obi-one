@@ -1,8 +1,8 @@
 """Validator for the `ion_channel_model_properties` block UI element."""
 
-from jsonschema import RefResolver, ValidationError, validate
+from jsonschema import ValidationError, validate
 
-from .shared import accepts_null, openapi_schema, resolve_ref, validate_string
+from .shared import accepts_null, get_ref_resolver, openapi_schema, resolve_ref, validate_string
 
 ID = "00000000-0000-0000-0000-000000000000"
 
@@ -18,7 +18,7 @@ PROPERTIES = {
 
 def _accepts(schema: dict, value: object) -> bool:
     try:
-        validate(value, schema, resolver=RefResolver.from_schema(openapi_schema))
+        validate(value, schema, resolver=get_ref_resolver(openapi_schema))
     except ValidationError:
         return False
     return True
