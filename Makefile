@@ -12,10 +12,10 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-library-local test-service-local test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-obi_one-local test-app-local test-docker run-local run-docker destroy
 
-LIBRARY_TEST_PATHS := tests/obi_one tests/launch_scripts
-SERVICE_TEST_PATHS := tests/app tests/ui_schema
+OBI_ONE_TEST_PATHS := tests/obi_one tests/launch_scripts
+APP_TEST_PATHS := tests/app tests/ui_schema
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -109,25 +109,25 @@ build:  ## Build the Docker image
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
 
-test-library-local:  ## Run library tests locally with coverage
+test-obi_one-local:  ## Run obi_one (library) tests locally with coverage
 	@$(call load_env,test-local)
 	mkdir -p .coverage
-	COVERAGE_FILE=.coverage/coverage-library.db \
-	uv run -m pytest $(LIBRARY_TEST_PATHS) \
+	COVERAGE_FILE=.coverage/coverage-obi_one.db \
+	uv run -m pytest $(OBI_ONE_TEST_PATHS) \
 		--cov=obi_one \
 		--cov-report=term-missing \
-		--cov-report=xml:.coverage/coverage-library.xml
+		--cov-report=xml:.coverage/coverage-obi_one.xml
 
-test-service-local:  ## Run service tests locally with coverage (expects install-service / --extra service)
+test-app-local:  ## Run app tests locally with coverage (expects install-service / --extra service)
 	@$(call load_env,test-local)
 	mkdir -p .coverage
-	COVERAGE_FILE=.coverage/coverage-service.db \
-	uv run -m pytest $(SERVICE_TEST_PATHS) \
+	COVERAGE_FILE=.coverage/coverage-app.db \
+	uv run -m pytest $(APP_TEST_PATHS) \
 		--cov=app \
 		--cov-report=term-missing \
-		--cov-report=xml:.coverage/coverage-service.xml
+		--cov-report=xml:.coverage/coverage-app.xml
 
-test-local: test-library-local test-service-local  ## Run library then service tests locally
+test-local: test-obi_one-local test-app-local  ## Run obi_one then app tests locally
 
 test-file: ## Run tests in a single test file locally. Usage: make test-file FILE=path/to/test_file.py
 	@$(call load_env,test-local)

@@ -4,35 +4,35 @@ coverage:
       default:
         target: auto
         flags:
-          - library
-          - service
-      library:
+          - obi_one
+          - app
+      obi_one:
         target: auto
         flags:
-          - library
-      service:
+          - obi_one
+      app:
         target: auto
         flags:
-          - service
+          - app
     patch:
       default:
         target: auto
-      library:
+      obi_one:
         target: auto
         flags:
-          - library
-      service:
+          - obi_one
+      app:
         target: auto
         flags:
-          - service
+          - app
 
 flag_management:
   individual_flags:
-    - name: library
+    - name: obi_one
       paths:
         - obi_one/
       carryforward: false
-    - name: service
+    - name: app
       paths:
         - app/
       carryforward: false

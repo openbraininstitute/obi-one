@@ -94,8 +94,8 @@ jobs:
       - name: Run pip-audit
         run: make pip-audit
 
-  test-library:
-    name: library
+  test-obi_one:
+    name: obi_one
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -126,29 +126,29 @@ jobs:
           echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
           echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
           echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
-      - name: Guard library suite has no app imports
+      - name: Guard obi_one suite has no app imports
         run: |
           if grep -RInE 'from app(\.| import)|import app(\.|$)' tests/obi_one tests/launch_scripts --include='*.py'; then
-            echo "::error::Library/launch_scripts tests must not import app"
+            echo "::error::obi_one/launch_scripts tests must not import app"
             exit 1
           fi
-      - name: Install all extras (library suite)
+      - name: Install all extras (obi_one suite)
         run: make install-all
-      - name: Run library tests
-        run: make test-library-local
-      - name: Upload library coverage to Codecov
+      - name: Run obi_one tests
+        run: make test-obi_one-local
+      - name: Upload obi_one coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openbraininstitute/obi-one
           fail_ci_if_error: false
-          files: .coverage/coverage-library.xml
-          flags: library
-          name: library
+          files: .coverage/coverage-obi_one.xml
+          flags: obi_one
+          name: obi_one
           verbose: true
 
-  test-service:
-    name: service
+  test-app:
+    name: app
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -181,15 +181,15 @@ jobs:
           echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
       - name: Install service extra
         run: make install-service
-      - name: Run service tests
-        run: make test-service-local
-      - name: Upload service coverage to Codecov
+      - name: Run app tests
+        run: make test-app-local
+      - name: Upload app coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openbraininstitute/obi-one
           fail_ci_if_error: false
-          files: .coverage/coverage-service.xml
-          flags: service
-          name: service
+          files: .coverage/coverage-app.xml
+          flags: app
+          name: app
           verbose: true
