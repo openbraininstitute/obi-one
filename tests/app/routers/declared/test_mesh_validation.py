@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 
 from app.dependencies.auth import user_verified
 from app.endpoints.mesh_validation import (
-    MAX_FILE_SIZE,
     VALID_MESH_EXTENSIONS,
     FileTooLargeError,
     ValidationStatus,
@@ -235,8 +234,11 @@ def test_validate_mesh_reader_returns_mesh_on_success():
     assert result is mock_mesh
 
 
-def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream():
-    chunk1 = b"x" * (MAX_FILE_SIZE - 10)
+def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream(monkeypatch):
+    # Avoid allocating a multi-GB buffer; the production limit is 5 GiB.
+    limit = 100
+    monkeypatch.setattr("app.endpoints.mesh_validation.MAX_FILE_SIZE", limit)
+    chunk1 = b"x" * (limit - 10)
     chunk2 = b"x" * 20
 
     mock_file = MagicMock()
