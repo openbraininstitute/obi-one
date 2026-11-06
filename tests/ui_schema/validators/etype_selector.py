@@ -1,10 +1,10 @@
 """Validator for the `etype_selector` block UI element."""
 
-from jsonschema import Draft7Validator, RefResolver, ValidationError
+from jsonschema import Draft7Validator, ValidationError
 
 from obi_one.core.schema import SchemaKey
 
-from .shared import openapi_schema
+from .shared import openapi_resolver
 
 
 def validate_etype_selector(schema: dict, param: str, ref: str) -> None:
@@ -21,8 +21,7 @@ def validate_etype_selector(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
-    resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(schema, resolver=resolver)
+    validator = Draft7Validator(schema, resolver=openapi_resolver)
 
     obj = {"id_str": "etype_id"}
     try:

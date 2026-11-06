@@ -1,13 +1,12 @@
 """Validator for the `model_identifier` block UI element."""
 
-from jsonschema import Draft7Validator, RefResolver, ValidationError
+from jsonschema import Draft7Validator, ValidationError
 
-from .shared import openapi_schema
+from .shared import openapi_resolver
 
 
 def validate_model_identifier(schema: dict, param: str, ref: str) -> None:
-    resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(schema, resolver=resolver)
+    validator = Draft7Validator(schema, resolver=openapi_resolver)
 
     obj = {"id_str": "model_id"}
 
