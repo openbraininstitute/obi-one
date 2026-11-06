@@ -113,8 +113,13 @@ format_count: ## Count the number of errors by file
 format_types: ## Count the number of errors by type
 	uv run ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
-build:  ## Build the Docker image
-	docker compose --profile "*" --progress=plain build app
+build: BUILDER ?=
+build:  ## Build the Docker image. CI may set BUILDER, CACHE_FROM, CACHE_TO (e.g. type=gha).
+	docker compose --profile "*" --progress=plain build \
+		$(if $(BUILDER),--builder "$(BUILDER)") \
+		$(if $(CACHE_FROM),--cache-from "$(CACHE_FROM)") \
+		$(if $(CACHE_TO),--cache-to "$(CACHE_TO)") \
+		app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
