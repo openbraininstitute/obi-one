@@ -4,11 +4,14 @@ services:
     image: "${IMAGE_NAME}:${IMAGE_TAG}"
 #    platform: linux/amd64  # for pyflagser
     user: root  # only for tests, needed to write in the coverage directory
+    environment:
+      COVERAGE_FILE: ${COVERAGE_FILE:-.coverage/coverage.db}
+      PYTEST_ARGS: ${PYTEST_ARGS:-}
     command:
     - sh
     - -cx
     - |
-      python -m pytest && coverage xml
+      python -m pytest $$PYTEST_ARGS
     volumes:
     - ./launch_scripts:/code/launch_scripts:ro
     - ./tests:/code/tests

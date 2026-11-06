@@ -13,15 +13,6 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 from entitysdk.types import DerivationType
 
-from app.mappings import TASK_DEFINITIONS
-from app.services.resource_estimation.circuit_simplification import (
-    FILTER_ALGORITHMS,
-    FILTER_WORK_UNITS_PER_CORE,
-    POINT_NEURON_WORK_UNITS_PER_CORE,
-    _get_required_cpu_memory_combo,
-)
-from app.services.task import estimate_task_resources
-from app.types import TaskType
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import (
@@ -96,74 +87,6 @@ class TestSimplificationBlock:
         """The algorithms field should use the block_dictionary UI element."""
         field = CircuitSimplificationScanConfig.model_fields["algorithms"]
         assert field.json_schema_extra["ui_element"] == "block_dictionary"
-
-
-class TestTaskDefinitionsEntry:
-    """Test that circuit_simplification is in TASK_DEFINITIONS (P0)."""
-
-    def test_task_type_in_definitions(self):
-        """circuit_simplification should be in TASK_DEFINITIONS."""
-        assert TaskType.circuit_simplification in TASK_DEFINITIONS
-
-    def test_task_definition_has_resources(self):
-        """The TASK_DEFINITIONS entry should have resources."""
-        td = TASK_DEFINITIONS[TaskType.circuit_simplification]
-        assert td.resources is not None
-        assert td.resources.cores >= 1
-
-
-class TestResourceEstimatorDispatch:
-    """Test that circuit_simplification has a resource estimator dispatch arm (C8)."""
-
-    def test_dispatch_arm_exists(self):
-        """estimate_task_resources should dispatch circuit_simplification."""
-        source = inspect.getsource(estimate_task_resources)
-        assert "circuit_simplification" in source
-
-
-class TestCpuMemoryCombo:
-    """Tests for F6: _get_required_cpu_memory_combo must satisfy both cores AND memory."""
-
-    def test_returns_preset_with_enough_cores(self):
-        """Should return a preset with at least the requested core count."""
-
-        ncpu, mem = _get_required_cpu_memory_combo(min_cores=8, mem_gb_required=16.0)
-        assert ncpu >= 8
-        assert mem >= 16
-
-    def test_does_not_underallocate_cores(self):
-        """Should not return 1 CPU when 8 are required, even if memory is small."""
-
-        # Small memory need but large compute need
-        ncpu, _mem = _get_required_cpu_memory_combo(min_cores=8, mem_gb_required=2.0)
-        assert ncpu >= 8, f"Expected >=8 cores, got {ncpu}"
-
-    def test_returns_smallest_satisfying_preset(self):
-        """Should return the smallest preset that satisfies both constraints."""
-
-        ncpu, mem = _get_required_cpu_memory_combo(min_cores=2, mem_gb_required=4.0)
-        assert ncpu == 2
-        assert mem == 4
-
-    def test_raises_when_no_preset_satisfies(self):
-        """Should raise when no preset can satisfy the requirements."""
-
-        with pytest.raises(ValueError, match="No CPU/memory combination"):
-            _get_required_cpu_memory_combo(min_cores=32, mem_gb_required=200.0)
-
-
-class TestAlgorithmAwareSizing:
-    """Tests for F6: estimator should account for algorithm type."""
-
-    def test_filter_algorithm_constant_exists(self):
-        """FILTER_ALGORITHMS should contain single_compartment."""
-
-        assert "single_compartment" in FILTER_ALGORITHMS
-
-    def test_point_neuron_constants_exist(self):
-        """Point-neuron calibration constants should exist and be larger than filter ones."""
-
-        assert POINT_NEURON_WORK_UNITS_PER_CORE > FILTER_WORK_UNITS_PER_CORE
 
 
 class TestApiCompatibility:

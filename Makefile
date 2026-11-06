@@ -12,7 +12,10 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app build publish test-local test-lib-local test-app-local test-app-docker run-local run-docker destroy
+
+LIB_TEST_PATHS := tests/obi_one tests/launch_scripts
+APP_TEST_PATHS := tests/app tests/ui_schema
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -89,10 +92,20 @@ format:  ## Run formatters
 	uv run ruff check --fix $(FILE)
 	uv run ty check --fix $(FILE)
 
-lint:  ## Run linters
-	uv run ruff format --check
-	uv run ruff check
-	uv run ty check --error-on-warning
+# Shared test helpers used by both suites (owned by the lib lint path).
+SHARED_TEST_PATHS := tests/conftest.py tests/utils.py tests/httpx_mock.py
+
+lint-lib:  ## Lint/format-check obi_one + its tests + launch_scripts
+	uv run ruff format --check obi_one tests/obi_one launch_scripts tests/launch_scripts $(SHARED_TEST_PATHS)
+	uv run ruff check obi_one tests/obi_one launch_scripts tests/launch_scripts $(SHARED_TEST_PATHS)
+	uv run ty check --error-on-warning obi_one launch_scripts
+
+lint-app:  ## Lint/format-check app + its tests + ui_schema
+	uv run ruff format --check app tests/app tests/ui_schema
+	uv run ruff check app tests/app tests/ui_schema
+	uv run ty check --error-on-warning app
+
+lint: lint-lib lint-app  ## Run all linters (lib then app)
 
 format_count: ## Count the number of errors by file
 	uv run ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
@@ -106,11 +119,25 @@ build:  ## Build the Docker image
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
 
-test-local:  ## Run tests locally
+test-lib-local:  ## Run lib (obi_one + launch_scripts) tests locally with coverage
 	@$(call load_env,test-local)
-	uv run -m pytest
-	uv run -m coverage xml
-	uv run -m coverage html
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-lib.db \
+	uv run -m pytest $(LIB_TEST_PATHS) \
+		--cov=obi_one \
+		--cov-report=term-missing \
+		--cov-report=xml:.coverage/coverage-lib.xml
+
+test-app-local:  ## Run app tests locally with coverage (expects install-service / --extra service)
+	@$(call load_env,test-local)
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-app.db \
+	uv run -m pytest $(APP_TEST_PATHS) \
+		--cov=app \
+		--cov-report=term-missing \
+		--cov-report=xml:.coverage/coverage-app.xml
+
+test-local: test-lib-local test-app-local  ## Run lib then app tests locally (host)
 
 test-file: ## Run tests in a single test file locally. Usage: make test-file FILE=path/to/test_file.py
 	@$(call load_env,test-local)
@@ -124,7 +151,10 @@ test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
-test-docker: build  ## Run tests in Docker
+test-app-docker: build  ## Run app tests in Docker (production image, --extra service)
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-app.db \
+	PYTEST_ARGS="$(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
 	docker compose run --rm --remove-orphans test
 
 pip-audit:  ## Run package auditing
