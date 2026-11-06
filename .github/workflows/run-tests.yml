@@ -54,6 +54,7 @@ jobs:
           fi
 
   checks:
+    name: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read
