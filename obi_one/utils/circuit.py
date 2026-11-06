@@ -750,6 +750,7 @@ def run_basic_connectivity_plots(
     plots_init = BasicConnectivityPlotsScanConfig.Initialize(
         matrix_path=matrix_path,
         plot_formats=("png",),
+        dpi=72,  # asset overview plots; 300 dpi roughly doubles wall time
         rendering_cmap="tab10",
         plot_types=plot_types,
     )

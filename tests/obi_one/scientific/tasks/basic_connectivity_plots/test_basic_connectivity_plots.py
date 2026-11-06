@@ -32,6 +32,7 @@ def test_basic_connectivity_plots(tmp_path):
     plot_init = BasicConnectivityPlotsScanConfig.Initialize(
         matrix_path=matrix_list,
         plot_formats=("png", "pdf", "svg"),
+        dpi=72,  # 300 dpi roughly doubles wall time; formats/plot types still covered
         rendering_cmap="custom",
         rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
     )
