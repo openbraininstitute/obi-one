@@ -213,4 +213,8 @@ Full circuit validation after merge:
 The limit applies per file, not to the total request size.
 This affects every endpoint that receives files as multipart form data, namely `POST /declared/circuit/register` (`circuit_archive`) and `POST /declared/circuit/customize` (edges, nodes, e-model, mechanism, node sets and circuit config files).
 The limit is enforced before the request reaches the application, so the endpoints cannot return a descriptive error for it.
-Circuits or override files with a single file above 2 GB cannot be registered or customized through these endpoints until a workaround is in place.
+Circuits or override files with a single file above 2 GB cannot be registered or customized through these endpoints.
+For registration there is a workaround: `obi_one.db_sdk.registration.circuit.remote.register_circuit_with_remote_validation` registers the circuit as `draft` directly through entitysdk, so the files bypass the limit, and then calls `POST /declared/circuit/{id}/validate?generate_assets=true`.
+Validation then runs as usual and triggers asset generation on success.
+The function accepts both compressed (`.gz`) and uncompressed circuits.
+For customization there is no workaround yet.
