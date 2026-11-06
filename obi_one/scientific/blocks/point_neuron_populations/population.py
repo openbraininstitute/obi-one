@@ -75,7 +75,7 @@ class PointNeuronPopulation(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     x_max: float | list[float] = Field(
-        default=100.0,
+        default=1000.0,
         description="Upper bound (in um) of the interval the x-coordinate of neuron positions is"
         " drawn from uniformly.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
@@ -99,7 +99,7 @@ class PointNeuronPopulation(Block):
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
     z_max: float | list[float] = Field(
-        default=100.0,
+        default=1000.0,
         description="Upper bound (in um) of the interval the z-coordinate of neuron positions is"
         " drawn from uniformly.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
