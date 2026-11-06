@@ -18,7 +18,11 @@ PathDistanceToleranceParameter = Annotated[float, Field(ge=1.0)]
 
 
 class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
-    """Locations uniformly sampled near a specified soma path distance."""
+    """Locations uniformly sampled near a specified soma path distance.
+
+    ``n_groups`` splits the locations into that many groups; for synapse placement each group is a
+    distinct presynaptic neuron.
+    """
 
     title: ClassVar[str] = "Path distance morphology locations"
 
@@ -56,7 +60,7 @@ class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
             morphology,
             n_centers=self.number_of_locations,  # ty:ignore[invalid-argument-type]
             n_per_center=1,
-            srcs_per_center=1,
+            srcs_per_center=self.n_groups,  # ty:ignore[invalid-argument-type]
             center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
             center_path_distances_sd=0.1 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
             max_dist_from_center=0.9 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]

@@ -11,7 +11,6 @@ import pytest
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.morphology_locations.clustered import (
-    ClusteredGroupedMorphologyLocations,
     ClusteredMorphologyLocations,
     ClusteredPathDistanceMorphologyLocations,
 )
@@ -23,7 +22,6 @@ from obi_one.scientific.blocks.morphology_locations.path_distance import (
     PathDistanceMorphologyLocations,
 )
 from obi_one.scientific.blocks.morphology_locations.random import (
-    RandomGroupedMorphologyLocations,
     RandomMorphologyLocations,
 )
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
@@ -51,17 +49,13 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 
 MORPHOLOGY_POPULATION = "S1nonbarrel_neurons"
 
+# n_groups is set > 1 on a couple of members so grouped placement is exercised through the
+# base blocks that now own the field, instead of the retired dedicated "Grouped" subclasses.
 MORPHOLOGY_LOCATIONS = {
     "RandomMorphologyLocations": RandomMorphologyLocations(
-        random_seed=0, number_of_locations=3, section_types=(3, 4)
-    ),
-    "RandomGroupedMorphologyLocations": RandomGroupedMorphologyLocations(
         random_seed=0, number_of_locations=4, n_groups=2, section_types=(3, 4)
     ),
     "ClusteredMorphologyLocations": ClusteredMorphologyLocations(
-        random_seed=0, number_of_locations=4, n_clusters=2, section_types=(3, 4)
-    ),
-    "ClusteredGroupedMorphologyLocations": ClusteredGroupedMorphologyLocations(
         random_seed=0, number_of_locations=4, n_clusters=2, n_groups=2, section_types=(3, 4)
     ),
     "PathDistanceMorphologyLocations": PathDistanceMorphologyLocations(

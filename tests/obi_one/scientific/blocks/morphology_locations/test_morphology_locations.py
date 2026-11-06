@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from morphio import PointLevel, SectionType
 from morphio.mut import Morphology as MutMorphology
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.morphology_locations.clustered import (
@@ -29,6 +29,10 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_OFF,
     OptimizedMorphologyPathDistanceCalculator,
     add_normalized_section_offset,
+)
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    CircuitMorphologyLocationUnion,
+    MorphologyLocationUnion,
 )
 
 
@@ -101,6 +105,73 @@ def test_explicit_morphology_locations_do_not_expose_sampling_parameters(paramet
 @pytest.mark.parametrize("parameter", ["number_of_locations", "random_seed", "section_types"])
 def test_generated_morphology_locations_expose_sampling_parameters(parameter):
     assert parameter in RandomMorphologyLocations.model_fields
+
+
+@pytest.mark.parametrize(
+    "block_type",
+    [
+        RandomMorphologyLocations,
+        ClusteredMorphologyLocations,
+        ClusteredPathDistanceMorphologyLocations,
+        PathDistanceMorphologyLocations,
+    ],
+)
+def test_every_generated_block_owns_the_group_count(block_type):
+    """n_groups moved onto the shared base, so every generated block carries it (default 1)."""
+    assert "n_groups" in block_type.model_fields
+    assert block_type.model_fields["n_groups"].default == 1
+
+
+def test_explicit_morphology_locations_do_not_expose_a_group_count():
+    """A hand-picked block is always a single group (one presynaptic neuron)."""
+    assert "n_groups" not in ExplicitMorphologyLocations.model_fields
+    assert "n_groups" not in ExplicitMorphologyLocations.model_json_schema()["properties"]
+
+
+def test_group_count_must_be_positive():
+    with pytest.raises(ValidationError, match="greater than 0"):
+        RandomMorphologyLocations(number_of_locations=4, n_groups=0, section_types=(3, 4))
+
+
+@pytest.mark.parametrize(
+    ("retired_type", "expected_class"),
+    [
+        ("RandomGroupedMorphologyLocations", RandomMorphologyLocations),
+        ("ClusteredGroupedMorphologyLocations", ClusteredMorphologyLocations),
+    ],
+)
+def test_retired_grouped_type_deserialises_onto_its_base_block(retired_type, expected_class):
+    """Configs saved with a retired grouped type still load, remapped and keeping n_groups."""
+    payload = {
+        "type": retired_type,
+        "number_of_locations": 4,
+        "n_groups": 3,
+        "section_types": [3, 4],
+        "random_seed": 0,
+    }
+    if expected_class is ClusteredMorphologyLocations:
+        payload["n_clusters"] = 2
+
+    block = TypeAdapter(MorphologyLocationUnion).validate_python(payload)
+
+    assert isinstance(block, expected_class)
+    assert block.type == expected_class.__name__
+    assert block.n_groups == 3
+
+
+def test_retired_grouped_type_is_remapped_through_the_circuit_union():
+    block = TypeAdapter(CircuitMorphologyLocationUnion).validate_python(
+        {
+            "type": "RandomGroupedMorphologyLocations",
+            "number_of_locations": 4,
+            "n_groups": 2,
+            "section_types": [3, 4],
+            "random_seed": 0,
+        }
+    )
+
+    assert isinstance(block, RandomMorphologyLocations)
+    assert block.n_groups == 2
 
 
 def test_explicit_morphology_locations_do_not_expose_a_neuron_set():
