@@ -31,7 +31,7 @@ make test-file FILE=tests/path/to/test_file.py
 # Run schema tests only
 make test-schema
 
-# Lint (check only)
+# Lint (check only); also: make lint-obi_one / make lint-app
 make lint
 
 # Format and auto-fix
@@ -162,6 +162,6 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 ## CI/CD
 
-- PR checks: lint, pip-audit, parallel `obi_one` tests (host `install-all`) and `app` tests (Docker image), Codecov flags `obi_one` / `app`
+- PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `obi_one` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `obi_one` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
 - Docker: `make build` / `make publish`
