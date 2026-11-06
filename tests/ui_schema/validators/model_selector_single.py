@@ -1,10 +1,10 @@
 """Validator for the `model_selector_single` block UI element."""
 
-from jsonschema import Draft7Validator, RefResolver, ValidationError
+from jsonschema import Draft7Validator, ValidationError
 
 from obi_one.core.schema import SchemaKey
 
-from .shared import openapi_schema
+from .shared import get_ref_resolver, openapi_schema
 
 
 def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
@@ -21,8 +21,7 @@ def validate_model_selector_single(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg)
 
-    resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(schema, resolver=resolver)
+    validator = Draft7Validator(schema, resolver=get_ref_resolver(openapi_schema))
     obj = {"id_str": "model_id"}
     try:
         validator.validate(obj)

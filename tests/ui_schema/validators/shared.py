@@ -24,17 +24,22 @@ openapi_schema = get_openapi(
     routes=app.routes,
 )
 
-# Rebuilding RefResolver.from_schema for every $ref dominates UI schema test time.
+# Rebuilding RefResolver.from_schema for every $ref / Draft7Validator dominates UI schema test time.
 _ref_resolvers: dict[int, RefResolver] = {}
 
 
-def resolve_ref(openapi_schema: dict, ref: str) -> dict:
-    schema_id = id(openapi_schema)
+def get_ref_resolver(schema: dict) -> RefResolver:
+    """Return a cached ``RefResolver`` for ``schema`` (keyed by object identity)."""
+    schema_id = id(schema)
     resolver = _ref_resolvers.get(schema_id)
     if resolver is None:
-        resolver = RefResolver.from_schema(openapi_schema)
+        resolver = RefResolver.from_schema(schema)
         _ref_resolvers[schema_id] = resolver
-    _, resolved_node = resolver.resolve(ref)
+    return resolver
+
+
+def resolve_ref(openapi_schema: dict, ref: str) -> dict:
+    _, resolved_node = get_ref_resolver(openapi_schema).resolve(ref)
     return resolved_node
 
 
