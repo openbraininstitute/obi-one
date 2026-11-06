@@ -25,7 +25,10 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_constants import TYPES_OF_POINT_NODES
+from obi_one.scientific.library.circuit_constants import (
+    SYNAPSE_PHYSIOLOGY_PROPERTIES,
+    TYPES_OF_POINT_NODES,
+)
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
@@ -473,6 +476,22 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff
             break
 
     return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
+
+
+def has_synapse_physiology(c: Circuit) -> bool:
+    """Returns True if any non-empty edge population has physiological synapse properties.
+
+    Args:
+        c: A Circuit object pointing to a valid SONATA circuit.
+    """
+    c_sonata = c.sonata_circuit
+    for epop_name in c_sonata.edges.population_names:
+        epop = c_sonata.edges[epop_name]
+        if epop.size == 0:
+            continue
+        if any(prop in epop.property_names for prop in SYNAPSE_PHYSIOLOGY_PROPERTIES):
+            return True
+    return False
 
 
 def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path | None:
