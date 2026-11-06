@@ -5,7 +5,7 @@ tags:
 
 # ME-model Build
 
-`MEModelBuildScanConfig` combines one cell morphology and one e-model into an `MEModel`, then calibrates and validates it with bluecellulab.
+`MEModelBuildScanConfig` combines one cell morphology and one e-model into an `MEModel`, then calibrates and validates it with bluecellulab (optional extra: `pip install 'obi-one[bluecellulab]'`).
 
 ## Configuration
 

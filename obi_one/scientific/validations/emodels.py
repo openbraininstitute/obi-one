@@ -67,10 +67,17 @@ def bluecellulab_initializable(
 
     Expects mechanisms to be already compiled.
     """
-    from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
-    from bluecellulab.circuit.circuit_access.definition import (  # ruff: ignore[import-outside-top-level]
-        EmodelProperties,
-    )
+    try:
+        from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
+        from bluecellulab.circuit.circuit_access.definition import (  # ruff: ignore[import-outside-top-level]
+            EmodelProperties,
+        )
+    except ImportError as exc:
+        msg = (
+            "HOC initialization checks require bluecellulab. "
+            "Install with: pip install 'obi-one[bluecellulab]'"
+        )
+        raise ImportError(msg) from exc
 
     emodel_properties = EmodelProperties(
         holding_current=holding_current, threshold_current=threshold_current

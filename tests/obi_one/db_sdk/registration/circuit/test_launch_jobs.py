@@ -70,7 +70,7 @@ class TestSubmitCircuitJobs:
         job = ls_client.post.call_args[1]["json"]
         assert job["code"]["ref"] == "tag:2026.8.12"
         assert job["code"]["dependencies"] == (
-            "launch_scripts/launch_circuit_validation/dependencies/default.txt"
+            "launch_scripts/launch_circuit_validation/dependencies/bluecellulab.txt"
         )
         assert "dependency_constraints" not in job["code"]
         assert job["resources"]["image_type"] == "python_3_12_openmpi5_neuron9_neurodamus"
