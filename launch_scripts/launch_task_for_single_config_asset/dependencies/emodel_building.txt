@@ -9,7 +9,7 @@ anyio==4.15.1
 asttokens==3.0.2
 attrs==26.1.0
 blosc2==4.14.1
-bluecellulab==2.6.106
+bluecellulab==2.6.112
 bluepyefe==2.3.63
 bluepyemodel==1.0.50
 bluepyopt==1.14.25
