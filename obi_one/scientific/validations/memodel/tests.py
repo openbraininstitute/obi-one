@@ -576,6 +576,12 @@ class BPAPTest(ValidationTest):
 class IVCurveTest(ValidationTest):
     """IV curve should have a positive slope."""
 
+    # Validation sweep policy, as factors of the cell's rheobase. Pinned here so a
+    # change to bluecellulab's compute_plot_iv_curve default cannot move registered
+    # validation results.
+    min_amp_factor: float = -1.0
+    max_amp_factor: float = 0.9
+
     def __init__(
         self,
         *,
@@ -594,21 +600,33 @@ class IVCurveTest(ValidationTest):
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        amps, steady_states = compute_plot_iv_curve(
-            Cell.from_template_parameters(template_params),
-            rheobase=rheobase,
-            threshold_voltage=-40.0,
-            nb_bins=5,
-            show_figure=False,
-            save_figure=True,
-            output_dir=out_dir,
-            output_fname="iv_curve.pdf",
-            n_processes=self.n_processes,
-            celsius=self.simulator_config.celsius,
-            v_init=self.simulator_config.v_init,
-        )
-
         fig_path = out_dir / "iv_curve.pdf"
+
+        try:
+            amps, steady_states = compute_plot_iv_curve(
+                Cell.from_template_parameters(template_params),
+                rheobase=rheobase,
+                min_amp=self.min_amp_factor * rheobase,
+                max_amp=self.max_amp_factor * rheobase,
+                threshold_voltage=-40.0,
+                nb_bins=5,
+                show_figure=False,
+                save_figure=True,
+                output_dir=out_dir,
+                output_fname="iv_curve.pdf",
+                n_processes=self.n_processes,
+                celsius=self.simulator_config.celsius,
+                v_init=self.simulator_config.v_init,
+            )
+        except ValueError as error:
+            # A rheobase <= 0 collapses the rheobase-scaled sweep to a single point.
+            # Fail this test rather than aborting the whole validation run.
+            return TestResult(
+                name=self.name,
+                passed=False,
+                details=str(error),
+                figures=[],
+            )
 
         if len(amps) < _MIN_CURVE_POINTS or len(steady_states) < _MIN_CURVE_POINTS:
             return TestResult(

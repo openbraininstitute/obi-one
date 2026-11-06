@@ -60,11 +60,11 @@ dependencies = [
 [project.optional-dependencies]
 # BLUECELLULAB - optional, needed for BlueCelluLab simulation, MEModel calibration/validation,
 # and circuit HOC initialization checks
-bluecellulab = ["bluecellulab>=2.6.111"]
+bluecellulab = ["bluecellulab>=2.6.113"]
 
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation).
 # Includes bluecellulab for MEModel calibration and validation after fitting.
-emodel = ["bluepyemodel>=1.0.50", "bluecellulab>=2.6.111"]
+emodel = ["bluepyemodel>=1.0.50", "bluecellulab>=2.6.113"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
