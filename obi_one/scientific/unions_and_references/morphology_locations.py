@@ -44,6 +44,33 @@ CircuitMorphologyLocationUnion = Annotated[
 ]
 
 
+# Locations that are neither explicit (they name a section/offset but no cell, so they do not
+# transfer between morphologies) nor grouped (grouping assigns locations to distinct presynaptic
+# neurons, which is not meaningful when the presynaptic side is defined by a connectivity model).
+# Clustered locations are allowed.
+_NON_GROUPED_MORPHOLOGY_LOCATIONS = (
+    ClusteredMorphologyLocations
+    | ClusteredPathDistanceMorphologyLocations
+    | PathDistanceMorphologyLocations
+    | RandomMorphologyLocations
+)
+
+NonGroupedMorphologyLocationUnion = Annotated[
+    _NON_GROUPED_MORPHOLOGY_LOCATIONS,
+    Discriminator("type"),
+]
+
+
+class NonGroupedMorphologyLocationsReference(BlockReference):
+    """Reference to a block that generates non-grouped, non-explicit morphology locations."""
+
+    allowed_block_types: ClassVar[Any] = NonGroupedMorphologyLocationUnion
+
+    json_schema_extra_additions: ClassVar[dict] = {
+        "allowed_block_types": BlockReference.get_class_names(_NON_GROUPED_MORPHOLOGY_LOCATIONS)
+    }
+
+
 class MorphologyLocationsReference(BlockReference):
     """Reference to a block that generates morphology locations."""
 
@@ -58,4 +85,6 @@ __all__ = [
     "CircuitMorphologyLocationUnion",
     "MorphologyLocationUnion",
     "MorphologyLocationsReference",
+    "NonGroupedMorphologyLocationUnion",
+    "NonGroupedMorphologyLocationsReference",
 ]

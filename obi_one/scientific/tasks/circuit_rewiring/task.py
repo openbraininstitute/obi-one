@@ -2,7 +2,9 @@ import json
 import logging
 import shutil
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -14,14 +16,30 @@ from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
 from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.distributions.base import Distribution
+from obi_one.scientific.blocks.morphology_locations.base import (
+    GeneratedMorphologyLocationsBlock,
+    MorphologyLocationsBlock,
+)
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
-from obi_one.scientific.blocks.structural_conn_models.base import PathwayConnContext
+from obi_one.scientific.blocks.structural_conn_models.base import (
+    PathwayConnContext,
+    PathwayStructuralConnModel,
+)
+from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
-from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_constants import TYPES_OF_VIRTUAL_NODES
+from obi_one.scientific.library.build_synaptome import (
+    _location_edge_properties,
+    _preserve_numpy_random_state,
+)
+from obi_one.scientific.library.circuit import Circuit, ensure_mechanisms_dir
+from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
 from obi_one.scientific.library.map_em_synapses.constants import STR_POST_NODE, STR_PRE_NODE
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import write_edges
-from obi_one.scientific.tasks.circuit_rewiring.config import CircuitRewiringSingleConfig
+from obi_one.scientific.tasks.circuit_rewiring.config import (
+    CircuitConnectivityPathway,
+    CircuitRewiringSingleConfig,
+)
+from obi_one.scientific.tasks.synapse_parameterization.utils import compatible_with
 
 L = logging.getLogger(__name__)
 
@@ -30,6 +48,29 @@ _EDGE_TYPE = "chemical"
 
 # SONATA node properties holding the soma position, used for distance-dependent connectivity.
 _POSITION_PROPERTIES = ("x", "y", "z")
+
+
+@dataclass(frozen=True)
+class _ResolvedPathway:
+    """A pathway with its references resolved to blocks and its neuron sets to node IDs."""
+
+    index: int
+    name: str
+    conn_model: PathwayStructuralConnModel
+    synapses_per_connection: Distribution
+    locations_block: GeneratedMorphologyLocationsBlock
+    synaptic_model: SynapticModelBase
+    source_ids: dict[str, np.ndarray]
+    target_ids: dict[str, np.ndarray]
+
+
+class _NewEdgePopulation(NamedTuple):
+    """A generated edge population: its node populations, edges file and synaptic models."""
+
+    source_population: str
+    target_population: str
+    edges_file: Path  # relative to the circuit directory
+    synaptic_models: list[SynapticModelBase]
 
 
 class CircuitRewiringTask(Task):
@@ -117,22 +158,6 @@ class CircuitRewiringTask(Task):
         positions = pop.get(node_ids, properties=list(_POSITION_PROPERTIES))
         return positions.to_numpy(dtype=float)
 
-    def _require_non_virtual_target_population(self, population: str) -> None:
-        """Reject a virtual target population.
-
-        A virtual population models spike sources with no dynamics, so a chemical edge whose
-        target is virtual is physiologically meaningless. The target reference field already
-        excludes virtual neuron sets at the type level; this guards the resolved population type
-        as defense-in-depth (e.g. for a combined set that could span populations).
-        """
-        pop = self._circuit.sonata_circuit.nodes[population]  # ty:ignore[unresolved-attribute]
-        if pop.type in TYPES_OF_VIRTUAL_NODES:
-            msg = (
-                f"Target population '{population}' is virtual. Connections cannot target a"
-                " virtual population; use a non-virtual neuron set as the target."
-            )
-            raise OBIONEError(msg)
-
     @staticmethod
     def _expand_by_synapse_count(
         pre: np.ndarray,
@@ -154,9 +179,179 @@ class CircuitRewiringTask(Task):
         counts = np.clip(np.rint(raw).astype(np.int64), 1, None)
         return np.repeat(pre, counts), np.repeat(post, counts)
 
+    def _postsynaptic_location_properties(
+        self,
+        *,
+        locations_block: MorphologyLocationsBlock,
+        pathway_index: int,
+        tgt_pop: str,
+        post: np.ndarray,
+        rng: np.random.Generator,
+    ) -> pd.DataFrame:
+        """Generate the per-edge postsynaptic location columns for one batch of edges.
+
+        Following Build Synaptome, the number of locations equals the number of synapses: every
+        target neuron gets as many locations as it receives edges, generated on its own
+        morphology with ``locations_block`` (whose ``number_of_locations`` is therefore overridden
+        per neuron). The locations are assigned to that
+        neuron's edges in random order, so clustered locations are not tied to source-id order.
+
+        The location seed is derived from the block's ``random_seed``, the pathway index and the
+        target node id: neurons do not share a draw and the result is reproducible.
+
+        Returns a frame with one row per entry of ``post`` (same order) holding the
+        ``afferent_*`` columns written by Build Synaptome.
+        """
+        population = self._circuit.sonata_circuit.nodes[tgt_pop]  # ty:ignore[unresolved-attribute]
+        if population.type not in TYPES_OF_BIOPHYS_NODES:
+            msg = (
+                f"Target population '{tgt_pop}' is of type '{population.type}' and has no"
+                " morphologies, so connection locations cannot be generated on it. Morphology"
+                " locations require a biophysical target population."
+            )
+            raise OBIONEError(msg)
+
+        base_seed = int(getattr(locations_block, "random_seed", 0))
+        order = np.argsort(post, kind="stable")  # groups the edges of each target together
+        targets, starts, counts = np.unique(post[order], return_index=True, return_counts=True)
+
+        frames: list[pd.DataFrame] = []
+        edge_index: list[np.ndarray] = []
+        for target, start, count in zip(targets, starts, counts, strict=True):
+            seed = int(
+                np.random.SeedSequence([base_seed, pathway_index, int(target)]).generate_state(1)[0]
+            )
+            placement = locations_block.model_copy(
+                update={"number_of_locations": int(count), "random_seed": seed}
+            )
+            try:
+                frames.append(
+                    self._locations_on_target(placement, int(target), tgt_pop, int(count))
+                )
+            except (ValueError, KeyError, RuntimeError, OSError) as exc:
+                msg = (
+                    f"Could not generate {count} morphology locations with"
+                    f" {type(locations_block).__name__} on neuron {int(target)} of population"
+                    f" '{tgt_pop}': {exc}"
+                )
+                raise OBIONEError(msg) from exc
+            edge_index.append(order[start : start + count][rng.permutation(count)])
+
+        properties = pd.concat(frames, ignore_index=True)
+        # Row i of `properties` belongs to edge edge_index[i]; reorder so row j belongs to edge j.
+        return properties.iloc[np.argsort(np.concatenate(edge_index))].reset_index(drop=True)
+
+    def _locations_on_target(
+        self, placement: MorphologyLocationsBlock, target: int, tgt_pop: str, count: int
+    ) -> pd.DataFrame:
+        """Generate ``count`` locations on one target neuron's morphology as afferent columns."""
+        morphology = self._circuit.load_morphology(target, population=tgt_pop)  # ty:ignore[unresolved-attribute]
+        with _preserve_numpy_random_state():
+            locations = placement.points_on(morphology).reset_index(drop=True)
+        if len(locations) != count:
+            msg = f"generated {len(locations)} locations, expected {count}"
+            raise ValueError(msg)
+        return _location_edge_properties(morphology, locations)
+
+    @staticmethod
+    def _check_synaptic_model(pathway_name: str, model: SynapticModelBase) -> None:
+        """Check the pathway's synaptic model can be assigned to the new (chemical) population."""
+        compatible_types = type(model).compatible_edge_population_types()
+        if _EDGE_TYPE not in compatible_types:
+            msg = (
+                f"Pathway '{pathway_name}': {type(model).__name__} can only be assigned to edge"
+                f" populations of type {sorted(compatible_types)}, but the new edge population"
+                f" has type '{_EDGE_TYPE}'."
+            )
+            raise OBIONEError(msg)
+
+    def _resolve_pathway(
+        self, pathway_index: int, pathway_name: str, pathway: CircuitConnectivityPathway
+    ) -> _ResolvedPathway:
+        """Resolve a pathway's references and neuron sets, validating them on the way."""
+        locations_block = pathway.morphology_locations.block
+        if not isinstance(locations_block, GeneratedMorphologyLocationsBlock):
+            msg = (
+                f"Pathway '{pathway_name}' uses unsupported morphology locations"
+                f" {type(locations_block).__name__}."
+            )
+            raise OBIONEError(msg)
+        # The target neurons are defined by the neuron set of the morphology locations block.
+        # NOTE: We may want to re-think this in the future, see the config validator
+        # `require_target_neuron_set_in_morphology_locations`.
+        if locations_block.neuron_set is None:
+            msg = (
+                f"Pathway '{pathway_name}': the morphology locations block must specify a"
+                " neuron set, as it defines the target neurons of the pathway."
+            )
+            raise OBIONEError(msg)
+        synaptic_model = pathway.synaptic_model.block
+        self._check_synaptic_model(pathway_name, synaptic_model)
+        return _ResolvedPathway(
+            index=pathway_index,
+            name=pathway_name,
+            conn_model=pathway.conn_model.block,
+            synapses_per_connection=pathway.synapses_per_connection.block,
+            locations_block=locations_block,
+            synaptic_model=synaptic_model,
+            source_ids=self._resolve_pathway_ids(pathway.source_neuron_set.block),
+            target_ids=self._resolve_pathway_ids(locations_block.neuron_set.block),
+        )
+
+    def _synaptic_parameters(
+        self, pathway: _ResolvedPathway, pre: np.ndarray, post: np.ndarray
+    ) -> pd.DataFrame:
+        """Sample the synaptic model's parameters, one row per synapse (edge).
+
+        Every synapse draws its own values; per-connection sharing of parameters
+        (``*_shared_within``) is not implemented by the models yet and is rejected by them. The
+        generator is derived from the task seed and the pathway index, so a pathway's parameters
+        do not change when other pathways are added.
+        """
+        indices = pd.DataFrame({"@source_node": pre, "@target_node": post})
+        rng = np.random.default_rng([int(self.config.initialize.seed), pathway.index])
+        return pathway.synaptic_model.sample(indices, rng=rng)
+
+    def _draw_pair_edges(
+        self,
+        pathway: _ResolvedPathway,
+        source: tuple[str, np.ndarray],
+        target: tuple[str, np.ndarray],
+        rng: np.random.Generator,
+    ) -> pd.DataFrame | None:
+        """Draw the edges of one pathway between one source and one target population.
+
+        Returns a frame with the pre/post node ids, the postsynaptic location columns and the
+        synaptic parameter columns of every edge, or None if no connection was drawn.
+        """
+        (src_pop, src_ids), (tgt_pop, tgt_ids) = source, target
+        context = PathwayConnContext(
+            source_ids=src_ids,
+            target_ids=tgt_ids,
+            source_positions=self._population_positions(src_pop, src_ids),
+            target_positions=self._population_positions(tgt_pop, tgt_ids),
+            same_population=src_pop == tgt_pop,
+        )
+        pre, post = pathway.conn_model.draw_connections(context, rng)
+        if pre.size == 0:
+            return None
+        pre, post = self._expand_by_synapse_count(pre, post, pathway.synapses_per_connection, rng)
+        locations = self._postsynaptic_location_properties(
+            locations_block=pathway.locations_block,
+            pathway_index=pathway.index,
+            tgt_pop=tgt_pop,
+            post=post,
+            rng=rng,
+        )
+        parameters = self._synaptic_parameters(pathway, pre, post)
+        return pd.concat(
+            [pd.DataFrame({STR_PRE_NODE: pre, STR_POST_NODE: post}), locations, parameters],
+            axis=1,
+        )
+
     def _collect_pathway_connections(
         self, rng: np.random.Generator
-    ) -> dict[tuple[str, str], tuple[np.ndarray, np.ndarray]]:
+    ) -> dict[tuple[str, str], tuple[pd.DataFrame, list[SynapticModelBase]]]:
         """Draw connections for every pathway, grouped by (source pop, target pop) pair.
 
         A SONATA edge population connects exactly one source node population to one target node
@@ -164,48 +359,65 @@ class CircuitRewiringTask(Task):
         collected per ordered (source population, target population) pair across all pathways,
         with each pathway's structural connectivity model deciding the connections. Each drawn
         connection is then replicated by an integer count sampled from the pathway's
-        ``synapses_per_connection`` distribution, so a pair can be connected by several edges.
+        ``synapses_per_connection`` distribution, so a pair can be connected by several edges,
+        and every edge gets a postsynaptic location and the physiological parameters of the
+        pathway's synaptic model.
+
+        Returns, per pair, a frame with the pre/post node ids and the edge property columns, and
+        the synaptic models of the pathways that contributed edges to it.
         """
-        per_pair_pre: dict[tuple[str, str], list[np.ndarray]] = {}
-        per_pair_post: dict[tuple[str, str], list[np.ndarray]] = {}
+        frames: dict[tuple[str, str], list[pd.DataFrame]] = {}
+        models_per_pair: dict[tuple[str, str], list[SynapticModelBase]] = {}
 
-        for pathway_name, pathway in self.config.pathways.items():
-            conn_model = pathway.conn_model.block
-            synapses_per_connection = pathway.synapses_per_connection.block
-            source_ids_per_pop = self._resolve_pathway_ids(pathway.source_neuron_set.block)
-            target_ids_per_pop = self._resolve_pathway_ids(pathway.target_neuron_set.block)
-
+        for pathway_index, (pathway_name, config_pathway) in enumerate(
+            self.config.pathways.items()
+        ):
+            pathway = self._resolve_pathway(pathway_index, pathway_name, config_pathway)
             L.info(
                 "Pathway '%s': drawing connections with %s",
                 pathway_name,
-                type(conn_model).__name__,
+                type(pathway.conn_model).__name__,
             )
-
-            for src_pop, src_ids in source_ids_per_pop.items():
-                src_positions = self._population_positions(src_pop, src_ids)
-                for tgt_pop, tgt_ids in target_ids_per_pop.items():
-                    self._require_non_virtual_target_population(tgt_pop)
-                    tgt_positions = self._population_positions(tgt_pop, tgt_ids)
-                    context = PathwayConnContext(
-                        source_ids=src_ids,
-                        target_ids=tgt_ids,
-                        source_positions=src_positions,
-                        target_positions=tgt_positions,
-                        same_population=src_pop == tgt_pop,
-                    )
-                    pre, post = conn_model.draw_connections(context, rng)
-                    if pre.size == 0:
+            for src_item in pathway.source_ids.items():
+                for tgt_item in pathway.target_ids.items():
+                    edges = self._draw_pair_edges(pathway, src_item, tgt_item, rng)
+                    if edges is None:
                         continue
-                    pre, post = self._expand_by_synapse_count(
-                        pre, post, synapses_per_connection, rng
+                    pair = (src_item[0], tgt_item[0])
+                    self._check_consistent_synaptic_models(
+                        pathway_name, pair, models_per_pair.get(pair, []), pathway.synaptic_model
                     )
-                    per_pair_pre.setdefault((src_pop, tgt_pop), []).append(pre)
-                    per_pair_post.setdefault((src_pop, tgt_pop), []).append(post)
+                    frames.setdefault(pair, []).append(edges)
+                    models_per_pair.setdefault(pair, []).append(pathway.synaptic_model)
 
         return {
-            pair: (np.concatenate(per_pair_pre[pair]), np.concatenate(per_pair_post[pair]))
-            for pair in per_pair_pre
+            pair: (pd.concat(pair_frames, ignore_index=True), models_per_pair[pair])
+            for pair, pair_frames in frames.items()
         }
+
+    @staticmethod
+    def _check_consistent_synaptic_models(
+        pathway_name: str,
+        pair: tuple[str, str],
+        existing: list[SynapticModelBase],
+        new: SynapticModelBase,
+    ) -> None:
+        """Check that pathways feeding one edge population use compatible synaptic models.
+
+        All edges of a population share one set of property columns, so the models must provide
+        the same parameters (they must belong to the same synapse model family).
+        """
+        if not existing:
+            return
+        try:
+            compatible_with(existing[0], new)
+        except ValueError as exc:
+            msg = (
+                f"Pathway '{pathway_name}' and earlier pathways both connect populations"
+                f" {pair[0]} -> {pair[1]} but use incompatible synaptic models"
+                f" ({type(existing[0]).__name__} and {type(new).__name__}): {exc}"
+            )
+            raise OBIONEError(msg) from exc
 
     @staticmethod
     def _write_edge_population(
@@ -213,19 +425,22 @@ class CircuitRewiringTask(Task):
         edge_population: str,
         src_pop: str,
         tgt_pop: str,
-        pre: np.ndarray,
-        post: np.ndarray,
+        edges: pd.DataFrame,
         output_dir: Path,
         sonata_circuit: SnapCircuit,
     ) -> Path:
-        """Write one connectivity-only SONATA edge population; return its relative edges path."""
-        syn_pre_post = pd.DataFrame({STR_PRE_NODE: pre, STR_POST_NODE: post})
-        # Sort by target then source so the SONATA target-node index is well-formed.
-        syn_pre_post = syn_pre_post.sort_values([STR_POST_NODE, STR_PRE_NODE]).reset_index(
+        """Write one SONATA edge population; return its relative edges path.
+
+        ``edges`` holds the pre/post node ids plus one column per edge property (the
+        postsynaptic location columns), which are written as the population's edge properties.
+        """
+        # Sort by target then source so the SONATA target-node index is well-formed. A stable
+        # sort keeps the order of identical (multi-synapse) edges deterministic.
+        edges = edges.sort_values([STR_POST_NODE, STR_PRE_NODE], kind="stable").reset_index(
             drop=True
         )
-        # Connectivity only: no per-edge properties.
-        syn_data = pd.DataFrame(index=syn_pre_post.index)
+        syn_pre_post = edges[[STR_PRE_NODE, STR_POST_NODE]]
+        syn_data = edges.drop(columns=[STR_PRE_NODE, STR_POST_NODE])
 
         edges_relative = Path(edge_population) / "edges.h5"
         edges_path = output_dir / edges_relative
@@ -246,21 +461,22 @@ class CircuitRewiringTask(Task):
             edge_population,
             src_pop,
             tgt_pop,
-            len(syn_pre_post),
+            len(edges),
         )
         return edges_relative
 
     def _generate_edge_populations(
         self, *, output_dir: Path, rng: np.random.Generator
-    ) -> dict[str, tuple[str, str, Path]]:
-        """Generate the connectivity edge population file(s).
+    ) -> dict[str, _NewEdgePopulation]:
+        """Generate the edge population file(s).
 
         One edge population is written per ordered (source population, target population) pair.
         When a single pair is involved the edge population keeps the user-provided name;
         otherwise each pair is suffixed with its populations to keep the names unique.
 
-        Returns a mapping of edge population name -> (source population, target population,
-        edges file path relative to ``output_dir``).
+        Returns a mapping of edge population name -> the generated population (its source and
+        target node populations, its edges file path relative to ``output_dir`` and the synaptic
+        models of the pathways that contributed to it).
         """
         base_name = self.config.initialize.edge_population_name
         connections = self._collect_pathway_connections(rng)
@@ -276,8 +492,8 @@ class CircuitRewiringTask(Task):
         sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
         existing_edge_populations = set(sonata_circuit.edges.population_names)
 
-        edge_populations: dict[str, tuple[str, str, Path]] = {}
-        for (src_pop, tgt_pop), (pre, post) in connections.items():
+        edge_populations: dict[str, _NewEdgePopulation] = {}
+        for (src_pop, tgt_pop), (edges, synaptic_models) in connections.items():
             edge_population = base_name if single_pair else f"{base_name}__{src_pop}__{tgt_pop}"
             if edge_population in existing_edge_populations:
                 msg = (
@@ -290,18 +506,19 @@ class CircuitRewiringTask(Task):
                 edge_population=edge_population,
                 src_pop=src_pop,
                 tgt_pop=tgt_pop,
-                pre=pre,
-                post=post,
+                edges=edges,
                 output_dir=output_dir,
                 sonata_circuit=sonata_circuit,
             )
-            edge_populations[edge_population] = (src_pop, tgt_pop, edges_relative)
+            edge_populations[edge_population] = _NewEdgePopulation(
+                src_pop, tgt_pop, edges_relative, synaptic_models
+            )
 
         return edge_populations
 
     @staticmethod
     def _add_edge_populations_to_config(
-        circuit_config_path: Path, edge_populations: dict[str, tuple[str, str, Path]]
+        circuit_config_path: Path, edge_populations: dict[str, _NewEdgePopulation]
     ) -> None:
         """Register the new edge population(s) in circuit_config.json.
 
@@ -319,16 +536,31 @@ class CircuitRewiringTask(Task):
         networks = circuit_config.setdefault("networks", {})
         edges = networks.setdefault("edges", [])
 
-        for edge_population, (_src_pop, _tgt_pop, edges_relative) in edge_populations.items():
+        for edge_population, new_population in edge_populations.items():
             edges.append(
                 {
-                    "edges_file": f"{prefix}{edges_relative.as_posix()}",
+                    "edges_file": f"{prefix}{new_population.edges_file.as_posix()}",
                     "populations": {edge_population: {"type": _EDGE_TYPE}},
                 }
             )
 
         with circuit_config_path.open("w", encoding="utf-8") as config_file:
             json.dump(circuit_config, config_file, indent=2)
+
+    @staticmethod
+    def _write_mod_files(
+        circuit_config_path: Path, edge_populations: dict[str, _NewEdgePopulation]
+    ) -> None:
+        """Copy the mechanism (``.mod``) files the synaptic models need into the circuit.
+
+        Resolved per edge population, since the mechanisms directory can be set on an individual
+        population. This needs the population to be declared in the circuit config already, and
+        may declare the directory in the config if the circuit has none.
+        """
+        for edge_population, new_population in edge_populations.items():
+            mechanisms_dir = ensure_mechanisms_dir(circuit_config_path, edge_population)
+            for model_class in {type(model) for model in new_population.synaptic_models}:
+                model_class.copy_mod_files(mechanisms_dir)
 
     def _register_output(self, db_client: Client, circuit_path: Path) -> models.Circuit | None:
         """Register the rewired circuit entity with assets and a derivation link."""
@@ -392,6 +624,7 @@ class CircuitRewiringTask(Task):
         )
 
         self._add_edge_populations_to_config(circuit_config_path, edge_populations)
+        self._write_mod_files(circuit_config_path, edge_populations)
         L.info(
             "Added %d edge population(s) to '%s'",
             len(edge_populations),

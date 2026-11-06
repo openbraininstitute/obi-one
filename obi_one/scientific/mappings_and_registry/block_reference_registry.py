@@ -53,6 +53,10 @@ _BLOCK_REFERENCE_SPECS: dict[str, ClassRef] = {
         f"{_BLOCK_REFERENCES}.morphology_locations",
         "MorphologyLocationsReference",
     ),
+    "NonGroupedMorphologyLocationsReference": (
+        f"{_BLOCK_REFERENCES}.morphology_locations",
+        "NonGroupedMorphologyLocationsReference",
+    ),
     "AllDistributionsReference": (
         f"{_BLOCK_REFERENCES}.distributions",
         "AllDistributionsReference",
