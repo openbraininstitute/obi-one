@@ -15,11 +15,11 @@ make install
 # Run FastAPI service locally (http://127.0.0.1:8100/docs)
 make run-local
 
-# Run all tests with coverage (obi_one then app)
+# Run all tests with coverage (lib then app)
 make test-local
 
-# obi_one suite on host (needs install-all); app suite on host (needs install-service)
-make test-obi_one-local
+# lib suite on host (needs install-all); app suite on host (needs install-service)
+make test-lib-local
 make test-app-local
 
 # app suite in Docker (production image; CI uses this)
@@ -31,7 +31,7 @@ make test-file FILE=tests/path/to/test_file.py
 # Run schema tests only
 make test-schema
 
-# Lint (check only); also: make lint-obi_one / make lint-app
+# Lint (check only); also: make lint-lib / make lint-app
 make lint
 
 # Format and auto-fix
@@ -162,6 +162,6 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 ## CI/CD
 
-- PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `obi_one` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `obi_one` / `app`
+- PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
 - Docker: `make build` / `make publish`

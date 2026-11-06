@@ -4,12 +4,12 @@ coverage:
       default:
         target: auto
         flags:
-          - obi_one
+          - lib
           - app
-      obi_one:
+      lib:
         target: auto
         flags:
-          - obi_one
+          - lib
       app:
         target: auto
         flags:
@@ -17,10 +17,10 @@ coverage:
     patch:
       default:
         target: auto
-      obi_one:
+      lib:
         target: auto
         flags:
-          - obi_one
+          - lib
       app:
         target: auto
         flags:
@@ -28,7 +28,7 @@ coverage:
 
 flag_management:
   individual_flags:
-    - name: obi_one
+    - name: lib
       paths:
         - obi_one/
       carryforward: false

@@ -92,8 +92,8 @@ jobs:
       - name: Run pip-audit
         run: make pip-audit
 
-  test-obi_one:
-    name: obi_one
+  test-lib:
+    name: lib
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -124,27 +124,27 @@ jobs:
           echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
           echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
           echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
-      - name: Guard obi_one suite has no app imports
+      - name: Guard lib suite has no app imports
         run: |
           if grep -RInE 'from app(\.| import)|import app(\.|$)' tests/obi_one tests/launch_scripts --include='*.py'; then
-            echo "::error::obi_one/launch_scripts tests must not import app"
+            echo "::error::lib (obi_one/launch_scripts) tests must not import app"
             exit 1
           fi
-      - name: Install all extras (obi_one suite)
+      - name: Install all extras (lib suite)
         run: make install-all
-      - name: Lint obi_one
-        run: make lint-obi_one
-      - name: Run obi_one tests
-        run: make test-obi_one-local
-      - name: Upload obi_one coverage to Codecov
+      - name: Lint lib
+        run: make lint-lib
+      - name: Run lib tests
+        run: make test-lib-local
+      - name: Upload lib coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openbraininstitute/obi-one
           fail_ci_if_error: false
-          files: .coverage/coverage-obi_one.xml
-          flags: obi_one
-          name: obi_one
+          files: .coverage/coverage-lib.xml
+          flags: lib
+          name: lib
           verbose: true
 
   test-app:
