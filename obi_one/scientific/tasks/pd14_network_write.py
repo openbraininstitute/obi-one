@@ -1,18 +1,19 @@
 import copy
 import logging
 import warnings
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from entitysdk.client import Client
-from entitysdk import models
 import numpy as np
+from entitysdk import models, types
+from entitysdk.client import Client
 from pydantic import Discriminator, Field
 
 from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.scan_config import ScanConfig
 from obi_one.core.info import Info
+from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
@@ -41,6 +42,14 @@ except ImportError:
         UserWarning,
         stacklevel=1,
     )
+
+
+class BlockGroup(StrEnum):
+    """Block groups for the PD14 network write scan-config UI."""
+
+    SETUP = "Setup"
+    POPULATIONS = "Populations"
+    CONNECTIVITY = "Connectivity"
 
 
 class PD14NetworkWriteScanConfig(ScanConfig):
@@ -74,12 +83,27 @@ class PD14NetworkWriteScanConfig(ScanConfig):
         " its neurons and connections to SONATA files."
     )
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.UI_ENABLED: True,
+        SchemaKey.GROUP_ORDER: [
+            BlockGroup.SETUP,
+            BlockGroup.POPULATIONS,
+            BlockGroup.CONNECTIVITY,
+        ],
+        # A reference field is only shown in the editor when a default label exists for one of its
+        # reference types (see isReferenceFieldVisible in core-web-app). Provide one so the pathway
+        # source/target population selectors render; the label is the placeholder shown when unset.
+        SchemaKey.DEFAULT_BLOCK_REFERENCE_LABELS: dict.fromkeys(
+            POINT_NEURON_POPULATION_REFERENCE_TYPES, "Select a population"
+        ),
+    }
+
     info: Info = Field(
         title="Info",
-        description="Information about the circuit extraction campaign.",
+        description="Name and description of the PD14 network write campaign.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: "Setup",
+            SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
@@ -89,12 +113,14 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             default=1.0,
             title="Neuron number scaling factor",
             description="Factor by which the number of neurons in each population is scaled.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         k_scaling: float | list[float] = Field(
             default=1.0,
             title="Indegree scaling factor",
             description="Factor by which the indegrees (number of synapses) are scaled. Weights"
             " and DC input are adjusted to compensate when this differs from 1.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         bg_rate: float | list[float] = Field(
             default=8.0,
@@ -103,90 +129,116 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             " spikes/s). Only used when 'k_scaling' != 1, where it determines the compensating"
             " DC current (I_e) added to the neurons; it has no effect on the output when"
             " 'k_scaling' == 1.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         psp_exc_mean: float | list[float] = Field(
             default=0.15,
             title="Excitatory PSP mean",
             description="Mean amplitude of the excitatory postsynaptic potential (in mV).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         g: float | list[float] = Field(
             default=-4.0,
             title="Relative inhibitory weight",
             description="Relative inhibitory weight: the inhibitory PSP is 'g' times the"
             " excitatory PSP.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         weight_rel_std: float | list[float] = Field(
             default=0.1,
             title="Relative weight standard deviation",
             description="Relative standard deviation of the synaptic weights.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         delay_exc_mean: float | list[float] = Field(
             default=1.5,
             title="Excitatory delay mean",
             description="Mean delay of excitatory connections (in ms).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         delay_inh_mean: float | list[float] = Field(
             default=0.75,
             title="Inhibitory delay mean",
             description="Mean delay of inhibitory connections (in ms).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         delay_rel_std: float | list[float] = Field(
             default=0.5,
             title="Relative delay standard deviation",
             description="Relative standard deviation of the connection delays.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         rng_seed: int | list[int] = Field(
             default=55,
             title="Random number generator seed",
             description="Seed of the random number generator used for all random draws (initial"
             " membrane potentials, positions, connectivity, weights and delays).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
         )
         num_th_neurons: int | list[int] = Field(
-            default=0,
+            default=902,
             title="Number of thalamic neurons",
-            description="Number of neurons in the thalamic (virtual) input population. If 0, the"
-            " thalamic input is disabled and no thalamus population is written.",
+            description="Number of neurons in the thalamic (virtual) input population (default"
+            " from the model's stimulus parameters). If 0, the thalamic input is disabled and no"
+            " thalamus population is written. Thalamo-cortical connections are only created for"
+            " populations whose 'thalamic_connection_probability' is non-zero.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
         )
         psp_th: float | list[float] = Field(
             default=0.15,
             title="Thalamic PSP mean",
             description="Mean amplitude of the thalamic postsynaptic potential (in mV).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         delay_th_mean: float | list[float] = Field(
             default=1.5,
             title="Thalamic delay mean",
             description="Mean delay of the thalamic input (in ms).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         delay_th_rel_std: float | list[float] = Field(
             default=0.5,
             title="Thalamic relative delay standard deviation",
             description="Relative standard deviation of the thalamic delay.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         population_name: str | list[str] = Field(
             default="microcircuit",
             title="Node population name",
             description="Name of the SONATA node population containing all neurons.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
-        background_name: str | list[str | None] | None = Field(
+        background_name: str | list[str] = Field(
             default="background",
             title="Background population name prefix",
-            description="Name prefix of the virtual node populations representing background input"
-            " (one per neuronal population), or null to omit them.",
+            description="Name prefix of the virtual node populations representing background"
+            " input (one per neuronal population).",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
-        thalamus_name: str | list[str | None] | None = Field(
+        thalamus_name: str | list[str] = Field(
             default="thalamus",
             title="Thalamus population name",
-            description="Name of the virtual node population representing the thalamus, or null to"
-            " omit it. Automatically treated as omitted when 'num_th_neurons' is 0.",
+            description="Name of the virtual node population representing the thalamus. Ignored"
+            " (no thalamus written) when 'num_th_neurons' is 0.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT},
         )
         write_indices: bool | list[bool] = Field(
             default=True,
             title="Write edge indices",
             description="Whether to write the SONATA source-to-target and target-to-source edge"
             " indices.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
         )
 
-    initialize: Initialize
+    initialize: Initialize = Field(
+        title="Initialization",
+        description="Global parameters of the network build.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.GROUP: BlockGroup.SETUP,
+            SchemaKey.GROUP_ORDER: 1,
+        },
+    )
 
     point_neuron_populations: dict[str, PointNeuronPopulationUnion] = Field(
         default_factory=dict,
@@ -196,6 +248,8 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: POINT_NEURON_POPULATION_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Point Neuron Population",
+            SchemaKey.GROUP: BlockGroup.POPULATIONS,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -210,6 +264,8 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: PATHWAY_CONNECTION_PROBABILITY_REFERENCE_TYPES,
             SchemaKey.SINGULAR_NAME: "Pathway Connection Probability",
+            SchemaKey.GROUP: BlockGroup.CONNECTIVITY,
+            SchemaKey.GROUP_ORDER: 0,
         },
     )
 
@@ -286,7 +342,7 @@ class PD14NetworkWriteTask(Task):
             raise OBIONEError(msg)
 
         num_pops = len(populations)
-        synapse_classes = [str(p.synapse_class.value) for p in populations]
+        synapse_classes = [str(p.synapse_class) for p in populations]
 
         # Excitatory/inhibitory PSP and delay matrices, built per source population from its
         # synapse class (column j), rather than from index parity as in the default model.
@@ -295,7 +351,7 @@ class PD14NetworkWriteTask(Task):
         psp_matrix = np.zeros((num_pops, num_pops))
         delay_matrix = np.zeros((num_pops, num_pops))
         for j, pop in enumerate(populations):
-            is_exc = str(pop.synapse_class.value) == "EXC"
+            is_exc = str(pop.synapse_class) == "EXC"
             psp_matrix[:, j] = exc_mean if is_exc else inh_mean
             delay_matrix[:, j] = init.delay_exc_mean if is_exc else init.delay_inh_mean
 
@@ -321,9 +377,9 @@ class PD14NetworkWriteTask(Task):
             "synapse_classes": synapse_classes,
             "layer_geometry": {
                 p.population_name: {
-                    "x": list(p.x_extent),
-                    "y": list(p.y_extent),
-                    "z": list(p.z_extent),
+                    "x": [p.x_min, p.x_max],
+                    "y": [p.y_min, p.y_max],
+                    "z": [p.z_min, p.z_max],
                 }
                 for p in populations
             },
@@ -351,35 +407,31 @@ class PD14NetworkWriteTask(Task):
 
     def _register_output(self, db_client: Client, circuit_path: Path) -> models.Circuit | None:
         # Find static entities
-        db_client.search_entity(
-            entity_type=models.BrainRegion,
-            query={"name": ""}
-        )
         isocortex = db_client.search_entity(
             entity_type=models.BrainRegion,
-            query={"name__ilike": "Isocortex"}
+            query={"name__ilike": "Isocortex"},
         ).first()
         mouse = db_client.search_entity(
             entity_type=models.Subject,
-            query={"name": "Generic Mus musculus"}
+            query={"name": "Generic Mus musculus"},
         ).first()
-        assert isocortex is not None
-        assert mouse is not None
+        if isocortex is None:
+            msg = "Could not find the 'Isocortex' brain region in entitycore."
+            raise OBIONEError(msg)
+        if mouse is None:
+            msg = "Could not find the 'Generic Mus musculus' subject in entitycore."
+            raise OBIONEError(msg)
+
         # Build circuit name and description
         campaign_str = self.config.info.campaign_name.replace(" ", "-")
         circuit_name = f"PD14_{campaign_str}"  # ty:ignore[unresolved-attribute]
         params = self.config.single_coordinate_scan_params.scan_params
-        instance_info = [
-            f"{p.location_str}={p.value}"
-            for p in params
-        ]
-        instance_info = ", ".join(instance_info)
+        instance_info = ", ".join(f"{p.location_str}={p.value}" for p in params)
         if len(params) > 0:
             circuit_name = f"{circuit_name}-{self.config.idx}"
             instance_info = f" - Instance {self.config.idx} with {instance_info}"
         circuit_descr = self.config.info.campaign_description + instance_info
 
-        from entitysdk import types 
         return circuit_registration.register_circuit(
             client=db_client,
             circuit_path=circuit_path,
@@ -388,22 +440,45 @@ class PD14NetworkWriteTask(Task):
             build_category=types.CircuitBuildCategory.computational_model,
             brain_region=isocortex,  # ty:ignore[unresolved-attribute, invalid-argument-type]
             subject=mouse,  # ty:ignore[unresolved-attribute, invalid-argument-type]
-            target_simulator=types.TargetSimulator.NEST,  
-            experiment_date=None, 
+            target_simulator=types.TargetSimulator.NEST,
+            experiment_date=None,
             license=None,  # TODO: Specify
             atlas=None,  # TODO: Not yet implemented
             root=None,
             parent=None,
-            derivation_type=types.DerivationType.unspecified,  # TODO: Add fitting type to entitycore
-            skip_validation=True
+            # TODO: Add a fitting derivation type to entitycore
+            derivation_type=types.DerivationType.unspecified,
+            skip_validation=True,
         )
+
+    def _build_stim_dict(self) -> dict:
+        """Assemble the thalamic ``stim_dict`` from the config's parameters.
+
+        The per-population thalamo-cortical connection probabilities come from the populations;
+        the thalamic weight and delay from initialize. The thalamic input timing and rate
+        (th_start, th_duration, th_rate) do not affect the SONATA output (the thalamus is a
+        virtual population with no activity), so the model defaults are kept. Setting
+        num_th_neurons to 0 disables the thalamic input (see ``execute``).
+        """
+        init = self.config.initialize
+        conn_probs_th = np.array(
+            [p.thalamic_connection_probability for p in self.config.ordered_populations()]
+        )
+        stim_dict = copy.deepcopy(default_stim_dict)
+        stim_dict["thalamic_input"] = int(init.num_th_neurons) > 0
+        stim_dict["num_th_neurons"] = int(init.num_th_neurons)
+        stim_dict["conn_probs_th"] = conn_probs_th
+        stim_dict["PSP_th"] = init.psp_th
+        stim_dict["delay_th_mean"] = init.delay_th_mean
+        stim_dict["delay_th_rel_std"] = init.delay_th_rel_std
+        return stim_dict
 
     def execute(
         self,
         *,
-        db_client: Client | None = None,  # ruff: ignore[unused-method-argument]  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,  # ty:ignore[invalid-parameter-default]
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
-        execution_activity_id: str | None = None,  # ruff: ignore[unused-method-argument]
+        execution_activity_id: str | None = None,
     ) -> None:
         init = self.config.initialize
         execution_activity = PD14NetworkWriteTask._get_execution_activity(
@@ -432,24 +507,9 @@ class PD14NetworkWriteTask(Task):
             f"K_scaling={init.k_scaling}, rng_seed={init.rng_seed})"
         )
 
-        # Thalamic input. The per-population thalamo-cortical connection probabilities come from
-        # the populations; the thalamic weight and delay from initialize. The thalamic input
-        # timing and rate (th_start, th_duration, th_rate) do not affect the SONATA output (the
-        # thalamus is a virtual population with no activity), so the model defaults are kept.
-        # Setting num_th_neurons to 0 disables the thalamic input and omits the thalamus.
-        thalamic_enabled = int(init.num_th_neurons) > 0
-        thalamus_name = init.thalamus_name if thalamic_enabled else None
-
-        conn_probs_th = np.array(
-            [p.thalamic_connection_probability for p in self.config.ordered_populations()]
-        )
-        stim_dict = copy.deepcopy(default_stim_dict)
-        stim_dict["thalamic_input"] = thalamic_enabled
-        stim_dict["num_th_neurons"] = int(init.num_th_neurons)
-        stim_dict["conn_probs_th"] = conn_probs_th
-        stim_dict["PSP_th"] = init.psp_th
-        stim_dict["delay_th_mean"] = init.delay_th_mean
-        stim_dict["delay_th_rel_std"] = init.delay_th_rel_std
+        # Thalamic input: disabled (no thalamus population written) when num_th_neurons is 0.
+        thalamus_name = init.thalamus_name if int(init.num_th_neurons) > 0 else None
+        stim_dict = self._build_stim_dict()
 
         sonata_dict = {
             "population_name": init.population_name,
@@ -501,4 +561,3 @@ class PD14NetworkWriteTask(Task):
                 )
 
             L.info("Registration DONE")
-

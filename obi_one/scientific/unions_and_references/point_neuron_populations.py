@@ -6,6 +6,9 @@ from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.point_neuron_populations.pd14 import PD14PointNeuron
 from obi_one.scientific.blocks.point_neuron_populations.population import PointNeuronPopulation
 
+# The reference accepts both the plain and the preset population blocks, so a config using either
+# resolves. The scan-config editor offers both as block-dictionary variants (see
+# PointNeuronPopulationUnion below); PD14PointNeuron shows only its ``preset`` selector.
 ATOMIC_POINT_NEURON_POPULATIONS = PointNeuronPopulation | PD14PointNeuron
 
 AtomicPointNeuronPopulationUnion = Annotated[
@@ -41,5 +44,7 @@ POINT_NEURON_POPULATION_REFERENCE_TYPES = BlockReference.get_class_names(
     POINT_NEURON_POPULATION_REFERENCE_UNION
 )
 
-# Union of all point-neuron population block types, used for the block-dictionary field.
+# Union of point-neuron population block types offered by the scan-config editor's block
+# dictionary. Both the free-form PointNeuronPopulation and the preset-only PD14PointNeuron are
+# offered; the latter shows only its ``preset`` selector (all other fields are ui_hidden).
 PointNeuronPopulationUnion = AtomicPointNeuronPopulationUnion

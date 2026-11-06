@@ -49,6 +49,7 @@ from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 from obi_one.scientific.tasks.morphology_metrics import (
     MorphologyMetricsScanConfig,
 )
+from obi_one.scientific.tasks.pd14_network_write import PD14NetworkWriteScanConfig
 from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config import (
@@ -167,6 +168,7 @@ def activate_scan_config_endpoints() -> None:
         (LearningEngineCircuitSimulationScanConfig, "generate", "", True),
         (SynapseParameterizationScanConfig, "generate", "", False),
         (MEModelSynapticModelPlacementScanConfig, "generate", "", False),
+        (PD14NetworkWriteScanConfig, "generate", "", False),
     ]
     # EModel Optimization (Task 2) requires the optional `emodel` dependency group
     # (bluepyemodel). Skip registering its endpoint rather than making `import
