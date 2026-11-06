@@ -244,6 +244,9 @@ def register_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-posi
     validation launch job. Large archives are unzipped on the webserver for
     metadata/assets — consider moving that off the request path if disk is tight.
 
+    Limitation: the infrastructure layer rejects any single uploaded file larger than 2 GB,
+    so ``circuit_archive`` must stay below that size.
+
     Set ``dry_run=true`` to compute circuit metadata and validate inputs without
     creating any entitycore records or triggering async validation/asset jobs.
 
