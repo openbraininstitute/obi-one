@@ -116,7 +116,11 @@ def _validate_selected_row_section_ids(
     )
 
     for node_id, section_ids in rows_by_node.items():
-        morphology = circuit.load_morphology(node_id, population=population)
+        try:
+            morphology = circuit.load_morphology(node_id, population=population)
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            msg = f"Could not read the morphology of node {node_id} to validate its section ids."
+            raise ConfigValidationError(msg) from exc
         for section_id in section_ids:
             # Soma is section id 0; it is always present, so skip the neurite lookup.
             if section_id == 0:
@@ -146,7 +150,14 @@ def build_compartment_set_from_selected_rows(
 
     selected_population = node_population or population
     ids_by_population = neuron_set.block.get_neuron_ids(circuit)
-    allowed_node_ids = set(ids_by_population.get(selected_population, []))
+    try:
+        allowed_node_ids = set(ids_by_population[selected_population])
+    except KeyError as exc:
+        msg = (
+            f"Neuron set does not contain population {selected_population!r}; "
+            f"available populations: {sorted(ids_by_population)}"
+        )
+        raise ValueError(msg) from exc
     _validate_selected_row_node_ids(name=name, rows=rows, allowed_node_ids=allowed_node_ids)
 
     _validate_selected_row_section_ids(circuit=circuit, population=selected_population, rows=rows)

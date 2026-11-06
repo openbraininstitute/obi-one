@@ -6,6 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from obi_one.core.exception import ConfigValidationError, OBIONEError
+from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+    NeuronMorphologyLocationPoint,
+    PerNeuronExplicitMorphologyLocations,
+)
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.blocks.recordings.morphology_location import (
     MorphologyLocationVoltageRecording,
@@ -17,6 +21,7 @@ from obi_one.scientific.library.compartment_sets import (
     MaterializedCompartmentSet,
     build_compartment_set_for_neuron_set,
     build_compartment_set_from_locations_block,
+    build_compartment_set_from_selected_rows,
     normalized_offset_column,
     sample_morphology_locations,
 )
@@ -140,6 +145,48 @@ def test_build_compartment_set_rejects_neuron_set_without_selected_population():
             population="selected",
             neuron_set=neuron_set,
             locations_block=MagicMock(),
+        )
+
+
+def _per_neuron_block(*points):
+    return PerNeuronExplicitMorphologyLocations(
+        locations=tuple(
+            NeuronMorphologyLocationPoint(node_id=n, section_id=s, offset=o) for n, s, o in points
+        )
+    )
+
+
+def test_selected_rows_report_a_missing_population_rather_than_blaming_the_node_ids():
+    """A population absent from the neuron set is a population error, not a bad-node error."""
+    neuron_set = MagicMock()
+    neuron_set.block.get_neuron_ids.return_value = {"other": [0]}
+
+    with pytest.raises(ValueError, match="does not contain population 'selected'"):
+        build_compartment_set_from_selected_rows(
+            name="target",
+            circuit=MagicMock(),
+            node_population="selected",
+            population="selected",
+            neuron_set=neuron_set,
+            locations_block=_per_neuron_block((0, 1, 0.5)),
+        )
+
+
+def test_selected_rows_report_an_unreadable_morphology_as_a_config_error():
+    """A node in the set but with no readable morphology is a config error, not a raw OSError."""
+    neuron_set = MagicMock()
+    neuron_set.block.get_neuron_ids.return_value = {"pop": [0]}
+    circuit = MagicMock()
+    circuit.load_morphology.side_effect = FileNotFoundError
+
+    with pytest.raises(ConfigValidationError, match="Could not read the morphology of node 0"):
+        build_compartment_set_from_selected_rows(
+            name="target",
+            circuit=circuit,
+            node_population="pop",
+            population="pop",
+            neuron_set=neuron_set,
+            locations_block=_per_neuron_block((0, 1, 0.5)),
         )
 
 
