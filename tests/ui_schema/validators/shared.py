@@ -24,9 +24,16 @@ openapi_schema = get_openapi(
     routes=app.routes,
 )
 
+# Rebuilding RefResolver.from_schema for every $ref dominates UI schema test time.
+_ref_resolvers: dict[int, RefResolver] = {}
+
 
 def resolve_ref(openapi_schema: dict, ref: str) -> dict:
-    resolver = RefResolver.from_schema(openapi_schema)
+    schema_id = id(openapi_schema)
+    resolver = _ref_resolvers.get(schema_id)
+    if resolver is None:
+        resolver = RefResolver.from_schema(openapi_schema)
+        _ref_resolvers[schema_id] = resolver
     _, resolved_node = resolver.resolve(ref)
     return resolved_node
 
