@@ -3,6 +3,7 @@ name: Build and publish the Docker image
 permissions:
   id-token: write # Required for OIDC authentication
   contents: read # Standard permission for GitHub Actions
+  actions: write # Required for buildx GHA cache
 
 # Dispatched by release-pin.yml on the release tag, once the tag points at the
 # commit that pins obi-one for launch jobs. Can also be run manually on a release tag.
@@ -30,6 +31,15 @@ jobs:
           fi
           python3 launch_scripts/tools/launch_deps_pin.py --check --version "$GITHUB_REF_NAME"
 
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2
+        with:
+          version: latest
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Authenticate with AWS ECR account for pushing the image
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -43,5 +53,8 @@ jobs:
       - name: Build, tag and push container
         env:
           IMAGE_NAME: ${{ steps.login-ecr.outputs.registry }}/obi-one
+          CACHE_FROM: type=gha,scope=obi-one
+          CACHE_TO: type=gha,mode=max,scope=obi-one
+          BUILDER: ${{ steps.buildx.outputs.name }}
         run: |-
           make publish
