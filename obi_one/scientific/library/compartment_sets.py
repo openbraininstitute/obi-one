@@ -125,7 +125,13 @@ def _validate_selected_row_section_ids(
             # Soma is section id 0; it is always present, so skip the neurite lookup.
             if section_id == 0:
                 continue
-            neurite_section_for_id(morphology, section_id)
+            try:
+                neurite_section_for_id(morphology, section_id)
+            except ValueError as exc:
+                # Name the node so the user can find the mistyped row; the shared helper only
+                # knows the section.
+                msg = f"Node {node_id} has no section {section_id}."
+                raise ConfigValidationError(msg) from exc
 
 
 def build_compartment_set_from_selected_rows(

@@ -224,13 +224,13 @@ class TestPerNeuronExplicitLocations:
     def test_a_section_id_absent_from_the_morphology_is_rejected(
         self, morphology_circuit, tmp_path
     ):
-        """neurodamus raises for a missing section only once running, so check it up front."""
+        """A missing section is caught up front, and the error names the node that carried it."""
         locations = PerNeuronExplicitMorphologyLocations(
             locations=(NeuronMorphologyLocationPoint(node_id=0, section_id=99999, offset=0.5),)
         )
         config = _locations_config(morphology_circuit, locations)
 
-        with pytest.raises(ValueError, match=r"Section ID 99999 does not exist"):
+        with pytest.raises(ConfigValidationError, match=r"Node 0 has no section 99999"):
             generate(config, tmp_path)
 
     def test_it_does_not_take_a_neuron_set(self):
