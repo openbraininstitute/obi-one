@@ -119,6 +119,7 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
+    "pytest-xdist>=3.6.0",
     "respx>=0.22.0",
     "ruff",
     "ty>=0.0.35",
@@ -275,7 +276,8 @@ filterwarnings = ["error::pydantic.warnings.PydanticDeprecationWarning"]
 
 [tool.coverage.run]
 branch = true
-parallel = false
+# Required for pytest-xdist workers; pytest-cov combines the per-worker data files.
+parallel = true
 # Package under measurement is selected per suite via pytest `--cov=` (obi_one or app).
 data_file = ".coverage/coverage.db"
 

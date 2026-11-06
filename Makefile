@@ -113,8 +113,14 @@ format_count: ## Count the number of errors by file
 format_types: ## Count the number of errors by type
 	uv run ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
+# In GitHub Actions, merge docker-compose.ci.yml so BuildKit can use the GHA cache backend.
+COMPOSE_BUILD_FILES :=
+ifdef GITHUB_ACTIONS
+COMPOSE_BUILD_FILES := -f docker-compose.yml -f docker-compose.ci.yml
+endif
+
 build:  ## Build the Docker image
-	docker compose --profile "*" --progress=plain build app
+	docker compose $(COMPOSE_BUILD_FILES) --profile "*" --progress=plain build app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
@@ -123,7 +129,7 @@ test-obi_one-local:  ## Run obi_one (library) tests locally with coverage
 	@$(call load_env,test-local)
 	mkdir -p .coverage
 	COVERAGE_FILE=.coverage/coverage-obi_one.db \
-	uv run -m pytest $(OBI_ONE_TEST_PATHS) \
+	uv run -m pytest -n auto $(OBI_ONE_TEST_PATHS) \
 		--cov=obi_one \
 		--cov-report=term-missing \
 		--cov-report=xml:.coverage/coverage-obi_one.xml
@@ -132,7 +138,7 @@ test-app-local:  ## Run app tests locally with coverage (expects install-service
 	@$(call load_env,test-local)
 	mkdir -p .coverage
 	COVERAGE_FILE=.coverage/coverage-app.db \
-	uv run -m pytest $(APP_TEST_PATHS) \
+	uv run -m pytest -n auto $(APP_TEST_PATHS) \
 		--cov=app \
 		--cov-report=term-missing \
 		--cov-report=xml:.coverage/coverage-app.xml
@@ -154,7 +160,7 @@ test-schema-verbose: ## Run schema tests locally with verbose output.
 test-app-docker: build  ## Run app tests in Docker (production image, --extra service)
 	mkdir -p .coverage
 	COVERAGE_FILE=.coverage/coverage-app.db \
-	PYTEST_ARGS="$(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
+	PYTEST_ARGS="-n auto $(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
 	docker compose run --rm --remove-orphans test
 
 test-docker: test-app-docker  ## Run app tests in Docker (same as on main, app suite only)
