@@ -1,11 +1,11 @@
 """Validator for the `task_result_selector` block UI element."""
 
 from entitysdk.types import TaskResultType
-from jsonschema import Draft7Validator, RefResolver, ValidationError
+from jsonschema import Draft7Validator, ValidationError
 
 from obi_one.core.schema import SchemaKey
 
-from .shared import openapi_schema
+from .shared import get_ref_resolver, openapi_schema
 
 
 def validate_task_result_selector(schema: dict, param: str, ref: str) -> None:
@@ -26,8 +26,7 @@ def validate_task_result_selector(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
-    resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(schema, resolver=resolver)
+    validator = Draft7Validator(schema, resolver=get_ref_resolver(openapi_schema))
     obj = {"id_str": "task_result_id"}
     try:
         validator.validate(obj)
