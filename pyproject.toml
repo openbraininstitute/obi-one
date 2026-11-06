@@ -72,6 +72,13 @@ meshing = ["ultraliser>=2.1.9"]
 # SIMPLIFICATION - optional, private dependency needed to run circuit simplification
 simplification = ["sonata-simplify[simulation,reduction]>=0.2.6"]
 
+# PD14 - optional, needed for the PD14 point-neuron network write task. Installed from the
+# OBI fork's `sonata-write` branch, which adds the SONATA export (SonataNetwork) this task
+# relies on; the package lives in the repo's `PyNEST` subdirectory.
+pd14 = [
+    "microcircuit @ git+https://github.com/openbraininstitute/microcircuit-PD14-model.git@sonata-write#subdirectory=PyNEST",
+]
+
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [
     "ipykernel",
@@ -97,7 +104,7 @@ service = [
 ]
 
 # ALL - convenience alias to install all optional dependencies
-all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
+all = ["obi-one[connectivity,emodel,meshing,notebooks,pd14,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
