@@ -6,9 +6,25 @@ coverage:
         flags:
           - library
           - service
+      library:
+        target: auto
+        flags:
+          - library
+      service:
+        target: auto
+        flags:
+          - service
     patch:
       default:
         target: auto
+      library:
+        target: auto
+        flags:
+          - library
+      service:
+        target: auto
+        flags:
+          - service
 
 flag_management:
   individual_flags:

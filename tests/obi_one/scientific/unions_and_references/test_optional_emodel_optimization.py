@@ -80,7 +80,8 @@ def _exec_fresh(module_name: str) -> types.ModuleType:
     else importing ``module_name`` afterwards.
     """
     spec = importlib.util.find_spec(module_name)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

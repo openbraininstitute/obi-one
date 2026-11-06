@@ -59,7 +59,8 @@ def bluepyemodel_blocked() -> Iterator[None]:
 def _exec_fresh(module_name: str) -> types.ModuleType:
     """Re-execute a module's real source from scratch, bypassing the import cache."""
     spec = importlib.util.find_spec(module_name)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
