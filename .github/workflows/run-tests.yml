@@ -94,6 +94,7 @@ jobs:
         run: make pip-audit
 
   test-library:
+    name: library
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -145,6 +146,7 @@ jobs:
           verbose: true
 
   test-service:
+    name: service
     runs-on: ubuntu-latest
     permissions:
       contents: read
