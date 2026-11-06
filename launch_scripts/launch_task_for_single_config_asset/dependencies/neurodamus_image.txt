@@ -15,9 +15,6 @@ anyio==4.15.1
 asttokens==3.0.2
 attrs==26.1.0
 blosc2==4.14.1
-bluecellulab==2.6.106
-blueetl==0.13.4
-blueetl-core==0.2.5
 bluepyefe==2.3.63
 bluepysnap==3.0.10
 bluerecording==0.7.0
@@ -126,7 +123,6 @@ rich==15.0.0
 rpds-py==2026.6.3
 scikit-learn==1.9.1
 scipy==1.18.1
-seaborn==0.13.2
 setuptools==84.0.0
 six==1.17.0
 sortedcontainers==2.4.0
@@ -147,6 +143,5 @@ tzdata==2026.4
 urllib3==2.8.0
 voxcell==3.1.11
 wcwidth==0.9.1
-xarray==2026.9.0
 xmltodict==1.0.4
 zict==3.0.0

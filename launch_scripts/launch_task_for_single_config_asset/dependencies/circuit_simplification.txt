@@ -11,8 +11,6 @@ attrs==26.1.0
 bigrandomgraphs==0.1.1
 blosc2==4.14.1
 bluecellulab==2.6.111
-blueetl==0.13.4
-blueetl-core==0.2.5
 bluepyefe==2.3.63
 bluepysnap==3.0.10
 brainbuilder==0.20.9
@@ -161,6 +159,5 @@ tzdata==2026.5
 urllib3==2.8.0
 voxcell==3.1.11
 wcwidth==0.9.4
-xarray==2026.9.0
 xmltodict==1.0.4
 zict==3.0.0
