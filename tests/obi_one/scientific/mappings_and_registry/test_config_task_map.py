@@ -302,6 +302,7 @@ def test_scan_config_class_is_not_in_the_single_config_index():
 
 def test_emodel_optimization_declares_its_optional_dependency():
     assert TASK_SPECS[TaskType.emodel_optimization].requires_package == "bluepyemodel"
+    assert TASK_SPECS[TaskType.memodel_build].requires_package == "bluecellulab"
 
 
 @patch(

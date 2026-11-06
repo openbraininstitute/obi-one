@@ -10,11 +10,8 @@ asttokens==3.0.2
 attrs==26.1.0
 bigrandomgraphs==0.1.1
 blosc2==4.14.1
-bluecellulab==2.6.106
-blueetl==0.13.4
-blueetl-core==0.2.5
 bluepyefe==2.3.63
-bluepysnap==3.0.7
+bluepysnap==3.0.9
 brainbuilder==0.20.9
 brian2==2.10.1
 cached-property==2.0.1
@@ -39,9 +36,8 @@ debugpy==1.8.22
 deprecation==2.1.0
 distributed==2026.8.0
 efel==5.7.34
-entitysdk==0.19.35
+entitysdk==0.19.37
 executing==2.2.1
-find-libpython==0.5.1
 fonttools==4.66.1
 fsspec==2026.9.0
 h11==0.16.0
@@ -89,7 +85,6 @@ neo==0.14.5
 nest-asyncio==1.6.0
 networkx==3.7
 neurom==4.0.6
-neuron==9.0.2
 numexpr==2.14.2
 numpy==2.4.6
 obi-auth==1.2.1
@@ -133,7 +128,6 @@ rpds-py==2026.6.3
 scikit-learn==1.9.1
 scikit-network==0.33.5
 scipy==1.18.1
-seaborn==0.13.2
 setuptools==84.0.0
 six==1.17.0
 sortedcontainers==2.4.0
@@ -154,6 +148,5 @@ tzdata==2026.4
 urllib3==2.8.0
 voxcell==3.1.11
 wcwidth==0.9.1
-xarray==2026.9.0
 xmltodict==1.0.4
 zict==3.0.0

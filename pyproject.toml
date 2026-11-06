@@ -37,10 +37,8 @@ dependencies = [
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "aiofiles",
-    "bluecellulab>=2.6.111",
-    "blueetl",
     "bluepyefe>=2.3.59",
-    "bluepysnap>=3.0.7",
+    "bluepysnap>=3.0.9",
     "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
@@ -60,8 +58,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation)
-emodel = ["bluepyemodel>=1.0.50"]
+# BLUECELLULAB - optional, needed for BlueCelluLab simulation, MEModel calibration/validation,
+# and circuit HOC initialization checks
+bluecellulab = ["bluecellulab>=2.6.111"]
+
+# EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation).
+# Includes bluecellulab for MEModel calibration and validation after fitting.
+emodel = ["bluepyemodel>=1.0.50", "bluecellulab>=2.6.111"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation
 connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
@@ -69,7 +72,8 @@ connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
 # MESHING - optional, private dependency needed for skeletonization and mesh LOD generation
 meshing = ["ultraliser>=2.1.9"]
 
-# SIMPLIFICATION - optional, private dependency needed to run circuit simplification
+# SIMPLIFICATION - optional, private dependency needed to run circuit simplification.
+# sonata-simplify already depends on bluecellulab.
 simplification = ["sonata-simplify[simulation,reduction]>=0.2.6"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
@@ -97,7 +101,7 @@ service = [
 ]
 
 # ALL - convenience alias to install all optional dependencies
-all = ["obi-one[connectivity,emodel,meshing,notebooks,service]"]
+all = ["obi-one[bluecellulab,connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
