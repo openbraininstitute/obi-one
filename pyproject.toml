@@ -103,9 +103,9 @@ service = [
     "uvicorn",
 ]
 
-# ALL - convenience alias to install all optional dependencies
-# (service already pulls connectivity + emodel)
-all = ["obi-one[bluecellulab,meshing,notebooks,service]"]
+# ALL - convenience alias to install all optional dependencies.
+# connectivity and emodel are listed explicitly (also pulled by service) so all stays complete if they leave service later.
+all = ["obi-one[bluecellulab,connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
@@ -276,7 +276,7 @@ filterwarnings = ["error::pydantic.warnings.PydanticDeprecationWarning"]
 [tool.coverage.run]
 branch = true
 parallel = false
-# Package under measurement is selected per suite via pytest `--cov=` (obi_one or app).
+# Package under measurement is selected per suite via pytest `--cov=` (lib: obi_one, or app).
 data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
