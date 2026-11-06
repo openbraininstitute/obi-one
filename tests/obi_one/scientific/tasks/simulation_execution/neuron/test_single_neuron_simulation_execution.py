@@ -223,8 +223,9 @@ def test_execute_tracked_registers_and_updates_activity(
     mock_stage_circuit.return_value = staged_circuit
     mechanism_build = _neurodamus_mechanism_build(tmp_path)
     mock_compile.return_value = mechanism_build
+    execution_activity_id = UUID("00000000-0000-4000-8000-000000000456")
     execution_activity = MagicMock()
-    execution_activity.id = "act-456"
+    execution_activity.id = execution_activity_id
     db_client.get_entity.return_value = execution_activity
     mock_stage_sim.return_value = tmp_path / "sim_config.json"
     sim_results = SimulationResults(
@@ -243,15 +244,15 @@ def test_execute_tracked_registers_and_updates_activity(
     mock_register.return_value = generated_entity
 
     task = SingleNeuronSimulationExecutionTask(config=config)
-    task.execute(db_client=db_client, execution_activity_id="act-456")
+    task.execute(db_client=db_client, execution_activity_id=execution_activity_id)
 
     db_client.get_entity.assert_called_once_with(
-        entity_id="act-456",
+        entity_id=execution_activity_id,
         entity_type=test_module.SingleNeuronSimulationExecutionTask.activity_type,
     )
     mock_register.assert_called_once()
     db_client.update_entity.assert_called_once_with(
-        entity_id="act-456",
+        entity_id=execution_activity_id,
         entity_type=test_module.SingleNeuronSimulationExecutionTask.activity_type,
         attrs_or_entity={"generated_ids": ["gen-789"]},
     )

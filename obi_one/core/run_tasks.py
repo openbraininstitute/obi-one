@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from entitysdk.client import Client
 from entitysdk.models import Entity
@@ -84,10 +85,11 @@ def run_task_for_single_config_asset(
     execution_activity_id: str | None = None,
 ) -> None:
     """Run the appropriate task for a single configuration stored as an asset."""
+    entity_uuid = UUID(entity_id)
     json_str = db_client.download_content(
-        entity_id=entity_id,  # ty:ignore[invalid-argument-type]
+        entity_id=entity_uuid,
         entity_type=entity_type,
-        asset_id=config_asset_id,  # ty:ignore[invalid-argument-type]
+        asset_id=UUID(config_asset_id),
     ).decode(encoding="utf-8")
 
     json_dict = json.loads(json_str)
@@ -96,7 +98,7 @@ def run_task_for_single_config_asset(
     Path(json_dict["coordinate_output_root"]).mkdir(parents=True, exist_ok=True)
     single_config = deserialize_obi_object_from_json_data(json_dict)
 
-    entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
+    entity = db_client.get_entity(entity_id=entity_uuid, entity_type=entity_type)
 
     single_config.set_single_entity(entity)  # ty:ignore[unresolved-attribute]
     run_task_for_single_config(
@@ -119,7 +121,8 @@ def run_task_type(
     shared_cache: "SharedCache | None" = None,
 ) -> None:
     task_spec = get_task_spec_for_task_type(task_type)
-    entity = db_client.get_entity(entity_id=entity_id, entity_type=entity_type)  # ty:ignore[invalid-argument-type]
+    entity_uuid = UUID(entity_id)
+    entity = db_client.get_entity(entity_id=entity_uuid, entity_type=entity_type)
 
     if task_spec.asset_label is not None:
         config_asset_id = db_sdk.get_entity_asset_by_label(
@@ -132,7 +135,7 @@ def run_task_type(
             raise ValueError(msg)
 
         json_str = db_client.download_content(
-            entity_id=entity_id,  # ty:ignore[invalid-argument-type]
+            entity_id=entity_uuid,
             entity_type=entity_type,
             asset_id=config_asset_id,
         ).decode(encoding="utf-8")

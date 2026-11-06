@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.db_sdk.circuit import _upload_or_replace_directory, _upload_or_replace_file
 from obi_one.utils.io import compressed_archive_filename, convert_image_to_webp
@@ -158,7 +158,7 @@ def add_compressed_circuit_asset(
         registered_circuit,
         asset_label=asset_label,
         file_path=compressed_file,
-        file_content_type="application/gzip",
+        file_content_type=ContentType.application_gzip,
         transfer_config=transfer_config,
     )
     L.info(f"'{asset_label.value}' asset uploaded under asset ID {compressed_asset.id}")
@@ -244,7 +244,7 @@ def add_image_assets(
             registered_circuit,
             asset_label=asset_label,
             file_path=file_path,
-            file_content_type=f"image/{fmt}",
+            file_content_type=ContentType(f"image/{fmt}"),
         )
         L.info(f"'{asset_label.value}' asset uploaded under asset ID {plot_asset.id}")
         plot_assets.append(plot_asset)

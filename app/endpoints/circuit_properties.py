@@ -1,6 +1,7 @@
 import logging
 from http import HTTPStatus
 from typing import Annotated
+from uuid import UUID
 
 from entitysdk.client import Client
 from entitysdk.exception import EntitySDKError
@@ -241,7 +242,7 @@ def mapped_circuit_properties_endpoint(
         # an MEModel so that valid MEModels still receive default usability, while
         # unknown/invalid entities surface as an internal error.
         try:
-            db_client.get_entity(entity_id=circuit_id, entity_type=MEModel)  # ty:ignore[invalid-argument-type]
+            db_client.get_entity(entity_id=UUID(circuit_id), entity_type=MEModel)
         except EntitySDKError as err:
             raise HTTPException(
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -254,7 +255,7 @@ def mapped_circuit_properties_endpoint(
     # Add usability (only for Circuit entities)
     if CircuitMappedProperties.NODE_SET in mapped_circuit_properties:
         try:
-            circuit = db_client.get_entity(entity_id=circuit_id, entity_type=Circuit)  # ty:ignore[invalid-argument-type]
+            circuit = db_client.get_entity(entity_id=UUID(circuit_id), entity_type=Circuit)
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == CircuitScale.microcircuit,

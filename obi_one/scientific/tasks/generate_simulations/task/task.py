@@ -5,6 +5,7 @@ from uuid import UUID
 
 from entitysdk.client import Client
 from entitysdk.models import Simulation
+from entitysdk.types import AssetLabel, ContentType
 from libsonata import SimulatorType
 from pydantic import PrivateAttr
 
@@ -657,8 +658,8 @@ class GenerateSimulationTask(Task):
                 entity_id=self.config.single_entity.id,
                 entity_type=Simulation,
                 file_path=Path(self.config.coordinate_output_root, self.NODE_SETS_FILE_NAME),
-                file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-                asset_label="custom_node_sets",  # ty:ignore[invalid-argument-type]
+                file_content_type=ContentType.application_json,
+                asset_label=AssetLabel.custom_node_sets,
             )
 
             compartment_sets_path = Path(
@@ -672,8 +673,8 @@ class GenerateSimulationTask(Task):
                     entity_type=Simulation,
                     file_path=compartment_sets_path,
                     file_name=self.COMPARTMENT_SETS_FILE_NAME,
-                    file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-                    asset_label="compartment_sets",  # ty:ignore[invalid-argument-type]
+                    file_content_type=ContentType.application_json,
+                    asset_label=AssetLabel.compartment_sets,
                 )
 
             L.info("-- Upload spike replay files")
@@ -685,8 +686,8 @@ class GenerateSimulationTask(Task):
                             entity_id=self.config.single_entity.id,
                             entity_type=Simulation,
                             file_path=Path(self.config.coordinate_output_root, spike_file),
-                            file_content_type="application/x-hdf5",  # ty:ignore[invalid-argument-type]
-                            asset_label="replay_spikes",  # ty:ignore[invalid-argument-type]
+                            file_content_type=ContentType.application_x_hdf5,
+                            asset_label=AssetLabel.replay_spikes,
                         )
 
             L.info("-- Upload sonata_simulation_config")
@@ -694,8 +695,8 @@ class GenerateSimulationTask(Task):
                 entity_id=self.config.single_entity.id,
                 entity_type=Simulation,
                 file_path=Path(self.config.coordinate_output_root, self.CONFIG_FILE_NAME),
-                file_content_type="application/json",  # ty:ignore[invalid-argument-type]
-                asset_label="sonata_simulation_config",  # ty:ignore[invalid-argument-type]
+                file_content_type=ContentType.application_json,
+                asset_label=AssetLabel.sonata_simulation_config,
             )
 
     def execute(
