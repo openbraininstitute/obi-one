@@ -31,6 +31,7 @@ from obi_one.scientific.validations.memodel.task import (
 )
 from obi_one.scientific.validations.memodel.tests import (
     BPAPTest,
+    IVCurveTest,
     _count_bpap_spikes,
 )
 from obi_one.scientific.validations.memodel.workflow import (
@@ -642,3 +643,68 @@ class TestThalamicDepolarizationBlockPreset:
         preset = thalamic_depolarization_block_preset(rheobase=1.0)
         assert preset.protocol.phases[0][1] == pytest.approx(0.0)
         assert preset.protocol.phases[1][1] == pytest.approx(2.0)
+
+
+class TestIVCurveTest:
+    def _sim_config(self):
+        return SimulatorConfig(celsius=34.0, v_init=-70.0)
+
+    def test_passes_the_rheobase_scaled_bounds(self, tmp_path):
+        # The sweep is pinned to the cell's rheobase here, not inherited from the
+        # bluecellulab default, so the exact bounds are part of the contract.
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.compute_plot_iv_curve",
+                return_value=(np.array([-0.2, 0.0, 0.18]), np.array([-80.0, -70.0, -60.0])),
+            ) as mock_iv,
+        ):
+            result = IVCurveTest(simulator_config=self._sim_config()).run(
+                MagicMock(), 0.2, tmp_path
+            )
+
+        assert result.passed is True
+        kwargs = mock_iv.call_args.kwargs
+        assert kwargs["min_amp"] == pytest.approx(-0.2)
+        assert kwargs["max_amp"] == pytest.approx(0.18)
+
+    def test_fails_on_negative_slope(self, tmp_path):
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.compute_plot_iv_curve",
+                return_value=(np.array([-0.2, 0.0, 0.18]), np.array([-60.0, -70.0, -80.0])),
+            ),
+        ):
+            result = IVCurveTest(simulator_config=self._sim_config()).run(
+                MagicMock(), 0.2, tmp_path
+            )
+
+        assert result.passed is False
+
+    def test_fails_without_raising_when_range_invalid(self, tmp_path):
+        # A rheobase <= 0 makes compute_plot_iv_curve raise; the test must fail
+        # rather than abort the whole validation run.
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.compute_plot_iv_curve",
+                side_effect=ValueError("finite positive rheobase"),
+            ),
+        ):
+            result = IVCurveTest(simulator_config=self._sim_config()).run(
+                MagicMock(), 0.0, tmp_path
+            )
+
+        assert result.passed is False
+        assert "finite positive rheobase" in result.details
+        assert result.figures == []
