@@ -45,9 +45,10 @@ def register_circuit_with_remote_validation(  # ruff: ignore[too-many-arguments]
 ) -> tuple[models.Circuit, UUID | None]:
     """Register a circuit as draft and let the obi-one service validate it.
 
-    Alternative to ``POST /declared/circuit/register`` for circuits that exceed the 2 GB
-    per-file upload limit of the infrastructure layer. The circuit files are uploaded
-    straight to entitycore through the SDK, so the limit does not apply.
+    SDK counterpart of ``POST /declared/circuit/register``: the circuit files are uploaded
+    straight to entitycore through the SDK (so the 2 GB per-file upload limit of the
+    infrastructure layer does not apply), but validation and asset generation run as
+    remote jobs instead of in the calling process, as for the endpoint.
 
     The flow matches the endpoint:
 
