@@ -1,0 +1,13 @@
+{
+  "default": ["IDThreshProtocol"],
+  "items": {
+    "type": "string"
+  },
+  "minItems": 1,
+  "type": "array",
+  "title": "Rheobase protocols",
+  "description": "the description",
+  "property_group": "ElectricalCellRecordings",
+  "property": "RheobaseProtocols",
+  "ui_element": "entity_property_multi_select"
+}

@@ -1,10 +1,11 @@
 """ScanConfig and SingleConfig for the 01_efeature_extraction stage."""
 
+import math
 from enum import StrEnum
-from typing import ClassVar
+from typing import ClassVar, Self
 
 from entitysdk import Client
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
@@ -13,6 +14,7 @@ from obi_one.scientific.library.info_scan_config.config import (
     BlockGroup as InfoBlockGroup,
     InfoScanConfig,
 )
+from obi_one.scientific.library.recording_summary import gives_rheobase
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.initialize import (
     ExtractionInitialize,
 )
@@ -21,6 +23,9 @@ from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.p
 )
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.blocks.settings import (
     Settings,
+)
+from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long]
+    protocol_class_by_type,
 )
 
 # Base of the eFEL feature documentation; the frontend appends
@@ -32,6 +37,21 @@ EFEL_DOC_BASE_URL = "https://efel.readthedocs.io/en/latest/eFeatures.html"
 EFEL_FIGURES_BASE_URL = (
     "https://raw.githubusercontent.com/openbraininstitute/eFEL/master/docs/source/_static/figures"
 )
+
+
+def _check_step_protocol(type_name: str, setting: str, *, rheobase: bool = False) -> None:
+    """``type_name`` must name a step ``Protocol`` (giving a rheobase when ``rheobase``)."""
+    cls = protocol_class_by_type(type_name)
+    if cls is None:
+        msg = f"`{setting}`: unknown protocol type {type_name!r}."
+        raise ValueError(msg)
+    if cls.ecode_class != "Step" or (rheobase and not gives_rheobase(cls)):
+        msg = (
+            f"`{setting}` must be a step protocol"
+            f"{' recorded with a current step' if rheobase else ''}, got {type_name}"
+            f" ({cls.ecode_class} eCode)."
+        )
+        raise ValueError(msg)
 
 
 class BlockGroup(StrEnum):
@@ -72,6 +92,51 @@ class EModelEFeatureExtractionScanConfig(InfoScanConfig):
             ),
         },
     }
+
+    @model_validator(mode="after")
+    def _check_relative_mode(self) -> Self:
+        """Relative amplitudes need step protocols for the rheobase, RMP and R_in.
+
+        bluepyefe computes each recording's rheobase from the ``rheobase_protocols``
+        sweeps; BluePyEModel's threshold-based optimisation needs the RMP and input
+        resistance targets, measured on two different sets of sweeps of selected
+        protocols. Only amplitude-matched eCodes take relative amplitudes. These
+        settings are ignored in absolute mode.
+        """
+        settings = self.settings
+        if settings.amplitude_mode != "relative":
+            return self
+        selection = self.efeatures_by_protocol.selection
+        for type_name in settings.rheobase_protocols:
+            _check_step_protocol(type_name, "rheobase_protocols", rheobase=True)
+        for setting in ("rmp_protocol", "rin_protocol"):
+            type_name = getattr(settings, setting)
+            _check_step_protocol(type_name, setting)
+            if selection.protocol_of_type(type_name) is None:
+                msg = f"`{setting}` {type_name} is not one of the selected protocols."
+                raise ValueError(msg)
+        if settings.rmp_protocol == settings.rin_protocol and math.isclose(
+            settings.rmp_amplitude, settings.rin_amplitude
+        ):
+            msg = (
+                f"`rmp_amplitude` and `rin_amplitude` are both {settings.rmp_amplitude}% of"
+                f" {settings.rmp_protocol}; the input resistance needs a hyperpolarising"
+                " amplitude distinct from the RMP one."
+            )
+            raise ValueError(msg)
+        not_targeted = [
+            p.protocol_name
+            for p in selection.protocols
+            if p.extraction_amplitudes and not p.amplitude_targeted
+        ]
+        if not_targeted:
+            msg = (
+                "Relative amplitudes cannot be used on protocols that are not"
+                " amplitude-targeted (their eCode does not match on an amplitude):"
+                f" {', '.join(not_targeted)}."
+            )
+            raise ValueError(msg)
+        return self
 
     def input_entities(self, db_client: Client) -> list:
         return [r.entity(db_client=db_client) for r in self.initialize.electrical_cell_recording]

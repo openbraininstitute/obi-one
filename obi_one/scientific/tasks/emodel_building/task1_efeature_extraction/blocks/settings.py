@@ -3,23 +3,32 @@
 Advanced extraction knobs that BluePyEModel's
 ``extract_save_features_protocols`` forwards to ``bluepyefe.extract``.
 
-Per-protocol settings (Rin, RMP, rheobase, threshold_based, timing)
-live on :class:`Protocol`. Per-feature eFEL detection knobs live on
-:class:`EFeature`. This block contains only the statistical/output settings
-that apply globally across all protocols.
+Also holds the amplitude mode and, for relative (% of rheobase) amplitudes, the
+protocols the rheobase, resting membrane potential (RMP) and input resistance come
+from. Per-protocol settings (amplitudes, timing) live on :class:`Protocol`.
+Per-feature eFEL detection knobs live on :class:`EFeature`.
 """
+
+from typing import Literal
 
 from pydantic import Field, PositiveFloat
 
 from obi_one.core.block import Block
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
+from obi_one.scientific.library.entity_property_types import (
+    ElectricalCellRecordingMappedProperties,
+    MappedPropertiesGroup,
+)
 from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.constants import (
     SPIKE_DETECTION_THRESHOLD_DESCRIPTION,
     SPIKE_DETECTION_THRESHOLD_TITLE,
     TRACE_RESAMPLING_TIMESTEP_DESCRIPTION,
     TRACE_RESAMPLING_TIMESTEP_TITLE,
 )
+
+# Percentage points of rheobase within which a sweep matches a relative target.
+DEFAULT_RELATIVE_AMPLITUDE_TOLERANCE = 10.0
 
 
 class Settings(Block):
@@ -99,6 +108,118 @@ class Settings(Block):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
             SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    )
+
+    # -- Amplitude mode and the relative (% of rheobase) protocols -----------
+    amplitude_mode: Literal["absolute", "relative"] = Field(
+        default="absolute",
+        title="Amplitude mode",
+        description=(
+            "``absolute``: protocols' ``extraction_amplitudes`` are in nA, and the"
+            " e-model is optimised and validated at those currents. ``relative``: they"
+            " are in % of each recording's rheobase (from ``rheobase_protocols``), and"
+            " the e-model is optimised and validated at the same % of its own"
+            " threshold current, which needs the RMP and input resistance targets set"
+            " below."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    rheobase_protocols: tuple[str, ...] = Field(
+        default=("IDThreshProtocol",),
+        min_length=1,
+        title="Rheobase protocols",
+        description=(
+            "Relative mode: step protocols (``Protocol`` type names) whose sweeps give"
+            " each recording's rheobase, the smallest amplitude firing a spike. With"
+            " several, the smallest of their rheobases is used. Offered by the"
+            " ``RheobaseProtocols`` property of"
+            " ``/declared/mapped-electrical-cell-recording-properties``."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_MULTI_SELECT,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS,
+            SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.RHEOBASE_PROTOCOLS,
+        },
+    )
+    rmp_protocol: str = Field(
+        default="IVProtocol",
+        min_length=1,
+        title="RMP protocol",
+        description=(
+            "Relative mode: step protocol (``Protocol`` type name, one of the selected"
+            " protocols) whose ``voltage_base`` at ``rmp_amplitude`` is the resting"
+            " membrane potential the e-model is fitted to."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS,
+            SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.PROTOCOLS,
+        },
+    )
+    rmp_amplitude: float = Field(
+        default=0.0,
+        title="RMP amplitude",
+        description="Relative mode: amplitude (% of rheobase) of the RMP sweeps.",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT,
+            SchemaKey.UNITS: Units.PERCENT,
+        },
+    )
+    rin_protocol: str = Field(
+        default="IVProtocol",
+        min_length=1,
+        title="Input resistance protocol",
+        description=(
+            "Relative mode: step protocol (``Protocol`` type name, one of the selected"
+            " protocols) whose ``voltage_base`` and ``ohmic_input_resistance_vb_ssse``"
+            " at ``rin_amplitude`` are the holding voltage and input resistance the"
+            " e-model is fitted to."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.ENTITY_PROPERTY_DROPDOWN,
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS,
+            SchemaKey.PROPERTY: ElectricalCellRecordingMappedProperties.PROTOCOLS,
+        },
+    )
+    rin_amplitude: float = Field(
+        default=-20.0,
+        title="Input resistance amplitude",
+        description=(
+            "Relative mode: amplitude (% of rheobase) of the hyperpolarising input"
+            " resistance sweeps; must differ from ``rmp_amplitude`` when both use the"
+            " same protocol."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT,
+            SchemaKey.UNITS: Units.PERCENT,
+        },
+    )
+    # bluepyefe's "interpolation" strategy is left out: it needs subthreshold sweeps
+    # with a spike count of 0, but bluepyefe leaves their spike count unset.
+    rheobase_strategy: Literal["absolute", "flush", "majority"] = Field(
+        default="absolute",
+        title="Rheobase strategy",
+        description=(
+            "Relative mode: how bluepyefe computes each recording's rheobase from the"
+            " ``rheobase_protocols`` sweeps: ``absolute``"
+            " (lowest amplitude with a spike), ``flush`` (lowest spiking amplitude"
+            " whose next sweep also spikes) or ``majority`` (bluepyefe's binned"
+            " estimate: the centre of the first 10 pA amplitude bin where most sweeps"
+            " spike)."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.STRING_SELECTION},
+    )
+    relative_amplitude_tolerance: PositiveFloat = Field(
+        default=DEFAULT_RELATIVE_AMPLITUDE_TOLERANCE,
+        title="Relative amplitude tolerance",
+        description=(
+            "When amplitudes are relative, a sweep is used for a target if its"
+            " amplitude is within this many percentage points of rheobase of it."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_INPUT,
+            SchemaKey.UNITS: Units.PERCENT,
         },
     )
 
