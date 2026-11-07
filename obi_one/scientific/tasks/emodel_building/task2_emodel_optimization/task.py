@@ -240,17 +240,36 @@ def locate_hoc(coord_root: Path, seed: int) -> Path:
     return hoc_path
 
 
+def align_validation_protocols(
+    config: EModelOptimizationSingleConfig, coord_root: Path, recipes: dict
+) -> list[str]:
+    """Make the recipe and the staged features agree on the validation protocols.
+
+    BluePyEModel skips protocols flagged ``validation`` in the features file but drops
+    their e-features only when they are listed in the recipe's ``validation_protocols``;
+    a mismatch fails with "Could not find protocol". The configured list wins, falling
+    back to the protocols Task 1 flagged.
+    """
+    features_path = coord_root / "config" / "features" / f"{config.initialize.emodel}.json"
+    protocols = list(
+        config.optimization_settings.validation_protocols
+    ) or validation_scoring.flagged_validation_protocols(features_path)
+    validation_scoring.mark_validation_protocols(features_path, protocols)
+    recipes[config.initialize.emodel].setdefault("pipeline_settings", {})[
+        "validation_protocols"
+    ] = protocols
+    return protocols
+
+
 def validation_status_from_results(validation_dict: dict) -> ValidationStatus:
     """Map a bluecellulab validation result dict to a MEModel ``ValidationStatus``.
 
-    ``done`` only when at least one test ran and every test passed; otherwise the
-    status stays ``created``. (A crash in calibration/validation is reported as
-    ``error`` by the caller.)
+    ``done`` only when at least one real test ran and every one passed (the
+    ``thumbnail`` figure and skipped checks do not count); otherwise the status
+    stays ``created``. A crash in calibration/validation is reported as ``error``
+    by the caller.
     """
-    tests = [
-        value for value in validation_dict.values() if isinstance(value, dict) and "passed" in value
-    ]
-    if tests and all(bool(value["passed"]) for value in tests):
+    if calibration_validation.validation_passed(validation_dict):
         return ValidationStatus.done
     return ValidationStatus.created
 
@@ -358,7 +377,9 @@ def run_optimization_pipeline(
     # final.json is written by store_best_model above; parse once here and reuse
     # for registration. Validation figures land outside ``figures/`` so they are
     # not swept into the EModel optimisation-figure ValidationResults.
-    em_metrics = registration.parse_final_json(coord_root / "final.json", emodel)
+    em_metrics = registration.parse_final_json(
+        coord_root / "final.json", emodel, seed=cast("int", seeds[0])
+    )
     calibration_dict: dict | None = None
     validation_dict: dict | None = None
     validation_status = ValidationStatus.created
@@ -474,6 +495,7 @@ class EModelOptimizationTask(Task):
             morphology_capabilities=morphology_capabilities,
             normalized_models=normalized_models,
         )
+        align_validation_protocols(self.config, coord_root, artifacts.recipes)
         artifacts.write(coord_root)
 
         # --- 6. Compile mechanisms ---

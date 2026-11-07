@@ -164,7 +164,30 @@ class TestExecute:
             validation_dict=VALIDATION,
             authorized_public=False,
         )
-        # done means validation ran, whether or not every test passed
+        # a failed test leaves the status at created; done means every test passed
+        steps.set_validation_status.assert_called_once_with(
+            db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.created
+        )
+
+    def test_all_tests_passing_sets_done(self, tmp_path, steps):
+        steps.validate.return_value = {
+            "spiking": {"name": "Spiking", "passed": True, "figures": []},
+            "thumbnail": {"name": "thumbnail", "passed": True, "figures": ["t.png"]},
+            "ais": {
+                "name": "AIS spiking",
+                "passed": True,
+                "validation_details": "Validation skipped: Cell does not have an axon section.",
+            },
+        }
+        db_client = _db_client()
+
+        _task(tmp_path).execute(db_client=db_client, execution_activity_id=ACTIVITY_ID)
+
+        # the skipped AIS check is not registered; the thumbnail figure is
+        assert set(steps.register_validation.call_args.kwargs["validation_dict"]) == {
+            "spiking",
+            "thumbnail",
+        }
         steps.set_validation_status.assert_called_once_with(
             db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.done
         )

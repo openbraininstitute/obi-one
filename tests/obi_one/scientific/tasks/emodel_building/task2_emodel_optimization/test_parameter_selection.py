@@ -1665,6 +1665,7 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     monkeypatch.setattr(staging, "stage_traces", Mock(return_value=["trace-1"]))
     artifacts = Mock()
     monkeypatch.setattr(staging, "build_artifacts", Mock(return_value=artifacts))
+    monkeypatch.setattr(task_module, "align_validation_protocols", Mock(return_value=[]))
 
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
@@ -1692,7 +1693,7 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     artifacts.write.assert_called_once_with(tmp_path.resolve())
 
 
-def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path):
+def test_parse_final_json_reads_the_bluepyemodel_entry_of_the_seed(tmp_path):
     final_path = tmp_path / "final.json"
     defaults = {
         "name": "test",
@@ -1701,47 +1702,38 @@ def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path
         "threshold_current": None,
         "iteration": "0",
     }
-    assert registration.parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test", seed=1) == defaults
 
     final_path.write_text("[]", encoding="utf-8")
-    assert registration.parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "test", seed=1) == defaults
 
-    final_path.write_text(json.dumps({"other": []}), encoding="utf-8")
-    assert registration.parse_final_json(final_path, "test") == defaults
-
+    # BluePyEModel's LocalAccessPoint layout: keyed "<emodel>__<seed>", the total under
+    # "score" and the per-objective scores under "fitness"; no currents.
     final_path.write_text(
         json.dumps(
             {
-                "emodel": [
-                    {
-                        "score": 2.5,
-                        "holding_current": 0.1,
-                        "threshold_current": 0.2,
-                    }
-                ]
+                "test__1": {
+                    "emodel": "test",
+                    "seed": 1,
+                    "score": 3258.3,
+                    "fitness": {"IDrest_0.162.soma.v.mean_frequency": 250.0},
+                    "iteration": None,
+                },
+                "test__2": {"emodel": "test", "seed": 2, "score": 12.5, "iteration": "abc123"},
+                "other__1": {"emodel": "other", "seed": 1, "score": 1.0},
             }
         ),
         encoding="utf-8",
     )
-    assert registration.parse_final_json(final_path, "test") == {
+    assert registration.parse_final_json(final_path, "test", seed=1) == {
         "name": "test",
-        "total_score": 2.5,
-        "holding_current": 0.1,
-        "threshold_current": 0.2,
-        "iteration": "0",
-    }
-
-    final_path.write_text(
-        json.dumps({"test": {"fitness": 3.5, "iteration": 7}}),
-        encoding="utf-8",
-    )
-    assert registration.parse_final_json(final_path, "test") == {
-        "name": "test",
-        "total_score": 3.5,
+        "total_score": pytest.approx(3258.3),
         "holding_current": None,
         "threshold_current": None,
-        "iteration": "7",
+        "iteration": "0",
     }
+    assert registration.parse_final_json(final_path, "test", seed=2)["iteration"] == "abc123"
+    assert registration.parse_final_json(final_path, "test", seed=3) == defaults
 
 
 def test_upload_optimization_assets_is_a_no_op_regardless_of_present_files(tmp_path, caplog):

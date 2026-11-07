@@ -40,6 +40,24 @@ def flagged_validation_protocols(features_path: Path) -> list[str]:
     return [p["name"] for p in data.get("protocols", []) if p.get("validation")]
 
 
+def mark_validation_protocols(features_path: Path, validation_protocols: list[str]) -> None:
+    """Align each protocol's ``validation`` flag with the chosen validation protocols.
+
+    BluePyEModel skips flagged protocols but filters their e-features by the recipe's
+    ``validation_protocols``; the two must agree or the evaluator cannot be built.
+    """
+    from bluepyemodel.tools.utils import (  # ruff: ignore[import-outside-top-level]
+        are_same_protocol,
+    )
+
+    data = json.loads(features_path.read_text(encoding="utf-8"))
+    for protocol in data.get("protocols", []):
+        protocol["validation"] = any(
+            are_same_protocol(protocol.get("name"), name) for name in validation_protocols
+        )
+    features_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
 def aggregate(scores: list[float], validation_function: str) -> float:
     """Aggregate e-feature scores the way BluePyEModel's validation functions do."""
     from numpy import max as np_max, mean as np_mean  # ruff: ignore[import-outside-top-level]

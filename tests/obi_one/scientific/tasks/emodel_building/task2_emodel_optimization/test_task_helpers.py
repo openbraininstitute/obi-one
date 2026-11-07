@@ -1,9 +1,12 @@
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from entitysdk.types import ValidationStatus
 
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task import (
+    align_validation_protocols,
     locate_hoc,
     validation_status_from_results,
 )
@@ -69,9 +72,62 @@ class TestValidationStatusFromResults:
         results = {"t1": {"name": "A", "passed": True}, "t2": {"name": "B", "passed": True}}
         assert validation_status_from_results(results) == (ValidationStatus.done)
 
-    def test_any_failure_stays_created(self):
+    def test_a_failed_test_stays_created(self):
         results = {"t1": {"name": "A", "passed": True}, "t2": {"name": "B", "passed": False}}
         assert validation_status_from_results(results) == (ValidationStatus.created)
 
+    def test_thumbnail_and_skipped_checks_do_not_count(self):
+        thumbnail = {"name": "thumbnail", "passed": True, "figures": ["t.png"]}
+        skipped = {
+            "name": "AisTest",
+            "passed": True,
+            "validation_details": "Validation skipped: Cell does not have an axon section.",
+        }
+        only_artifacts = {"thumbnail": thumbnail, "ais": skipped}
+        assert validation_status_from_results(only_artifacts) == ValidationStatus.created
+        failed = only_artifacts | {"spiking": {"name": "Spiking", "passed": False}}
+        assert validation_status_from_results(failed) == ValidationStatus.created
+        passed = only_artifacts | {"spiking": {"name": "Spiking", "passed": True}}
+        assert validation_status_from_results(passed) == ValidationStatus.done
+
     def test_empty_stays_created(self):
         assert validation_status_from_results({}) == (ValidationStatus.created)
+
+    def test_entries_without_verdict_stay_created(self):
+        results = {"memodel_properties": {"holding_current": -0.1}}
+        assert validation_status_from_results(results) == (ValidationStatus.created)
+
+
+class TestAlignValidationProtocols:
+    @staticmethod
+    def _stage(tmp_path, flags):
+        features = tmp_path / "config" / "features" / "em.json"
+        features.parent.mkdir(parents=True)
+        protocols = [{"name": name, "validation": flag} for name, flag in flags.items()]
+        features.write_text(json.dumps({"efeatures": [], "protocols": protocols}))
+        return features
+
+    @staticmethod
+    def _config(validation_protocols):
+        return SimpleNamespace(
+            initialize=SimpleNamespace(emodel="em"),
+            optimization_settings=SimpleNamespace(validation_protocols=validation_protocols),
+        )
+
+    def test_empty_recipe_list_falls_back_to_extraction_flags(self, tmp_path):
+        features = self._stage(tmp_path, {"IDrest_150": False, "IDrest_250": True})
+        recipes = {"em": {"pipeline_settings": {"validation_protocols": []}}}
+        result = align_validation_protocols(self._config(()), tmp_path, recipes)
+        assert result == ["IDrest_250"]
+        assert recipes["em"]["pipeline_settings"]["validation_protocols"] == ["IDrest_250"]
+        flags = {p["name"]: p["validation"] for p in json.loads(features.read_text())["protocols"]}
+        assert flags == {"IDrest_150": False, "IDrest_250": True}
+
+    def test_configured_list_overrides_extraction_flags(self, tmp_path):
+        features = self._stage(tmp_path, {"IDrest_150": False, "IDrest_250": True})
+        recipes = {"em": {}}
+        result = align_validation_protocols(self._config(("IDrest_150",)), tmp_path, recipes)
+        assert result == ["IDrest_150"]
+        assert recipes["em"]["pipeline_settings"]["validation_protocols"] == ["IDrest_150"]
+        flags = {p["name"]: p["validation"] for p in json.loads(features.read_text())["protocols"]}
+        assert flags == {"IDrest_150": True, "IDrest_250": False}
