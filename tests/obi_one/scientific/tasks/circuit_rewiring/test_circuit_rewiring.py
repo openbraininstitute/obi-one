@@ -8,6 +8,8 @@ connectivity models themselves.
 """
 
 import importlib.util
+import json
+import shutil
 from pathlib import Path
 from typing import get_args
 
@@ -269,6 +271,8 @@ def _build_scan_config(
     synaptic_model=None,
     circuit_path=CIRCUIT_PATH,
     set_block_neuron_set: bool = True,
+    target_as_neuron_set: bool = False,
+    edge_population_type: str | None = None,
 ) -> CircuitRewiringScanConfig:
     circuit = OBICircuit(name="tiny", path=str(circuit_path))
 
@@ -285,10 +289,15 @@ def _build_scan_config(
     config.add(source_set, name="Sources")
     config.add(target_set, name="Targets")
     config.add(conn_model, name="Model")
-    if set_block_neuron_set:
-        # The target neurons of a pathway are the neuron set of its morphology locations block.
-        locations_block = locations_block.model_copy(update={"neuron_set": target_set.ref})
-    config.add(locations_block, name="Locations")
+    if target_as_neuron_set:
+        # The target is a neuron set: no morphology locations are generated.
+        target = target_set
+    else:
+        # The target neurons are then the neuron set of the morphology locations block.
+        if set_block_neuron_set:
+            locations_block = locations_block.model_copy(update={"neuron_set": target_set.ref})
+        config.add(locations_block, name="Locations")
+        target = locations_block
     synaptic_model = (
         synaptic_model if synaptic_model is not None else ExcitatoryTsodyksMarkramSynapticModel()
     )
@@ -302,14 +311,18 @@ def _build_scan_config(
         conn_model=conn_model.ref,
         synapses_per_connection=synapse_count.ref,
         synaptic_model=synaptic_model.ref,
-        morphology_locations=locations_block.ref,
+        target=target.ref,
     )
     config.pathways["MainPathway"] = pathway
 
+    init_kwargs = (
+        {} if edge_population_type is None else {"edge_population_type": edge_population_type}
+    )
     init = CircuitRewiringScanConfig.Initialize(
         circuit=circuit,
         edge_population_name=edge_population_name,
         seed=seed,
+        **init_kwargs,
     )
     config.set(init, name="initialize")
     return config.validated_config()
@@ -632,7 +645,7 @@ def _config_with_locations(locations_block) -> CircuitRewiringScanConfig:
         conn_model=model.ref,
         synapses_per_connection=synapse_count.ref,
         synaptic_model=synaptic_model.ref,
-        morphology_locations=locations_block.ref,
+        target=locations_block.ref,
     )
     return config.validated_config()
 
@@ -650,12 +663,12 @@ def _config_with_locations(locations_block) -> CircuitRewiringScanConfig:
 def test_pathway_accepts_allowed_morphology_locations_and_round_trips(locations_block):
     config = _config_with_locations(locations_block)
     reloaded = CircuitRewiringScanConfig.model_validate_json(config.model_dump_json())
-    resolved = reloaded.pathways["P"].morphology_locations.block
+    resolved = reloaded.pathways["P"].target.block
     assert type(resolved) is type(locations_block)
 
 
-def test_pathway_morphology_locations_is_required():
-    assert CircuitConnectivityPathway.model_fields["morphology_locations"].is_required()
+def test_pathway_target_is_required():
+    assert CircuitConnectivityPathway.model_fields["target"].is_required()
 
 
 @pytest.mark.filterwarnings("ignore:Pydantic serializer warnings:UserWarning")
@@ -934,7 +947,7 @@ def test_rewiring_two_pathways_with_different_synaptic_models_share_a_population
             conn_model=conn_model.ref,
             synapses_per_connection=synapse_count.ref,
             synaptic_model=model.ref,
-            morphology_locations=locations.ref,
+            target=locations.ref,
         )
     (instance,) = _run(config.validated_config(), tmp_path / "scan")
     circuit_path = tmp_path / "scan" / str(instance.idx) / "SONATA" / "circuit_config.json"
@@ -959,7 +972,9 @@ def test_rewiring_rejects_synaptic_models_for_other_edge_population_types(monkey
         ("Exp2Syn_synapse",),
     )
     with pytest.raises(OBIONEError, match="can only be assigned to edge populations"):
-        CircuitRewiringTask._check_synaptic_model("P", ExcitatoryTsodyksMarkramSynapticModel())
+        CircuitRewiringTask._check_synaptic_model(
+            "P", ExcitatoryTsodyksMarkramSynapticModel(), "chemical"
+        )
 
 
 def test_rewiring_rejects_incompatible_synaptic_models_in_one_population(monkeypatch):
@@ -971,3 +986,169 @@ def test_rewiring_rejects_incompatible_synaptic_models_in_one_population(monkeyp
             [ExcitatoryTsodyksMarkramSynapticModel()],
             InhibitoryTsodyksMarkramSynapticModel(),
         )
+
+
+# --------------------------------------------------------------------------------------------
+# Neuron set as target (no synapse locations) and the edge population type.
+# --------------------------------------------------------------------------------------------
+
+
+def _single_output_config_path(tmp_path, instance) -> Path:
+    return tmp_path / "scan" / str(instance.idx) / "SONATA" / "circuit_config.json"
+
+
+def test_rewiring_neuron_set_target_generates_no_locations(tmp_path):
+    """A neuron set as target defines the targeted neurons but generates no locations."""
+    target_set = BiophysicalPopulationNeuronSet(
+        population=BIOPHYSICAL_POPULATION, sample_percentage=50.0, sample_seed=1
+    )
+    expected_targets = set(
+        target_set.get_neuron_ids(OBICircuit(name="tiny", path=str(CIRCUIT_PATH)))[
+            BIOPHYSICAL_POPULATION
+        ]
+    )
+    config = _build_scan_config(
+        conn_model=ErdosRenyiConnModel(connection_probability=1.0),
+        edge_population_name="rewired",
+        seed=0,
+        target_set=target_set,
+        target_as_neuron_set=True,
+    )
+    (instance,) = _run(config, tmp_path / "scan")
+    circuit_path = _single_output_config_path(tmp_path, instance)
+
+    edges = Circuit(circuit_path).edges["rewired"]
+    assert _user_edge_properties(edges) == SYNAPSE_PARAMETER_COLUMNS  # no afferent columns
+    table = _edge_table(circuit_path, SYNAPSE_PARAMETER_COLUMNS)
+    assert set(table["@target_node"]) == expected_targets
+    assert len(table) == len(expected_targets) * (10 - 1)
+
+
+def _point_circuit_with_base_dir_manifest(tmp_path) -> Path:
+    """A copy of the point-neuron test circuit whose config declares the '$BASE_DIR' manifest.
+
+    The task declares a mechanisms directory as '$BASE_DIR/mod' (see `ensure_mechanisms_dir`)
+    in circuits that do not declare one, which only resolves if the config has the manifest.
+    The original test circuit has none, so the config would not load after rewiring. This is
+    a known limitation of the mechanism file handling, unrelated to what is tested here.
+    """
+    circuit_dir = tmp_path / "point_circuit"
+    shutil.copytree(POINT_CIRCUIT_PATH.parent, circuit_dir)
+    config_path = circuit_dir / "circuit_config.json"
+    config = json.loads(config_path.read_text())
+    config["manifest"] = {"$BASE_DIR": "./"}
+    config_path.write_text(json.dumps(config))
+    return config_path
+
+
+def test_rewiring_neuron_set_target_works_for_point_networks(tmp_path):
+    """Networks without morphologies can be rewired by using a neuron set as target."""
+    config = _build_scan_config(
+        conn_model=ErdosRenyiConnModel(connection_probability=1.0),
+        edge_population_name="rewired",
+        seed=0,
+        source_set=PointPopulationNeuronSet(population="drosophila"),
+        target_set=PointPopulationNeuronSet(population="drosophila"),
+        target_as_neuron_set=True,
+        circuit_path=_point_circuit_with_base_dir_manifest(tmp_path),
+    )
+    (instance,) = _run(config, tmp_path / "scan")
+    circuit_path = _single_output_config_path(tmp_path, instance)
+
+    edges = Circuit(circuit_path).edges["rewired"]
+    assert edges.source.name == edges.target.name == "drosophila"
+    assert edges.size == 3 * 2  # 3 point neurons, all ordered pairs without self-connections
+    assert _user_edge_properties(edges) == SYNAPSE_PARAMETER_COLUMNS
+
+
+def test_rewiring_rejects_virtual_neuron_set_as_target():
+    with pytest.raises(pydantic.ValidationError):
+        _build_scan_config(
+            conn_model=ErdosRenyiConnModel(connection_probability=1.0),
+            edge_population_name="rewired",
+            seed=0,
+            target_set=VirtualPopulationNeuronSet(population=VIRTUAL_POPULATION),
+            target_as_neuron_set=True,
+        )
+
+
+def _edge_population_types(circuit_path) -> dict[str, str]:
+    config = json.loads(Path(circuit_path).read_text(encoding="utf-8"))
+    return {
+        name: properties["type"]
+        for entry in config["networks"]["edges"]
+        for name, properties in entry["populations"].items()
+    }
+
+
+def test_rewiring_edge_population_type_defaults_to_chemical(tmp_path):
+    circuit_path = _run_er(tmp_path)
+    assert _edge_population_types(circuit_path)["rewired"] == "chemical"
+
+
+def test_rewiring_rejects_edge_population_type_the_synaptic_model_does_not_support(tmp_path):
+    config = _build_scan_config(
+        conn_model=ErdosRenyiConnModel(connection_probability=1.0),
+        edge_population_name="rewired",
+        seed=0,
+        edge_population_type="brian2_synapse",
+    )
+    with pytest.raises(OBIONEError, match="can only be assigned to edge populations"):
+        _run(config, tmp_path / "scan")
+
+
+def test_rewiring_writes_the_configured_edge_population_type(tmp_path, monkeypatch):
+    # Stand-in for a future synaptic model that supports another edge population type.
+    monkeypatch.setattr(
+        ExcitatoryTsodyksMarkramSynapticModel,
+        "_compatible_edge_population_types",
+        ("chemical", "brian2_synapse"),
+    )
+    config = _build_scan_config(
+        conn_model=ErdosRenyiConnModel(connection_probability=1.0),
+        edge_population_name="rewired",
+        seed=0,
+        edge_population_type="brian2_synapse",
+    )
+    (instance,) = _run(config, tmp_path / "scan")
+    assert (
+        _edge_population_types(_single_output_config_path(tmp_path, instance))["rewired"]
+        == "brian2_synapse"
+    )
+
+
+def test_rewiring_rejects_mixed_location_targets_in_one_population(tmp_path):
+    """Pathways feeding one edge population cannot be a mix of locations and neuron set targets."""
+    config = CircuitRewiringScanConfig.empty_config()
+    config.set(Info(campaign_name="Rewire", campaign_description="Rewire campaign"), name="info")
+    config.set(
+        CircuitRewiringScanConfig.Initialize(
+            circuit=OBICircuit(name="tiny", path=str(CIRCUIT_PATH)),
+            edge_population_name="rewired",
+        ),
+        name="initialize",
+    )
+    sources = AllBiophysicalNeurons()
+    targets = AllBiophysicalNeurons()
+    config.add(sources, name="Sources")
+    config.add(targets, name="Targets")
+    synapse_count = IntConstantDistribution(value=1)
+    config.add(synapse_count, name="Count")
+    locations = RandomMorphologyLocations(section_types=(3, 4)).model_copy(
+        update={"neuron_set": targets.ref}
+    )
+    config.add(locations, name="Locations")
+    for name, target in (("WithLocations", locations), ("WithoutLocations", targets)):
+        conn_model = ErdosRenyiConnModel(connection_probability=0.5)
+        synaptic_model = ExcitatoryTsodyksMarkramSynapticModel()
+        config.add(conn_model, name=f"Conn{name}")
+        config.add(synaptic_model, name=f"Syn{name}")
+        config.pathways[name] = CircuitConnectivityPathway(
+            source_neuron_set=sources.ref,
+            conn_model=conn_model.ref,
+            synapses_per_connection=synapse_count.ref,
+            synaptic_model=synaptic_model.ref,
+            target=target.ref,
+        )
+    with pytest.raises(OBIONEError, match="only some of them define morphology locations"):
+        _run(config.validated_config(), tmp_path / "scan")

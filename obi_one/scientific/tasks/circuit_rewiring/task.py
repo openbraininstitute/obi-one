@@ -40,11 +40,11 @@ from obi_one.scientific.tasks.circuit_rewiring.config import (
     CircuitRewiringSingleConfig,
 )
 from obi_one.scientific.tasks.synapse_parameterization.utils import compatible_with
+from obi_one.scientific.unions_and_references.morphology_locations import (
+    NonGroupedMorphologyLocationsReference,
+)
 
 L = logging.getLogger(__name__)
-
-# SONATA edge type for a plain chemical connectivity population.
-_EDGE_TYPE = "chemical"
 
 # SONATA node properties holding the soma position, used for distance-dependent connectivity.
 _POSITION_PROPERTIES = ("x", "y", "z")
@@ -58,7 +58,7 @@ class _ResolvedPathway:
     name: str
     conn_model: PathwayStructuralConnModel
     synapses_per_connection: Distribution
-    locations_block: GeneratedMorphologyLocationsBlock
+    locations_block: GeneratedMorphologyLocationsBlock | None  # None: no synapse locations
     synaptic_model: SynapticModelBase
     source_ids: dict[str, np.ndarray]
     target_ids: dict[str, np.ndarray]
@@ -254,22 +254,32 @@ class CircuitRewiringTask(Task):
         return _location_edge_properties(morphology, locations)
 
     @staticmethod
-    def _check_synaptic_model(pathway_name: str, model: SynapticModelBase) -> None:
-        """Check the pathway's synaptic model can be assigned to the new (chemical) population."""
+    def _check_synaptic_model(
+        pathway_name: str, model: SynapticModelBase, edge_population_type: str
+    ) -> None:
+        """Check the pathway's synaptic model can be assigned to the new edge population type."""
         compatible_types = type(model).compatible_edge_population_types()
-        if _EDGE_TYPE not in compatible_types:
+        if edge_population_type not in compatible_types:
             msg = (
                 f"Pathway '{pathway_name}': {type(model).__name__} can only be assigned to edge"
                 f" populations of type {sorted(compatible_types)}, but the new edge population"
-                f" has type '{_EDGE_TYPE}'."
+                f" has type '{edge_population_type}'."
             )
             raise OBIONEError(msg)
 
-    def _resolve_pathway(
-        self, pathway_index: int, pathway_name: str, pathway: CircuitConnectivityPathway
-    ) -> _ResolvedPathway:
-        """Resolve a pathway's references and neuron sets, validating them on the way."""
-        locations_block = pathway.morphology_locations.block
+    def _resolve_target(
+        self, pathway_name: str, pathway: CircuitConnectivityPathway
+    ) -> tuple[GeneratedMorphologyLocationsBlock | None, dict[str, np.ndarray]]:
+        """Resolve a pathway's target to its morphology locations block (if any) and node IDs.
+
+        The target is either a neuron set, which only defines the targeted neurons, or a
+        morphology locations block, whose neuron set defines them and which additionally
+        parameterizes the synapse locations.
+        """
+        if not isinstance(pathway.target, NonGroupedMorphologyLocationsReference):
+            return None, self._resolve_pathway_ids(pathway.target.block)
+
+        locations_block = pathway.target.block
         if not isinstance(locations_block, GeneratedMorphologyLocationsBlock):
             msg = (
                 f"Pathway '{pathway_name}' uses unsupported morphology locations"
@@ -278,15 +288,24 @@ class CircuitRewiringTask(Task):
             raise OBIONEError(msg)
         # The target neurons are defined by the neuron set of the morphology locations block.
         # NOTE: We may want to re-think this in the future, see the config validator
-        # `require_target_neuron_set_in_morphology_locations`.
+        # `require_neuron_set_in_morphology_locations_targets`.
         if locations_block.neuron_set is None:
             msg = (
                 f"Pathway '{pathway_name}': the morphology locations block must specify a"
                 " neuron set, as it defines the target neurons of the pathway."
             )
             raise OBIONEError(msg)
+        return locations_block, self._resolve_pathway_ids(locations_block.neuron_set.block)
+
+    def _resolve_pathway(
+        self, pathway_index: int, pathway_name: str, pathway: CircuitConnectivityPathway
+    ) -> _ResolvedPathway:
+        """Resolve a pathway's references and neuron sets, validating them on the way."""
+        locations_block, target_ids = self._resolve_target(pathway_name, pathway)
         synaptic_model = pathway.synaptic_model.block
-        self._check_synaptic_model(pathway_name, synaptic_model)
+        self._check_synaptic_model(
+            pathway_name, synaptic_model, self.config.initialize.edge_population_type
+        )
         return _ResolvedPathway(
             index=pathway_index,
             name=pathway_name,
@@ -295,7 +314,7 @@ class CircuitRewiringTask(Task):
             locations_block=locations_block,
             synaptic_model=synaptic_model,
             source_ids=self._resolve_pathway_ids(pathway.source_neuron_set.block),
-            target_ids=self._resolve_pathway_ids(locations_block.neuron_set.block),
+            target_ids=target_ids,
         )
 
     def _synaptic_parameters(
@@ -321,8 +340,9 @@ class CircuitRewiringTask(Task):
     ) -> pd.DataFrame | None:
         """Draw the edges of one pathway between one source and one target population.
 
-        Returns a frame with the pre/post node ids, the postsynaptic location columns and the
-        synaptic parameter columns of every edge, or None if no connection was drawn.
+        Returns a frame with the pre/post node ids, the synaptic parameter columns and, if the
+        pathway's target defines morphology locations, the postsynaptic location columns of every
+        edge, or None if no connection was drawn.
         """
         (src_pop, src_ids), (tgt_pop, tgt_ids) = source, target
         context = PathwayConnContext(
@@ -336,18 +356,19 @@ class CircuitRewiringTask(Task):
         if pre.size == 0:
             return None
         pre, post = self._expand_by_synapse_count(pre, post, pathway.synapses_per_connection, rng)
-        locations = self._postsynaptic_location_properties(
-            locations_block=pathway.locations_block,
-            pathway_index=pathway.index,
-            tgt_pop=tgt_pop,
-            post=post,
-            rng=rng,
-        )
-        parameters = self._synaptic_parameters(pathway, pre, post)
-        return pd.concat(
-            [pd.DataFrame({STR_PRE_NODE: pre, STR_POST_NODE: post}), locations, parameters],
-            axis=1,
-        )
+        columns = [pd.DataFrame({STR_PRE_NODE: pre, STR_POST_NODE: post})]
+        if pathway.locations_block is not None:
+            columns.append(
+                self._postsynaptic_location_properties(
+                    locations_block=pathway.locations_block,
+                    pathway_index=pathway.index,
+                    tgt_pop=tgt_pop,
+                    post=post,
+                    rng=rng,
+                )
+            )
+        columns.append(self._synaptic_parameters(pathway, pre, post))
+        return pd.concat(columns, axis=1)
 
     def _collect_pathway_connections(
         self, rng: np.random.Generator
@@ -368,6 +389,7 @@ class CircuitRewiringTask(Task):
         """
         frames: dict[tuple[str, str], list[pd.DataFrame]] = {}
         models_per_pair: dict[tuple[str, str], list[SynapticModelBase]] = {}
+        has_locations_per_pair: dict[tuple[str, str], bool] = {}
 
         for pathway_index, (pathway_name, config_pathway) in enumerate(
             self.config.pathways.items()
@@ -384,6 +406,14 @@ class CircuitRewiringTask(Task):
                     if edges is None:
                         continue
                     pair = (src_item[0], tgt_item[0])
+                    self._check_consistent_locations(
+                        pathway_name,
+                        pair,
+                        expected=has_locations_per_pair.setdefault(
+                            pair, pathway.locations_block is not None
+                        ),
+                        has_locations=pathway.locations_block is not None,
+                    )
                     self._check_consistent_synaptic_models(
                         pathway_name, pair, models_per_pair.get(pair, []), pathway.synaptic_model
                     )
@@ -394,6 +424,24 @@ class CircuitRewiringTask(Task):
             pair: (pd.concat(pair_frames, ignore_index=True), models_per_pair[pair])
             for pair, pair_frames in frames.items()
         }
+
+    @staticmethod
+    def _check_consistent_locations(
+        pathway_name: str, pair: tuple[str, str], *, expected: bool, has_locations: bool
+    ) -> None:
+        """Check that pathways feeding one edge population all (or none) generate locations.
+
+        All edges of a population share one set of property columns, so the synapse location
+        columns cannot be present for the edges of some pathways only.
+        """
+        if has_locations != expected:
+            msg = (
+                f"Pathway '{pathway_name}' and earlier pathways both connect populations"
+                f" {pair[0]} -> {pair[1]}, but only some of them define morphology locations for"
+                " their targets. Either all or none of the pathways connecting the same"
+                " populations must use a morphology locations block as target."
+            )
+            raise OBIONEError(msg)
 
     @staticmethod
     def _check_consistent_synaptic_models(
@@ -518,7 +566,9 @@ class CircuitRewiringTask(Task):
 
     @staticmethod
     def _add_edge_populations_to_config(
-        circuit_config_path: Path, edge_populations: dict[str, _NewEdgePopulation]
+        circuit_config_path: Path,
+        edge_populations: dict[str, _NewEdgePopulation],
+        edge_population_type: str,
     ) -> None:
         """Register the new edge population(s) in circuit_config.json.
 
@@ -540,7 +590,7 @@ class CircuitRewiringTask(Task):
             edges.append(
                 {
                     "edges_file": f"{prefix}{new_population.edges_file.as_posix()}",
-                    "populations": {edge_population: {"type": _EDGE_TYPE}},
+                    "populations": {edge_population: {"type": edge_population_type}},
                 }
             )
 
@@ -588,6 +638,7 @@ class CircuitRewiringTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=types.DerivationType.circuit_rewiring,
+            skip_validation=True
         )
 
     def execute(
@@ -623,7 +674,9 @@ class CircuitRewiringTask(Task):
             output_dir=circuit_config_path.parent, rng=rng
         )
 
-        self._add_edge_populations_to_config(circuit_config_path, edge_populations)
+        self._add_edge_populations_to_config(
+            circuit_config_path, edge_populations, self.config.initialize.edge_population_type
+        )
         self._write_mod_files(circuit_config_path, edge_populations)
         L.info(
             "Added %d edge population(s) to '%s'",

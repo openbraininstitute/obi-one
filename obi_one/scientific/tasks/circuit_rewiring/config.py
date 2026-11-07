@@ -16,6 +16,8 @@ from obi_one.scientific.unions_and_references.circuit import CircuitDiscriminato
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     ALL_NEURON_SETS_REFERENCE_TYPES,
     ALL_NEURON_SETS_REFERENCE_UNION,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+    NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     NEURONSimulationNeuronSetUnion,
 )
 from obi_one.scientific.unions_and_references.distributions import (
@@ -56,12 +58,13 @@ class CircuitConnectivityPathway(Block):
 
     Upon execution, the referenced ``conn_model`` (a ``PathwayStructuralConnModel``) decides
     which ordered pairs of a source neuron (from ``source_neuron_set``) and a target neuron
-    become connected. The target neurons are the neuron set specified in the referenced
-    ``morphology_locations`` block. For every drawn connection, an integer count is sampled from
-    ``synapses_per_connection`` and that many identical edges (same source and target neuron)
-    are placed in the new edge population. Each edge is given a location on the postsynaptic
-    neuron's morphology by ``morphology_locations`` and its physiological parameters by
-    ``synaptic_model``; no other edge properties are added.
+    become connected. The target neurons are given by ``target``: either a neuron set, or a
+    morphology locations block (whose neuron set defines the targets). For every drawn
+    connection, an integer count is sampled from ``synapses_per_connection`` and that many
+    identical edges (same source and target neuron) are placed in the new edge population. Each
+    edge gets its physiological parameters from ``synaptic_model``, and, if ``target`` is a
+    morphology locations block, a location on the postsynaptic neuron's morphology; no other edge
+    properties are added.
     """
 
     title: ClassVar[str] = "Pathway connectivity"
@@ -105,20 +108,28 @@ class CircuitConnectivityPathway(Block):
             SchemaKey.REFERENCE_TYPES: [SynapticModelReference.__name__],
         },
     )
-    morphology_locations: NonGroupedMorphologyLocationsReference = Field(
-        title="Postsynaptic morphology locations",
-        description="Morphology-locations block that parameterizes where the generated"
-        " connections are located on the postsynaptic neuron. The neuron set specified in this"
-        " block defines the target (postsynaptic) neurons of the pathway and is required. Each"
-        " connection (edge) receives one location on the morphology of its target neuron, written"
-        " as the afferent location edge properties. As in Build Synaptome, the number of"
-        " locations per target neuron equals the number of edges it receives, so the block's own"
-        " number of locations is overridden. Explicit and grouped location blocks are not"
-        " available.",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
-            SchemaKey.REFERENCE_TYPES: [NonGroupedMorphologyLocationsReference.__name__],
-        },
+    target: NonGroupedMorphologyLocationsReference | NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
+        Field(
+            title="Target",
+            description="Defines the target (postsynaptic) neurons of the pathway, either as a"
+            " neuron set or as a morphology-locations block. A neuron set (biophysical or point)"
+            " only defines which neurons are targeted; no synapse locations are generated, which"
+            " also makes it usable for networks without morphologies. A morphology-locations block"
+            " additionally parameterizes where the connections are located on the postsynaptic"
+            " neurons: its neuron set is required and defines the targets, which must be"
+            " biophysical, and each connection (edge) receives one location on the morphology of"
+            " its target neuron, written as the afferent location edge properties. As in Build"
+            " Synaptome, the number of locations per target neuron equals the number of edges it"
+            " receives, so the block's own number of locations is overridden. Explicit and grouped"
+            " location blocks are not available.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
+                SchemaKey.REFERENCE_TYPES: [
+                    NonGroupedMorphologyLocationsReference.__name__,
+                    *NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES,
+                ],
+            },
+        )
     )
 
 
@@ -135,11 +146,12 @@ class CircuitRewiringScanConfig(InfoScanConfig):
     description: ClassVar[str] = (
         "Adds a new edge population to a SONATA circuit, connecting neurons according to"
         " user-specified source/target neuron sets and a structural connectivity model per"
-        " pathway. The new edge population describes which neurons are connected, where each"
-        " connection is located on the postsynaptic neuron (afferent location properties) and the"
-        " physiological parameters of each synapse (from a synaptic model); no other edge"
-        " parameters are added. The edge population is also registered in the"
-        " circuit configuration (circuit_config.json)."
+        " pathway. The new edge population describes which neurons are connected, the"
+        " physiological parameters of each synapse (from a synaptic model) and, if the target is"
+        " given by a morphology locations block, where each connection is located on the"
+        " postsynaptic neuron (afferent location properties); no other edge parameters are"
+        " added. The edge population is also registered in the circuit configuration"
+        " (circuit_config.json)."
     )
 
     json_schema_extra_additions: ClassVar[dict] = {
@@ -172,6 +184,17 @@ class CircuitRewiringScanConfig(InfoScanConfig):
             title="Edge population name",
             description="Name of the new edge population to add to the circuit. Must not already"
             " exist in the circuit.",
+            json_schema_extra={
+                SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
+            },
+        )
+        edge_population_type: str = Field(
+            default="chemical",
+            min_length=1,
+            title="Edge population type",
+            description="SONATA type of the new edge population(s), e.g. 'chemical'. The synaptic"
+            " models of the pathways must support this type (the Tsodyks-Markram models currently"
+            " support 'chemical' only).",
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.STRING_INPUT,
             },
@@ -216,10 +239,11 @@ class CircuitRewiringScanConfig(InfoScanConfig):
     neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(  # ty:ignore[no-matching-overload]
         title="Neuron sets",
         default_factory=dict,
-        description="Neuron sets referenced by the pathways: as sources directly, and as targets"
-        " via the neuron set of the pathway's morphology locations. Virtual neuron sets may be"
-        " used as sources only (e.g. for feedforward/external input projections); targets must"
-        " be biophysical.",
+        description="Neuron sets referenced by the pathways: as sources, and as targets either"
+        " directly or via the neuron set of a morphology locations block. Virtual neuron sets"
+        " may be used as sources only (e.g. for feedforward/external input projections);"
+        " targets must be non-virtual (biophysical, or point neurons without synapse"
+        " locations).",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
@@ -301,18 +325,24 @@ class CircuitRewiringScanConfig(InfoScanConfig):
     )
 
     @model_validator(mode="after")
-    def require_target_neuron_set_in_morphology_locations(self) -> Self:
-        """Require every pathway's morphology locations block to specify the target neuron set.
+    def require_neuron_set_in_morphology_locations_targets(self) -> Self:
+        """Require a morphology locations target to specify the target neuron set.
 
-        TODO(re-think): The target neurons of a pathway are currently defined by the ``neuron_set``
-        of its morphology locations block, and that field is required here. This couples target
-        selection to a block whose purpose is geometry: the target is less visible on the
-        pathway, and pathways with different targets cannot share a morphology locations block.
-        We may want to re-think this in the future, e.g. by reintroducing a dedicated target
-        neuron set on the pathway, or by allowing the field to be omitted with a default.
+        If a pathway's ``target`` is a morphology locations block, the ``neuron_set`` of that
+        block defines the target neurons, and the field is required here. (A pathway whose
+        ``target`` is a neuron set needs no such check.)
+
+        TODO(re-think): Defining the targets through a block whose purpose is geometry couples
+        target selection to it: the target is less visible on the pathway, and pathways with
+        different targets cannot share a morphology locations block. We may want to re-think
+        this in the future, e.g. by giving the pathway a dedicated target neuron set next to
+        optional morphology locations, or by allowing the block's field to be omitted with a
+        default.
         """
         for pathway_name, pathway in self.pathways.items():
-            reference = pathway.morphology_locations
+            reference = pathway.target
+            if not isinstance(reference, NonGroupedMorphologyLocationsReference):
+                continue
             # Look the block up by name rather than via `reference.block`, which is only
             # available once all references have been resolved.
             block = self.morphology_locations.get(reference.block_name)
@@ -330,7 +360,7 @@ class CircuitRewiringSingleConfig(CircuitRewiringScanConfig, SingleConfigMixin):
     """Adds a new connectivity edge population to a SONATA circuit.
 
     Connections are drawn per pathway (source neuron set, target neuron set) using the pathway's
-    structural connectivity model. The new edge population lists which neurons are connected, the
-    postsynaptic location of each connection and its synaptic parameters, and is registered in
-    the circuit configuration.
+    structural connectivity model. The new edge population lists which neurons are connected, its
+    synaptic parameters and, if the target is a morphology locations block, the postsynaptic
+    location of each connection, and is registered in the circuit configuration.
     """
