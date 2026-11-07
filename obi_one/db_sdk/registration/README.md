@@ -8,9 +8,10 @@ the inner modules.
 
 ```
 registration/
-├── circuit/            assets.py, generate.py, links.py, register.py, resolve.py
-├── morphology/         register.py
-└── simulation_result/  register.py
+├── circuit/                    assets.py, generate.py, links.py, register.py, resolve.py
+├── electrical_cell_recording/  register.py
+├── morphology/                 register.py
+└── simulation_result/          register.py
 ```
 
 ## What belongs here
