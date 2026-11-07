@@ -219,6 +219,8 @@ def test_execute_runs_an_mpi_process_per_job_cpu(
 
 
 def test_execute_benchmarks_each_phase(tmp_path, mock_db_client):
+    # Suite fixture disables task benchmarking; this test asserts the phase JSON is written.
+    BenchmarkTracker.enable()
     task, circuit_path = _make_task(tmp_path)
     circuit, circuit_entity = _resolved_circuit(circuit_path)
 
