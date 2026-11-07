@@ -51,8 +51,10 @@ with contextlib.suppress(ImportError):  # Connalysis (optional)
 
 L = logging.getLogger(__name__)
 
-# Default figure width (inches) for multi-panel plots; fontsize assumes this scale.
+# Default figure sizes (inches); fontsize assumes this scale. Tests may monkeypatch these.
 FULL_WIDTH = 16
+CIRCULAR_FIGSIZE = (10, 10)
+PROPERTY_TABLE_FIGSIZE = (5, 2)
 
 
 class BasicConnectivityPlotsScanConfig(ScanConfig):
@@ -271,7 +273,7 @@ class BasicConnectivityPlotsTask(Task):
             L.warning("Your network is too large for this plot.")
         else:
             # Create figure with main plot and legend space (4 legend axes)
-            fig = plt.figure(figsize=(10, 10), facecolor="white")
+            fig = plt.figure(figsize=CIRCULAR_FIGSIZE, facecolor="white")
             gs = fig.add_gridspec(
                 2, 4, height_ratios=[10, 1], width_ratios=[1, 1, 1, 1], hspace=0.1, wspace=0.2
             )
@@ -358,14 +360,14 @@ class BasicConnectivityPlotsTask(Task):
         dir_path: str | Path,
         colors_cmap: mcolors.Colormap,
         colors_file: str | Path,
-        figsize: tuple[float, float] = (5, 2),
+        figsize: tuple[float, float] | None = None,
     ) -> None:
         if size[0] > n_max_2d_plot:
             L.warning("Your network is too large for this table.")
         else:
             fig_property_table = plot_node_table(
                 conn,
-                figsize=figsize,
+                figsize=PROPERTY_TABLE_FIGSIZE if figsize is None else figsize,
                 colors_cmap=colors_cmap,  # ty:ignore[invalid-argument-type]
                 colors_file=colors_file,  # ty:ignore[invalid-argument-type]
                 h_scale=2.5,
@@ -384,7 +386,7 @@ class BasicConnectivityPlotsTask(Task):
         n_max_2d_plot: int,
         conn: ConnectivityMatrix,
         dir_path: str | Path,
-        figsize: tuple[float, float] = (5, 2),
+        figsize: tuple[float, float] | None = None,
     ) -> None:
         """Extended property table with synapse class column, without color column."""
         if size[0] > n_max_2d_plot:
@@ -392,7 +394,7 @@ class BasicConnectivityPlotsTask(Task):
         else:
             fig_property_table = plot_node_table(
                 conn,
-                figsize=figsize,
+                figsize=PROPERTY_TABLE_FIGSIZE if figsize is None else figsize,
                 h_scale=2.5,
                 v_scale=2.5,
                 skip_color_column=True,
@@ -530,7 +532,6 @@ class BasicConnectivityPlotsTask(Task):
                 self.config.coordinate_output_root,
                 colors_cmap=self.config.initialize.rendering_cmap,  # ty:ignore[invalid-argument-type]
                 colors_file=self.config.initialize.rendering_color_file,  # ty:ignore[invalid-argument-type]
-                figsize=(5, 2),
             )
 
         # Plot extended table of properties
@@ -542,7 +543,6 @@ class BasicConnectivityPlotsTask(Task):
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
-                figsize=(5, 2),
             )
 
         L.info(f"Done with {self.config.idx}")

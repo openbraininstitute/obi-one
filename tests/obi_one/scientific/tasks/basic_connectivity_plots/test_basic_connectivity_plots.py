@@ -16,11 +16,33 @@ from conntility import ConnectivityMatrix
 
 from tests.utils import DATA_DIR, MATRIX_DIR
 
+# Production FULL_WIDTH is 16; 4 is the smallest that keeps full_width // 3 > 0 in helpers.
+_TEST_FIGSIZE_SCALE = 4 / 16
+
+
+def _patch_small_plot_figsizes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Shrink module figure-size constants so tests export smaller canvases."""
+    monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
+    monkeypatch.setattr(
+        basic_connectivity_plots,
+        "CIRCULAR_FIGSIZE",
+        (
+            basic_connectivity_plots.CIRCULAR_FIGSIZE[0] * _TEST_FIGSIZE_SCALE,
+            basic_connectivity_plots.CIRCULAR_FIGSIZE[1] * _TEST_FIGSIZE_SCALE,
+        ),
+    )
+    monkeypatch.setattr(
+        basic_connectivity_plots,
+        "PROPERTY_TABLE_FIGSIZE",
+        (
+            max(basic_connectivity_plots.PROPERTY_TABLE_FIGSIZE[0] * _TEST_FIGSIZE_SCALE, 1.0),
+            max(basic_connectivity_plots.PROPERTY_TABLE_FIGSIZE[1] * _TEST_FIGSIZE_SCALE, 1.0),
+        ),
+    )
+
 
 def test_basic_connectivity_plots(tmp_path, monkeypatch):
-    # 4 is the smallest width that keeps full_width // 3 > 0 in helpers; 2/1 raise.
-    # Below ~4, remaining cost is mostly text/ticks and hardcoded figsizes, not canvas size.
-    monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
+    _patch_small_plot_figsizes(monkeypatch)
 
     # Set up connectivity plotting
     matrix_list = [
