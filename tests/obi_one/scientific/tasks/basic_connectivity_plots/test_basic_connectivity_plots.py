@@ -4,6 +4,7 @@ import pytest
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
+from obi_one.scientific.tasks import basic_connectivity_plots
 from obi_one.scientific.tasks.basic_connectivity_plots import (
     BasicConnectivityPlotsScanConfig,
     BasicConnectivityPlotsTask,
@@ -16,7 +17,11 @@ from conntility import ConnectivityMatrix
 from tests.utils import DATA_DIR, MATRIX_DIR
 
 
-def test_basic_connectivity_plots(tmp_path):
+def test_basic_connectivity_plots(tmp_path, monkeypatch):
+    # 4 is the smallest width that keeps full_width // 3 > 0 in helpers; 2/1 raise.
+    # Below ~4, remaining cost is mostly text/ticks and hardcoded figsizes, not canvas size.
+    monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
+
     # Set up connectivity plotting
     matrix_list = [
         NamedPath(

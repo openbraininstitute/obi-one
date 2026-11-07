@@ -51,6 +51,9 @@ with contextlib.suppress(ImportError):  # Connalysis (optional)
 
 L = logging.getLogger(__name__)
 
+# Default figure width (inches) for multi-panel plots; fontsize assumes this scale.
+FULL_WIDTH = 16
+
 
 class BasicConnectivityPlotsScanConfig(ScanConfig):
     """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
@@ -418,8 +421,6 @@ class BasicConnectivityPlotsTask(Task):
             )
             raise ValueError(msg)
 
-        # TODO: Maybe move width outside, but then fontsize would have to be changed accordingly
-        full_width = 16
         # Set plot format, resolution and plot types
         plot_formats = self.config.initialize.plot_formats
         plot_types = self.config.initialize.plot_types
@@ -442,7 +443,7 @@ class BasicConnectivityPlotsTask(Task):
 
         # Node metrics
         if "nodes" in plot_types:
-            self.nodes_plot(conn, full_width, plot_formats, dpi, self.config.coordinate_output_root)
+            self.nodes_plot(conn, FULL_WIDTH, plot_formats, dpi, self.config.coordinate_output_root)
 
         # Degrees of matrix and control
         adj = conn.matrix.astype(bool)
@@ -457,7 +458,7 @@ class BasicConnectivityPlotsTask(Task):
         # Connection probabilities per pathway
         if "connectivity_pathway" in plot_types:
             self.connectivity_pathway_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -471,7 +472,7 @@ class BasicConnectivityPlotsTask(Task):
         # Global connection probabilities
         if "connectivity_global" in plot_types:
             self.connectivity_global_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -486,7 +487,7 @@ class BasicConnectivityPlotsTask(Task):
         # Plot the adjacency matrix, Nsyn and degrees
         if "small_adj_and_stats" in plot_types:
             self.small_adj_and_stats_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -498,7 +499,7 @@ class BasicConnectivityPlotsTask(Task):
         # Plot network in 2D
         if "network_in_2D" in plot_types:
             self.network_in_2D_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]

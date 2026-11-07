@@ -13,6 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
 from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks import basic_connectivity_plots
 from obi_one.utils.circuit import (
     copy_mod_files,
     count_cells_in_simulation_node_set,
@@ -79,8 +80,11 @@ def test_run_connectivity_matrix_extraction(tmp_path):
     assert edge_pop in config
 
 
-def test_run_basic_connectivity_plots(tmp_path):
+def test_run_basic_connectivity_plots(tmp_path, monkeypatch):
     """Test basic connectivity plot generation from a connectivity matrix."""
+    # Same floor as test_basic_connectivity_plots: helpers need full_width // 3 > 0.
+    monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
+
     # Set up a circuit_path (only used for naming, not for reading circuit data)
     circuit_dir = tmp_path / CIRCUIT_NAME
     circuit_dir.mkdir()
