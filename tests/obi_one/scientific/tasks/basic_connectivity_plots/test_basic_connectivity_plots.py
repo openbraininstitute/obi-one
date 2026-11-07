@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import matplotlib as mpl
 import pytest
 
@@ -42,9 +44,9 @@ def _patch_small_plot_figsizes(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_basic_connectivity_plots(tmp_path, monkeypatch):
+    """E2E over both matrices and all plot types; png only (pdf/svg covered in smoke)."""
     _patch_small_plot_figsizes(monkeypatch)
 
-    # Set up connectivity plotting
     matrix_list = [
         NamedPath(
             name="N_10__top_nodes_dim6",
@@ -58,14 +60,13 @@ def test_basic_connectivity_plots(tmp_path, monkeypatch):
 
     plot_init = BasicConnectivityPlotsScanConfig.Initialize(
         matrix_path=matrix_list,
-        plot_formats=("png", "pdf", "svg"),
-        dpi=72,  # 300 dpi roughly doubles wall time; formats/plot types still covered
+        plot_formats=("png",),
+        dpi=72,  # 300 dpi roughly doubles wall time
         rendering_cmap="custom",
         rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
     )
     basic_connectivity_plots_form = BasicConnectivityPlotsScanConfig(initialize=plot_init)
 
-    # Run plot generation
     grid_scan = GridScanGenerationTask(
         form=basic_connectivity_plots_form,
         output_root=tmp_path / "grid_scan",
@@ -74,19 +75,47 @@ def test_basic_connectivity_plots(tmp_path, monkeypatch):
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
-    # Check that expected files have been created
     instances = grid_scan.single_configs
     assert len(instances) == 2
     for instance in instances:
         out_path = tmp_path / grid_scan.output_root / instance.initialize.matrix_path.name
         assert (out_path / "size.npy").exists()
-        for fmt in instance.initialize.plot_formats:
-            assert (out_path / f"network_global_stats.{fmt}").exists()
-            assert (out_path / f"network_pathway_stats.{fmt}").exists()
-            assert (out_path / f"node_stats.{fmt}").exists()
-            assert (out_path / f"property_table.{fmt}").exists()
-            assert (out_path / f"small_adj_and_stats.{fmt}").exists()
-            assert (out_path / f"small_network_in_2D.{fmt}").exists()
+        assert (out_path / "network_global_stats.png").exists()
+        assert (out_path / "network_pathway_stats.png").exists()
+        assert (out_path / "node_stats.png").exists()
+        assert (out_path / "property_table.png").exists()
+        assert (out_path / "small_adj_and_stats.png").exists()
+        assert (out_path / "small_network_in_2D.png").exists()
+
+
+def test_basic_connectivity_plots_pdf_svg_smoke(tmp_path, monkeypatch):
+    """One matrix, one small plot type, real pdf+svg export (e2e stays png-only)."""
+    _patch_small_plot_figsizes(monkeypatch)
+
+    plot_init = BasicConnectivityPlotsScanConfig.Initialize(
+        matrix_path=NamedPath(
+            name="N_10__top_nodes_dim6",
+            path=str(MATRIX_DIR / "N_10__top_nodes_dim6" / "connectivity_matrix.h5"),
+        ),
+        plot_formats=("pdf", "svg"),
+        plot_types=("property_table",),
+        dpi=72,
+        rendering_cmap="custom",
+        rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
+    )
+    form = BasicConnectivityPlotsScanConfig(initialize=plot_init)
+    grid_scan = GridScanGenerationTask(
+        form=form,
+        output_root=tmp_path / "grid_scan",
+        coordinate_directory_option="VALUE",
+    )
+    grid_scan.execute()
+    run_tasks_for_generated_scan(grid_scan)
+
+    assert len(grid_scan.single_configs) == 1
+    out_path = Path(grid_scan.single_configs[0].coordinate_output_root)
+    assert (out_path / "property_table.pdf").exists()
+    assert (out_path / "property_table.svg").exists()
 
 
 def _circular_overview_axes(conn, tmp_path, monkeypatch):
