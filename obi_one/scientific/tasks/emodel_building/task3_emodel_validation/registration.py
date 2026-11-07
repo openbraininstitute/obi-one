@@ -12,10 +12,11 @@ from pathlib import Path
 from uuid import UUID
 
 import entitysdk
-from entitysdk.models import TaskActivity, TaskResult
+from entitysdk.models import EModel, TaskActivity, TaskResult
 from entitysdk.registration.validation_result import FIGURE_EXT_TO_CONTENT_TYPE
 from entitysdk.types import AssetLabel, ContentType, TaskResultType
 
+from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk import db_sdk
 from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.blocks import (
     FROM_OPTIMISATION,
@@ -71,6 +72,66 @@ def figure_files(figures_dir: Path) -> list[Path]:
     if not figures_dir.exists():
         return []
     return [p for p in sorted(figures_dir.rglob("*")) if p.suffix in FIGURE_EXT_TO_CONTENT_TYPE]
+
+
+def sync_emodel_output_verdict(
+    db_client: entitysdk.Client,
+    emodel: EModel,
+    summary: dict,
+    work_dir: Path,
+) -> None:
+    """Refresh the validation verdict on the EModel's optimisation output asset.
+
+    ``emodel_optimization_output`` records the verdict of the optimisation-time
+    validation; a re-validation run supersedes it, so ``passedValidation`` and
+    ``scoreValidation`` are rewritten with the latest summary. A missing asset
+    is reported but not fatal — the authoritative verdicts are the registered
+    ``ValidationResult`` entities.
+    """
+    from bluepyemodel.emodel_pipeline.emodel import (  # ruff: ignore[import-outside-top-level]
+        format_dict_for_resource,
+    )
+
+    try:
+        asset = db_sdk.get_entity_asset_by_label(
+            client=db_client,
+            config=emodel,
+            asset_label=AssetLabel.emodel_optimization_output,
+        )
+    except OBIONEError:
+        L.warning(
+            "EModel %s has no emodel_optimization_output asset; the validation verdict "
+            "was registered on the ValidationResults only.",
+            emodel.id,
+        )
+        return
+
+    data = json.loads(
+        db_client.download_content(entity_id=emodel.id, entity_type=EModel, asset_id=asset.id)
+    )
+    score_validation = {
+        feature_name: feature["score"]
+        for protocol in summary["protocols"].values()
+        if protocol.get("validation")
+        for feature_name, feature in protocol.get("features", {}).items()
+    }
+    data["passedValidation"] = bool(summary["passed"])
+    data["scoreValidation"] = format_dict_for_resource(score_validation)
+
+    updated_path = work_dir / Path(asset.path).name
+    updated_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    db_client.update_asset_file(
+        entity_id=emodel.id,
+        entity_type=EModel,
+        asset_id=asset.id,
+        file_path=updated_path,
+        file_content_type=ContentType.application_json,
+    )
+    L.info(
+        "EModel %s optimisation output verdict updated (passedValidation=%s).",
+        emodel.id,
+        data["passedValidation"],
+    )
 
 
 def register_output_entities(
@@ -138,12 +199,19 @@ def register_output_entities(
             figure_files=figures,
         )
     )
-
     if execution_activity_id is not None:
         db_sdk.update_execution_activity_with_generated(
             client=db_client,
             execution_activity_id=UUID(execution_activity_id),
             generated_ids=generated_ids,
+        )
+    try:
+        sync_emodel_output_verdict(db_client, emodel, summary, coord_root)
+    except Exception:  # ruff: ignore[blind-except]
+        L.exception(
+            "Could not update the optimisation output verdict of EModel %s; the verdict "
+            "is registered on the ValidationResults.",
+            emodel.id,
         )
     return RegisteredValidationOutputs(
         task_result_id=str(task_result.id), generated_ids=generated_ids

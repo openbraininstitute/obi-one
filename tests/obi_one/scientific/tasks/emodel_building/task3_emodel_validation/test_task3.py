@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import pytest
@@ -184,6 +184,44 @@ def test_resolve_provenance_without_activity_raises():
         staging.resolve_optimisation_provenance(str(uuid4()), client)
 
 
+class TestTaskConfigJson:
+    @staticmethod
+    def raise_empty(**_):
+        raise IteratorResultError
+
+    def test_missing_asset_returns_none(self, monkeypatch):
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", self.raise_empty)
+        task_config = SimpleNamespace(id="config-id", assets=[])
+        assert staging._task_config_json(task_config, MagicMock()) is None
+
+    def test_duplicate_assets_raise(self, monkeypatch):
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", self.raise_empty)
+        asset = SimpleNamespace(label=staging.AssetLabel.task_config)
+        task_config = SimpleNamespace(id="config-id", assets=[asset, asset])
+        with pytest.raises(IteratorResultError):
+            staging._task_config_json(task_config, MagicMock())
+
+
+def test_resolve_provenance_unrebuildable_campaign_config_raises(monkeypatch):
+    task_config_id = uuid4()
+    activity = SimpleNamespace(
+        id="activity-id",
+        used=[SimpleNamespace(id=task_config_id, type=staging.EntityType.task_config)],
+        generated=[],
+    )
+    client = MagicMock()
+    client.search_entity.return_value.first.return_value = activity
+    client.get_entity.return_value = SimpleNamespace(id=task_config_id)
+    monkeypatch.setattr(staging, "_task_config_json", lambda *_: None)
+    monkeypatch.setattr(
+        staging,
+        "_campaign_config_json",
+        lambda *_: {"type": "EModelOptimizationSingleConfig", "initialize": {"seed": [1, 2]}},
+    )
+    with pytest.raises(ValueError, match="cannot be rebuilt as a single optimisation config"):
+        staging.resolve_optimisation_provenance(str(uuid4()), client)
+
+
 class TestCampaignConfigJson:
     @staticmethod
     def task_config(**kwargs):
@@ -201,7 +239,7 @@ class TestCampaignConfigJson:
         }
         monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: scan)
         client = MagicMock()
-        client.get_entity.return_value = SimpleNamespace(id="campaign-id")
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id", assets=[])
         result = staging._campaign_config_json(self.task_config(), client)
         assert result["type"] == "EModelOptimizationSingleConfig"
         assert result["initialize"] == {"emodel": "L5PC"}
@@ -210,7 +248,7 @@ class TestCampaignConfigJson:
         scan = {"type": "EModelOptimizationScanConfig", "initialize": {"emodel": "L5PC"}}
         monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: scan)
         client = MagicMock()
-        client.get_entity.return_value = SimpleNamespace(id="campaign-id")
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id", assets=[])
         result = staging._campaign_config_json(self.task_config(), client)
         assert result["type"] == "EModelOptimizationSingleConfig"
 
@@ -230,7 +268,7 @@ class TestCampaignConfigJson:
 
         monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", raise_empty)
         client = MagicMock()
-        client.get_entity.return_value = SimpleNamespace(id="campaign-id")
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id", assets=[])
         with pytest.raises(ValueError, match="no task_config asset either"):
             staging._campaign_config_json(self.task_config(), client)
 
@@ -338,6 +376,11 @@ def test_register_output_entities(tmp_path, monkeypatch):
     monkeypatch.setattr(validation_scoring, "register_validation_result", fake_register)
     client = MagicMock()
     client.register_entity.return_value = SimpleNamespace(id="tr-id")
+    asset = SimpleNamespace(id="asset-1", path="emodel_optimization_output.json")
+    client.select_assets.return_value = SimpleNamespace(one=Mock(return_value=asset))
+    client.download_content.return_value = json.dumps(
+        {"passedValidation": None, "scoreValidation": [], "parameter": []}
+    ).encode()
     staged = SimpleNamespace(
         provenance=SimpleNamespace(
             emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
@@ -348,8 +391,16 @@ def test_register_output_entities(tmp_path, monkeypatch):
         "score": 6.0,
         "settings": {},
         "protocols": {
-            "IDrest_150": {"validation": False, "passed": True},
-            "IDrest_250": {"validation": True, "passed": False},
+            "IDrest_150": {
+                "validation": False,
+                "passed": True,
+                "features": {"f_skip": {"score": 0.1}},
+            },
+            "IDrest_250": {
+                "validation": True,
+                "passed": False,
+                "features": {"f_val": {"score": 6.0}},
+            },
         },
     }
     outputs = registration.register_output_entities(
@@ -367,6 +418,24 @@ def test_register_output_entities(tmp_path, monkeypatch):
     ]
     assert registered[0]["figure_files"] == [figures / "traces.pdf"]
     assert client.upload_file.call_count == 2
+
+    # the EModel's optimisation output verdict is refreshed with the new summary
+    update = client.update_asset_file.call_args.kwargs
+    assert update["asset_id"] == "asset-1"
+    updated = json.loads((tmp_path / "emodel_optimization_output.json").read_text())
+    assert updated["passedValidation"] is False
+    assert updated["scoreValidation"] == [{"name": "f_val", "value": 6.0, "unitCode": ""}]
+
+
+def test_sync_emodel_output_verdict_missing_asset(tmp_path):
+    """A missing optimisation-output asset warns but does not fail registration."""
+    client = MagicMock()
+    client.select_assets.return_value.one.side_effect = IteratorResultError
+    emodel = SimpleNamespace(id="emodel-id", type="emodel", assets=[])
+    registration.sync_emodel_output_verdict(
+        client, emodel, {"passed": True, "protocols": {}}, tmp_path
+    )
+    client.update_asset_file.assert_not_called()
 
 
 def write_typed_features(path, protocol_type, pre_protocols=()):

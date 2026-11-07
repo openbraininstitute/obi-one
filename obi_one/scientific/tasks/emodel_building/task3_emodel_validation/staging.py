@@ -15,10 +15,10 @@ from uuid import UUID
 
 import entitysdk
 from bluepyemodel.preprocessing import NormalizedIonChannelModel, preflight_morphology
-from bluepyemodel.tools.utils import are_same_protocol
 from entitysdk.exception import IteratorResultError
 from entitysdk.models import EModel, TaskActivity, TaskConfig, TaskResult
 from entitysdk.types import AssetLabel, EntityType, TaskActivityType, TaskResultType
+from pydantic import ValidationError
 
 from obi_one.core.deserialize import deserialize_obi_object_from_json_data
 from obi_one.db_sdk import db_sdk
@@ -40,6 +40,7 @@ from obi_one.scientific.tasks.emodel_building.task3_emodel_validation.config imp
 from obi_one.scientific.tasks.emodel_building.validation_scoring import (
     ResolvedValidationSettings,
     flagged_validation_protocols,
+    mark_validation_protocols,
 )
 
 L = logging.getLogger(__name__)
@@ -65,7 +66,10 @@ class StagedValidation:
 
 
 def _task_config_json(task_config: TaskConfig, db_client: entitysdk.client.Client) -> dict | None:
-    """Return the ``task_config`` JSON asset of a TaskConfig, or None if it has none."""
+    """Return the ``task_config`` JSON asset of a TaskConfig, or None if it has none.
+
+    Several ``task_config`` assets are ambiguous and still raise.
+    """
     try:
         return db_sdk.select_json_asset_content(
             client=db_client,
@@ -73,6 +77,8 @@ def _task_config_json(task_config: TaskConfig, db_client: entitysdk.client.Clien
             selection={"label": AssetLabel.task_config},
         )
     except IteratorResultError:
+        if any(asset.label == AssetLabel.task_config for asset in task_config.assets or []):
+            raise
         return None
 
 
@@ -131,9 +137,19 @@ def resolve_optimisation_provenance(
         raise ValueError(msg)
     task_config = db_client.get_entity(entity_id=task_config_ids[0], entity_type=TaskConfig)
     config_json = _task_config_json(task_config, db_client)
-    if config_json is None:
+    from_campaign = config_json is None
+    if from_campaign:
         config_json = _campaign_config_json(task_config, db_client)
-    config = deserialize_obi_object_from_json_data(config_json)
+    try:
+        config = deserialize_obi_object_from_json_data(config_json)
+    except ValidationError as e:
+        if not from_campaign:
+            raise
+        msg = (
+            f"TaskConfig {task_config.id} has no task_config asset and its campaign's scan "
+            "config cannot be rebuilt as a single optimisation config (it may scan parameters)."
+        )
+        raise ValueError(msg) from e
     if not isinstance(config, EModelOptimizationSingleConfig):
         msg = f"TaskConfig {task_config.id} is not an EModelOptimizationSingleConfig."
         raise TypeError(msg)
@@ -291,16 +307,6 @@ def protocol_names(features_path: Path) -> list[str]:
     """Return the protocol names of a fitness-calculator configuration file."""
     data = json.loads(features_path.read_text(encoding="utf-8"))
     return [p["name"] for p in data.get("protocols", []) if "name" in p]
-
-
-def mark_validation_protocols(features_path: Path, validation_protocols: list[str]) -> None:
-    """Align each protocol's ``validation`` flag with the chosen validation protocols."""
-    data = json.loads(features_path.read_text(encoding="utf-8"))
-    for protocol in data.get("protocols", []):
-        protocol["validation"] = any(
-            are_same_protocol(protocol.get("name"), name) for name in validation_protocols
-        )
-    features_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def uses_optimisation_targets(

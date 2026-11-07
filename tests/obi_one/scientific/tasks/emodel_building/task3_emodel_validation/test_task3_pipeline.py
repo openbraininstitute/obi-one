@@ -121,7 +121,7 @@ class TestResolveOptimisationProvenance:
         monkeypatch.setattr(staging, "deserialize_obi_object_from_json_data", fake_deserialize)
         client = provenance_client(activity)
         client.get_entity.side_effect = lambda entity_id, **_: SimpleNamespace(
-            id=entity_id, meta={}, task_config_generator_id="campaign-id"
+            id=entity_id, meta={}, task_config_generator_id="campaign-id", assets=[]
         )
 
         provenance = staging.resolve_optimisation_provenance(str(uuid4()), client)
@@ -236,9 +236,11 @@ def test_registration_uses_activity_visibility_and_updates_it(tmp_path, monkeypa
     client = MagicMock()
     client.get_entity.return_value = SimpleNamespace(authorized_public=True)
     client.register_entity.return_value = SimpleNamespace(id="tr")
+    # no emodel_optimization_output asset on the EModel — the verdict sync warns and skips
+    client.select_assets.return_value.one.side_effect = IteratorResultError
     staged = SimpleNamespace(
         provenance=SimpleNamespace(
-            emodel=SimpleNamespace(id="e", name="L5PC"),
+            emodel=SimpleNamespace(id="e", name="L5PC", type="emodel", assets=[]),
             config=SimpleNamespace(
                 target_efeatures=SimpleNamespace(task_result=SimpleNamespace(id_str=OPT_TARGETS))
             ),
@@ -257,6 +259,38 @@ def test_registration_uses_activity_visibility_and_updates_it(tmp_path, monkeypa
     )
 
     assert client.register_entity.call_args.args[0].authorized_public is True
+    assert outputs.generated_ids == ["tr", "vr"]
+    assert update.call_args.kwargs["generated_ids"] == ["tr", "vr"]
+
+
+def test_registration_survives_a_failed_verdict_sync(tmp_path, monkeypatch):
+    update = MagicMock()
+    monkeypatch.setattr(registration.db_sdk, "update_execution_activity_with_generated", update)
+    monkeypatch.setattr(registration, "register_validation_results", lambda **_: ["vr"])
+    monkeypatch.setattr(
+        registration, "sync_emodel_output_verdict", MagicMock(side_effect=RuntimeError("403"))
+    )
+    client = MagicMock()
+    client.register_entity.return_value = SimpleNamespace(id="tr")
+    staged = SimpleNamespace(
+        provenance=SimpleNamespace(
+            emodel=SimpleNamespace(id="e", name="L5PC", type="emodel", assets=[]),
+            config=SimpleNamespace(
+                target_efeatures=SimpleNamespace(task_result=SimpleNamespace(id_str=OPT_TARGETS))
+            ),
+        )
+    )
+
+    outputs = registration.register_output_entities(
+        make_config(),
+        tmp_path,
+        client,
+        staged=staged,
+        summary={"passed": True},
+        figures_dir=tmp_path / "missing",
+        execution_activity_id=str(uuid4()),
+    )
+
     assert outputs.generated_ids == ["tr", "vr"]
     assert update.call_args.kwargs["generated_ids"] == ["tr", "vr"]
 
