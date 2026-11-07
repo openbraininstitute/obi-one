@@ -1,4 +1,4 @@
-"""Tests for algorithm options, neuron-set targeting, provenance and resource sizing."""
+"""Tests for algorithm options, neuron-set targeting, and provenance."""
 
 import json
 import sys
@@ -7,10 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.resource_estimation.circuit_simplification import (
-    REDUCTION_ALGORITHMS,
-    estimate_resources_for_algorithms,
-)
 from obi_one.core.info import Info
 from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -71,7 +67,7 @@ def _run(config, tmp_path: Path, mock_pipeline, *, target_set_name=None):
         patch(f"{TASK}._resolve_target_neuron_set", return_value=target_set_name),
         patch(f"{TASK}._smoke_check_loadability"),
     ):
-        task.execute(db_client=None)  # ty:ignore[invalid-argument-type]
+        task.execute(db_client=None)
     return mock_pipeline.call_args.kwargs
 
 
@@ -200,27 +196,6 @@ class TestExecuteOptions:
         assert f"bluecellulab {versions['bluecellulab']}" in kwargs["description"]
         # Reduced-morphology outputs have no exporter and default to NEURON.
         assert kwargs["target_simulator"].name == "NEURON"
-
-
-class TestResourceEstimation:
-    def test_reduction_algorithms(self):
-        assert {"neuron_reduce", "neat_reduction"} == REDUCTION_ALGORITHMS
-
-    def test_reduction_needs_more_cores_than_point_neuron(self):
-        point = estimate_resources_for_algorithms(["lif_nest"], nbio=10_000)
-        reduction = estimate_resources_for_algorithms(["neat_reduction"], nbio=10_000)
-        assert reduction[0] > point[0]
-        assert reduction[2] >= point[2]
-
-    def test_time_adds_up_over_algorithms(self):
-        _, _, single = estimate_resources_for_algorithms(["neuron_reduce"], nbio=100_000)
-        _, _, both = estimate_resources_for_algorithms(
-            ["neuron_reduce", "neat_reduction"], nbio=100_000
-        )
-        assert both > single
-
-    def test_small_circuit_uses_minimum_preset(self):
-        assert estimate_resources_for_algorithms(["adex_brian2"], nbio=10) == (1, 4, 1)
 
 
 def test_metadata_matches_sonata_simplify():

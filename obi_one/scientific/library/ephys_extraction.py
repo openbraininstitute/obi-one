@@ -5,6 +5,7 @@ import tempfile
 from io import StringIO
 from statistics import mean
 from typing import Any, Literal
+from uuid import UUID
 
 import entitysdk.client
 from bluepyefe.extract import extract_efeatures
@@ -139,9 +140,11 @@ def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-l
         stimuli_types,
     )
 
+    trace_uuid = UUID(trace_id)
+
     # Get the trace metadata from the entitycore
     trace_metadata = entity_client.get_entity(
-        entity_id=trace_id,  # ty:ignore[invalid-argument-type]
+        entity_id=trace_uuid,
         entity_type=ElectricalCellRecording,
     )
 
@@ -238,7 +241,7 @@ def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-l
     logger.info("Generated %d targets.", len(targets))
     logger.info("Trace ID: %s", trace_id)
     trace_metadata = entity_client.get_entity(
-        entity_id=trace_id,  # ty:ignore[invalid-argument-type]
+        entity_id=trace_uuid,
         entity_type=ElectricalCellRecording,
     )
     # Download the .nwb file associated to the trace from the KG
@@ -253,7 +256,7 @@ def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-l
                     msg = "Asset must have an id"
                     raise ValueError(msg)
                 trace_content = entity_client.download_content(
-                    entity_id=trace_id,  # ty:ignore[invalid-argument-type]
+                    entity_id=trace_uuid,
                     entity_type=ElectricalCellRecording,
                     asset_id=asset.id,
                 )

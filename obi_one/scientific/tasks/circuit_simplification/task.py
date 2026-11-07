@@ -291,7 +291,7 @@ class CircuitSimplificationTask(Task):
     def execute(  # ruff: ignore[too-many-locals]
         self,
         *,
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client | None = None,
         entity_cache: bool = False,
         execution_activity_id: str | None = None,
     ) -> str | None:

@@ -18,7 +18,7 @@ from app.services.morphology_locations import (
 )
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.unions_and_references.morphology_locations import (
-    MorphologyLocationUnion,
+    SingleMorphologySamplingLocationUnion,
 )
 
 router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(user_verified)])
@@ -55,7 +55,7 @@ def _raise_preview_error(entity_id: UUID, exc: Exception) -> NoReturn:
 )
 def morphology_locations_preview_endpoint(
     entity_id: UUID,
-    morphology_locations: MorphologyLocationUnion,
+    morphology_locations: SingleMorphologySamplingLocationUnion,
     db_client: Annotated[entitysdk.client.Client, Depends(get_client)],
 ) -> MorphologyLocationsPreview:
     L.info("morphology_locations_preview_endpoint")

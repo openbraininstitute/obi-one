@@ -483,6 +483,17 @@ def test_resolve_circuit_unsupported_type():
         )
 
 
+def test_resolve_circuit_from_id_requires_db_client(tmp_path):
+    with pytest.raises(ValueError, match="db_client is required to stage a CircuitFromID"):
+        circuit_module.resolve_circuit(
+            CircuitFromID(id_str="circuit-1"),
+            db_client=None,
+            entity_cache=False,
+            cache_root=tmp_path / "cache",
+            temp_dir=tmp_path / "temp",
+        )
+
+
 def test_select_json_asset_content(client, httpx_mock):
     entity_id = uuid4()
     asset_1_id = uuid4()
@@ -539,3 +550,26 @@ def test_select_json_asset_content(client, httpx_mock):
         selection={"label": AssetLabel.sonata_simulation_config},
     )
     assert res == content
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "entity_type"),
+    [
+        (None, Entity),
+        (uuid4(), None),
+        (None, None),
+    ],
+)
+def test_select_asset_content_requires_id_and_type_when_entity_missing(entity_id, entity_type):
+    client = Mock()
+
+    with pytest.raises(ValueError, match="entity_id and entity_type are required"):
+        test_module.select_asset_content(
+            client=client,
+            entity=None,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            selection={"label": AssetLabel.sonata_simulation_config},
+        )
+
+    client.get_entity.assert_not_called()

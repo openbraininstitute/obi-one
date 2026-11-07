@@ -165,7 +165,7 @@ class TestValidateCircuitEndpoint:
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate")
             assert resp.status_code == 409
-            assert "force=true" in resp.json()["detail"]
+            assert "force=true" in resp.json()["details"]
         finally:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)
@@ -261,7 +261,7 @@ class TestValidateCircuitEndpoint:
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/validate")
             assert resp.status_code == 500
-            assert "launch-system" in resp.json()["detail"]
+            assert "launch-system" in resp.json()["details"]
         finally:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)
@@ -418,7 +418,7 @@ class TestGenerateAssetsEndpoint:
             try:
                 resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
                 assert resp.status_code == 409
-                assert "lifecycle_status" in resp.json()["detail"]
+                assert "lifecycle_status" in resp.json()["details"]
             finally:
                 app.dependency_overrides.pop(get_client, None)
                 app.dependency_overrides.pop(get_compute_cell, None)
@@ -516,7 +516,7 @@ class TestGenerateAssetsEndpoint:
         try:
             resp = client.post(f"/declared/circuit/{circuit_id}/generate-assets")
             assert resp.status_code == 500
-            assert "launch-system" in resp.json()["detail"]
+            assert "launch-system" in resp.json()["details"]
         finally:
             app.dependency_overrides.pop(get_client, None)
             app.dependency_overrides.pop(get_compute_cell, None)

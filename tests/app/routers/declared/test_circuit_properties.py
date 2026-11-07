@@ -41,7 +41,7 @@ def test_circuit_metrics_endpoint_returns_metrics(monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: metrics)
 
     response = circuit_properties.circuit_metrics_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=SimpleNamespace(),
     )
 
@@ -56,7 +56,7 @@ def test_circuit_metrics_endpoint_maps_sdk_error_to_500(monkeypatch):
 
     with pytest.raises(circuit_properties.HTTPException) as exc_info:
         circuit_properties.circuit_metrics_endpoint(
-            circuit_id="circuit-id",
+            circuit_id="00000000-0000-4000-8000-0000000000c1",
             db_client=SimpleNamespace(),
         )
 
@@ -67,7 +67,7 @@ def test_circuit_populations_endpoint_returns_biophysical_populations(monkeypatc
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.circuit_populations_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=SimpleNamespace(),
     )
 
@@ -81,7 +81,7 @@ def test_mapped_properties_offer_edge_populations(monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=_db_client(entitysdk.types.CircuitScale.microcircuit),
     )
 
@@ -98,7 +98,7 @@ def test_circuit_populations_endpoint_maps_sdk_error_to_500(monkeypatch):
 
     with pytest.raises(circuit_properties.HTTPException) as exc_info:
         circuit_properties.circuit_populations_endpoint(
-            circuit_id="circuit-id",
+            circuit_id="00000000-0000-4000-8000-0000000000c1",
             db_client=SimpleNamespace(),
         )
 
@@ -109,7 +109,7 @@ def test_circuit_nodesets_endpoint_returns_nodesets(monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.circuit_nodesets_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=SimpleNamespace(),
     )
 
@@ -124,7 +124,7 @@ def test_circuit_nodesets_endpoint_maps_sdk_error_to_500(monkeypatch):
 
     with pytest.raises(circuit_properties.HTTPException) as exc_info:
         circuit_properties.circuit_nodesets_endpoint(
-            circuit_id="circuit-id",
+            circuit_id="00000000-0000-4000-8000-0000000000c1",
             db_client=SimpleNamespace(),
         )
 
@@ -144,7 +144,7 @@ def test_morphology_locations_are_enabled_through_microcircuit(scale, monkeypatc
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=_db_client(scale),
     )
 
@@ -163,7 +163,7 @@ def test_morphology_locations_are_disabled_above_microcircuit(scale, monkeypatch
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=_db_client(scale),
     )
 
@@ -182,7 +182,7 @@ def test_extracellular_recordings_are_disabled_up_to_small_microcircuits(scale, 
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=_db_client(scale),
     )
 
@@ -202,7 +202,7 @@ def test_extracellular_recordings_are_enabled_from_microcircuits_up(scale, monke
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=_db_client(scale),
     )
 
@@ -228,7 +228,7 @@ def test_explicit_morphology_locations_are_single_neuron_only(scale, expected, m
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", lambda **_: _circuit_metrics())
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=_db_client(scale),
     )
 
@@ -249,7 +249,7 @@ def test_explicit_morphology_locations_are_enabled_for_memodels(monkeypatch):
     monkeypatch.setattr(circuit_properties, "get_circuit_metrics", _no_circuit_metrics)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="memodel-id",
+        circuit_id="00000000-0000-4000-8000-0000000000d1",
         db_client=SimpleNamespace(get_entity=lambda **_: None),
     )
 
@@ -264,7 +264,7 @@ def test_memodel_without_circuit_metrics_gets_default_usability(monkeypatch):
     db_client = _db_client(entitysdk.types.CircuitScale.single)
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="memodel-id",
+        circuit_id="00000000-0000-4000-8000-0000000000d1",
         db_client=db_client,
     )
 
@@ -285,14 +285,15 @@ def test_unknown_entity_without_circuit_metrics_returns_500(monkeypatch):
         {"get_entity": staticmethod(raise_entity_sdk_error)},
     )()
 
+    unknown_id = "00000000-0000-4000-8000-0000000000ff"
     with pytest.raises(circuit_properties.HTTPException) as exc_info:
         circuit_properties.mapped_circuit_properties_endpoint(
-            circuit_id="unknown-id",
+            circuit_id=unknown_id,
             db_client=db_client,
         )
 
     assert exc_info.value.status_code == 500
-    assert exc_info.value.detail["detail"] == "No properties found for entity unknown-id."
+    assert exc_info.value.detail["detail"] == f"No properties found for entity {unknown_id}."
 
 
 def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
@@ -308,7 +309,7 @@ def test_circuit_entity_lookup_failure_uses_default_usability(monkeypatch):
     )()
 
     response = circuit_properties.mapped_circuit_properties_endpoint(
-        circuit_id="circuit-id",
+        circuit_id="00000000-0000-4000-8000-0000000000c1",
         db_client=db_client,
     )
 

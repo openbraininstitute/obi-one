@@ -15,8 +15,15 @@ make install
 # Run FastAPI service locally (http://127.0.0.1:8100/docs)
 make run-local
 
-# Run all tests with coverage
+# Run all tests with coverage (lib then app)
 make test-local
+
+# lib suite on host (needs install-all); app suite on host (needs install-service)
+make test-lib-local
+make test-app-local
+
+# app suite in Docker (production image; CI uses this)
+make test-app-docker
 
 # Run a single test file
 make test-file FILE=tests/path/to/test_file.py
@@ -24,7 +31,7 @@ make test-file FILE=tests/path/to/test_file.py
 # Run schema tests only
 make test-schema
 
-# Lint (check only)
+# Lint (check only); also: make lint-lib / make lint-app
 make lint
 
 # Format and auto-fix
@@ -150,10 +157,11 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 - Package manager: **uv** (>=0.9.22)
 - entitysdk is always kept at latest version (`make compile-deps` enforces this)
-- Key scientific deps: bluepysnap, brainbuilder, neurom, bluecellulab, bluepyefe, connectome-utilities, caveclient
+- Key scientific deps: bluepysnap, brainbuilder, neurom, bluepyefe, connectome-utilities, caveclient
+- Optional scientific extras include `bluecellulab` (BlueCelluLab simulation / MEModel validation), `emodel` (bluepyemodel + bluecellulab), `simplification` (sonata-simplify; brings bluecellulab transitively), `meshing`, `connectivity`, and `bluerecording`. The `service` extra also pulls `connectivity` and `emodel`.
 
 ## CI/CD
 
-- PR checks: lint, test, pip-audit, codecov upload
+- PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
 - Docker: `make build` / `make publish`

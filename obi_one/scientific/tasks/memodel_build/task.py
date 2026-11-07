@@ -106,7 +106,7 @@ class MEModelBuildTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> str:

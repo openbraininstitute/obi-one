@@ -112,7 +112,7 @@ def test_register_mesh_upload_failure(client, mock_db_client, valid_obj_file):
     client.app.dependency_overrides.pop(get_compute_cell, None)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert "upload failed" in response.json()["detail"]
+    assert "upload failed" in response.json()["details"]
 
 
 def test_delete_existing_assets_deletes_matches():
@@ -334,4 +334,4 @@ def test_generate_lod_from_entity_unexpected_failure(client, mock_db_client):
     client.app.dependency_overrides.pop(get_compute_cell, None)
 
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert "boom" in response.json()["detail"]
+    assert "boom" in response.json()["details"]

@@ -22,12 +22,13 @@ def _patch_connectivity_matrix(monkeypatch, fake_type: type) -> None:
 
 
 class _FakePopulation:
-    def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None):
+    def __init__(self, pop_type: str, node_ids=None, source=None, target=None, name=None, size=0):
         self.type = pop_type
         self.name = name
         self._node_ids = node_ids or []
         self.source = source
         self.target = target
+        self.size = size
 
     def ids(self):
         return self._node_ids
@@ -155,9 +156,14 @@ def test_get_node_population_names_filters(fake_snap_circuit):
     )
 
 
-def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
+def test_default_population_name_cases(fake_snap_circuit, monkeypatch, tmp_path):
     c = fake_snap_circuit.snap.Circuit("x")
     assert fake_snap_circuit.Circuit._default_population_name(c) == "bio"
+
+    cfg = tmp_path / "circuit_config.json"
+    cfg.write_text("{}")
+    circuit = fake_snap_circuit.Circuit(name="c1", path=str(cfg))
+    assert circuit.default_population_name == "bio"
 
     def fake_get_node_pop_names(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         if not incl_point:
@@ -169,7 +175,10 @@ def test_default_population_name_cases(fake_snap_circuit, monkeypatch):
         "get_node_population_names",
         staticmethod(fake_get_node_pop_names),
     )
-    assert fake_snap_circuit.Circuit._default_population_name(c) is None
+    with pytest.raises(ValueError, match="no biophysical or point node population"):
+        fake_snap_circuit.Circuit._default_population_name(c)
+    with pytest.raises(ValueError, match="no biophysical or point node population"):
+        _ = circuit.default_population_name
 
     def fake_get_node_pop_names2(_c, *, incl_virtual=True, incl_point=True, incl_biophysical=True):  # ruff: ignore[unused-function-argument]
         return ["a", "b"]
@@ -209,16 +218,18 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
     )
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) is None
 
-    # Add fake edge populations "a" and "b" both intrinsic to "bio" (default node pop)
+    # Two intrinsic pops, neither chemical nor name-matching: the larger one wins.
     c.edges._pops["a"] = _FakePopulation(
         "edges",
         source=_FakePopulation("biophysical", name="bio"),
         target=_FakePopulation("biophysical", name="bio"),
+        size=10,
     )
     c.edges._pops["b"] = _FakePopulation(
         "edges",
         source=_FakePopulation("biophysical", name="bio"),
         target=_FakePopulation("biophysical", name="bio"),
+        size=20,
     )
 
     def fake_get_edge_pop_names2(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
@@ -229,8 +240,7 @@ def test_default_edge_population_name_cases(fake_snap_circuit, monkeypatch):
         "get_edge_population_names",
         staticmethod(fake_get_edge_pop_names2),
     )
-    with pytest.raises(ValueError, match="Default edge population unknown"):
-        fake_snap_circuit.Circuit._default_edge_population_name(c)
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "b"
 
 
 def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeypatch):
@@ -259,6 +269,125 @@ def test_default_edge_population_name_infer_from_name(fake_snap_circuit, monkeyp
     )
     # Should infer "bio__bio__chemical" because it starts with "bio__bio"
     assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
+def test_default_edge_population_name_prefers_chemical_over_electrical(
+    fake_snap_circuit, monkeypatch
+):
+    """Chemical + electrical both prefixed "bio__bio__": the chemical one is the default."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    c.edges._pops["bio__bio__chemical"] = _FakePopulation(
+        "chemical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["bio__bio__electrical"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__chemical", "bio__bio__electrical"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
+def test_default_edge_population_name_prefers_canonical_chemical_name(
+    fake_snap_circuit, monkeypatch
+):
+    """Two chemical pops ("..chemical" + "..chemical2"): the canonical name wins."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    c.edges._pops["bio__bio__chemical"] = _FakePopulation(
+        "chemical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["bio__bio__chemical2"] = _FakePopulation(
+        "chemical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__chemical", "bio__bio__chemical2"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__chemical"
+
+
+def test_default_edge_population_name_falls_back_to_prefix(fake_snap_circuit, monkeypatch):
+    """No chemical/canonical match: the single prefix-matching population wins."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Both intrinsic and non-chemical; only one follows the "bio__bio__" naming convention.
+    c.edges._pops["bio__bio__gap"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+    c.edges._pops["intrinsic_other"] = _FakePopulation(
+        "electrical",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["bio__bio__gap", "intrinsic_other"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "bio__bio__gap"
+
+
+def test_default_edge_population_name_falls_back_to_largest_then_first(
+    fake_snap_circuit, monkeypatch
+):
+    """No chemical/canonical/prefix match: pick the largest; ties go to the first in order."""
+    c = fake_snap_circuit.snap.Circuit("x")
+
+    # Two intrinsic pops with no chemical/canonical/prefix match and different sizes.
+    c.edges._pops["x_edges"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+        size=5,
+    )
+    c.edges._pops["y_edges"] = _FakePopulation(
+        "edges",
+        source=_FakePopulation("biophysical", name="bio"),
+        target=_FakePopulation("biophysical", name="bio"),
+        size=9,
+    )
+
+    def fake_get_edge_pop_names(_c, *, incl_virtual=True, incl_point=True):  # ruff: ignore[unused-function-argument]
+        return ["x_edges", "y_edges"]
+
+    monkeypatch.setattr(
+        fake_snap_circuit.Circuit,
+        "get_edge_population_names",
+        staticmethod(fake_get_edge_pop_names),
+    )
+    # Largest wins.
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "y_edges"
+
+    # Equal sizes: the first in population order wins.
+    c.edges._pops["x_edges"].size = 9
+    assert fake_snap_circuit.Circuit._default_edge_population_name(c) == "x_edges"
 
 
 def test_connectivity_matrix_none_raises(fake_snap_circuit, tmp_path):

@@ -9,6 +9,8 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.morphology_locations.base import (
     MorphologyLocationsBlock,
+    NormalizedSectionOffset,
+    SectionID,
 )
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
@@ -22,7 +24,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
     _SOM_PAD,
-    MorphologyPathDistanceCalculator,
+    OptimizedMorphologyPathDistanceCalculator,
 )
 
 _LOCATION_COLUMNS = pandas.Index(
@@ -39,36 +41,25 @@ _LOCATION_COLUMNS = pandas.Index(
 
 _SOMA_SECTION_ID = 0
 
-_SectionID = Annotated[
-    int,
-    Field(
-        ge=0,
-        strict=True,
-        title="Section ID",
-        description="SONATA global section ID: 0 for soma, then nrn_order neurites.",
-    ),
-]
-_NormalizedSectionOffset = Annotated[
-    float,
-    Field(
-        ge=0.0,
-        le=1.0,
-        title="Normalized section offset",
-        description="Normalized location along the section.",
-    ),
-]
-
 
 class MorphologyLocationPoint(BaseModel):
     """A SONATA global section ID and normalized offset defining one location."""
 
     model_config = ConfigDict(extra="forbid")
 
-    section_id: _SectionID
-    offset: _NormalizedSectionOffset
+    section_id: SectionID
+    offset: NormalizedSectionOffset
 
 
-def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> morphio.Section:
+def neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> morphio.Section:
+    """Return the neurite section a SONATA global section id names, or raise if it is absent.
+
+    The soma is section id 0; neurites follow in `nrn_order`, so neurite id ``n`` maps to
+    morphio section ``n - 1``.
+
+    Raises:
+        ValueError: if the id names no section on this morphology.
+    """
     try:
         return morphology.section(section_id - 1)
     except morphio.RawDataError:
@@ -78,7 +69,7 @@ def _neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> 
 
 def _point_on_section(
     morphology: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator | None,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator | None,
     section_id: int,
     offset: float,
 ) -> dict[str, int | float]:
@@ -97,7 +88,7 @@ def _point_on_section(
         msg = "A path-distance calculator is required for neurite locations."
         raise ValueError(msg)
 
-    section = _neurite_section_for_id(morphology, section_id)
+    section = neurite_section_for_id(morphology, section_id)
     segment_lengths = np.linalg.norm(np.diff(section.points, axis=0), axis=1)
     section_length = float(segment_lengths.sum())
     if section_length <= 0.0:
@@ -184,7 +175,7 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
             raise ConfigValidationError(msg)
 
         path_distance_calculator = (
-            MorphologyPathDistanceCalculator(morphology)
+            OptimizedMorphologyPathDistanceCalculator(morphology)
             if any(location.section_id != _SOMA_SECTION_ID for location in self.locations)
             else None
         )

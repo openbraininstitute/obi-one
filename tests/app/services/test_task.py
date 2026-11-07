@@ -52,6 +52,7 @@ CLUSTER_TASK_TYPES = [
 # Tasks routed to ECS EC2. Everything else keeps the pre-existing behaviour of
 # running on Fargate on the AWS cell.
 ECS_EC2_TASK_TYPES = {
+    TaskType.circuit_simulation_neurodamus_machine,
     TaskType.ion_channel_fitting,
     TaskType.ion_channel_model_simulation_execution,
     TaskType.single_neuron_simulation_execution,
