@@ -1,18 +1,11 @@
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import morphio
 import pytest
 
-from obi_one.core.run_tasks import run_tasks_for_generated_scan
-from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific import library
 from obi_one.scientific.library import circuit as test_module
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks.morphology_containerization import (
-    MorphologyContainerizationScanConfig,
-)
 
 from tests.utils import CIRCUIT_DIR
 
@@ -516,32 +509,9 @@ def test_circuit_resolves_morphologies_dir_from_components_and_manifest():
     assert morph_path.suffix in {".asc", ".swc", ".h5"}
 
 
-def test_circuit_loads_morphologies_from_an_h5_container(tmp_path):
+def test_circuit_loads_morphologies_from_an_h5_container(containerized_hex0_l5_circuit: Circuit):
     """A containerized circuit declares no per-morphology file, only `alternate_morphologies`."""
-    source = Circuit(
-        name="nbS1-O1-E2Sst-maxNsyn-HEX0-L5",
-        path=str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json"),
-    )
-    hoc_path = Path(library.__file__).parent
-    scan_config = MorphologyContainerizationScanConfig(
-        initialize=MorphologyContainerizationScanConfig.Initialize(
-            circuit=[source],
-            hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
-            hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
-        )
-    )
-    grid_scan = GridScanGenerationTask(
-        form=scan_config,
-        output_root=tmp_path / "grid_scan",
-        coordinate_directory_option="VALUE",
-    )
-    grid_scan.execute()
-    run_tasks_for_generated_scan(grid_scan)
-
-    containerized = Circuit(
-        name=source.name,
-        path=str(tmp_path / grid_scan.output_root / source.name / "circuit_config.json"),
-    )
+    containerized = containerized_hex0_l5_circuit
     population = containerized.default_population_name
 
     # Only an .h5 container is declared, so no per-morphology file path can be resolved.
