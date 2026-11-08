@@ -164,4 +164,4 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 - PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
-- Docker: `make build` / `make publish`. CI passes `BUILDER` (from `docker/setup-buildx-action`) plus `CACHE_FROM`/`CACHE_TO`=`type=gha,scope=obi-one` into `make build`, which enables Compose bake with `docker-compose.gha-cache.yml` so image layers reuse the GitHub Actions cache.
+- Docker: `make build` / `make publish` locally. CI builds via `docker/bake-action` from `docker-compose.yml` with `type=gha,scope=obi-one` cache (`load` for app tests, `push` for publish).

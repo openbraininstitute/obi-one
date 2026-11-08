@@ -31,11 +31,6 @@ jobs:
           fi
           python3 launch_scripts/tools/launch_deps_pin.py --check --version "$GITHUB_REF_NAME"
 
-      - name: Set up Docker Compose
-        uses: docker/setup-compose-action@v2
-        with:
-          version: latest
-
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v4
@@ -50,11 +45,21 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         id: login-ecr
 
-      - name: Build, tag and push container
+      - name: Export image env for bake
         env:
           IMAGE_NAME: ${{ steps.login-ecr.outputs.registry }}/obi-one
-          CACHE_FROM: type=gha,scope=obi-one
-          CACHE_TO: type=gha,mode=max,scope=obi-one
-          BUILDER: ${{ steps.buildx.outputs.name }}
-        run: |-
-          make publish
+        run: make image-env >> "$GITHUB_ENV"
+
+      - name: Build and push container
+        uses: docker/bake-action@v7
+        with:
+          source: .
+          files: docker-compose.yml
+          targets: app
+          builder: ${{ steps.buildx.outputs.name }}
+          push: true
+          set: |
+            app.tags=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            app.tags=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG_ALIAS }}
+            app.cache-from=type=gha,scope=obi-one
+            app.cache-to=type=gha,mode=max,scope=obi-one
