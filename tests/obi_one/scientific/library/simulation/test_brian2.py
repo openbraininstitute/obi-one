@@ -588,22 +588,22 @@ def test_current_stim_report(tmp_path):
     npt.assert_allclose(soma1["drosophila", 0], soma0["drosophila", 0])
 
 
-@pytest.mark.parametrize(
-    ("start_time", "end_time", "first_frame", "frame_count"),
-    [
-        (0.0, 2.0, 0, 20),  # the whole run
-        (0.5, 1.5, 5, 10),  # a window inside the run used to get a frame at `end_time` as well
-        (0.3, 0.7, 3, 4),  # 0.3 / 0.1 == 2.9999999999999996, which floor() put a frame early
-        (1.0, 5.0, 10, 10),  # a window running past tstop ends with the run
-    ],
-)
-def test_time_window_report(tmp_path, start_time, end_time, first_frame, frame_count):
+def test_time_window_report(tmp_path):
     """A window holds (end - start) / dt frames, each the full report's frame at that time.
 
     SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
     so an extra frame at `end` is dropped by it but not by a reader of the raw dataset.
+
+    One Brian2 run covers every window case: whole run, interior, float-edge start, and past tstop.
     """
     dt = 0.1
+    # (report name, start, end, first_frame, frame_count)
+    windows = (
+        ("window_full", 0.0, 2.0, 0, 20),
+        ("window_interior", 0.5, 1.5, 5, 10),  # used to get a frame at `end_time` as well
+        ("window_float_edge", 0.3, 0.7, 3, 4),  # 0.3 / 0.1 == 2.999…, floor() put a frame early
+        ("window_past_tstop", 1.0, 5.0, 10, 10),  # a window running past tstop ends with the run
+    )
     config = {
         "run": {"tstop": 2, "dt": dt, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
@@ -629,27 +629,28 @@ def test_time_window_report(tmp_path, start_time, end_time, first_frame, frame_c
                 "start_time": start,
                 "end_time": end,
             }
-            for name, start, end in (("full", 0, 2), ("window", start_time, end_time))
+            for name, start, end in (("full", 0, 2), *((n, s, e) for n, s, e, _, _ in windows))
         },
     }
     simulation, _ = _run_simulation(tmp_path, config)
 
-    path = simulation.to_libsonata.report("window").file_name
-    with h5py.File(path) as h5:
-        assert h5["report/drosophila/data"].shape == (frame_count, 3)
-        npt.assert_allclose(
-            h5["report/drosophila/mapping/time"][:],
-            [first_frame * dt, (first_frame + frame_count) * dt, dt],
-        )
-
-    window = libsonata.ElementReportReader(path)["drosophila"].get()
-    npt.assert_allclose(window.times, (first_frame + np.arange(frame_count)) * dt)
-
     full = libsonata.ElementReportReader(simulation.to_libsonata.report("full").file_name)
     full = full["drosophila"].get()
-    npt.assert_array_equal(
-        np.asarray(window.data), np.asarray(full.data)[first_frame : first_frame + frame_count]
-    )
+
+    for name, _start, _end, first_frame, frame_count in windows:
+        path = simulation.to_libsonata.report(name).file_name
+        with h5py.File(path) as h5:
+            assert h5["report/drosophila/data"].shape == (frame_count, 3)
+            npt.assert_allclose(
+                h5["report/drosophila/mapping/time"][:],
+                [first_frame * dt, (first_frame + frame_count) * dt, dt],
+            )
+
+        window = libsonata.ElementReportReader(path)["drosophila"].get()
+        npt.assert_allclose(window.times, (first_frame + np.arange(frame_count)) * dt)
+        npt.assert_array_equal(
+            np.asarray(window.data), np.asarray(full.data)[first_frame : first_frame + frame_count]
+        )
 
 
 def test_current_stim_report_failure(tmp_path):
