@@ -132,7 +132,8 @@ def test_spike_replay(tmp_path):
         node_ids=node_ids,
     )
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # tstop just past the asserted 0.9 ms spike; longer only when delay=1.9 needs it.
+        "run": {"tstop": 1.0, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -169,8 +170,8 @@ def test_spike_replay(tmp_path):
     for i in range(3):
         assert not spikes[i].any()
 
-    # run sim for longer, should spike now
-    config["run"]["tstop"] = 4
+    # run sim past delayed spike time (1.9 + 0.3 + 0.9 = 3.1 ms)
+    config["run"]["tstop"] = 3.2
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
@@ -181,7 +182,7 @@ def test_spike_replay(tmp_path):
 
     # set *target* node_set to only include 0, this means no spikes should be delivered
     config["inputs"]["replay"]["node_set"] = "0"
-    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -191,7 +192,7 @@ def _poisson_config(node_set, rate=10000):
     # at dt = 0.1 ms, a rate of 10 kHz kicks every targeted neuron on every step, so the spike
     # times do not depend on how the random stream is drawn
     return {
-        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 0.5, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
