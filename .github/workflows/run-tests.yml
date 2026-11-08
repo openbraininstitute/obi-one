@@ -132,6 +132,15 @@ jobs:
           fi
       - name: Install all extras (lib suite)
         run: make install-all
+      # Brian2 defaults to Cython codegen (prefs target auto). Cold compiles dominate lib CI
+      # time; restore the extension cache keyed on the lockfile so dep bumps invalidate it.
+      - name: Cache Brian2 Cython extensions
+        uses: actions/cache@v4
+        with:
+          path: ~/.cython/brian_extensions
+          key: brian2-cython-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            brian2-cython-${{ runner.os }}-
       - name: Lint lib
         run: make lint-lib
       - name: Run lib tests
