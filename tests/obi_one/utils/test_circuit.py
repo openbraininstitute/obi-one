@@ -48,8 +48,12 @@ def _copy_circuit(tmp_path, circuit_name=CIRCUIT_NAME):
 
 
 def test_run_circuit_folder_compression(tmp_path):
-    """Test folder compression of a tiny circuit."""
-    circuit_path = _copy_circuit(tmp_path)
+    """Helper compresses circuit_path.parent; use a tiny synthetic tree (not a real circuit)."""
+    circuit_dir = tmp_path / "synthetic_circuit"
+    circuit_dir.mkdir()
+    circuit_path = circuit_dir / "circuit_config.json"
+    circuit_path.write_text("{}")
+    (circuit_dir / "payload.txt").write_text("compress me")
 
     result = run_circuit_folder_compression(
         circuit_path=circuit_path,
