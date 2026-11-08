@@ -692,7 +692,8 @@ def test_current_stim_report_failure(tmp_path):
 
 def test_connection_override(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # Assertions are absence of spikes; keep short (setup dominates Brian2 wall time).
+        "run": {"tstop": 1.0, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -735,7 +736,8 @@ def test_connection_override(tmp_path):
 def test_connection_override_mid_simulation(tmp_path):
     delay = 1.5
     config = {
-        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        # Just past the disconnect so we can assert spikes before and none after.
+        "run": {"tstop": 2.0, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -745,7 +747,7 @@ def test_connection_override_mid_simulation(tmp_path):
                 "module": "linear",
                 "amp_start": 12000000000,
                 "delay": 0,
-                "duration": 4,
+                "duration": 2.0,
                 "node_set": "0",
             },
         },
@@ -775,8 +777,8 @@ def test_connection_override_mid_simulation(tmp_path):
 def test_connection_override_reconnect_restores_circuit(tmp_path):
     disconnect, reconnect = 1.5, 3.0
     config = {
-        # long enough after `reconnect` for 1 & 2 to recharge from rest, where they leak to
-        "run": {"tstop": 8, "dt": 0.1, "random_seed": 42},
+        # Past reconnect with margin for 1 & 2 to recharge from rest (fails below ~6 ms).
+        "run": {"tstop": 6.0, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -786,7 +788,7 @@ def test_connection_override_reconnect_restores_circuit(tmp_path):
                 "module": "linear",
                 "amp_start": 12000000000,
                 "delay": 0,
-                "duration": 8,
+                "duration": 6.0,
                 "node_set": "0",
             },
         },
@@ -811,7 +813,8 @@ def test_connection_override_reconnect_restores_circuit(tmp_path):
 
 def test_connection_override_weight_scales_circuit_weights(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # Second override applies at 1.0 ms.
+        "run": {"tstop": 1.2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "connection_overrides": [
@@ -832,7 +835,7 @@ def test_connection_overrides_at_the_same_time_apply_in_config_order(tmp_path):
     # As in neurodamus, the last of the overrides selecting a synapse sets its weight.
     factors = [2.0, 0.0, 0.5, 1.5]
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 0.5, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "connection_overrides": [
@@ -868,7 +871,8 @@ def test_connection_override_reaches_spike_replay(tmp_path):
     )
     reconnect = 1.5
     config = {
-        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        # Past delayed spike time (1.9 + 0.3 + 0.9 = 3.1 ms).
+        "run": {"tstop": 3.2, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -903,7 +907,8 @@ def test_connection_override_changes_only_the_replayed_edges_it_selects(tmp_path
     # `sugar` is 0 and 1, so of the replayed edges 0 -> 1 and 0 -> 2 only 0 -> 1 is selected
     sugar = {"source": "sugar", "target": "sugar"}
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # Second weight override applies at 1.0 ms.
+        "run": {"tstop": 1.2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {"replay": _replay_input(path, delay=0.0)},
