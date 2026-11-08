@@ -161,7 +161,6 @@ jobs:
         with:
           version: latest
       - name: Set up Docker Buildx
-        id: buildx
         uses: docker/setup-buildx-action@v4
       - name: Authenticate with AWS ECR for buildcache
         uses: aws-actions/configure-aws-credentials@v6
@@ -184,12 +183,27 @@ jobs:
         run: make install-service
       - name: Lint app
         run: make lint-app
+      - name: Export image env
+        run: make image-env >> "$GITHUB_ENV"
+      - name: Build app image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG_ALIAS }}
+          build-args: |
+            ENVIRONMENT=${{ env.ENVIRONMENT }}
+            APP_NAME=${{ env.APP_NAME }}
+            APP_VERSION=${{ env.APP_VERSION }}
+            COMMIT_SHA=${{ env.COMMIT_SHA }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+          provenance: false
+          sbom: false
       - name: Run app tests in Docker
-        env:
-          CACHE_FROM: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache
-          CACHE_TO: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
-          BUILDER: ${{ steps.buildx.outputs.name }}
-        run: make test-app-docker
+        run: make test-app-docker-run
       - name: Upload app coverage to Codecov
         uses: codecov/codecov-action@v7
         with:

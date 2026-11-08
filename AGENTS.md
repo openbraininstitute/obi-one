@@ -164,6 +164,6 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 - PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
-- Docker: `make build` / `make publish`. CI passes `BUILDER` (from `docker/setup-buildx-action`) plus `CACHE_FROM`/`CACHE_TO` into `make build`, which enables Compose bake with `docker-compose.cache.yml` for ECR registry cache:
-  - App tests: `$ECR/obi-one:buildcache` (`mode=max,image-manifest=true,oci-mediatypes=true`), via the ECR push OIDC role; separate from the release cache.
-  - Publish: `$IMAGE_NAME:cache` with the same registry-cache flags.
+- Docker: `make build` / `make publish` locally (Compose). CI builds with `docker/build-push-action` and ECR registry cache (`mode=max,image-manifest=true,oci-mediatypes=true`):
+  - App tests: `load` + `$ECR/obi-one:buildcache` (ECR push OIDC role), then `make test-app-docker-run`.
+  - Publish: `push` + `$IMAGE_NAME:cache`.

@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app build publish test-local test-lib-local test-app-local test-app-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app image-env build publish test-local test-lib-local test-app-local test-app-docker test-app-docker-run run-local run-docker destroy
 
 LIB_TEST_PATHS := tests/obi_one tests/launch_scripts
 APP_TEST_PATHS := tests/app tests/ui_schema
@@ -113,14 +113,18 @@ format_count: ## Count the number of errors by file
 format_types: ## Count the number of errors by type
 	uv run ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
-build: BUILDER ?=
-build:  ## Build the Docker image. CI may set BUILDER, CACHE_FROM, CACHE_TO (e.g. type=registry,...).
-	# Compose has no --cache-from/--cache-to flags; registry cache goes through docker-compose.cache.yml + bake.
-	$(if $(and $(CACHE_FROM),$(CACHE_TO)),COMPOSE_BAKE=true) docker compose --profile "*" --progress=plain \
-		$(if $(and $(CACHE_FROM),$(CACHE_TO)),-f docker-compose.yml -f docker-compose.cache.yml) \
-		build \
-		$(if $(BUILDER),--builder "$(BUILDER)") \
-		app
+image-env:  ## Print IMAGE_*/build-arg exports for CI (append to $$GITHUB_ENV)
+	@printf '%s\n' \
+		'ENVIRONMENT=$(ENVIRONMENT)' \
+		'APP_NAME=$(APP_NAME)' \
+		'APP_VERSION=$(APP_VERSION)' \
+		'COMMIT_SHA=$(COMMIT_SHA)' \
+		'IMAGE_NAME=$(IMAGE_NAME)' \
+		'IMAGE_TAG=$(IMAGE_TAG)' \
+		'IMAGE_TAG_ALIAS=$(IMAGE_TAG_ALIAS)'
+
+build:  ## Build the Docker image
+	docker compose --profile "*" --progress=plain build app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
@@ -157,7 +161,9 @@ test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
-test-app-docker: build  ## Run app tests in Docker (production image, --extra service)
+test-app-docker: build test-app-docker-run  ## Build then run app tests in Docker (production image, --extra service)
+
+test-app-docker-run:  ## Run app Docker tests (image must already be built/loaded)
 	mkdir -p .coverage
 	COVERAGE_FILE=.coverage/coverage-app.db \
 	PYTEST_ARGS="$(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
