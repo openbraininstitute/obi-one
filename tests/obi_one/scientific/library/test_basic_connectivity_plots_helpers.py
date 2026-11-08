@@ -31,17 +31,21 @@ from tests.utils import MATRIX_DIR
 MATRIX_NAMES = ["N_10__top_nodes_dim6", "N_10__top_rc_nodes_dim2_rc"]
 
 
-def _load_conn(name):
-    return ConnectivityMatrix.from_h5(str(MATRIX_DIR / name / "connectivity_matrix.h5"))
+@pytest.fixture(scope="module")
+def connectivity_matrices() -> dict[str, ConnectivityMatrix]:
+    """Load each example matrix once; tests only read or copy vertices into a new matrix."""
+    return {
+        name: ConnectivityMatrix.from_h5(str(MATRIX_DIR / name / "connectivity_matrix.h5"))
+        for name in MATRIX_NAMES
+    }
 
 
-def _conn_with_na_value(name, prop, match_value):
+def _conn_with_na_value(conn: ConnectivityMatrix, prop, match_value):
     """Return a copy of a connectome with one node's `prop` relabelled to "N/A".
 
     No shipped example matrix carries N/A values, so inject one onto a node that
     currently has `match_value`, leaving the remaining values intact.
     """
-    conn = _load_conn(name)
     vertices = conn.vertices.copy()
     values = vertices[prop].astype(str).to_numpy().copy()
     positions = np.where(values == match_value)[0]
@@ -55,13 +59,12 @@ def _conn_with_na_value(name, prop, match_value):
     )
 
 
-def _conn_with_na_class(name):
+def _conn_with_na_class(conn: ConnectivityMatrix):
     """Return a copy of a connectome with one EXC node relabelled to synapse_class "N/A"."""
-    return _conn_with_na_value(name, "synapse_class", "EXC")
+    return _conn_with_na_value(conn, "synapse_class", "EXC")
 
 
-def _load_matrix(name):
-    conn = _load_conn(name)
+def _matrix_and_vertices(conn: ConnectivityMatrix):
     return conn.matrix.astype(bool).tocsc(), conn.vertices
 
 
@@ -99,11 +102,13 @@ class TestDirectedConnectionProbabilityWithin:
     @pytest.mark.parametrize("matrix_name", MATRIX_NAMES)
     @pytest.mark.parametrize("cols", [["x", "y"], ["x", "y", "z"]])
     @pytest.mark.parametrize("max_dist", [100, 300, 1000])
-    def test_matches_connalysis_single_population(self, matrix_name, cols, max_dist):
+    def test_matches_connalysis_single_population(
+        self, connectivity_matrices, matrix_name, cols, max_dist
+    ):
         # Counting over edges must give the same probability as connalysis, which
         # materialises the full within-distance pair mask (only feasible for small
         # circuits) and indexes the adjacency matrix with it.
-        m, v = _load_matrix(matrix_name)
+        m, v = _matrix_and_vertices(connectivity_matrices[matrix_name])
         for mat in (m, rc_submatrix(m)):
             expected = connection_probability_within(
                 mat, v, cols=cols, max_dist=max_dist, type="directed", skip_symmetry_check=True
@@ -113,10 +118,12 @@ class TestDirectedConnectionProbabilityWithin:
 
     @pytest.mark.parametrize("matrix_name", MATRIX_NAMES)
     @pytest.mark.parametrize("max_dist", [300, 1000])
-    def test_matches_connalysis_cross_population(self, matrix_name, max_dist):
+    def test_matches_connalysis_cross_population(
+        self, connectivity_matrices, matrix_name, max_dist
+    ):
         # Pathways pass distinct pre/post populations as a (vpre, vpost) tuple and a
         # non-square submatrix; connalysis skips its diagonal removal in that case.
-        m, v = _load_matrix(matrix_name)
+        m, v = _matrix_and_vertices(connectivity_matrices[matrix_name])
         cols = ["x", "y", "z"]
         pre_idx, post_idx = np.arange(0, m.shape[0], 2), np.arange(1, m.shape[0], 2)
         subm = m[np.ix_(pre_idx, post_idx)]
@@ -127,10 +134,10 @@ class TestDirectedConnectionProbabilityWithin:
         actual = directed_connection_probability_within(subm, vv, max_dist=max_dist, cols=cols)
         _assert_equal_with_nan(actual, expected)
 
-    def test_returns_nan_when_no_pairs_within_distance(self):
+    def test_returns_nan_when_no_pairs_within_distance(self, connectivity_matrices):
         # With a tiny max_dist no two distinct nodes are within range. connalysis
         # divides by zero here; the helper must instead degrade gracefully to nan.
-        m, v = _load_matrix("N_10__top_nodes_dim6")
+        m, v = _matrix_and_vertices(connectivity_matrices["N_10__top_nodes_dim6"])
         result = directed_connection_probability_within(m, v, max_dist=1e-9, cols=["x", "y"])
         assert np.isnan(result)
 
@@ -139,8 +146,8 @@ class TestInOutDegree:
     """Sparse in/out degree must match connalysis without densifying the matrix."""
 
     @pytest.mark.parametrize("matrix_name", MATRIX_NAMES)
-    def test_matches_node_degree(self, matrix_name):
-        m, _ = _load_matrix(matrix_name)
+    def test_matches_node_degree(self, connectivity_matrices, matrix_name):
+        m, _ = _matrix_and_vertices(connectivity_matrices[matrix_name])
         for adj in (m, rc_submatrix(m)):
             expected = node_degree(adj, direction=("IN", "OUT"))
             actual = in_out_degree(adj)
@@ -161,8 +168,8 @@ class TestConnectionProbabilityWithinPathway:
         ],
     )
     @pytest.mark.parametrize("max_dist", [100, 1000])
-    def test_matches_connalysis(self, matrix_name, grouping_prop, max_dist):
-        conn = _load_conn(matrix_name)
+    def test_matches_connalysis(self, connectivity_matrices, matrix_name, grouping_prop, max_dist):
+        conn = connectivity_matrices[matrix_name]
         expected = _pathway_within_via_connalysis(conn, grouping_prop, max_dist)
         actual = connection_probability_within_pathway(conn, grouping_prop, max_dist=max_dist)
         # Identical pathway grid (pre x post groups) and equal values, nan for nan.
@@ -204,8 +211,10 @@ class TestPlotSmallMCLegend:
             ("N_10__top_nodes_dim6", ["EXC", "INH"]),
         ],
     )
-    def test_node_legend_matches_synapse_classes(self, matrix_name, expected_labels):
-        conn = _load_conn(matrix_name)
+    def test_node_legend_matches_synapse_classes(
+        self, connectivity_matrices, matrix_name, expected_labels
+    ):
+        conn = connectivity_matrices[matrix_name]
         present = sorted(conn.vertices["synapse_class"].unique())
         assert present == expected_labels, "matrix fixture no longer has expected classes"
 
@@ -233,9 +242,9 @@ class TestAssemblePropertyColormapping:
     def _cool_warm(self):
         return self.CMAP(0), self.CMAP(self.CMAP.N)
 
-    def test_single_exc_class_uses_warm_end(self):
+    def test_single_exc_class_uses_warm_end(self, connectivity_matrices):
         cool, warm = self._cool_warm()
-        conn = _load_conn("N_10__top_rc_nodes_dim2_rc")
+        conn = connectivity_matrices["N_10__top_rc_nodes_dim2_rc"]
         assert sorted(conn.vertices["synapse_class"].unique()) == ["EXC"]
 
         color_map = assemble_property_colormapping(conn, self.CMAP)
@@ -243,9 +252,9 @@ class TestAssemblePropertyColormapping:
         assert color_map["EXC"] == warm
         assert color_map["EXC"] != cool
 
-    def test_two_classes_anchor_exc_warm_inh_cool(self):
+    def test_two_classes_anchor_exc_warm_inh_cool(self, connectivity_matrices):
         cool, warm = self._cool_warm()
-        conn = _load_conn("N_10__top_nodes_dim6")
+        conn = connectivity_matrices["N_10__top_nodes_dim6"]
         assert sorted(conn.vertices["synapse_class"].unique()) == ["EXC", "INH"]
 
         color_map = assemble_property_colormapping(conn, self.CMAP)
@@ -253,15 +262,19 @@ class TestAssemblePropertyColormapping:
         assert color_map["EXC"] == warm
         assert color_map["INH"] == cool
 
-    def test_exc_colour_consistent_across_circuits(self):
-        single = assemble_property_colormapping(_load_conn("N_10__top_rc_nodes_dim2_rc"), self.CMAP)
-        dual = assemble_property_colormapping(_load_conn("N_10__top_nodes_dim6"), self.CMAP)
+    def test_exc_colour_consistent_across_circuits(self, connectivity_matrices):
+        single = assemble_property_colormapping(
+            connectivity_matrices["N_10__top_rc_nodes_dim2_rc"], self.CMAP
+        )
+        dual = assemble_property_colormapping(
+            connectivity_matrices["N_10__top_nodes_dim6"], self.CMAP
+        )
         # EXC must look identical whether or not INH is also present.
         assert single["EXC"] == dual["EXC"]
 
-    def test_na_class_is_grey_not_a_colormap_colour(self):
+    def test_na_class_is_grey_not_a_colormap_colour(self, connectivity_matrices):
         cool, warm = self._cool_warm()
-        conn = _conn_with_na_class("N_10__top_nodes_dim6")
+        conn = _conn_with_na_class(connectivity_matrices["N_10__top_nodes_dim6"])
         assert sorted(conn.vertices["synapse_class"].unique()) == ["EXC", "INH", "N/A"]
 
         color_map = assemble_property_colormapping(conn, self.CMAP)
@@ -273,10 +286,10 @@ class TestAssemblePropertyColormapping:
         assert color_map["EXC"] == warm
         assert color_map["INH"] == cool
 
-    def test_na_is_grey_for_generic_property(self):
+    def test_na_is_grey_for_generic_property(self, connectivity_matrices):
         # The grey-for-N/A rule applies to any grouping property, not just
         # synapse_class. Here a layer value is relabelled N/A.
-        conn = _conn_with_na_value("N_10__top_nodes_dim6", "layer", "3")
+        conn = _conn_with_na_value(connectivity_matrices["N_10__top_nodes_dim6"], "layer", "3")
         layers = conn.vertices["layer"].astype(str)
         assert "N/A" in set(layers.unique())
 
@@ -319,13 +332,13 @@ class TestMakePiePlotNaColour:
     def _wedge_colours(self, ax):
         return [tuple(wedge.get_facecolor()) for wedge in ax.patches]
 
-    def test_layer_na_slice_is_grey(self):
+    def test_layer_na_slice_is_grey(self, connectivity_matrices):
         cmaps = {
             "synapse_class": LinearSegmentedColormap.from_list("RedBlue", ["C0", "C3"]),
             "layer": plt.get_cmap("Dark2"),
             "mtype": plt.get_cmap("GnBu"),
         }
-        conn = _conn_with_na_value("N_10__top_nodes_dim6", "layer", "3")
+        conn = _conn_with_na_value(connectivity_matrices["N_10__top_nodes_dim6"], "layer", "3")
         fig, ax = plt.subplots()
         try:
             make_pie_plot(ax, conn, "layer", cmaps)
@@ -337,20 +350,20 @@ class TestMakePiePlotNaColour:
         finally:
             plt.close(fig)
 
-    def test_na_does_not_consume_a_colormap_index(self):
+    def test_na_does_not_consume_a_colormap_index(self, connectivity_matrices):
         # The N/A group must not take a colour slot: with n_real real groups, only
         # colormap indices 0..n_real-1 may be used. Dark2's trailing index (7) is a
         # dark grey, so if N/A consumed a slot a real group would wrongly get it.
         n_real = 7  # 7 real layers + N/A exercises Dark2's grey index 7
-        conn = _load_conn("N_10__top_nodes_dim6")
-        vertices = conn.vertices.copy()
+        base = connectivity_matrices["N_10__top_nodes_dim6"]
+        vertices = base.vertices.copy()
         labels = [str(i) for i in range(n_real)] + ["N/A"]
         node_count = len(vertices)
         vertices["layer"] = [labels[i % len(labels)] for i in range(node_count)]
         conn = ConnectivityMatrix(
-            conn.matrix,
+            base.matrix,
             vertex_properties=vertices,
-            edge_properties=conn.edges,
+            edge_properties=base.edges,
             default_edge_property="data",
         )
 
@@ -366,19 +379,19 @@ class TestMakePiePlotNaColour:
         finally:
             plt.close(fig)
 
-    def test_slices_are_sorted_alphabetically_by_label(self):
+    def test_slices_are_sorted_alphabetically_by_label(self, connectivity_matrices):
         # value_counts returns categories in count order; make_pie_plot must reorder
         # them alphabetically by label so e.g. layers read 1, 2, 3, ... not by size.
-        conn = _load_conn("N_10__top_nodes_dim6")
-        vertices = conn.vertices.copy()
+        base = connectivity_matrices["N_10__top_nodes_dim6"]
+        vertices = base.vertices.copy()
         node_count = len(vertices)
         # Assign layers so the count order differs from the alphabetical order.
         layer_sequence = ["3", "3", "3", "3", "1", "1", "1", "2", "2", "6"]
         vertices["layer"] = [layer_sequence[i % len(layer_sequence)] for i in range(node_count)]
         conn = ConnectivityMatrix(
-            conn.matrix,
+            base.matrix,
             vertex_properties=vertices,
-            edge_properties=conn.edges,
+            edge_properties=base.edges,
             default_edge_property="data",
         )
 
@@ -391,18 +404,18 @@ class TestMakePiePlotNaColour:
         finally:
             plt.close(fig)
 
-    def test_slices_are_drawn_clockwise(self):
+    def test_slices_are_drawn_clockwise(self, connectivity_matrices):
         # Sorted categories should run clockwise, i.e. each successive wedge midpoint
         # angle is smaller than the previous one (angles decrease going clockwise).
-        conn = _load_conn("N_10__top_nodes_dim6")
-        vertices = conn.vertices.copy()
+        base = connectivity_matrices["N_10__top_nodes_dim6"]
+        vertices = base.vertices.copy()
         node_count = len(vertices)
         layer_sequence = ["3", "3", "3", "3", "1", "1", "1", "2", "2", "6"]
         vertices["layer"] = [layer_sequence[i % len(layer_sequence)] for i in range(node_count)]
         conn = ConnectivityMatrix(
-            conn.matrix,
+            base.matrix,
             vertex_properties=vertices,
-            edge_properties=conn.edges,
+            edge_properties=base.edges,
             default_edge_property="data",
         )
 
