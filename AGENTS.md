@@ -164,4 +164,4 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 - PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
-- Docker: `make build` / `make publish` locally. CI builds via `docker/bake-action` from `docker-compose.yml` with `type=gha,scope=obi-one` cache (`load` for app tests, `push` for publish).
+- Docker: `make build` / `make publish` locally. CI builds via `docker/bake-action` from `docker-compose.yml`: app tests use `type=gha,scope=obi-one`; publish uses ECR registry cache at `$IMAGE_NAME:cache` (`mode=max,image-manifest=true,oci-mediatypes=true`).
