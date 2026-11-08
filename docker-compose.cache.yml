@@ -1,0 +1,8 @@
+# CI overlay for Buildx registry cache. Used when make build gets CACHE_FROM/CACHE_TO.
+services:
+  app:
+    build:
+      cache_from:
+        - ${CACHE_FROM}
+      cache_to:
+        - ${CACHE_TO}

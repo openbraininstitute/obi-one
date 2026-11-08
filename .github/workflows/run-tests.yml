@@ -184,23 +184,12 @@ jobs:
         run: make install-service
       - name: Lint app
         run: make lint-app
-      - name: Export image env for bake
-        run: make image-env >> "$GITHUB_ENV"
-      - name: Build app image
-        uses: docker/bake-action@v7
-        with:
-          source: .
-          files: docker-compose.yml
-          targets: app
-          builder: ${{ steps.buildx.outputs.name }}
-          load: true
-          set: |
-            app.tags=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            app.tags=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG_ALIAS }}
-            app.cache-from=type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache
-            app.cache-to=type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
       - name: Run app tests in Docker
-        run: make test-app-docker-run
+        env:
+          CACHE_FROM: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache
+          CACHE_TO: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+          BUILDER: ${{ steps.buildx.outputs.name }}
+        run: make test-app-docker
       - name: Upload app coverage to Codecov
         uses: codecov/codecov-action@v7
         with:

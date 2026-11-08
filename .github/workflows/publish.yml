@@ -30,6 +30,11 @@ jobs:
           fi
           python3 launch_scripts/tools/launch_deps_pin.py --check --version "$GITHUB_REF_NAME"
 
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2
+        with:
+          version: latest
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v4
@@ -44,21 +49,11 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         id: login-ecr
 
-      - name: Export image env for bake
+      - name: Build, tag and push container
         env:
           IMAGE_NAME: ${{ steps.login-ecr.outputs.registry }}/obi-one
-        run: make image-env >> "$GITHUB_ENV"
-
-      - name: Build and push container
-        uses: docker/bake-action@v7
-        with:
-          source: .
-          files: docker-compose.yml
-          targets: app
-          builder: ${{ steps.buildx.outputs.name }}
-          push: true
-          set: |
-            app.tags=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            app.tags=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG_ALIAS }}
-            app.cache-from=type=registry,ref=${{ env.IMAGE_NAME }}:cache
-            app.cache-to=type=registry,ref=${{ env.IMAGE_NAME }}:cache,mode=max,image-manifest=true,oci-mediatypes=true
+          CACHE_FROM: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:cache
+          CACHE_TO: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:cache,mode=max,image-manifest=true,oci-mediatypes=true
+          BUILDER: ${{ steps.buildx.outputs.name }}
+        run: |-
+          make publish
