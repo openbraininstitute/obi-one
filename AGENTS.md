@@ -164,4 +164,6 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 - PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
-- Docker: `make build` / `make publish` locally. CI builds via `docker/bake-action` from `docker-compose.yml`: app tests use `type=gha,scope=obi-one`; publish uses ECR registry cache at `$IMAGE_NAME:cache` (`mode=max,image-manifest=true,oci-mediatypes=true`).
+- Docker: `make build` / `make publish` locally. CI builds via `docker/bake-action` from `docker-compose.yml` with two cache backends:
+  - App tests (`Tests` / `app` job): GitHub Actions cache (`type=gha,scope=obi-one`, `load` into the runner). Speeds up rebuilds across commits on the same PR (and other same-repo runs sharing that scope) without pushing anything to ECR. ECR registry cache is not used here: the PR job does not publish an image, should not need ECR push credentials, and must not write a shared registry cache that release builds or other PRs would trust.
+  - Publish (`publish.yml`): ECR registry cache at `$IMAGE_NAME:cache` (`type=registry`, `mode=max,image-manifest=true,oci-mediatypes=true`, `push`). Publish already authenticates to ECR to push the release image, so the same login can read/write the `:cache` ref across releases.
