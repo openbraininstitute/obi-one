@@ -115,10 +115,11 @@ format_types: ## Count the number of errors by type
 
 build: BUILDER ?=
 build:  ## Build the Docker image. CI may set BUILDER, CACHE_FROM, CACHE_TO (e.g. type=gha).
-	docker compose --profile "*" --progress=plain build \
+	# Compose has no --cache-from/--cache-to flags; GHA cache goes through docker-compose.gha-cache.yml + bake.
+	$(if $(and $(CACHE_FROM),$(CACHE_TO)),COMPOSE_BAKE=true) docker compose --profile "*" --progress=plain \
+		$(if $(and $(CACHE_FROM),$(CACHE_TO)),-f docker-compose.yml -f docker-compose.gha-cache.yml) \
+		build \
 		$(if $(BUILDER),--builder "$(BUILDER)") \
-		$(if $(CACHE_FROM),--cache-from "$(CACHE_FROM)") \
-		$(if $(CACHE_TO),--cache-to "$(CACHE_TO)") \
 		app
 
 publish: build  ## Publish the Docker image to DockerHub
