@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import pytest
-from entitysdk.exception import IteratorResultError
+from entitysdk.exception import EntitySDKError, IteratorResultError
 from pydantic import ValidationError
 
 pytest.importorskip("bluepyemodel")
@@ -362,8 +362,14 @@ def test_uses_optimisation_targets():
 
 
 def test_result_name_suffix():
-    suffix = registration.result_name_suffix(make_config(), uses_optimisation_targets=True)
-    assert suffix == " [validation]"
+    # the optimisation's own targets and default settings: Task 2's names
+    assert not registration.result_name_suffix(make_config(), uses_optimisation_targets=True)
+    assert (
+        registration.result_name_suffix(
+            make_config(), uses_optimisation_targets=True, mark_validation=True
+        )
+        == " [validation]"
+    )
     config = make_config(
         targets="1234567890",
         settings={
@@ -373,8 +379,11 @@ def test_result_name_suffix():
         },
     )
     assert registration.result_name_suffix(config, uses_optimisation_targets=False) == (
-        " [validation, extraction 12345678, validation protocols only, mean_score, threshold 3]"
+        " [extraction 12345678, validation protocols only, mean_score, threshold 3]"
     )
+    assert registration.result_name_suffix(
+        config, uses_optimisation_targets=False, mark_validation=True
+    ) == (" [validation, extraction 12345678, validation protocols only, mean_score, threshold 3]")
 
 
 def test_register_output_entities(tmp_path, monkeypatch):
@@ -427,10 +436,12 @@ def test_register_output_entities(tmp_path, monkeypatch):
         figures_dir=figures,
     )
     assert outputs.generated_ids == ["tr-id", "vr-1", "vr-2"]
+    # Task 2's names, overwritten in place: the EModel carries the latest verdict
     assert [r["name"] for r in registered] == [
-        "E-feature score validation [validation]",
-        "E-feature validation: IDrest_250 [validation]",
+        "E-feature score validation",
+        "E-feature validation: IDrest_250",
     ]
+    assert all(r["overwrite"] is True for r in registered)
     assert registered[0]["figure_files"] == [figures / "traces.pdf"]
     assert client.upload_file.call_count == 2
 
@@ -440,6 +451,76 @@ def test_register_output_entities(tmp_path, monkeypatch):
     updated = json.loads((tmp_path / "emodel_optimization_output.json").read_text())
     assert updated["passedValidation"] is False
     assert updated["scoreValidation"] == [{"name": "f_val", "value": 6.0, "unitCode": ""}]
+
+
+def http_error(status_code):
+    """An entitysdk error raised from an HTTP error with ``status_code``."""
+    cause = Exception("HTTP status error")
+    cause.response = SimpleNamespace(status_code=status_code)  # like httpx's HTTPStatusError
+    error = EntitySDKError(f"HTTP error {status_code}")
+    error.__cause__ = cause
+    return error
+
+
+def register_minimal_output(tmp_path, monkeypatch, fake_register):
+    """Run register_output_entities with one validation protocol and no figures."""
+    monkeypatch.setattr(validation_scoring, "register_validation_result", fake_register)
+    monkeypatch.setattr(registration, "sync_emodel_output_verdict", Mock())
+    client = MagicMock()
+    client.register_entity.return_value = SimpleNamespace(id="tr-id")
+    staged = SimpleNamespace(
+        provenance=SimpleNamespace(
+            emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
+        )
+    )
+    summary = {
+        "passed": True,
+        "score": 1.0,
+        "settings": {},
+        "protocols": {"IDrest_250": {"validation": True, "passed": True, "features": {}}},
+    }
+    return registration.register_output_entities(
+        make_config(),
+        tmp_path,
+        client,
+        staged=staged,
+        summary=summary,
+        figures_dir=tmp_path / "figures",
+    )
+
+
+def test_register_output_entities_falls_back_when_results_are_another_users(tmp_path, monkeypatch):
+    """Results owned by another user (403) are not overwritten: this run's go next to them."""
+    calls = []
+
+    def fake_register(**kwargs):
+        calls.append(kwargs)
+        if kwargs["overwrite"]:
+            raise http_error(403)
+        return SimpleNamespace(id=f"vr-{len(calls)}")
+
+    outputs = register_minimal_output(tmp_path, monkeypatch, fake_register)
+
+    fallback = [c["name"] for c in calls if not c["overwrite"]]
+    assert fallback == [
+        "E-feature score validation [validation]",
+        "E-feature validation: IDrest_250 [validation]",
+    ]
+    assert outputs.generated_ids == ["tr-id", "vr-2", "vr-3"]
+
+
+def test_register_output_entities_reraises_other_errors(tmp_path, monkeypatch):
+    def fake_register(**_):
+        raise http_error(500)
+
+    with pytest.raises(EntitySDKError, match="HTTP error 500"):
+        register_minimal_output(tmp_path, monkeypatch, fake_register)
+
+
+def test_is_forbidden():
+    assert registration.is_forbidden(http_error(403))
+    assert not registration.is_forbidden(http_error(404))
+    assert not registration.is_forbidden(EntitySDKError("no HTTP cause"))
 
 
 def test_sync_emodel_output_verdict_missing_asset(tmp_path):

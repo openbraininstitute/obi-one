@@ -220,10 +220,12 @@ def register_validation_results(
     authorized_public: bool,
     name_suffix: str = "",
     figure_files: list[Path] | None = None,
+    overwrite: bool = False,
 ) -> list[str]:
-    """Register overall and per-validation-protocol results; return the new IDs.
+    """Register overall and per-validation-protocol results; return their IDs.
 
-    entitysdk skips results whose name already exists on the entity.
+    A result whose name already exists on the entity is skipped by entitysdk, or,
+    with ``overwrite``, updated in place (same ID, new verdict and assets).
     """
     generated: list[str] = []
     overall = register_validation_result(
@@ -234,6 +236,7 @@ def register_validation_results(
         authorized_public=authorized_public,
         figure_files=figure_files,
         details_text=json.dumps(summary, indent=2),
+        overwrite=overwrite,
     )
     if overall is not None:
         generated.append(str(overall.id))
@@ -249,6 +252,7 @@ def register_validation_results(
             details_text=json.dumps(
                 {"protocol": protocol, "settings": summary["settings"], **entry}, indent=2
             ),
+            overwrite=overwrite,
         )
         if result is not None:
             generated.append(str(result.id))
