@@ -58,6 +58,7 @@ class TestRunValidation:
         mock_validate.assert_called_once()
         assert mock_validate.call_args.kwargs["only_errors"] is False
         assert mock_validate.call_args.kwargs["ignore_edge_properties"]
+        assert "ignore_node_properties" in mock_validate.call_args.kwargs
 
     @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
     def test_clean_validation_logs_no_errors(self, mock_validate):
@@ -67,6 +68,84 @@ class TestRunValidation:
         assert fatals == []
         assert warnings == []
         mock_validate.assert_called_once()
+
+    @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
+    def test_ignores_physiology_properties_for_structural_circuit(self, mock_validate, monkeypatch):
+        """Structural-only circuits (no synapse physiology) ignore the physiology properties."""
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.has_synapse_physiology", lambda _c: False
+        )
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.SYNAPSE_PHYSIOLOGY_PROPERTIES", ["conductance"]
+        )
+        circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+
+        run_validation(circuit_path)
+
+        assert "conductance" in mock_validate.call_args.kwargs["ignore_edge_properties"]
+
+    @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
+    def test_keeps_physiology_properties_for_parameterized_circuit(
+        self, mock_validate, monkeypatch
+    ):
+        """Circuits with synapse physiology are validated strictly on those properties."""
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.has_synapse_physiology", lambda _c: True
+        )
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.SYNAPSE_PHYSIOLOGY_PROPERTIES", ["conductance"]
+        )
+        circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+
+        run_validation(circuit_path)
+
+        assert "conductance" not in mock_validate.call_args.kwargs["ignore_edge_properties"]
+
+    @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
+    def test_ignores_node_properties_without_electrical_models(self, mock_validate, monkeypatch):
+        """Circuits without electrical cell models ignore the e-model node properties."""
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.has_electrical_cell_models", lambda _c: False
+        )
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.ELECTRICAL_MODEL_NODE_PROPERTIES", ["model_template"]
+        )
+        circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+
+        run_validation(circuit_path)
+
+        assert mock_validate.call_args.kwargs["ignore_node_properties"] == ["model_template"]
+
+    @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
+    def test_keeps_node_properties_with_electrical_models(self, mock_validate, monkeypatch):
+        """Circuits with electrical cell models are validated strictly on node properties."""
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.has_electrical_cell_models", lambda _c: True
+        )
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.ELECTRICAL_MODEL_NODE_PROPERTIES", ["model_template"]
+        )
+        circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+
+        run_validation(circuit_path)
+
+        assert mock_validate.call_args.kwargs["ignore_node_properties"] == []
+
+    @patch("obi_one.utils.circuit_validation.snap_circuit_validation.validate", return_value=[])
+    def test_falls_back_to_strict_when_circuit_unreadable(self, mock_validate, monkeypatch, caplog):
+        """An unreadable circuit path is validated strictly, and the reason is logged."""
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.SYNAPSE_PHYSIOLOGY_PROPERTIES", ["conductance"]
+        )
+        monkeypatch.setattr(
+            "obi_one.utils.circuit_validation.ELECTRICAL_MODEL_NODE_PROPERTIES", ["model_template"]
+        )
+
+        run_validation("circuit_config.json")
+
+        assert "conductance" not in mock_validate.call_args.kwargs["ignore_edge_properties"]
+        assert mock_validate.call_args.kwargs["ignore_node_properties"] == []
+        assert "validating strictly" in caplog.text
 
 
 def test_simulation_execution_does_not_import_circuit_validation():

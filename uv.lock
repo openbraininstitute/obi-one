@@ -314,7 +314,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.9"
+version = "3.0.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -329,9 +329,9 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/c0/c80758a462adb33ec7714d16461d2d0a95c9c9c2adc595d1531d7b36a6ae/bluepysnap-3.0.9.tar.gz", hash = "sha256:ac379aadf13bc936a5a13921d20df685d53c410b7cb9965888bc6b6415b9f11c", size = 971877, upload-time = "2026-11-02T07:52:38.22Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/bb/669ab2ba1c2f45a81873de8a394dc57fc8b7d1a3f1237e60a4d185e4875d/bluepysnap-3.0.10.tar.gz", hash = "sha256:ef3da665127f67937cd3e5234a89ee86c21c81dff0372403ffec3aea1884b86c", size = 972784, upload-time = "2026-11-06T10:39:22.865Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/3d/803eaf7ed750095b57358cbb9805e43ed49b671b5ae316a12745269842a9/bluepysnap-3.0.9-py3-none-any.whl", hash = "sha256:3e9bcbcbee31bb87203cc2775c69ef209aac5b89881a9b1f41113b4c278bd324", size = 112102, upload-time = "2026-11-02T07:52:36.409Z" },
+    { url = "https://files.pythonhosted.org/packages/39/14/c83d4b2b68695b760187972c6fdfd4d24ffd4987462c07c67007043ac116/bluepysnap-3.0.10-py3-none-any.whl", hash = "sha256:be43babba1834c8af29822b1548f3862bfc66e72134fbcbe62e1cb3dc4d73db2", size = 112341, upload-time = "2026-11-06T10:39:21.218Z" },
 ]
 
 [[package]]
@@ -2513,7 +2513,7 @@ requires-dist = [
     { name = "bluecellulab", marker = "extra == 'emodel'", specifier = ">=2.6.104" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
-    { name = "bluepysnap", specifier = ">=3.0.9" },
+    { name = "bluepysnap", specifier = ">=3.0.10" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
     { name = "brainbuilder", specifier = ">=0.20.9" },
     { name = "brian2" },
