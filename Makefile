@@ -28,37 +28,37 @@ help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-23s\033[0m %s\n", $$1, $$2}'
 
 install:  ## Default installation (for running tasks and local scripts)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
+	uv sync
 
 install-bluecellulab:  ## Install with BlueCelluLab (simulation, MEModel calibration/validation)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra bluecellulab
+	uv sync --extra bluecellulab
 
 install-brian2:  ## Install with Brian2 (Brian2 SONATA simulation runner)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra brian2
+	uv sync --extra brian2
 
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
+	uv sync --extra meshing
 
 install-simplification:  ## Install with private circuit simplification dependencies (Requires AWS auth)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra simplification
+	uv sync --extra simplification
 
 install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
+	uv sync --extra notebooks --extra connectivity
 
 install-notebooks:  ## Install with notebooks dependencies (for running notebooks locally)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks
+	uv sync --extra notebooks
 
 install-service:  ## Install with service dependencies (for running as a service)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service
+	uv sync --extra service
 
 install-service-meshing: ## Install both service and meshing dependencies
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service --extra meshing
+	uv sync --extra service --extra meshing
 
 install-all:  ## Install all dependencies (for production/deployment)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all
+	uv sync --extra all
 
 install-dev:  ## Install all dependencies + dev tools (for development)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all --group dev
+	uv sync --extra all --group dev
 
 install-ipython: install-all ## Create a virtual environment and install the ipython kernel
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
