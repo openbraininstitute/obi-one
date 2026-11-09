@@ -10,15 +10,6 @@ FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
 FROM python:$PYTHON_BASE AS builder
 SHELL ["bash", "-e", "-x", "-o", "pipefail", "-c"]
 
-RUN <<EOT
-apt-get update -qy
-apt-get install -qyy \
-    -o APT::Install-Recommends=false \
-    -o APT::Install-Suggests=false \
-    ca-certificates \
-    git
-EOT
-
 COPY --from=uv /uv /usr/local/bin/uv
 
 ENV UV_LINK_MODE=copy \
