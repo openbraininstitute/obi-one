@@ -5,14 +5,11 @@ tags:
 
 # Brian2 Point Neuron Simulations
 
-Brian2 simulations in OBI-ONE run point neuron networks from a SONATA circuit, targeting the
-[Brian2](https://brian2.readthedocs.io/) simulator instead of NEURON. They are configured with
-`Brian2CircuitSimulationScanConfig` (or `Brian2CircuitSimulationSingleConfig` for a single
-coordinate), which emits a `simulation_config.json` with `target_simulator: "Brian2"`.
+Brian2 simulations in OBI-ONE run point neuron networks from a SONATA circuit, targeting the [Brian2](https://brian2.readthedocs.io/) simulator instead of NEURON. They are configured with `Brian2CircuitSimulationScanConfig` (or `Brian2CircuitSimulationSingleConfig` for a single coordinate), which emits a `simulation_config.json` with `target_simulator: "Brian2"`.
 
-The generated config is executed by
-`obi_one/scientific/library/simulation/brian2/simulate_brian2.py`, which translates the SONATA
-config into a Brian2 network.
+Campaign/config generation does not need the Brian2 Python package. Running a simulation does: install the optional extra with `make install-brian2` or `pip install 'obi-one[brian2]'`. Launch-system jobs use `launch_scripts/launch_brian2_simulation/dependencies/brian2.txt`.
+
+The generated config is executed by `obi_one/scientific/library/simulation/brian2/simulate_brian2.py`, which translates the SONATA config into a Brian2 network.
 
 ## Overview
 

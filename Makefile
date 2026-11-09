@@ -12,7 +12,7 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-bluecellulab install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app image-env build publish test-local test-lib-local test-app-local test-app-docker test-app-docker-run-only run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-brian2 install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app image-env build publish test-local test-lib-local test-app-local test-app-docker test-app-docker-run-only run-local run-docker destroy
 
 LIB_TEST_PATHS := tests/obi_one tests/launch_scripts
 APP_TEST_PATHS := tests/app tests/ui_schema
@@ -32,6 +32,9 @@ install:  ## Default installation (for running tasks and local scripts)
 
 install-bluecellulab:  ## Install with BlueCelluLab (simulation, MEModel calibration/validation)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra bluecellulab
+
+install-brian2:  ## Install with Brian2 (Brian2 SONATA simulation runner)
+	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra brian2
 
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
 	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing

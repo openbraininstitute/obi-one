@@ -133,7 +133,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             location=settings.OBI_ONE_REPO,
             ref=release_tag_ref(settings.APP_VERSION),
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            dependencies="launch_scripts/launch_brian2_simulation/dependencies/default.txt",
+            dependencies="launch_scripts/launch_brian2_simulation/dependencies/brian2.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
