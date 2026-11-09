@@ -31,6 +31,8 @@ from obi_one.scientific.validations.memodel.profiles import (
     DefaultMEModelValidationProfile,
     MEModelValidationProfile,
     ThalamicMEModelValidationProfile,
+    get_validation_profile,
+    register_validation_profile,
 )
 from obi_one.scientific.validations.memodel.task import (
     MEModelValidationSingleConfig,
@@ -999,3 +1001,49 @@ class TestFICurveTest:
             )
         assert result.passed is False
         assert "Not enough data points" in result.details
+
+
+class TestValidationProfileRegistry:
+    def test_get_default_when_none(self):
+        profile = get_validation_profile(None)
+        assert isinstance(profile, DefaultMEModelValidationProfile)
+
+    def test_get_returns_instance_as_is(self):
+        instance = ThalamicMEModelValidationProfile()
+        assert get_validation_profile(instance) is instance
+
+    def test_get_by_name(self):
+        assert isinstance(get_validation_profile("thalamic"), ThalamicMEModelValidationProfile)
+
+    def test_get_unknown_name_raises(self):
+        with pytest.raises(ValueError, match="Unknown MEModel validation profile"):
+            get_validation_profile("does-not-exist")
+
+    def test_get_non_string_raises(self):
+        with pytest.raises(TypeError, match="profile name or"):
+            get_validation_profile(123)  # ty: ignore[invalid-argument-type]
+
+    def test_register_and_resolve(self):
+        class _Custom(DefaultMEModelValidationProfile):
+            profile_name = "unit-test-custom"
+
+        register_validation_profile("unit-test-custom", _Custom)
+        assert isinstance(get_validation_profile("unit-test-custom"), _Custom)
+
+    def test_register_empty_name_raises(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            register_validation_profile("  ", DefaultMEModelValidationProfile)
+
+    def test_register_wrong_type_raises(self):
+        with pytest.raises(TypeError, match="must inherit from"):
+            register_validation_profile("x", str)  # ty: ignore[invalid-argument-type]
+
+    def test_register_duplicate_without_overwrite_raises(self):
+        with pytest.raises(ValueError, match="already registered"):
+            register_validation_profile("thalamic", ThalamicMEModelValidationProfile)
+
+    def test_default_profile_requirement_flags_are_false(self):
+        profile = DefaultMEModelValidationProfile()
+        assert profile.requires_rin is False
+        assert profile.requires_holding_current is False
+        assert profile.recompute_rheobase is False
