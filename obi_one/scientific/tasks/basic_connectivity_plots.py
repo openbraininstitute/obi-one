@@ -51,6 +51,12 @@ with contextlib.suppress(ImportError):  # Connalysis (optional)
 
 L = logging.getLogger(__name__)
 
+# Default figure sizes (inches); fontsize assumes this scale. Tests may monkeypatch these.
+FULL_WIDTH = 16
+CIRCULAR_FIGSIZE = (10, 10)
+PROPERTY_TABLE_FIGSIZE = (5, 2)
+DPI = 300
+
 
 class BasicConnectivityPlotsScanConfig(ScanConfig):
     """Class to generate basic connectivity plots and stats from a ConnectivityMatrix object.
@@ -89,7 +95,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
         )
         rendering_cmap: str | None = None  # Color map of the node identities
         rendering_color_file: str | None = None  # Color map file of the nod identities
-        dpi: int = 300
+        dpi: int = DPI
 
         @model_validator(mode="after")
         def check_rendering_colors_for_property_table(self) -> Self:
@@ -268,7 +274,7 @@ class BasicConnectivityPlotsTask(Task):
             L.warning("Your network is too large for this plot.")
         else:
             # Create figure with main plot and legend space (4 legend axes)
-            fig = plt.figure(figsize=(10, 10), facecolor="white")
+            fig = plt.figure(figsize=CIRCULAR_FIGSIZE, facecolor="white")
             gs = fig.add_gridspec(
                 2, 4, height_ratios=[10, 1], width_ratios=[1, 1, 1, 1], hspace=0.1, wspace=0.2
             )
@@ -355,14 +361,14 @@ class BasicConnectivityPlotsTask(Task):
         dir_path: str | Path,
         colors_cmap: mcolors.Colormap,
         colors_file: str | Path,
-        figsize: tuple[float, float] = (5, 2),
+        figsize: tuple[float, float] | None = None,
     ) -> None:
         if size[0] > n_max_2d_plot:
             L.warning("Your network is too large for this table.")
         else:
             fig_property_table = plot_node_table(
                 conn,
-                figsize=figsize,
+                figsize=PROPERTY_TABLE_FIGSIZE if figsize is None else figsize,
                 colors_cmap=colors_cmap,  # ty:ignore[invalid-argument-type]
                 colors_file=colors_file,  # ty:ignore[invalid-argument-type]
                 h_scale=2.5,
@@ -381,7 +387,7 @@ class BasicConnectivityPlotsTask(Task):
         n_max_2d_plot: int,
         conn: ConnectivityMatrix,
         dir_path: str | Path,
-        figsize: tuple[float, float] = (5, 2),
+        figsize: tuple[float, float] | None = None,
     ) -> None:
         """Extended property table with synapse class column, without color column."""
         if size[0] > n_max_2d_plot:
@@ -389,7 +395,7 @@ class BasicConnectivityPlotsTask(Task):
         else:
             fig_property_table = plot_node_table(
                 conn,
-                figsize=figsize,
+                figsize=PROPERTY_TABLE_FIGSIZE if figsize is None else figsize,
                 h_scale=2.5,
                 v_scale=2.5,
                 skip_color_column=True,
@@ -418,8 +424,6 @@ class BasicConnectivityPlotsTask(Task):
             )
             raise ValueError(msg)
 
-        # TODO: Maybe move width outside, but then fontsize would have to be changed accordingly
-        full_width = 16
         # Set plot format, resolution and plot types
         plot_formats = self.config.initialize.plot_formats
         plot_types = self.config.initialize.plot_types
@@ -442,7 +446,7 @@ class BasicConnectivityPlotsTask(Task):
 
         # Node metrics
         if "nodes" in plot_types:
-            self.nodes_plot(conn, full_width, plot_formats, dpi, self.config.coordinate_output_root)
+            self.nodes_plot(conn, FULL_WIDTH, plot_formats, dpi, self.config.coordinate_output_root)
 
         # Degrees of matrix and control
         adj = conn.matrix.astype(bool)
@@ -457,7 +461,7 @@ class BasicConnectivityPlotsTask(Task):
         # Connection probabilities per pathway
         if "connectivity_pathway" in plot_types:
             self.connectivity_pathway_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -471,7 +475,7 @@ class BasicConnectivityPlotsTask(Task):
         # Global connection probabilities
         if "connectivity_global" in plot_types:
             self.connectivity_global_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -486,7 +490,7 @@ class BasicConnectivityPlotsTask(Task):
         # Plot the adjacency matrix, Nsyn and degrees
         if "small_adj_and_stats" in plot_types:
             self.small_adj_and_stats_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -498,7 +502,7 @@ class BasicConnectivityPlotsTask(Task):
         # Plot network in 2D
         if "network_in_2D" in plot_types:
             self.network_in_2D_plot(
-                full_width,
+                FULL_WIDTH,
                 plot_formats,
                 dpi,
                 size,  # ty:ignore[invalid-argument-type]
@@ -529,7 +533,6 @@ class BasicConnectivityPlotsTask(Task):
                 self.config.coordinate_output_root,
                 colors_cmap=self.config.initialize.rendering_cmap,  # ty:ignore[invalid-argument-type]
                 colors_file=self.config.initialize.rendering_color_file,  # ty:ignore[invalid-argument-type]
-                figsize=(5, 2),
             )
 
         # Plot extended table of properties
@@ -541,7 +544,6 @@ class BasicConnectivityPlotsTask(Task):
                 n_max_2d_plot,
                 conn,
                 self.config.coordinate_output_root,
-                figsize=(5, 2),
             )
 
         L.info(f"Done with {self.config.idx}")
