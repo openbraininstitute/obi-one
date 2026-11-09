@@ -181,3 +181,5 @@ def test_register_output(tmp_path, mock_db_client, source_dataset, em_dataset):
     # Morphology-only circuit: no EModel provenance is forwarded
     assert call_kwargs["derived_from_emodel"] is None
     assert call_kwargs["derivation_label"] is None
+    # Validation runs at registration (the default); it must not be skipped
+    assert "skip_validation" not in call_kwargs

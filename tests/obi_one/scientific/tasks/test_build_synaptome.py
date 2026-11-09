@@ -333,7 +333,6 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
         license=license_entity,
         derived_from_emodel=emodel,
         derivation_label="hoc:cADpyr_L5TPC",
-        skip_validation=True,
     )
     update_activity.assert_called_once_with(
         db_client=db_client,
