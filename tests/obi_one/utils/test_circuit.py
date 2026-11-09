@@ -86,7 +86,7 @@ def test_run_connectivity_matrix_extraction(tmp_path):
 
 def test_run_basic_connectivity_plots(tmp_path, monkeypatch):
     """Test basic connectivity plot generation from a connectivity matrix."""
-    # Same small-canvas patches as test_basic_connectivity_plots (4/16 of production).
+    # Same small-canvas / dpi patches as test_basic_connectivity_plots (4/16 of production).
     scale = 4 / 16
     monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
     monkeypatch.setattr(
@@ -105,6 +105,7 @@ def test_run_basic_connectivity_plots(tmp_path, monkeypatch):
             max(basic_connectivity_plots.PROPERTY_TABLE_FIGSIZE[1] * scale, 1.0),
         ),
     )
+    monkeypatch.setattr(basic_connectivity_plots, "DPI", 72)
 
     # Set up a circuit_path (only used for naming, not for reading circuit data)
     circuit_dir = tmp_path / CIRCUIT_NAME
