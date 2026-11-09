@@ -87,3 +87,52 @@ class TestRegisterCircuitWithRemoteValidation:
 
         assert str(registered.id) in str(exc_info.value)
         assert "draft" in str(exc_info.value)
+
+    def test_no_registered_entity_raises_without_validation_request(self):
+        obi_one_client = MagicMock()
+
+        with (
+            patch(REGISTER, return_value=None),
+            pytest.raises(RuntimeError, match="returned no entity"),
+        ):
+            _call(obi_one_client)
+
+        obi_one_client.post.assert_not_called()
+
+    def test_without_project_context_fails_before_registration(self):
+        obi_one_client = MagicMock()
+        client = MagicMock()
+        client.project_context = None
+
+        with (
+            patch(REGISTER) as mock_register,
+            pytest.raises(ValueError, match="project context"),
+        ):
+            _call(obi_one_client, client)
+
+        mock_register.assert_not_called()
+        obi_one_client.post.assert_not_called()
+
+    def test_dry_run_without_project_context_is_allowed(self):
+        preview = MagicMock()
+        obi_one_client = MagicMock()
+        client = MagicMock()
+        client.project_context = None
+
+        with patch(REGISTER, return_value=preview):
+            circuit, job_id = register_circuit_with_remote_validation(
+                client,
+                "/some/circuit",
+                obi_one_client=obi_one_client,
+                name="c",
+                description="d",
+                build_category=CircuitBuildCategory.computational_model,
+                brain_region=MagicMock(),
+                subject=MagicMock(),
+                target_simulator=TargetSimulator.NEURON,
+                dry_run=True,
+            )
+
+        assert circuit is preview
+        assert job_id is None
+        obi_one_client.post.assert_not_called()

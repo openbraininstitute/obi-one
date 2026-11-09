@@ -105,8 +105,22 @@ def register_circuit_with_remote_validation(  # ruff: ignore[too-many-arguments]
         the entity is the unregistered ``Circuit`` model and the job ID is ``None``.
 
     Raises:
+        ValueError: If ``client`` has no project context (unless ``dry_run``). Checked up
+            front, since registration and the validation request both need it and computing
+            the circuit metadata can be expensive for large circuits.
         RuntimeError: If the validation request was rejected by the service.
     """
+    headers = None
+    if not dry_run:
+        project_context = client.project_context
+        if project_context is None:
+            msg = "Client must have a project context to register a circuit"
+            raise ValueError(msg)
+        headers = {
+            "virtual-lab-id": str(project_context.virtual_lab_id),
+            "project-id": str(project_context.project_id),
+        }
+
     registered = register_circuit(
         client=client,
         circuit_path=circuit_path,
@@ -143,12 +157,6 @@ def register_circuit_with_remote_validation(  # ruff: ignore[too-many-arguments]
     if dry_run:
         return registered, None
 
-    headers = {}
-    if client.project_context is not None:
-        headers = {
-            "virtual-lab-id": str(client.project_context.virtual_lab_id),
-            "project-id": str(client.project_context.project_id),
-        }
     try:
         response = obi_one_client.post(
             f"/declared/circuit/{registered.id}/validate",
