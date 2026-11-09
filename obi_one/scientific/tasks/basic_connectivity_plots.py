@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from conntility import ConnectivityMatrix
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
 from obi_one.core.block import Block
 from obi_one.core.path import NamedPath
@@ -51,7 +51,7 @@ with contextlib.suppress(ImportError):  # Connalysis (optional)
 
 L = logging.getLogger(__name__)
 
-# Defaults used at runtime / Initialize construction. Tests may monkeypatch these.
+# Default figure sizes (inches); fontsize assumes this scale. Tests may monkeypatch these.
 FULL_WIDTH = 16
 CIRCULAR_FIGSIZE = (10, 10)
 PROPERTY_TABLE_FIGSIZE = (5, 2)
@@ -95,7 +95,7 @@ class BasicConnectivityPlotsScanConfig(ScanConfig):
         )
         rendering_cmap: str | None = None  # Color map of the node identities
         rendering_color_file: str | None = None  # Color map file of the nod identities
-        dpi: int = Field(default_factory=lambda: DPI)
+        dpi: int = DPI
 
         @model_validator(mode="after")
         def check_rendering_colors_for_property_table(self) -> Self:

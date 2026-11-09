@@ -23,7 +23,7 @@ _TEST_FIGSIZE_SCALE = 4 / 16
 
 
 def _patch_small_plot_figsizes(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Shrink module figure-size / dpi constants so tests export smaller canvases."""
+    """Shrink module figure-size constants so tests export smaller canvases."""
     monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
     monkeypatch.setattr(
         basic_connectivity_plots,
@@ -41,7 +41,6 @@ def _patch_small_plot_figsizes(monkeypatch: pytest.MonkeyPatch) -> None:
             max(basic_connectivity_plots.PROPERTY_TABLE_FIGSIZE[1] * _TEST_FIGSIZE_SCALE, 1.0),
         ),
     )
-    monkeypatch.setattr(basic_connectivity_plots, "DPI", 72)
 
 
 def test_basic_connectivity_plots(tmp_path, monkeypatch):
@@ -64,6 +63,7 @@ def test_basic_connectivity_plots(tmp_path, monkeypatch):
         plot_formats=("png",),
         rendering_cmap="custom",
         rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
+        dpi=72,
     )
     basic_connectivity_plots_form = BasicConnectivityPlotsScanConfig(initialize=plot_init)
 
@@ -101,6 +101,7 @@ def test_basic_connectivity_plots_pdf_svg_smoke(tmp_path, monkeypatch):
         plot_types=("property_table",),
         rendering_cmap="custom",
         rendering_color_file=str(DATA_DIR / "colors_tab10.csv"),
+        dpi=72,
     )
     form = BasicConnectivityPlotsScanConfig(initialize=plot_init)
     grid_scan = GridScanGenerationTask(
