@@ -38,7 +38,7 @@ dependencies = [
     # -- SCIENTIFIC
     "aiofiles",
     "bluepyefe>=2.3.59",
-    "bluepysnap>=3.0.9",
+    "bluepysnap>=3.0.10",
     "brainbuilder>=0.20.9",
     "brian2",
     "caveclient>=7.11.0",
@@ -85,8 +85,11 @@ notebooks = [
     "obi_notebook",
 ]
 
-# SERVICE - optional, needed to run obi-one as a service
+# SERVICE - optional, needed to run obi-one as a service.
+# Includes connectivity and emodel (needed by the production image and service tests).
+# The Docker image and `make install-service` install this extra only (plus default/dev groups).
 service = [
+    "obi-one[connectivity,emodel]",
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
@@ -100,7 +103,8 @@ service = [
     "uvicorn",
 ]
 
-# ALL - convenience alias to install all optional dependencies
+# ALL - convenience alias to install all optional dependencies.
+# connectivity and emodel are listed explicitly (also pulled by service) so all stays complete if they leave service later.
 all = ["obi-one[bluecellulab,connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
@@ -115,6 +119,7 @@ dev = [
     "pytest-cov",
     "pytest-freezer>=0.4.9",
     "pytest-httpx>=0.35.0",
+    "pytest-xdist",
     "respx>=0.22.0",
     "ruff",
     "ty>=0.0.35",
@@ -259,7 +264,8 @@ addopts = [
     "--import-mode=importlib",
     "-vv",
     "-ra",
-    "--cov=app",
+    "-n",
+    "auto",
     "--durations=10",
     "--durations-min=1.0",
     "-m not integration",
@@ -273,7 +279,7 @@ filterwarnings = ["error::pydantic.warnings.PydanticDeprecationWarning"]
 [tool.coverage.run]
 branch = true
 parallel = false
-source_pkgs = ["app", "obi_one"]
+# Package under measurement is selected per suite via pytest `--cov=` (lib: obi_one, or app).
 data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]

@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     import pandas as pd
 
     from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
+    from obi_one.scientific.blocks.morphology_locations.per_neuron_explicit import (
+        PerNeuronExplicitMorphologyLocations,
+    )
     from obi_one.scientific.library.circuit import Circuit
     from obi_one.scientific.unions_and_references.combined_neuron_sets import (
         BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
@@ -71,6 +74,105 @@ class MaterializedCompartmentSet(BaseModel):
     ) -> MaterializedCompartmentSet:
         triplets = [(loc.node_id, loc.section_id, loc.offset) for loc in locations]
         return cls(name=name, population=population, compartment_entries=tuple(triplets))
+
+
+def _validate_selected_row_node_ids(
+    *, name: str, rows: tuple[tuple[int, int, float], ...], allowed_node_ids: set[int]
+) -> None:
+    """Reject rows whose node id is not in the simulated neuron set.
+
+    A compartment set must only reference nodes that will be instantiated: rows for un-simulated
+    nodes are dropped at run time, quietly reducing coverage rather than erroring. Catch it here.
+    """
+    missing = sorted({node_id for node_id, _, _ in rows} - allowed_node_ids)
+    if missing:
+        msg = (
+            f"Compartment set '{name}' targets node ids not in the simulated neuron set: "
+            f"{missing}. Every selected location must sit on a simulated neuron."
+        )
+        raise ConfigValidationError(msg)
+
+
+def _validate_selected_row_section_ids(
+    *,
+    circuit: Circuit,
+    population: str,
+    rows: tuple[tuple[int, int, float], ...],
+) -> None:
+    """Reject rows whose section id does not exist on their neuron's morphology.
+
+    A missing section id is otherwise caught only at run time, once the job is already on the
+    cluster, so load each distinct neuron's morphology once and check the ids up front.
+    Hand-picked points cover few neurons, so loading them here is cheap.
+    """
+    rows_by_node: dict[int, list[int]] = {}
+    for node_id, section_id, _ in rows:
+        rows_by_node.setdefault(node_id, []).append(section_id)
+
+    # Reuses the explicit block's check so both paths reject the same ids. Imported here to keep
+    # this module free of morphio/numpy/pandas at import time.
+    from obi_one.scientific.blocks.morphology_locations.explicit import (  # ruff: ignore[import-outside-top-level]
+        neurite_section_for_id,
+    )
+
+    for node_id, section_ids in rows_by_node.items():
+        try:
+            morphology = circuit.load_morphology(node_id, population=population)
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            msg = f"Could not read the morphology of node {node_id} to validate its section ids."
+            raise ConfigValidationError(msg) from exc
+        for section_id in section_ids:
+            # Soma is section id 0; it is always present, so skip the neurite lookup.
+            if section_id == 0:
+                continue
+            try:
+                neurite_section_for_id(morphology, section_id)
+            except ValueError as exc:
+                # Name the node so the user can find the mistyped row; the shared helper only
+                # knows the section.
+                msg = f"Node {node_id} has no section {section_id}."
+                raise ConfigValidationError(msg) from exc
+
+
+def build_compartment_set_from_selected_rows(
+    *,
+    name: str,
+    circuit: Circuit,
+    node_population: str | None,
+    population: str,
+    neuron_set: BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION,
+    locations_block: PerNeuronExplicitMorphologyLocations,
+) -> MaterializedCompartmentSet:
+    """Create a compartment set from points that already name their own neuron.
+
+    Unlike the neuron-set path, the rows are typed by hand, so they are validated here rather
+    than produced by sampling: every node id must belong to the simulated neuron set, every
+    section id must exist on that node's morphology, and the entry cap still applies. Without
+    these checks both kinds of bad row fail late, at run time.
+    """
+    rows = locations_block.compartment_rows()
+
+    _validate_compartment_set_entry_count(name=name, entry_count=len(rows))
+
+    selected_population = node_population or population
+    ids_by_population = neuron_set.block.get_neuron_ids(circuit)
+    try:
+        allowed_node_ids = set(ids_by_population[selected_population])
+    except KeyError as exc:
+        msg = (
+            f"Neuron set does not contain population {selected_population!r}; "
+            f"available populations: {sorted(ids_by_population)}"
+        )
+        raise ValueError(msg) from exc
+    _validate_selected_row_node_ids(name=name, rows=rows, allowed_node_ids=allowed_node_ids)
+
+    _validate_selected_row_section_ids(circuit=circuit, population=selected_population, rows=rows)
+
+    return MaterializedCompartmentSet(
+        name=name,
+        population=population,
+        compartment_entries=rows,
+    )
 
 
 def normalized_offset_column(points: pd.DataFrame) -> str:

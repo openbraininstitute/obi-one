@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 
 from app.dependencies.auth import user_verified
 from app.endpoints.mesh_validation import (
-    MAX_FILE_SIZE,
     VALID_MESH_EXTENSIONS,
     FileTooLargeError,
     ValidationStatus,
@@ -235,8 +234,25 @@ def test_validate_mesh_reader_returns_mesh_on_success():
     assert result is mock_mesh
 
 
-def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream():
-    chunk1 = b"x" * (MAX_FILE_SIZE - 10)
+def test_save_upload_to_tempfile_success():
+    mock_file = MagicMock()
+    mock_file.file = BytesIO(b"mesh-bytes")
+
+    path = _save_upload_to_tempfile(mock_file, suffix=".obj")
+    try:
+        assert path.endswith(".obj")
+        assert Path(path).read_bytes() == b"mesh-bytes"
+    finally:
+        Path(path).unlink(missing_ok=True)
+
+
+def test_save_upload_to_tempfile_exceeds_size_limit_mid_stream(monkeypatch):
+    # Production MAX_FILE_SIZE is 5 GiB; use ~1.5 MiB so the first 1 MiB read is
+    # written and the next read crosses the limit (same mid-stream path, ~ms).
+    chunk_size = 1024 * 1024
+    limit = chunk_size + chunk_size // 2
+    monkeypatch.setattr("app.endpoints.mesh_validation.MAX_FILE_SIZE", limit)
+    chunk1 = b"x" * (limit - 10)
     chunk2 = b"x" * 20
 
     mock_file = MagicMock()
@@ -253,6 +269,20 @@ def test_save_upload_to_tempfile_cleans_up_on_read_error():
 
     with pytest.raises(OSError, match="read failed"):
         _save_upload_to_tempfile(mock_file, suffix=".glb")
+
+
+def test_save_upload_to_tempfile_cleanup_skips_missing_tempfile():
+    mock_file = MagicMock()
+    mock_file.file.seek = MagicMock()
+    mock_file.file.read = MagicMock(side_effect=OSError("read failed"))
+
+    with patch("app.endpoints.mesh_validation.pathlib.Path") as path_cls:
+        path_inst = MagicMock()
+        path_inst.exists.return_value = False
+        path_cls.return_value = path_inst
+        with pytest.raises(OSError, match="read failed"):
+            _save_upload_to_tempfile(mock_file, suffix=".glb")
+        path_inst.unlink.assert_not_called()
 
 
 def test_cleanup_temp_file_os_error_is_logged(tmp_path, caplog):

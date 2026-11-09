@@ -1,4 +1,4 @@
-name: Run tests
+name: Tests
 
 on:
   pull_request:
@@ -53,7 +53,8 @@ jobs:
             exit 1
           fi
 
-  tests:
+  checks:
+    name: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,20 +89,130 @@ jobs:
         run: make check-deps
       - name: Install mandatory and optional requirements
         run: make install-all
-      - name: Run linters
-        run: make lint
-      - name: Run tests
-        run: make test-docker
       - name: Run pip-audit
         run: make pip-audit
-      - name: Upload coverage reports to Codecov
+
+  test-lib:
+    name: lib
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "latest"
+          enable-cache: true
+      - name: Setup python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::985539765147:role/gh_codeartifact_read_all
+          aws-region: us-east-1
+      - name: Get CodeArtifact token
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+            --domain openbraininstitute \
+            --query authorizationToken \
+            --output text)
+          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
+          echo "UV_INDEX_OBI_CODEARTIFACT_PASSWORD=$CODEARTIFACT_AUTH_TOKEN" >> $GITHUB_ENV
+          echo "UV_INDEX_OBI_CODEARTIFACT_USERNAME=aws" >> $GITHUB_ENV
+      - name: Guard lib suite has no app imports
+        run: |
+          if grep -RInE 'from app(\.| import)|import app(\.|$)' tests/obi_one tests/launch_scripts --include='*.py'; then
+            echo "::error::lib (obi_one/launch_scripts) tests must not import app"
+            exit 1
+          fi
+      - name: Install all extras (lib suite)
+        run: make install-all
+      - name: Lint lib
+        run: make lint-lib
+      - name: Run lib tests
+        run: make test-lib-local
+      - name: Upload lib coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openbraininstitute/obi-one
           fail_ci_if_error: false
-          files: .coverage/coverage.xml
-          flags: pytest
+          files: .coverage/coverage-lib.xml
+          flags: lib
+          name: lib
+          verbose: true
+
+  test-app:
+    name: app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC for ECR buildcache push/pull
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2
+        with:
+          version: latest
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Authenticate with AWS ECR for buildcache
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::985539765147:role/gh_ecr_push_obi-one-private
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "latest"
+          enable-cache: true
+      - name: Setup python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install service extra
+        run: make install-service
+      - name: Lint app
+        run: make lint-app
+      - name: Export image env
+        run: make image-env >> "$GITHUB_ENV"
+      - name: Build app image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG_ALIAS }}
+          build-args: |
+            ENVIRONMENT=${{ env.ENVIRONMENT }}
+            APP_NAME=${{ env.APP_NAME }}
+            APP_VERSION=${{ env.APP_VERSION }}
+            COMMIT_SHA=${{ env.COMMIT_SHA }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/obi-one:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+          provenance: false
+          sbom: false
+      - name: Run app tests in Docker
+        run: make test-app-docker-run-only
+      - name: Upload app coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: openbraininstitute/obi-one
+          fail_ci_if_error: false
+          files: .coverage/coverage-app.xml
+          flags: app
+          name: app
           verbose: true
       - name: Cleanup
         if: ${{ always() }}

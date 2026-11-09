@@ -155,6 +155,9 @@ class TestPlaceMorphologiesAndMechanisms:
             str(morph_entity.id) + ".swc"
         )
         assert mechanisms_placed is None
+        # Only morph_class is set without an ME-model (required for biophysical populations)
+        assert list(result.phys_node_props) == ["morph_class"]
+        assert result.phys_node_props["morph_class"][0] == "N/A"
 
     def test_place_with_me_model(
         self, tmp_path, mock_db_client, morph_entity, source_mesh, source_dataset
@@ -201,6 +204,7 @@ class TestPlaceMorphologiesAndMechanisms:
         assert result.me_model_entity is me_model_entity
         expected_template = "hoc:mdl_" + str(me_model_entity.emodel.id).replace("-", "_")
         assert result.phys_node_props["model_template"][0] == expected_template
+        assert result.phys_node_props["morph_class"][0] == "N/A"
         assert "@dynamics:threshold_current" in result.phys_node_props
         assert "@dynamics:holding_current" in result.phys_node_props
         assert mechanisms_placed == "mod"
