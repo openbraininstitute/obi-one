@@ -922,6 +922,46 @@ class TestAISSpikingTest:
         assert result.passed is True
         assert "does not have an axon" in result.details
 
+    def _run_with_spike_times(self, tmp_path, axon_peak, soma_peak):
+        cell = MagicMock()
+        cell.axonal = [MagicMock()]
+        cell.sections = {"axon[0]": MagicMock()}
+        rec = SimpleNamespace(time=np.array([0.0, 1.0]), voltage=np.array([-70.0, 20.0]))
+        features = [{"peak_time": axon_peak}, {"peak_time": soma_peak}]
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+                return_value=cell,
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.run_multirecordings_stimulus",
+                return_value=(rec, rec),
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.plot_traces",
+                return_value="ais.pdf",
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.efel.get_feature_values",
+                return_value=features,
+            ),
+        ):
+            return AISSpikingTest().run(MagicMock(), 1.0, tmp_path)
+
+    def test_passes_when_axon_spikes_before_soma(self, tmp_path):
+        result = self._run_with_spike_times(tmp_path, np.array([10.0]), np.array([12.0]))
+        assert result.passed is True
+        assert "Axon spikes before soma" in result.details
+
+    def test_fails_when_axon_not_before_soma(self, tmp_path):
+        result = self._run_with_spike_times(tmp_path, np.array([13.0]), np.array([12.0]))
+        assert result.passed is False
+
+    def test_fails_when_spike_times_missing(self, tmp_path):
+        result = self._run_with_spike_times(tmp_path, None, np.array([12.0]))
+        assert result.passed is False
+        assert "Could not determine spike times" in result.details
+
 
 class TestFICurveTest:
     def _sim_config(self):
