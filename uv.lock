@@ -218,7 +218,7 @@ wheels = [
 
 [[package]]
 name = "bluecellulab"
-version = "2.6.110"
+version = "2.6.113"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bluepysnap" },
@@ -237,9 +237,9 @@ dependencies = [
     { name = "seaborn" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/94/c16b273153885a9fa1a8d2f2d069748c6bc04ea9a9dbe14d8f6be0943f9a/bluecellulab-2.6.110.tar.gz", hash = "sha256:7202e412bab5c35ed7fff7d4c0ef0635c3f894fee97e6323f0b6c85d53e776c3", size = 597022, upload-time = "2026-10-23T14:32:26.369Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/7c/237f74dcf0b46804c66d7f7db9cccbc308edd52ff4291b7e9209dc1a2347/bluecellulab-2.6.113.tar.gz", hash = "sha256:41d3d77155b0d3f49411f93cd2362d5800c43b97a5ec3c2b511c8c307667a9ed", size = 621902, upload-time = "2026-11-06T17:11:15.587Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/34/507cc1a04c49c72ab0bac208bf64e23fd55d4499eda3721e68eba194f920/bluecellulab-2.6.110-py3-none-any.whl", hash = "sha256:ea9037367f45e08b59b41e25df5eccac7cab179fc92004226ae67b6bef293672", size = 221575, upload-time = "2026-10-23T14:32:24.834Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/83/8fd9daf8c3a02ea91087307362acba133b796f0c4285f7f3240bb441e639/bluecellulab-2.6.113-py3-none-any.whl", hash = "sha256:d78b43e6006ab392898f5ad31b9cb393b74181d1e818839bcb40cf66d939f320", size = 245842, upload-time = "2026-11-06T17:11:13.97Z" },
 ]
 
 [[package]]
@@ -2519,8 +2519,8 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", marker = "extra == 'bluecellulab'", specifier = ">=2.6.104" },
-    { name = "bluecellulab", marker = "extra == 'emodel'", specifier = ">=2.6.104" },
+    { name = "bluecellulab", marker = "extra == 'bluecellulab'", specifier = ">=2.6.113" },
+    { name = "bluecellulab", marker = "extra == 'emodel'", specifier = ">=2.6.113" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
     { name = "bluepysnap", specifier = ">=3.0.10" },

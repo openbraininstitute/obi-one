@@ -396,6 +396,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         requires_package="bluepyemodel",
     ),
+    TaskType.memodel_validation: TaskSpec(
+        task_ref=("obi_one.scientific.validations.memodel.task", "MEModelValidationTask"),
+        single_config_ref=(
+            "obi_one.scientific.validations.memodel.task",
+            "MEModelValidationSingleConfig",
+        ),
+        asset_label=None,
+        requires_package="bluecellulab",
+    ),
 }
 
 
