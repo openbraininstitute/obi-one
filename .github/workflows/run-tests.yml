@@ -203,7 +203,7 @@ jobs:
           provenance: false
           sbom: false
       - name: Run app tests in Docker
-        run: make test-app-docker-run
+        run: make test-app-docker-run-only
       - name: Upload app coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
