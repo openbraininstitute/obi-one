@@ -1,5 +1,6 @@
 """Tests for MEModel validation workflow."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -11,7 +12,12 @@ from bluecellulab.validation.measurement import EfelMeasurement
 from bluecellulab.validation.protocol import SequenceProtocol, StepProtocol
 from entitysdk.schemas.memodel import DownloadedMEModel
 
-from obi_one.scientific.validations.base import InvalidValidationContextError
+from obi_one.scientific.validations.base import (
+    InvalidValidationContextError,
+    ValidationRegistrationError,
+    ValidationSingleConfig,
+    ValidationTask,
+)
 from obi_one.scientific.validations.memodel.config import (
     SimulatorConfig,
     extract_simulator_config_from_hoc,
@@ -776,3 +782,60 @@ class TestMEModelValidationProfiles:
         )
         assert profile.bpap_holding_current is None
         assert profile.rebound_holding_current is None
+
+
+class TestValidationTaskExecute:
+    """Covers the entity-agnostic orchestration in ValidationTask.execute."""
+
+    def _make_task(self, registered):
+        workflow = MagicMock()
+        workflow.setup.return_value = SimpleNamespace(entity_id="e1")
+        workflow.run.return_value = [MagicMock()]
+        workflow.register.return_value = registered
+
+        class _Task(ValidationTask):
+            config: ValidationSingleConfig
+
+            def get_workflow(self):
+                return workflow
+
+        task = _Task(config=ValidationSingleConfig(entity_id="e1"))
+        # The execution-activity bookkeeping comes from the Task base and needs
+        # no DB for this orchestration test.
+        task._get_execution_activity = MagicMock(return_value=MagicMock())
+        task._update_execution_activity = MagicMock()
+        return task, workflow
+
+    def _result(self, name, entity_id, *, skipped=False):
+        return SimpleNamespace(
+            entity_id=entity_id,
+            skipped=skipped,
+            test_result=SimpleNamespace(name=name),
+        )
+
+    def test_returns_registered_ids(self):
+        registered = [self._result("A", "id-A"), self._result("B", "id-B")]
+        task, workflow = self._make_task(registered)
+
+        ids = task.execute(db_client=MagicMock())
+
+        assert ids == ["id-A", "id-B"]
+        workflow.setup.assert_called_once()
+        workflow.run.assert_called_once()
+
+    def test_raises_when_a_result_fails_to_register(self):
+        registered = [self._result("A", "id-A"), self._result("B", None)]
+        task, _ = self._make_task(registered)
+
+        with pytest.raises(ValidationRegistrationError, match="failed to"):
+            task.execute(db_client=MagicMock())
+
+    def test_warns_and_returns_ids_when_skipped(self, caplog):
+        registered = [self._result("A", "id-A", skipped=True)]
+        task, _ = self._make_task(registered)
+
+        with caplog.at_level("WARNING"):
+            ids = task.execute(db_client=MagicMock())
+
+        assert ids == ["id-A"]
+        assert any("skipped" in r.message.lower() for r in caplog.records)
