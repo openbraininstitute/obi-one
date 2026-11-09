@@ -202,7 +202,12 @@ class TestTaskConfigJson:
             staging._task_config_json(task_config, MagicMock())
 
 
-def test_resolve_provenance_unrebuildable_campaign_config_raises(monkeypatch):
+# A scanned (list-valued) field cannot be deserialized as a single optimisation config.
+UNBUILDABLE_CONFIG = {"type": "EModelOptimizationSingleConfig", "initialize": {"seed": [1, 2]}}
+
+
+def single_task_config_client():
+    """A client whose optimisation activity used exactly one TaskConfig."""
     task_config_id = uuid4()
     activity = SimpleNamespace(
         id="activity-id",
@@ -212,14 +217,24 @@ def test_resolve_provenance_unrebuildable_campaign_config_raises(monkeypatch):
     client = MagicMock()
     client.search_entity.return_value.first.return_value = activity
     client.get_entity.return_value = SimpleNamespace(id=task_config_id)
+    return client
+
+
+def test_resolve_provenance_unrebuildable_campaign_config_raises(monkeypatch):
     monkeypatch.setattr(staging, "_task_config_json", lambda *_: None)
-    monkeypatch.setattr(
-        staging,
-        "_campaign_config_json",
-        lambda *_: {"type": "EModelOptimizationSingleConfig", "initialize": {"seed": [1, 2]}},
-    )
+    monkeypatch.setattr(staging, "_campaign_config_json", lambda *_: UNBUILDABLE_CONFIG)
     with pytest.raises(ValueError, match="cannot be rebuilt as a single optimisation config"):
-        staging.resolve_optimisation_provenance(str(uuid4()), client)
+        staging.resolve_optimisation_provenance(str(uuid4()), single_task_config_client())
+
+
+def test_resolve_provenance_invalid_own_config_raises_validation_error(monkeypatch):
+    """A TaskConfig's own invalid config is reported as is, not as a campaign problem."""
+    campaign_config_json = Mock()
+    monkeypatch.setattr(staging, "_task_config_json", lambda *_: UNBUILDABLE_CONFIG)
+    monkeypatch.setattr(staging, "_campaign_config_json", campaign_config_json)
+    with pytest.raises(ValidationError):
+        staging.resolve_optimisation_provenance(str(uuid4()), single_task_config_client())
+    campaign_config_json.assert_not_called()
 
 
 class TestCampaignConfigJson:
