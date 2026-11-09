@@ -7,6 +7,7 @@ and the mechanism compile/load error handling. The ``setup()`` body itself
 """
 
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -15,11 +16,14 @@ import pytest
 from entitysdk.schemas.memodel import DownloadedMEModel
 
 from obi_one.scientific.validations.base import InvalidValidationContextError
+from obi_one.scientific.validations.memodel import workflow as workflow_module
+from obi_one.scientific.validations.memodel.config import SimulatorConfig
 from obi_one.scientific.validations.memodel.profiles import (
     DefaultMEModelValidationProfile,
     ThalamicMEModelValidationProfile,
 )
 from obi_one.scientific.validations.memodel.workflow import (
+    MEModelValidationWorkflow,
     _compile_mechanisms,
     _load_compiled_mechanisms,
     _resolve_holding_current,
@@ -135,3 +139,97 @@ class TestLoadCompiledMechanisms:
             result = _load_compiled_mechanisms(tmp_path)
         assert result == lib
         fake_neuron.h.nrn_load_dll.assert_called_once_with(str(lib))
+
+
+class TestWorkflowSetup:
+    """Drive MEModelValidationWorkflow.setup() with the NEURON/entitysdk calls patched.
+
+    This covers setup()'s own orchestration (config fallback, holding/rheobase/Rin
+    resolution, context assembly). The patched calls (Cell construction, rheobase and
+    input-resistance on a live cell) are the compiled-NEURON boundary and are exercised
+    end-to-end rather than here.
+    """
+
+    def _downloaded(self, tmp_path):
+        return DownloadedMEModel(
+            hoc_path=tmp_path / "model.hoc",
+            mechanisms_dir=tmp_path / "mechanisms",
+            mechanism_files=[],
+            morphology_paths=[tmp_path / "m.asc"],
+        )
+
+    def _patches(self, tmp_path, *, sim_config, rin_value=None):
+        w = workflow_module
+
+        cell = MagicMock()
+        cell.template_params = SimpleNamespace(
+            template_filepath="t.hoc",
+            morph_filepath="m.asc",
+            template_format="v6",
+            emodel_properties=SimpleNamespace(),
+        )
+        return [
+            patch.object(w, "download_memodel", return_value=self._downloaded(tmp_path)),
+            patch.object(w, "extract_simulator_config_from_hoc", return_value=sim_config),
+            patch.object(w, "_compile_mechanisms"),
+            patch.object(w, "_load_compiled_mechanisms", return_value=tmp_path / "lib"),
+            patch.object(w, "_resolve_rheobase", return_value=0.1),
+            patch.object(w, "_verify_simulator_configuration"),
+            patch("bluecellulab.cell.core.Cell", return_value=cell),
+            patch("bluecellulab.circuit.circuit_access.EmodelProperties"),
+            patch("bluecellulab.simulation.neuron_globals.set_neuron_globals"),
+            patch("bluecellulab.tools.calculate_input_resistance", return_value=rin_value or 150.0),
+        ]
+
+    def _client(self, calibration=None):
+        memodel = SimpleNamespace(name="test-model", calibration_result=calibration)
+        client = MagicMock()
+        client.get_entity.return_value = memodel
+        return client
+
+    def test_default_profile_setup_without_rin(self, tmp_path):
+
+        sim_config = SimulatorConfig(celsius=34.0, v_init=-70.0)
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="default")
+        calibration = SimpleNamespace(holding_current=-0.03, threshold_current=0.1, rin=None)
+        client = self._client(calibration)
+
+        with ExitStack() as stack:
+            for p in self._patches(tmp_path, sim_config=sim_config):
+                stack.enter_context(p)
+            context = workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+
+        assert context.rheobase == pytest.approx(0.1)
+        # Default profile does not require Rin.
+        assert context.rin is None
+        assert context.simulator_config == sim_config
+        client.get_entity.assert_called_once()
+
+    def test_thalamic_profile_setup_computes_rin(self, tmp_path):
+
+        sim_config = SimulatorConfig(celsius=34.0, v_init=-70.0)
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="thalamic")
+        # No calibrated rin -> setup falls back to calculate_input_resistance.
+        calibration = SimpleNamespace(holding_current=-0.03, threshold_current=0.1, rin=None)
+        client = self._client(calibration)
+
+        with ExitStack() as stack:
+            for p in self._patches(tmp_path, sim_config=sim_config, rin_value=150.0):
+                stack.enter_context(p)
+            context = workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+
+        assert context.rin == pytest.approx(150.0)
+
+    def test_hoc_without_config_uses_profile_fallback(self, tmp_path):
+
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="thalamic")
+        calibration = SimpleNamespace(holding_current=-0.03, threshold_current=0.1, rin=None)
+        client = self._client(calibration)
+
+        # extract_simulator_config_from_hoc returns None -> profile fallback is used.
+        with ExitStack() as stack:
+            for p in self._patches(tmp_path, sim_config=None, rin_value=150.0):
+                stack.enter_context(p)
+            context = workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+
+        assert context.simulator_config == workflow.validation_profile.simulator_config_fallback
