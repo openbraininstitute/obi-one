@@ -130,7 +130,7 @@ When registering a new **`TaskType`**:
 
 ## Testing
 
-- **pytest** with `pytest-cov`, `pytest-freezer` (time), `pytest-httpx` (HTTP mocking)
+- **pytest** with `pytest-cov`, `pytest-xdist` (`-n auto`), `pytest-freezer` (time), `pytest-httpx` (HTTP mocking)
 - Test paths: `tests/` and `examples/`
 - Tests mirror source structure: `tests/core/`, `tests/scientific/`, `tests/app/`, `tests/tasks/`
 - Tests use class-based organization (`class TestFoo:` with `def test_*` methods)
