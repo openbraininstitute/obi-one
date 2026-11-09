@@ -37,8 +37,12 @@ from obi_one.scientific.validations.memodel.task import (
     MEModelValidationTask,
 )
 from obi_one.scientific.validations.memodel.tests import (
+    AISSpikingTest,
     BPAPTest,
+    FICurveTest,
+    HyperpolarizationTest,
     IVCurveTest,
+    RinTest,
     _count_bpap_spikes,
 )
 from obi_one.scientific.validations.memodel.workflow import (
@@ -839,3 +843,121 @@ class TestValidationTaskExecute:
 
         assert ids == ["id-A"]
         assert any("skipped" in r.message.lower() for r in caplog.records)
+
+
+class TestRinTest:
+    def test_passes_below_max(self, tmp_path):
+        result = RinTest(rin=100.0).run(MagicMock(), 1.0, tmp_path)
+        assert result.passed is True
+        assert "100.00 MOhm" in result.details
+        assert result.figures == []
+
+    def test_fails_above_max(self, tmp_path):
+        result = RinTest(rin=5000.0).run(MagicMock(), 1.0, tmp_path)
+        assert result.passed is False
+        assert "not biologically realistic" in result.details
+
+
+class TestHyperpolarizationTest:
+    def _patches(self, features):
+        recording = SimpleNamespace(
+            time=np.array([0.0, 1.0]), voltage=np.array([-70.0, -75.0])
+        )
+        return (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.run_stimulus",
+                return_value=recording,
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.plot_trace",
+                return_value="hyperpol.pdf",
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.efel.get_feature_values",
+                return_value=features,
+            ),
+        )
+
+    def test_passes_when_hyperpolarized_below_rmp(self, tmp_path):
+        features = [
+            {
+                "voltage_base": np.array([-65.0]),
+                "steady_state_voltage_stimend": np.array([-80.0]),
+            }
+        ]
+        p1, p2, p3 = self._patches(features)
+        with p1, p2, p3:
+            result = HyperpolarizationTest().run(MagicMock(), 1.0, tmp_path)
+        assert result.passed is True
+
+    def test_fails_when_not_below_rmp(self, tmp_path):
+        features = [
+            {
+                "voltage_base": np.array([-80.0]),
+                "steady_state_voltage_stimend": np.array([-65.0]),
+            }
+        ]
+        p1, p2, p3 = self._patches(features)
+        with p1, p2, p3:
+            result = HyperpolarizationTest().run(MagicMock(), 1.0, tmp_path)
+        assert result.passed is False
+
+    def test_fails_gracefully_when_features_missing(self, tmp_path):
+        features = [{"voltage_base": None, "steady_state_voltage_stimend": None}]
+        p1, p2, p3 = self._patches(features)
+        with p1, p2, p3:
+            result = HyperpolarizationTest().run(MagicMock(), 1.0, tmp_path)
+        assert result.passed is False
+        assert "Could not determine" in result.details
+
+
+class TestAISSpikingTest:
+    def test_skips_when_no_axon(self, tmp_path):
+        cell = MagicMock()
+        cell.axonal = []
+        cell.sections = {}
+        with patch(
+            "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+            return_value=cell,
+        ):
+            result = AISSpikingTest().run(MagicMock(), 1.0, tmp_path)
+        assert result.passed is True
+        assert "does not have an axon" in result.details
+
+
+class TestFICurveTest:
+    def _sim_config(self):
+        return SimulatorConfig(celsius=34.0, v_init=-70.0)
+
+    def test_passes_on_positive_slope(self, tmp_path):
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.compute_plot_fi_curve",
+                return_value=(np.array([0.1, 0.2, 0.3]), np.array([0, 2, 5])),
+            ),
+        ):
+            result = FICurveTest(simulator_config=self._sim_config()).run(
+                MagicMock(), 0.1, tmp_path
+            )
+        assert result.passed is True
+
+    def test_fails_on_too_few_points(self, tmp_path):
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.Cell.from_template_parameters",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "obi_one.scientific.validations.memodel.tests.compute_plot_fi_curve",
+                return_value=(np.array([0.1]), np.array([0])),
+            ),
+        ):
+            result = FICurveTest(simulator_config=self._sim_config()).run(
+                MagicMock(), 0.1, tmp_path
+            )
+        assert result.passed is False
+        assert "Not enough data points" in result.details
