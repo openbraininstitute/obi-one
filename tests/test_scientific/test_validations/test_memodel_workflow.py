@@ -22,6 +22,7 @@ from obi_one.scientific.validations.memodel.presets import (
     thalamic_depolarization_block_preset,
 )
 from obi_one.scientific.validations.memodel.profiles import (
+    DefaultMEModelValidationProfile,
     MEModelValidationProfile,
     ThalamicMEModelValidationProfile,
 )
@@ -708,3 +709,70 @@ class TestIVCurveTest:
         assert result.passed is False
         assert "finite positive rheobase" in result.details
         assert result.figures == []
+
+
+class TestMEModelValidationProfiles:
+    def _context(self, tmp_path, *, rin=100.0, rheobase=1.0, calibrated_hold=-0.03):
+        template_params = MagicMock()
+        template_params.emodel_properties.holding_current = calibrated_hold
+        return MEModelWorkflowContext(
+            entity_id="test-id",
+            template_params=template_params,
+            rheobase=rheobase,
+            rin=rin,
+            out_dir=tmp_path,
+            simulator_config=SimulatorConfig(celsius=34.0, v_init=-70.0),
+        )
+
+    def test_default_profile_builds_spiking_and_depol_block(self, tmp_path):
+        tests = DefaultMEModelValidationProfile().build_tests(self._context(tmp_path))
+        names = [t.name for t in tests]
+        assert names == ["Spiking Validation", "Depolarization Block Validation"]
+
+    def test_thalamic_requires_rin_and_holding(self):
+        profile = ThalamicMEModelValidationProfile()
+        assert profile.requires_rin is True
+        assert profile.requires_holding_current is True
+        assert profile.recompute_rheobase is True
+
+    def test_thalamic_builds_full_nine_test_policy(self, tmp_path):
+        tests = ThalamicMEModelValidationProfile().build_tests(self._context(tmp_path))
+        assert len(tests) == 9
+
+    def test_thalamic_requires_rin(self, tmp_path):
+        profile = ThalamicMEModelValidationProfile()
+        context = self._context(tmp_path, rin=None)
+        with pytest.raises(InvalidValidationContextError, match="Rin"):
+            profile.build_tests(context)
+
+    def test_thalamic_requires_rheobase(self, tmp_path):
+        profile = ThalamicMEModelValidationProfile()
+        context = self._context(tmp_path, rheobase=None)
+        with pytest.raises(InvalidValidationContextError, match="rheobase"):
+            profile.build_tests(context)
+
+    @pytest.mark.parametrize(
+        ("kwargs", "match"),
+        [
+            ({"tonic_step_current": 0.0}, "positive finite"),
+            ({"tonic_step_current": float("nan")}, "positive finite"),
+            ({"bpap_amplitude_factor": -1.0}, "positive finite"),
+            ({"rebound_hyperpolarization_duration_ms": 0.0}, "positive finite"),
+            ({"bpap_holding_current": float("inf")}, "finite number"),
+            ({"rebound_holding_current": float("nan")}, "finite number"),
+            ({"bpap_trace_diagnostics": "yes"}, "must be a boolean"),
+        ],
+    )
+    def test_thalamic_constructor_rejects_invalid_values(self, kwargs, match):
+        with pytest.raises((TypeError, ValueError), match=match):
+            ThalamicMEModelValidationProfile(**kwargs)
+
+    def test_thalamic_accepts_optional_none(self):
+        # None is valid for the optional currents; it means "use the default".
+        profile = ThalamicMEModelValidationProfile(
+            bpap_holding_current=None,
+            rebound_holding_current=None,
+            rebound_hyperpolarization_amplitude=None,
+        )
+        assert profile.bpap_holding_current is None
+        assert profile.rebound_holding_current is None
