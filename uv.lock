@@ -243,43 +243,6 @@ wheels = [
 ]
 
 [[package]]
-name = "blueetl"
-version = "0.13.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "blueetl-core" },
-    { name = "bluepysnap" },
-    { name = "click" },
-    { name = "jsonschema" },
-    { name = "libsonata", marker = "sys_platform == 'darwin'" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "xarray" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/ff/6a40981ea0f4d1bd351bfc66b2da931149f3eafc310ad95daf4b315bc4d7/blueetl-0.13.4.tar.gz", hash = "sha256:83ba90bb3faeba9588594e5664e19e5b46389ab2f56a150c92cd3527bff20b39", size = 10677769, upload-time = "2024-12-05T16:31:01.348Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/fb/829c32801af998e40269f4bbdb9db6294f957e48c7c768985777baa4cc4c/blueetl-0.13.4-py3-none-any.whl", hash = "sha256:e27a244468bb7f78fea1fa7e778f0b13c8e988fae423dfe55b9db84ca1b4b727", size = 95466, upload-time = "2024-12-05T16:30:58.578Z" },
-]
-
-[[package]]
-name = "blueetl-core"
-version = "0.2.5"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "joblib" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/31/25efacef718b21b6cc00c56acc776901c8823aea624dd9ad2407bc14e790/blueetl_core-0.2.5.tar.gz", hash = "sha256:7287e5c897df0bfc6e5494a401a7ba382bf7bcc15a7c887d1b72a9111dc1165e", size = 212314, upload-time = "2024-12-04T13:09:14.769Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/70/efa9ef1da557d864b4ea64b1849637542c4f9194136b82607fb8d2da1b64/blueetl_core-0.2.5-py3-none-any.whl", hash = "sha256:3b917f2042332276e751e425d7a3de5ca813adb3bd2e45e8c92e8ded4be7b08d", size = 21983, upload-time = "2024-12-04T13:09:13.399Z" },
-]
-
-[[package]]
 name = "bluepyefe"
 version = "2.3.63"
 source = { registry = "https://pypi.org/simple" }
@@ -351,7 +314,7 @@ wheels = [
 
 [[package]]
 name = "bluepysnap"
-version = "3.0.9"
+version = "3.0.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -366,9 +329,9 @@ dependencies = [
     { name = "pandas" },
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/c0/c80758a462adb33ec7714d16461d2d0a95c9c9c2adc595d1531d7b36a6ae/bluepysnap-3.0.9.tar.gz", hash = "sha256:ac379aadf13bc936a5a13921d20df685d53c410b7cb9965888bc6b6415b9f11c", size = 971877, upload-time = "2026-11-02T07:52:38.22Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/bb/669ab2ba1c2f45a81873de8a394dc57fc8b7d1a3f1237e60a4d185e4875d/bluepysnap-3.0.10.tar.gz", hash = "sha256:ef3da665127f67937cd3e5234a89ee86c21c81dff0372403ffec3aea1884b86c", size = 972784, upload-time = "2026-11-06T10:39:22.865Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/3d/803eaf7ed750095b57358cbb9805e43ed49b671b5ae316a12745269842a9/bluepysnap-3.0.9-py3-none-any.whl", hash = "sha256:3e9bcbcbee31bb87203cc2775c69ef209aac5b89881a9b1f41113b4c278bd324", size = 112102, upload-time = "2026-11-02T07:52:36.409Z" },
+    { url = "https://files.pythonhosted.org/packages/39/14/c83d4b2b68695b760187972c6fdfd4d24ffd4987462c07c67007043ac116/bluepysnap-3.0.10-py3-none-any.whl", hash = "sha256:be43babba1834c8af29822b1548f3862bfc66e72134fbcbe62e1cb3dc4d73db2", size = 112341, upload-time = "2026-11-06T10:39:21.218Z" },
 ]
 
 [[package]]
@@ -994,6 +957,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e5/db/48cee9da4aa2f14d455c9e337c176b66ef76815603b8fab8b7318c76bdee/entitysdk-0.19.37.tar.gz", hash = "sha256:2dd511f38808a8ebbf5913ce2d00ebb063c3e43c1e8327dfe65bf98ee8d8aa3f", size = 83203, upload-time = "2026-11-04T15:34:13.752Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/1d/665acd6adf6dfd5c90faff4a4696a040bdd7897c668c10e8e659a7644ef2/entitysdk-0.19.37-py3-none-any.whl", hash = "sha256:e6b945d037ff01716f8f3445a312580249216a0076995fa891156b71dc62afd1", size = 117952, upload-time = "2026-11-04T15:34:12.042Z" },
+]
+
+[[package]]
+name = "execnet"
+version = "2.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/89/780e11f9588d9e7128a3f87788354c7946a9cbb1401ad38a48c4db9a4f07/execnet-2.1.2.tar.gz", hash = "sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd", size = 166622, upload-time = "2025-11-12T09:56:37.75Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/84/02fc1827e8cdded4aa65baef11296a9bbe595c474f0d6d758af082d849fd/execnet-2.1.2-py3-none-any.whl", hash = "sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec", size = 40708, upload-time = "2025-11-12T09:56:36.333Z" },
 ]
 
 [[package]]
@@ -2434,8 +2406,6 @@ name = "obi-one"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
-    { name = "bluecellulab" },
-    { name = "blueetl" },
     { name = "bluepyefe" },
     { name = "bluepysnap" },
     { name = "brainbuilder" },
@@ -2460,6 +2430,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "bluecellulab" },
     { name = "bluepyemodel" },
     { name = "cachetools" },
     { name = "connectome-analysis" },
@@ -2481,6 +2452,9 @@ all = [
     { name = "ultraliser" },
     { name = "uvicorn" },
 ]
+bluecellulab = [
+    { name = "bluecellulab" },
+]
 bluerecording = [
     { name = "bluerecording" },
     { name = "neurodamus" },
@@ -2490,6 +2464,7 @@ connectivity = [
     { name = "networkx" },
 ]
 emodel = [
+    { name = "bluecellulab" },
     { name = "bluepyemodel" },
 ]
 meshing = [
@@ -2503,9 +2478,13 @@ notebooks = [
     { name = "obi-notebook" },
 ]
 service = [
+    { name = "bluecellulab" },
+    { name = "bluepyemodel" },
     { name = "cachetools" },
+    { name = "connectome-analysis" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "networkx" },
     { name = "obp-accounting-sdk" },
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
@@ -2527,6 +2506,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-freezer" },
     { name = "pytest-httpx" },
+    { name = "pytest-xdist" },
     { name = "respx" },
     { name = "ruff" },
     { name = "ty" },
@@ -2539,11 +2519,11 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "bluecellulab", specifier = ">=2.6.104" },
-    { name = "blueetl" },
+    { name = "bluecellulab", marker = "extra == 'bluecellulab'", specifier = ">=2.6.104" },
+    { name = "bluecellulab", marker = "extra == 'emodel'", specifier = ">=2.6.104" },
     { name = "bluepyefe", specifier = ">=2.3.59" },
     { name = "bluepyemodel", marker = "extra == 'emodel'", specifier = ">=1.0.50" },
-    { name = "bluepysnap", specifier = ">=3.0.9" },
+    { name = "bluepysnap", specifier = ">=3.0.10" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
     { name = "brainbuilder", specifier = ">=0.20.9" },
     { name = "brian2" },
@@ -2568,7 +2548,8 @@ requires-dist = [
     { name = "numpy" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
-    { name = "obi-one", extras = ["connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["bluecellulab", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["connectivity", "emodel"], marker = "extra == 'service'" },
     { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
     { name = "psutil", specifier = ">=6.1.0" },
@@ -2586,7 +2567,7 @@ requires-dist = [
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["bluecellulab", "emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2596,6 +2577,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-freezer", specifier = ">=0.4.9" },
     { name = "pytest-httpx", specifier = ">=0.35.0" },
+    { name = "pytest-xdist" },
     { name = "respx", specifier = ">=0.22.0" },
     { name = "ruff" },
     { name = "ty", specifier = ">=0.0.35" },
@@ -3099,6 +3081,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4e/42/f53c58570e80d503ade9dd42ce57f2915d14bcbe25f6308138143950d1d6/pytest_httpx-0.36.2.tar.gz", hash = "sha256:05a56527484f7f4e8c856419ea379b8dc359c36801c4992fdb330f294c690356", size = 57683, upload-time = "2026-04-09T13:57:19.837Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/55/1fa65f8e4fceb19dd6daa867c162ad845d547f6058cd92b4b02384a44777/pytest_httpx-0.36.2-py3-none-any.whl", hash = "sha256:d42ebd5679442dc7bfb0c48e0767b6562e9bc4534d805127b0084171886a5e22", size = 20315, upload-time = "2026-04-09T13:57:18.587Z" },
+]
+
+[[package]]
+name = "pytest-xdist"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "execnet" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069, upload-time = "2025-07-01T13:30:59.346Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/31/d4e37e9e550c2b92a9cbc2e4d0b7420a27224968580b5a447f420847c975/pytest_xdist-3.8.0-py3-none-any.whl", hash = "sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88", size = 46396, upload-time = "2025-07-01T13:30:56.632Z" },
 ]
 
 [[package]]
@@ -3915,20 +3910,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bf/60/bc7a980fc78837d6ef8f5940cca4cadc433364503a4c4d42e2a7a0de3231/widgetsnbextension-4.0.16.tar.gz", hash = "sha256:adeea0ae78f0856ee4945f413299801b82a0a01416303301f39a704282a37b73", size = 1111094, upload-time = "2026-08-18T08:52:55.859Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/34/95/40e17e20046b7bc820d29d09ae84ec157ec8dd6e6f6cd722626292c31b2e/widgetsnbextension-4.0.16-py3-none-any.whl", hash = "sha256:a31a8774885b96fe825462f5d6496166f0c7cae111195b6465c801d230eb5a4e", size = 2225148, upload-time = "2026-08-18T08:52:53.736Z" },
-]
-
-[[package]]
-name = "xarray"
-version = "2026.9.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/f5/781c70b234f54e0401f4f7c4427a7486da38d50dbb138c7d7c55144b3d86/xarray-2026.9.0.tar.gz", hash = "sha256:6abc69694c22fa1f0fb2f357ff4e41d88beb4477ed71091f944b7dbf67ed54fe", size = 3176922, upload-time = "2026-09-29T23:06:25.807Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/44/3159af4fb3c868970a412e294320ed6bb1a9fbdfa6431050eda8e0b34b6e/xarray-2026.9.0-py3-none-any.whl", hash = "sha256:fe349fa871628b1a0a5217af3fe1283a2862d5485156e6eda354fffb81c3bb7c", size = 1445445, upload-time = "2026-09-29T23:06:23.686Z" },
 ]
 
 [[package]]

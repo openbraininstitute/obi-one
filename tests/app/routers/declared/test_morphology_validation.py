@@ -38,12 +38,12 @@ def get_error_detail(response_json: dict) -> str:
 
 @pytest.fixture
 def morphology_swc():
-    return (DATA_DIR / "cell_morphology.swc").read_bytes()
+    return (DATA_DIR / "minimal_morphology.swc").read_bytes()
 
 
 @pytest.fixture
 def morphology_asc():
-    return (DATA_DIR / "cell_morphology.asc").read_bytes()
+    return (DATA_DIR / "minimal_morphology.asc").read_bytes()
 
 
 def test_validate_neuron_file_success(client, morphology_swc):

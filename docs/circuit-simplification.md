@@ -5,7 +5,7 @@ tags:
 
 # Circuit Simplification
 
-Circuit simplification produces a reduced, simulatable SONATA circuit from a biophysically detailed parent circuit using the [sonata-simplify](https://github.com/openbraininstitute/sonata-simplify) pipeline (requires `sonata-simplify>=0.2.6` and `bluecellulab>=2.6.108`). Each selected algorithm registers one derived `Circuit` entity, linked to the parent by a `circuit_simplification` derivation.
+Circuit simplification produces a reduced, simulatable SONATA circuit from a biophysically detailed parent circuit using the [sonata-simplify](https://github.com/openbraininstitute/sonata-simplify) pipeline (optional extra: `pip install 'obi-one[simplification]'`, which pulls `sonata-simplify>=0.2.6`; bluecellulab comes in as a sonata-simplify dependency). Each selected algorithm registers one derived `Circuit` entity, linked to the parent by a `circuit_simplification` derivation.
 
 ## Key Components
 

@@ -1,10 +1,11 @@
 """Validator for the `reference` block UI element."""
 
-from jsonschema import Draft7Validator, RefResolver, ValidationError
+from jsonschema import Draft7Validator, ValidationError
 
 from obi_one.core.schema import SchemaKey
 
 from .shared import (
+    get_ref_resolver,
     openapi_schema,
     resolve_union_reference_types,
     validate_list_strings,
@@ -44,8 +45,7 @@ def validate_reference(schema: dict, param: str, ref: str) -> None:
         )
         raise ValidationError(msg) from None
 
-    resolver = RefResolver.from_schema(openapi_schema)
-    validator = Draft7Validator(schema, resolver=resolver)
+    validator = Draft7Validator(schema, resolver=get_ref_resolver(openapi_schema))
 
     validated_ref = {"block_name": "test", "block_dict_name": "test"}
     try:
