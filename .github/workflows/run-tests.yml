@@ -162,6 +162,10 @@ jobs:
           version: latest
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          # Ephemeral GHA runners are discarded after the job; skipping builder teardown
+          # saves ~20s of post-job `docker buildx rm` with no leftover state.
+          cleanup: false
       - name: Authenticate with AWS ECR for buildcache
         uses: aws-actions/configure-aws-credentials@v6
         with:
