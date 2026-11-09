@@ -29,16 +29,15 @@ RUN \
     --mount=type=bind,source=README.md,target=README.md \
     uv sync --locked --no-install-project --extra service
 
-# Step 2: install the project itself as a proper non-editable package (with metadata)
-# SETUPTOOLS_SCM_PRETEND_VERSION ensures metadata is generated correctly in CI
-# where the .git history may be shallow or incomplete
+# Step 2: install the project itself as a proper non-editable package (with metadata).
+# Dynamic versioning uses setuptools-scm; SETUPTOOLS_SCM_PRETEND_VERSION supplies the
+# version without needing a .git mount (runtime APP_VERSION/COMMIT_SHA come from build-args).
 RUN \
     --mount=type=cache,target=/root/.cache/uv,id=uv-cache-${TARGETPLATFORM} \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     --mount=type=bind,source=README.md,target=README.md \
     --mount=type=bind,source=obi_one,target=obi_one \
-    --mount=type=bind,source=.git,target=.git \
     SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0 \
     uv sync --locked --no-editable --no-cache --extra service
 
