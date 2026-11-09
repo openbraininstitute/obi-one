@@ -25,7 +25,9 @@ from entitysdk import Client
 from entitysdk.downloaders.memodel import download_memodel
 from entitysdk.models import MEModel
 from entitysdk.schemas.memodel import DownloadedMEModel
+from entitysdk.types import EntityLifecycleStatus
 
+from obi_one.db_sdk.db_sdk import update_entity_lifecycle_status
 from obi_one.scientific.validations.base import (
     InvalidValidationContextError,
     ValidationWorkflow,
@@ -282,7 +284,7 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         self.custom_tests = custom_tests or []
         self.validation_profile = get_validation_profile(validation_profile)
 
-    def setup(self, entity_id: str, client: Client) -> MEModelWorkflowContext:  # ruff: ignore[too-many-locals]
+    def setup(self, entity_id: str, client: Client) -> MEModelWorkflowContext:
         """Download and prepare the MEModel and compute required properties.
 
         Args:
@@ -298,8 +300,86 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
 
         # Fetch metadata
         memodel = client.get_entity(entity_type=MEModel, entity_id=UUID(entity_id))
-        # Download assets into absolute output_dir
+
+        # Calibration problems are configuration errors, not a broken artifact, so they
+        # are resolved before the disqualify boundary below.
+        calibration = getattr(memodel, "calibration_result", None)
+        holding_current = _resolve_holding_current(calibration, self.validation_profile)
+        threshold_current = calibration.threshold_current if calibration else None
+
+        # A failed download may be transient (network, server), so it never disqualifies.
         downloaded = download_memodel(client, memodel=memodel, output_dir=str(self.output_dir))
+
+        try:
+            cell, simulator_config = self._build_cell(
+                downloaded, entity_id, holding_current, threshold_current
+            )
+        except Exception:
+            # The downloaded artifact cannot be built into a Cell, so no task can use
+            # it: mark it disqualified, then re-raise so the run still fails.
+            self._mark_disqualified(client, entity_id)
+            raise
+
+        rheobase = _resolve_rheobase(self.validation_profile, cell, threshold_current)
+
+        # Compute Rin for profiles that use voltage-based currents. Reuse the
+        # calibrated value when available so the workflow matches platform data;
+        # otherwise use the same calculation as the legacy validation workflow.
+        rin = self._resolve_rin(calibration, cell, rheobase)
+
+        # Prepare output directory for figures
+        cell_name = memodel.name or entity_id
+        out_dir = self.output_dir / cell_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        if rin is None:
+            logger.info("Setup complete. Rheobase=%.4f nA", rheobase)
+        else:
+            logger.info("Setup complete. Rheobase=%.4f nA, Rin=%.4f MOhm", rheobase, rin)
+
+        return MEModelWorkflowContext(
+            entity_id=entity_id,
+            template_params=cell.template_params,
+            rheobase=rheobase,
+            rin=rin,
+            simulator_config=simulator_config,
+            out_dir=out_dir,
+            extra={"cell": cell, "memodel": memodel},
+        )
+
+    @staticmethod
+    def _mark_disqualified(client: Client, entity_id: str) -> None:
+        """Set the MEModel to ``disqualified`` without masking the load error.
+
+        Called while a load error is being handled. If the lifecycle update itself
+        fails (e.g. the client may not edit this entity), that is logged here so the
+        caller can still re-raise the original load error.
+        """
+        try:
+            update_entity_lifecycle_status(
+                client=client,
+                entity_id=UUID(entity_id),
+                entity_type=MEModel,
+                lifecycle_status=EntityLifecycleStatus.disqualified,
+            )
+        except Exception:
+            logger.exception("Could not mark MEModel %s as disqualified", entity_id)
+        else:
+            logger.info("MEModel %s marked as disqualified: it cannot be loaded", entity_id)
+
+    def _build_cell(
+        self,
+        downloaded: DownloadedMEModel,
+        entity_id: str,
+        holding_current: float,
+        threshold_current: float | None,
+    ) -> tuple[Any, SimulatorConfig]:
+        """Build a Cell from the downloaded artifact.
+
+        Covers the HOC simulator contract, mechanism compilation and loading,
+        morphology selection and Cell construction. A failure here means no task can
+        use the artifact, which the caller turns into a ``disqualified`` status.
+        """
         hoc_config = extract_simulator_config_from_hoc(downloaded.hoc_path)
         if hoc_config is None:
             simulator_config = self.validation_profile.simulator_config_fallback
@@ -332,19 +412,11 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         from bluecellulab.simulation.neuron_globals import (  # ruff: ignore[import-outside-top-level]
             set_neuron_globals,
         )
-        from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
-            calculate_input_resistance,
-        )
 
         set_neuron_globals(
             temperature=simulator_config.celsius,
             v_init=simulator_config.v_init,
         )
-
-        # Get holding/threshold from calibration if available
-        calibration = getattr(memodel, "calibration_result", None)
-        holding_current = _resolve_holding_current(calibration, self.validation_profile)
-        threshold_current = calibration.threshold_current if calibration else None
 
         emodel_properties = EmodelProperties(
             threshold_current=threshold_current or 0.1,
@@ -362,52 +434,44 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         )
         _verify_simulator_configuration(simulator_config)
 
-        rheobase = _resolve_rheobase(self.validation_profile, cell, threshold_current)
+        return cell, simulator_config
 
-        # Compute Rin for profiles that use voltage-based currents. Reuse the
-        # calibrated value when available so the workflow matches platform data;
-        # otherwise use the same calculation as the legacy validation workflow.
-        rin = None
-        if self.validation_profile.requires_rin:
-            calibrated_rin = getattr(calibration, "rin", None)
-            if calibrated_rin is not None:
-                rin = float(calibrated_rin)
+    def _resolve_rin(self, calibration: Any, cell: Any, rheobase: float) -> float | None:
+        """Return Rin for profiles that need it, or None when not required.
 
-            if rin is None or not math.isfinite(rin) or rin <= 0.0:
-                rin = calculate_input_resistance(
-                    template_path=cell.template_params.template_filepath,
-                    morphology_path=cell.template_params.morph_filepath,
-                    template_format=cell.template_params.template_format,
-                    emodel_properties=cell.template_params.emodel_properties,
-                    current_delta=-0.2 * rheobase,
-                )
+        Reuses the calibrated value when present; otherwise computes it as the legacy
+        workflow did. This runs after the Cell is built, so it is not part of the
+        load/disqualify boundary: a model that loads but yields an unusable Rin is a
+        configuration error, not an unloadable artifact.
+        """
+        if not self.validation_profile.requires_rin:
+            return None
 
-            if not math.isfinite(rin) or rin <= 0.0:
-                message = (
-                    f"Validation profile '{self.validation_profile.profile_name}' "
-                    f"requires a positive finite Rin; got {rin!r}."
-                )
-                raise InvalidValidationContextError(message)
-
-        # Prepare output directory for figures
-        cell_name = memodel.name or entity_id
-        out_dir = self.output_dir / cell_name
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        if rin is None:
-            logger.info("Setup complete. Rheobase=%.4f nA", rheobase)
-        else:
-            logger.info("Setup complete. Rheobase=%.4f nA, Rin=%.4f MOhm", rheobase, rin)
-
-        return MEModelWorkflowContext(
-            entity_id=entity_id,
-            template_params=cell.template_params,
-            rheobase=rheobase,
-            rin=rin,
-            simulator_config=simulator_config,
-            out_dir=out_dir,
-            extra={"cell": cell, "memodel": memodel},
+        from bluecellulab.tools import (  # ruff: ignore[import-outside-top-level]
+            calculate_input_resistance,
         )
+
+        rin = None
+        calibrated_rin = getattr(calibration, "rin", None)
+        if calibrated_rin is not None:
+            rin = float(calibrated_rin)
+
+        if rin is None or not math.isfinite(rin) or rin <= 0.0:
+            rin = calculate_input_resistance(
+                template_path=cell.template_params.template_filepath,
+                morphology_path=cell.template_params.morph_filepath,
+                template_format=cell.template_params.template_format,
+                emodel_properties=cell.template_params.emodel_properties,
+                current_delta=-0.2 * rheobase,
+            )
+
+        if not math.isfinite(rin) or rin <= 0.0:
+            message = (
+                f"Validation profile '{self.validation_profile.profile_name}' "
+                f"requires a positive finite Rin; got {rin!r}."
+            )
+            raise InvalidValidationContextError(message)
+        return rin
 
     def get_tests(self, context: MEModelWorkflowContext) -> list[ValidationTest]:
         """Return profile-provided tests plus any custom tests.
