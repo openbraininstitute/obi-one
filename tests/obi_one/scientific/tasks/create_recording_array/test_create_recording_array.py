@@ -1,6 +1,7 @@
 """Tests for create_recording_array/create_recording_array.py."""
 
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -218,11 +219,27 @@ def test_execute_runs_an_mpi_process_per_job_cpu(
     assert mock_bluerecording.call_args.kwargs["number_of_mpi_processes"] == expected
 
 
+@contextmanager
+def _fast_benchmark_section(name: str, _poll_interval: float = 0.1):
+    """Record a section without the memory-monitor thread (join overhead dominates tests)."""
+    BenchmarkTracker._benchmarks[name] = {
+        "duration_s": 0.0,
+        "mem_before_mb": 0.0,
+        "mem_after_mb": 0.0,
+        "mem_delta_mb": 0.0,
+        "peak_mem_mb": 0.0,
+    }
+    yield
+
+
 def test_execute_benchmarks_each_phase(tmp_path, mock_db_client):
+    # Suite fixture disables task benchmarking; this test asserts the phase JSON is written.
+    BenchmarkTracker.enable()
     task, circuit_path = _make_task(tmp_path)
     circuit, circuit_entity = _resolved_circuit(circuit_path)
 
     with (
+        patch.object(BenchmarkTracker, "section", _fast_benchmark_section),
         patch.object(
             CreateExtracellularRecordingArrayTask,
             "_get_execution_activity",

@@ -156,8 +156,9 @@ def test_print_summary_to_file_oserror_logs_warning(tmp_path, caplog, monkeypatc
 
 
 def test_section_counts_the_memory_of_processes_it_starts():
-    child_mb = 100
-    code = f"import time; data = b'x' * ({child_mb} * 2**20); time.sleep(1)"
+    # Sleep just over the section poll interval (0.1s) so the monitor samples the child.
+    child_mb = 25
+    code = f"import time; data = b'x' * ({child_mb} * 2**20); time.sleep(0.15)"
     with BenchmarkTracker.section("child"):
         subprocess.run([sys.executable, "-c", code], check=True)  # ruff: ignore[subprocess-without-shell-equals-true]
 

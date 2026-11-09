@@ -12,17 +12,16 @@ from obi_one.scientific.blocks.neuron_sets.predefined import (
 from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.sonata_circuit_helpers import add_node_set_to_circuit
 
-from tests.utils import CIRCUIT_DIR, MATRIX_DIR
+from tests.utils import CIRCUIT_DIR
 
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def circuit():
     return Circuit(
         name=CIRCUIT_NAME,
         path=str(CIRCUIT_DIR / CIRCUIT_NAME / "circuit_config.json"),
-        matrix_path=str(MATRIX_DIR / CIRCUIT_NAME / "connectivity_matrix.h5"),
     )
 
 
