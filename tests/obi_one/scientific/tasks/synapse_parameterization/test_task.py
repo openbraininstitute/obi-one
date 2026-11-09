@@ -175,13 +175,14 @@ def test_execute_declares_and_creates_mechanisms_dir_when_the_circuit_has_none(t
 
 
 def test_execute_rejects_output_dir_that_already_exists(tmp_path):
-    """Running twice into the same coordinate output must not silently overwrite."""
+    """Existing coordinate output must raise rather than silently overwrite.
+
+    Happy-path execute coverage lives in test_execute_parameterizes_local_circuit; this only
+    needs the copytree dirs_exist_ok=False guard.
+    """
     config = _build_config(tmp_path)
+    config.coordinate_output_root.mkdir(parents=True)
 
-    with pytest.warns(FutureWarning):
-        SynapseParameterizationTask(config=config).execute(db_client=None)
-
-    # A second run against the same output directory fails rather than clobbering it.
     with pytest.raises(FileExistsError):
         SynapseParameterizationTask(config=config).execute(db_client=None)
 

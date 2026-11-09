@@ -14,27 +14,27 @@ from obi_one.scientific.tasks.folder_compression import (
     FolderCompressionSingleConfig,
 )
 
-from tests.utils import CIRCUIT_DIR
-
 
 def test_folder_compression(tmp_path):
-    # Set up circuit folder compression
+    """Scan over formats on a tiny synthetic tree (task is format/path logic, not circuit I/O).
+
+    Real-circuit size is not exercised here; symlink dereference is covered separately.
+    """
+    folder_a = tmp_path / "folder_a"
+    folder_b = tmp_path / "folder_b"
+    for folder in (folder_a, folder_b):
+        folder.mkdir()
+        (folder / "payload.txt").write_text("compress me")
+
     folder_list = [
-        NamedPath(
-            name="N_10__top_nodes_dim6",
-            path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6"),
-        ),
-        NamedPath(
-            name="N_10__top_rc_nodes_dim2_rc",
-            path=str(CIRCUIT_DIR / "N_10__top_rc_nodes_dim2_rc"),
-        ),
+        NamedPath(name="folder_a", path=str(folder_a)),
+        NamedPath(name="folder_b", path=str(folder_b)),
     ]
     compression_init = FolderCompressionScanConfig.Initialize(
         folder_path=folder_list, file_format=["gz", "bz2", "xz"], file_name="circuit"
     )
     folder_compressions_form = FolderCompressionScanConfig(initialize=compression_init)
 
-    # Run circuit folder compression
     grid_scan = GridScanGenerationTask(
         form=folder_compressions_form,
         output_root=tmp_path / "grid_scan",
@@ -43,7 +43,6 @@ def test_folder_compression(tmp_path):
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
 
-    # Check that expected files have been created
     instances = grid_scan.single_configs
     assert len(instances) == 6
     for instance in instances:
