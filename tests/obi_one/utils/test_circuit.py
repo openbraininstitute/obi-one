@@ -142,6 +142,36 @@ def test_get_circuit_size_small_circuit():
     assert num_conn <= num_syn  # connections <= synapses
 
 
+def test_get_circuit_size_connection_count_matches_materialized_connections():
+    """The streamed connection count equals the number of materialized connections."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_small", path=circuit_path)
+    c_sonata = c.sonata_circuit
+    npop_names = Circuit.get_node_population_names(c_sonata, incl_virtual=False, incl_point=False)
+    edge_pops = [
+        e
+        for e in Circuit.get_edge_population_names(c_sonata, incl_virtual=False)
+        if c_sonata.edges[e].source.name in npop_names
+        and c_sonata.edges[e].target.name in npop_names
+    ]
+    expected = sum(
+        len(
+            list(
+                c_sonata.edges[e].iter_connections(
+                    target={"population": c_sonata.edges[e].target.name}
+                )
+            )
+        )
+        for e in edge_pops
+    )
+
+    _, _, _, num_conn = get_circuit_size(c)
+
+    assert expected > 0
+    assert num_conn == expected
+    assert isinstance(num_conn, int)
+
+
 def test_get_circuit_size_pair_circuit():
     """Test scale and counts for a pair (2-neuron) circuit."""
     circuit_path = str(CIRCUIT_DIR / "nbS1-O1-E2Sst-maxNsyn-HEX0-L5" / "circuit_config.json")

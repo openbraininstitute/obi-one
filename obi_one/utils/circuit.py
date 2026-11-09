@@ -227,18 +227,19 @@ def get_circuit_size(
         ]
 
     num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
-    num_conn = np.sum(
-        [
-            len(
-                list(
-                    c_sonata.edges[e].iter_connections(
-                        target={"population": c_sonata.edges[e].target.name}
-                    )
+    # Count connections without materializing them, which would need memory proportional to
+    # the number of connections and can exhaust it for large circuits.
+    num_conn = int(
+        sum(
+            sum(
+                1
+                for _ in c_sonata.edges[e].iter_connections(
+                    target={"population": c_sonata.edges[e].target.name}
                 )
             )
             for e in edge_pops
-        ]
-    ).astype(int)
+        )
+    )
 
     return scale, num_nrn, num_syn, num_conn
 
