@@ -860,9 +860,7 @@ class TestRinTest:
 
 class TestHyperpolarizationTest:
     def _patches(self, features):
-        recording = SimpleNamespace(
-            time=np.array([0.0, 1.0]), voltage=np.array([-70.0, -75.0])
-        )
+        recording = SimpleNamespace(time=np.array([0.0, 1.0]), voltage=np.array([-70.0, -75.0]))
         return (
             patch(
                 "obi_one.scientific.validations.memodel.tests.run_stimulus",
