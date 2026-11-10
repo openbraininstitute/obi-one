@@ -1,11 +1,17 @@
 from enum import IntEnum, StrEnum, auto
 
 ALL_POPULATIONS = "_ALL_"
-TYPES_OF_CHEMICAL_SYNS = ["chemical", "Exp2Syn_synapse", "point_process"]
+TYPES_OF_CHEMICAL_SYNS = ["chemical", "Exp2Syn_synapse", "point_process", "nest_chemical"]
 TYPES_OF_ELECTRICAL_SYNS = ["electrical"]
 TYPES_OF_BIOPHYS_NODES = ["biophysical"]
 TYPES_OF_VIRTUAL_NODES = ["virtual"]
-TYPES_OF_POINT_NODES = ["point_process", "point_neuron", "brian2_point", "inait_point_neuron_lif"]
+TYPES_OF_POINT_NODES = [
+    "point_process",
+    "point_neuron",
+    "brian2_point",
+    "inait_point_neuron_lif",
+    "nest_point",
+]
 
 
 class NodePopulationType(StrEnum):

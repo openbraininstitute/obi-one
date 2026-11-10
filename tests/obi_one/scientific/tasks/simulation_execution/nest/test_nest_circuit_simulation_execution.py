@@ -3,6 +3,7 @@ from uuid import UUID
 
 import pytest
 
+from obi_one.scientific.library.simulation.neuron.schemas import SimulationResults
 from obi_one.scientific.tasks.simulation_execution.nest.config import (
     NestCircuitSimulationExecutionSingleConfig,
 )
@@ -60,7 +61,9 @@ def test_execute_local_skips_registration(
     mock_get_identifiable.return_value = simulation_entity
     mock_stage_circuit.return_value = MagicMock(path=tmp_path / "circuit.json")
     mock_stage_simulation.return_value = tmp_path / "simulation_config.json"
-    mock_run_simulation.return_value = tmp_path / "spikes.h5"
+    mock_run_simulation.return_value = SimulationResults(
+        spike_report_file=tmp_path / "spikes.h5", voltage_report_files=[]
+    )
 
     task = NestCircuitSimulationExecutionTask(config=config)
     task.execute(db_client=db_client, execution_activity_id=None)
@@ -76,7 +79,7 @@ def test_execute_local_skips_registration(
 @patch(f"{_BASE}.stage_simulation")
 @patch(f"{_TASK}.stage_circuit")
 @patch(f"{_TASK}.db_sdk.get_identifiable")
-def test_execute_tracked_registers_spike_report(
+def test_execute_tracked_registers_the_spike_and_soma_reports(
     mock_get_identifiable,
     mock_stage_circuit,
     mock_stage_simulation,
@@ -94,7 +97,10 @@ def test_execute_tracked_registers_spike_report(
     mock_stage_circuit.return_value = MagicMock(path=tmp_path / "circuit.json")
     mock_stage_simulation.return_value = tmp_path / "simulation_config.json"
     spike_report_file = tmp_path / "spikes.h5"
-    mock_run_simulation.return_value = spike_report_file
+    soma_report_file = tmp_path / "soma.h5"
+    mock_run_simulation.return_value = SimulationResults(
+        spike_report_file=spike_report_file, voltage_report_files=[soma_report_file]
+    )
     generated_entity = MagicMock()
     generated_entity.id = UUID("11111111-2222-3333-4444-555555555555")
     mock_register.return_value = generated_entity
@@ -104,7 +110,7 @@ def test_execute_tracked_registers_spike_report(
 
     mock_register.assert_called_once()
     assert mock_register.call_args.kwargs["spike_report_file"] == spike_report_file
-    assert mock_register.call_args.kwargs["voltage_report_files"] == []
+    assert mock_register.call_args.kwargs["voltage_report_files"] == [soma_report_file]
     db_client.update_entity.assert_called_once_with(
         entity_id=execution_activity.id,
         entity_type=NestCircuitSimulationExecutionTask.activity_type,
@@ -138,7 +144,9 @@ def test_execute_runs_nest_on_the_job_cpus(
     mock_get_identifiable.return_value = simulation_entity
     mock_stage_circuit.return_value = MagicMock(path=tmp_path / "circuit.json")
     mock_stage_simulation.return_value = tmp_path / "simulation_config.json"
-    mock_run_simulation.return_value = tmp_path / "spikes.h5"
+    mock_run_simulation.return_value = SimulationResults(
+        spike_report_file=tmp_path / "spikes.h5", voltage_report_files=[]
+    )
 
     NestCircuitSimulationExecutionTask(config=config).execute(
         db_client=db_client, execution_activity_id=None

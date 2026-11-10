@@ -15,7 +15,7 @@ def test_libsonata_loads_with_template_dirs(circuit):
     cc = libsonata.CircuitConfig.from_file(str(circuit.circuit_config))
     assert cc.target_simulator == libsonata.SimulatorType.NEST
     props = cc.node_population_properties("exc")
-    assert props.type == "point_process"
+    assert props.type == "nest_point"
     assert props.point_neuron_models_dir.endswith("model_templates/exc")
     assert cc.edge_population_properties("exc__exc").point_neuron_models_dir.endswith(
         "model_templates/exc__exc"
@@ -51,5 +51,5 @@ def test_simulation_config_with_synapse_replay(circuit):
     assert sim.run.tstop == pytest.approx(20.0)
     replay = sim.input("input_spikes")
     assert replay.module == libsonata.SimulationConfig.InputBase.Module.synapse_replay
-    assert replay.node_set == "input"
+    assert replay.node_set == "exc"
     assert replay.spike_file.endswith("inputs/input_spikes.h5")
