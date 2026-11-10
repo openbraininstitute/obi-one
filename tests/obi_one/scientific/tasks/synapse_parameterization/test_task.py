@@ -7,9 +7,12 @@ registration branch (which needs a db_client and a parent entity) is skipped.
 
 import json
 import shutil
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import bluepysnap as snap
 import pytest
+from entitysdk import types
 
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey
@@ -172,6 +175,49 @@ def test_execute_declares_and_creates_mechanisms_dir_when_the_circuit_has_none(t
 
     mod_dir = config.coordinate_output_root / "mod"
     assert (mod_dir / "ProbAMPANMDA_EMS.mod").exists()
+
+
+def test_register_parameterized_circuit_registers_a_validated_derivation(tmp_path):
+    """The output is registered as a rewiring derivation of its parent, with validation on."""
+    parent = SimpleNamespace(
+        id="parent-id",
+        name="parent",
+        build_category=types.CircuitBuildCategory.computational_model,
+        brain_region=Mock(),
+        subject=Mock(),
+        target_simulator=None,
+        experiment_date="2026-01-01",
+        license=Mock(),
+        root_circuit_id=None,
+    )
+    task = SynapseParameterizationTask(config=_build_config(tmp_path))
+    task._circuit_entity = parent
+    register = "obi_one.scientific.tasks.synapse_parameterization.task.circuit_registration"
+
+    with patch(f"{register}.register_circuit") as mock_register:
+        result = task._register_parameterized_circuit(db_client=Mock(), circuit_path=tmp_path)
+
+    assert result is mock_register.return_value
+    kwargs = mock_register.call_args.kwargs
+    assert kwargs["name"] == "parent (synapse-parameterized)"
+    assert kwargs["parent"] is parent
+    assert kwargs["root"] == "parent-id"
+    assert kwargs["target_simulator"] == types.TargetSimulator.NEURON
+    assert kwargs["derivation_type"] == types.DerivationType.circuit_rewiring
+    # Validation runs at registration (the default); it must not be skipped
+    assert "skip_validation" not in kwargs
+
+
+def test_register_parameterized_circuit_does_nothing_without_a_parent(tmp_path):
+    """A local circuit has no parent entity, so nothing is registered."""
+    task = SynapseParameterizationTask(config=_build_config(tmp_path))
+    register = "obi_one.scientific.tasks.synapse_parameterization.task.circuit_registration"
+
+    with patch(f"{register}.register_circuit") as mock_register:
+        result = task._register_parameterized_circuit(db_client=Mock(), circuit_path=tmp_path)
+
+    assert result is None
+    mock_register.assert_not_called()
 
 
 def test_execute_rejects_output_dir_that_already_exists(tmp_path):

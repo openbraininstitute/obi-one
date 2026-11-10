@@ -260,7 +260,6 @@ class MEModelSynapticModelPlacementTask(Task):
             license=me_model.license or me_model.morphology.license,
             derived_from_emodel=me_model.emodel,
             derivation_label=result.model_template,
-            skip_validation=True,
         )
         if circuit is None:
             msg = "Build Synaptome circuit registration did not return a Circuit."
