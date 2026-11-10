@@ -10,7 +10,15 @@ from obi_one.config import settings
 from obi_one.core.task import Task
 from obi_one.db_sdk import circuit as circuit_db_sdk
 from obi_one.db_sdk.registration import circuit as circuit_registration
-from obi_one.scientific.library.circuit import Circuit, ensure_mechanisms_dir
+from obi_one.scientific.library.circuit import (
+    Circuit,
+    ensure_mechanisms_dir,
+    ensure_node_sets_file,
+)
+from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_neuron_sets_to_sonata_circuit,
+    write_circuit_node_set_file,
+)
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationSingleConfig,
 )
@@ -88,7 +96,7 @@ class SynapseParameterizationTask(Task):
             per_edge_population.setdefault(assigner.edge_population_name, []).append(assigner)
         return per_edge_population
 
-    def execute(
+    def execute(  # ruff: ignore[complex-structure]
         self,
         *,
         db_client: Client | None = None,
@@ -137,6 +145,8 @@ class SynapseParameterizationTask(Task):
                 check_consistent_synapse_models(assigners_for_ep)
                 for assigner in assigners_for_ep:
                     assigner.validate_for_circuit(staged)
+            # Dry run (in memory): fail on neuron set errors before copying
+            add_neuron_sets_to_sonata_circuit(staged, self.config.neuron_sets)
 
         with BenchmarkTracker.section("copy_circuit"):
             output_dir = self.config.coordinate_output_root.resolve()
@@ -156,6 +166,20 @@ class SynapseParameterizationTask(Task):
             for ep_name, assigners_for_ep in per_edge_population.items():
                 mechanisms_dir = ensure_mechanisms_dir(output_config_path, ep_name)
                 write_mod_files(assigners_for_ep, mechanisms_dir)
+
+        # Store the neuron sets in the output circuit's node sets for reuse in follow-up tasks
+        if self.config.neuron_sets:
+            with BenchmarkTracker.section("write_node_sets"):
+                node_sets_file = ensure_node_sets_file(output_config_path)
+                sonata_circuit = add_neuron_sets_to_sonata_circuit(
+                    self._circuit, self.config.neuron_sets
+                )
+                write_circuit_node_set_file(
+                    sonata_circuit,
+                    str(node_sets_file.parent),
+                    file_name=node_sets_file.name,
+                    overwrite_if_exists=True,
+                )
 
         with BenchmarkTracker.section("parameterize_synapses"):
             circ = self._circuit.sonata_circuit

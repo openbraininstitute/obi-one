@@ -14,16 +14,24 @@ import bluepysnap as snap
 import pytest
 from entitysdk import types
 
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
+from obi_one.scientific.blocks.neuron_sets.combined import (
+    BiophysicalCombinedNeuronSet,
+    SetOperation,
+)
 from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
 )
 from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
     AllPairsSynapticModelAssigner,
+)
+from obi_one.scientific.blocks.synaptic_model_assigners.inter_neuron_set import (
+    InterNeuronSetSynapticModelAssigner,
 )
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
@@ -550,3 +558,181 @@ def test_reference_type_preserved_for_biophysical_source_neuron_set():
     assert config.synapse_model_assigners["a"].source_neuron_set.type == (
         "BiophysicalNeuronSetReference"
     )
+
+
+# --- Neuron sets stored in the output circuit's node sets ---
+
+BIOPHYSICAL_POPULATION = "S1nonbarrel_neurons"
+SOURCE_NODE_SETS_FILE = CIRCUIT_DIR / "N_10__top_nodes_dim6" / "node_sets.json"
+
+
+def _id_neuron_set(name, ids, population=BIOPHYSICAL_POPULATION):
+    return BiophysicalPopulationIDNeuronSet(
+        population=population, neuron_ids=NamedTuple(name=name, elements=ids)
+    )
+
+
+def _neuron_set_config(tmp_path, *, circuit=None, extra_neuron_sets=None):
+    """A config with an inter-set assigner and four neuron sets of its own.
+
+    "Sources" and "Targets" are the two ends of the assigner. "Unused" is referenced by nothing
+    and "SourcesOrTargets" is a union of the first two, which no assigner uses either.
+    """
+    config = SynapseParameterizationSingleConfig.empty_config()
+    config.set(Info(campaign_name="Test", campaign_description="Test neuron sets"), name="info")
+    config.set(config.Initialize(circuit=circuit or _local_circuit()), name="initialize")
+
+    sources = _id_neuron_set("sources", [0, 1, 2])
+    targets = _id_neuron_set("targets", [3, 4])
+    config.add(sources, "Sources")
+    config.add(targets, "Targets")
+    config.add(_id_neuron_set("unused", [5]), "Unused")
+    config.add(
+        BiophysicalCombinedNeuronSet(
+            base_neuron_set=sources.ref, combined_with=((targets.ref, SetOperation.UNION),)
+        ),
+        "SourcesOrTargets",
+    )
+    for name, neuron_set in (extra_neuron_sets or {}).items():
+        config.add(neuron_set, name)
+
+    conductance = GammaDistribution(shape=4.0, scale=0.25)
+    config.add(conductance, "Excitatory conductance distribution")
+    model = ExcitatoryTsodyksMarkramSynapticModel(conductance_distribution=conductance.ref)
+    config.add(model, "Excitatory synaptic model")
+    config.add(
+        InterNeuronSetSynapticModelAssigner(
+            edge_population_name=EDGE_POPULATION_NAME,
+            synaptic_model=model.ref,
+            source_neuron_set=sources.ref,
+            targeted_neuron_set=targets.ref,
+        ),
+        name="inter",
+    )
+    config.fill_block_references_and_names()
+    config.fill_none_references()
+
+    config.scan_output_root = tmp_path / "scan"
+    config.coordinate_output_root = tmp_path / "scan" / "parameterized"
+    return config
+
+
+def _output_circuit(config):
+    return snap.Circuit(str(config.coordinate_output_root / "circuit_config.json"))
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_execute_stores_the_neuron_sets_next_to_the_existing_node_sets(tmp_path):
+    config = _neuron_set_config(tmp_path)
+    input_node_sets = SOURCE_NODE_SETS_FILE.read_bytes()
+
+    SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    stored = _output_circuit(config).node_sets.content
+    # Every neuron set of the config is stored, used by an assigner or not.
+    assert {"Sources", "Targets", "Unused", "SourcesOrTargets"} <= set(stored)
+    # The definitions the combined set needs are stored along with it.
+    assert stored["SourcesOrTargets"] == [
+        "__BiophysicalCombinedNeuronSet__Sources",
+        "__BiophysicalCombinedNeuronSet__Targets",
+    ]
+    assert set(stored["SourcesOrTargets"]) <= set(stored)
+    # The node sets the circuit already had are all still there, unchanged.
+    for name, definition in json.loads(input_node_sets).items():
+        assert stored[name] == definition
+    # The input circuit itself is not modified.
+    assert SOURCE_NODE_SETS_FILE.read_bytes() == input_node_sets
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_stored_neuron_sets_select_the_neurons_the_config_resolves_them_to(tmp_path):
+    """What is written must agree with what the config's own blocks resolve to."""
+    config = _neuron_set_config(tmp_path)
+
+    SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    population = _output_circuit(config).nodes[BIOPHYSICAL_POPULATION]
+    expected_ids = {
+        "Sources": [0, 1, 2],
+        "Targets": [3, 4],
+        "Unused": [5],
+        "SourcesOrTargets": [0, 1, 2, 3, 4],
+    }
+    for name, expected in expected_ids.items():
+        assert sorted(population.ids(name).tolist()) == expected
+        resolved = config.neuron_sets[name].get_neuron_ids(_local_circuit())
+        assert sorted(resolved[BIOPHYSICAL_POPULATION]) == expected
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_execute_stores_the_default_neuron_sets_of_unset_assigner_ends(tmp_path):
+    config = _unset_config(tmp_path)
+    config.add(InterNeuronSetSynapticModelAssigner(edge_population_name=EDGE_POPULATION_NAME), "i")
+    config.fill_block_references_and_names()
+    config.fill_none_references()
+    default_name = "Resolved Default: All Biophysical Neurons"
+    assert default_name in config.neuron_sets
+
+    SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    population = _output_circuit(config).nodes[BIOPHYSICAL_POPULATION]
+    assert len(population.ids(default_name)) == population.size
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_execute_leaves_the_node_sets_file_untouched_without_neuron_sets(tmp_path):
+    config = _build_config(tmp_path)
+    assert not config.neuron_sets
+
+    SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    output_node_sets = config.coordinate_output_root / "node_sets.json"
+    assert output_node_sets.read_bytes() == SOURCE_NODE_SETS_FILE.read_bytes()
+
+
+def test_execute_rejects_a_neuron_set_clashing_with_an_existing_node_set_before_copying(tmp_path):
+    # "Excitatory" is already a node set of the circuit, with a different definition.
+    config = _neuron_set_config(
+        tmp_path, extra_neuron_sets={"Excitatory": _id_neuron_set("excitatory", [0])}
+    )
+
+    with pytest.raises(ValueError, match="Node set 'Excitatory' already exists"):
+        SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    # Rejected while validating, so nothing was copied or modified.
+    assert not config.coordinate_output_root.exists()
+
+
+def test_execute_rejects_a_neuron_set_of_a_missing_population_before_copying(tmp_path):
+    # Not used by any assigner, but still written to the node sets, so it has to fit the circuit.
+    config = _neuron_set_config(
+        tmp_path,
+        extra_neuron_sets={"Elsewhere": _id_neuron_set("elsewhere", [0], population="NoSuchPop")},
+    )
+
+    with pytest.raises(ConfigValidationError, match="NoSuchPop"):
+        SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    assert not config.coordinate_output_root.exists()
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_execute_declares_a_node_sets_file_for_a_circuit_without_one(tmp_path):
+    circuit_dir = tmp_path / "circuit_without_node_sets"
+    shutil.copytree(_local_circuit().directory, circuit_dir)
+    (circuit_dir / "node_sets.json").unlink()
+    config_path = circuit_dir / "circuit_config.json"
+    cfg = json.loads(config_path.read_text())
+    del cfg["node_sets_file"]
+    config_path.write_text(json.dumps(cfg))
+    circuit = Circuit(name="circuit_without_node_sets", path=str(config_path))
+    config = _neuron_set_config(tmp_path, circuit=circuit)
+
+    SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    output_cfg = json.loads((config.coordinate_output_root / "circuit_config.json").read_text())
+    assert output_cfg["node_sets_file"] == "$BASE_DIR/node_sets.json"
+    stored = _output_circuit(config).node_sets.content
+    assert set(stored) >= {"Sources", "Targets", "Unused", "SourcesOrTargets"}
+    # The circuit had no node sets of its own, so these are all there is (plus helpers).
+    assert all(name.startswith("__") or name in config.neuron_sets for name in stored)
