@@ -2409,7 +2409,6 @@ dependencies = [
     { name = "bluepyefe" },
     { name = "bluepysnap" },
     { name = "brainbuilder" },
-    { name = "brian2" },
     { name = "caveclient" },
     { name = "connectome-manipulator" },
     { name = "connectome-utilities" },
@@ -2432,6 +2431,7 @@ dependencies = [
 all = [
     { name = "bluecellulab" },
     { name = "bluepyemodel" },
+    { name = "brian2" },
     { name = "cachetools" },
     { name = "connectome-analysis" },
     { name = "fastapi" },
@@ -2458,6 +2458,9 @@ bluecellulab = [
 bluerecording = [
     { name = "bluerecording" },
     { name = "neurodamus" },
+]
+brian2 = [
+    { name = "brian2" },
 ]
 connectivity = [
     { name = "connectome-analysis" },
@@ -2526,7 +2529,7 @@ requires-dist = [
     { name = "bluepysnap", specifier = ">=3.0.10" },
     { name = "bluerecording", marker = "extra == 'bluerecording'", specifier = ">=0.7.0" },
     { name = "brainbuilder", specifier = ">=0.20.9" },
-    { name = "brian2" },
+    { name = "brian2", marker = "extra == 'brian2'" },
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
@@ -2548,7 +2551,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
-    { name = "obi-one", extras = ["bluecellulab", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
+    { name = "obi-one", extras = ["bluecellulab", "brian2", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
     { name = "obi-one", extras = ["connectivity", "emodel"], marker = "extra == 'service'" },
     { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
@@ -2567,7 +2570,7 @@ requires-dist = [
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
 ]
-provides-extras = ["bluecellulab", "emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
+provides-extras = ["bluecellulab", "brian2", "emodel", "connectivity", "meshing", "simplification", "notebooks", "service", "all", "bluerecording"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -443,7 +443,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "location": task_definition.code.location,
             "ref": release_tag_ref(settings.APP_VERSION),
             "path": "obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            "dependencies": "launch_scripts/launch_brian2_simulation/dependencies/default.txt",
+            "dependencies": "launch_scripts/launch_brian2_simulation/dependencies/brian2.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
         },

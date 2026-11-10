@@ -19,7 +19,6 @@ bluepyefe==2.3.63
 bluepysnap==3.0.10
 bluerecording==0.7.0
 brainbuilder==0.20.9
-brian2==2.10.1
 cached-property==2.0.1
 cachetools==7.2.0
 caveclient==8.2.1
@@ -33,7 +32,6 @@ connectome-utilities==0.4.18
 contourpy==1.4.0
 cryptography==50.0.2
 cycler==0.12.1
-cython==3.1.3
 dask==2026.8.0
 dask-mpi==2026.3.0
 deprecation==2.1.0
