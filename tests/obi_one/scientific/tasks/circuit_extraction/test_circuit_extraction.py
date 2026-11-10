@@ -22,7 +22,7 @@ from obi_one.scientific.blocks.neuron_sets.predefined import (
 )
 from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.library.circuit import Circuit as OBICircuit
-from obi_one.scientific.tasks.circuit_extraction import CircuitExtractionScanConfig
+from obi_one.scientific.tasks.circuit_extraction.config import CircuitExtractionScanConfig
 
 from tests.utils import CIRCUIT_DIR
 
