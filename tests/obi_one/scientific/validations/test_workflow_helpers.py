@@ -272,6 +272,39 @@ class TestWorkflowSetup:
 
         client.update_entity.assert_called_once()
 
+    def _setup_thalamic(self, tmp_path, calibration, computed_rin):
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="thalamic")
+        client = self._client(calibration)
+        with ExitStack() as stack:
+            for p in self._patches(
+                tmp_path, sim_config=SimulatorConfig(celsius=34.0, v_init=-70.0)
+            ):
+                stack.enter_context(p)
+            compute = stack.enter_context(
+                patch("bluecellulab.tools.calculate_input_resistance", return_value=computed_rin)
+            )
+            context = workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+        return context, compute
+
+    def test_valid_calibrated_rin_is_reused(self, tmp_path):
+        calibration = SimpleNamespace(holding_current=-0.03, threshold_current=0.1, rin=120.0)
+
+        context, compute = self._setup_thalamic(tmp_path, calibration, computed_rin=150.0)
+
+        assert context.rin == pytest.approx(120.0)
+        compute.assert_not_called()
+
+    @pytest.mark.parametrize("calibrated_rin", [0.0, float("nan")])
+    def test_invalid_calibrated_rin_is_recomputed(self, tmp_path, calibrated_rin):
+        calibration = SimpleNamespace(
+            holding_current=-0.03, threshold_current=0.1, rin=calibrated_rin
+        )
+
+        context, compute = self._setup_thalamic(tmp_path, calibration, computed_rin=150.0)
+
+        assert context.rin == pytest.approx(150.0)
+        compute.assert_called_once()
+
     def test_download_failure_does_not_disqualify(self, tmp_path):
         # A failed download may be transient (network, server), so the model must
         # not be marked as unusable.
