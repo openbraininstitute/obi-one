@@ -63,9 +63,4 @@ class NestCircuitSimulationExecutionTask(SimulationExecutionTask):
             run_simulation,
         )
 
-        return SimulationResults(
-            spike_report_file=run_simulation(
-                simulation_config_path, num_threads=simulation_thread_count()
-            ),
-            voltage_report_files=[],
-        )
+        return run_simulation(simulation_config_path, num_threads=simulation_thread_count())

@@ -1,9 +1,15 @@
-TYPE_POINT_NEURON = "point_neuron"
-TYPE_POINT_PROCESS = "point_process"
+TYPE_NEST_POINT = "nest_point"
 TYPE_VIRTUAL = "virtual"
-TYPE_CHEMICAL = "chemical"
-NEURON_TYPES = frozenset({TYPE_POINT_NEURON, TYPE_POINT_PROCESS})
+TYPE_NEST_CHEMICAL = "nest_chemical"
+NEURON_TYPES = frozenset({TYPE_NEST_POINT})
 NODE_TYPES = NEURON_TYPES | {TYPE_VIRTUAL}
+
+IGNORED_KEYS = (
+    ("conditions",),
+    ("run", "spike_threshold"),
+    ("run", "integration_method"),
+    ("run", "nsteps_block"),
+)
 
 PREFIX_NEST = "nest:"
 PREFIX_NESTML = "nestml:"

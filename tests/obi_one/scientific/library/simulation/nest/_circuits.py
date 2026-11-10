@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import h5py
+import libsonata
 import numpy as np
 
 from obi_one.utils.io import write_json
@@ -50,11 +51,26 @@ def _write_edges(
             zero.create_dataset(f"dynamics_params/{key}", data=np.array(values))
 
 
+def write_spikes(path: Path, population: str, node_ids: list[int], times: list[float]) -> None:
+    """Write a SONATA spike file with the spikes of one *population*, sorted by time."""
+    order = np.argsort(times, kind="stable")
+    with h5py.File(path, "w") as handle:
+        group = handle.create_group(f"spikes/{population}")
+        group.attrs.create(
+            "sorting", data=2, dtype=h5py.enum_dtype({"none": 0, "by_id": 1, "by_time": 2})
+        )
+        group.create_dataset("node_ids", data=np.array(node_ids, dtype=np.uint64)[order])
+        timestamps = group.create_dataset(
+            "timestamps", data=np.array(times, dtype=np.float64)[order]
+        )
+        timestamps.attrs["units"] = "ms"
+
+
 def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPaths:
     """Write a small SONATA-extension NEST circuit.
 
-    - population ``exc``: 4 ``point_process`` nodes from two templates with different parameters;
-    - population ``input``: 2 ``virtual`` nodes driven by a ``synapse_replay`` spike input;
+    - population ``exc``: 4 ``nest_point`` nodes from two templates with different parameters;
+    - population ``input``: 2 ``virtual`` nodes, replayed to ``exc`` by a ``synapse_replay`` input;
     - edges ``input__exc``: ``static_synapse`` with template-level ``delay``/``weight``;
     - edges ``exc__exc``: ``tsodyks2_synapse`` with per-edge ``syn_weight``/``delay`` and
       ``U``/``u``/``tau_rec``/``tau_fac`` dynamics parameters.
@@ -91,15 +107,15 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
     with h5py.File(network / "exc_nodes.h5", "w") as handle:
         group = handle.create_group("nodes/exc")
         group.create_dataset("node_type_id", data=np.full(4, -1))
+        zero = group.create_group("0")
+        _write_enumeration(zero, "model_type", ["nest_point"] * 4)
         _write_enumeration(
-            group.create_group("0"),
-            "model_template",
-            ["iaf_psc_alpha_type1"] * 2 + ["iaf_psc_alpha_type2"] * 2,
+            zero, "model_template", ["iaf_psc_alpha_type1"] * 2 + ["iaf_psc_alpha_type2"] * 2
         )
     with h5py.File(network / "input_nodes.h5", "w") as handle:
         group = handle.create_group("nodes/input")
         group.create_dataset("node_type_id", data=np.full(2, -1))
-        group.create_group("0")
+        _write_enumeration(group.create_group("0"), "model_type", ["virtual"] * 2)
 
     _write_edges(
         network / "input_exc_edges.h5",
@@ -125,9 +141,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
 
     inputs = root / "inputs"
     inputs.mkdir()
-    with h5py.File(inputs / "input_spikes.h5", "w") as handle:
-        handle.create_dataset("spikes/node_ids", data=np.array([0, 1, 0, 1], dtype=np.uint64))
-        handle.create_dataset("spikes/timestamps", data=np.array([5.0, 7.0, 15.0, 30.0]))
+    write_spikes(inputs / "input_spikes.h5", "input", [0, 1, 0, 1], [5.0, 7.0, 15.0, 30.0])
 
     write_json(
         {"exc": {"population": "exc"}, "input": {"population": "input"}}, root / "node_sets.json"
@@ -145,7 +159,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                         "nodes_file": "$BASE_DIR/network/exc_nodes.h5",
                         "populations": {
                             "exc": {
-                                "type": "point_process",
+                                "type": "nest_point",
                                 "point_neuron_models_dir": "$BASE_DIR/model_templates/exc",
                             }
                         },
@@ -160,7 +174,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                         "edges_file": "$BASE_DIR/network/input_exc_edges.h5",
                         "populations": {
                             "input__exc": {
-                                "type": "chemical",
+                                "type": "nest_chemical",
                                 "point_neuron_models_dir": "$BASE_DIR/model_templates/input__exc",
                             }
                         },
@@ -169,7 +183,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                         "edges_file": "$BASE_DIR/network/exc_exc_edges.h5",
                         "populations": {
                             "exc__exc": {
-                                "type": "chemical",
+                                "type": "nest_chemical",
                                 "point_neuron_models_dir": "$BASE_DIR/model_templates/exc__exc",
                             }
                         },
@@ -192,7 +206,7 @@ def write_nest_circuit(root: Path, input_weight: float = 50.0) -> NestCircuitPat
                     "input_type": "spikes",
                     "module": "synapse_replay",
                     "spike_file": "$BASE_DIR/inputs/input_spikes.h5",
-                    "node_set": "input",
+                    "node_set": "exc",
                     "delay": 0.0,
                     "duration": 20.0,
                 }
@@ -220,6 +234,7 @@ def write_nestml_circuit(root: Path, model_name: str, tstop: float = 10.0) -> Pa
         grp = handle.create_group(f"nodes/{pop}")
         grp.create_dataset("node_type_id", data=[-1])
         zero = grp.create_group("0")
+        _write_enumeration(zero, "model_type", ["nest_point"])
         zero.create_dataset("model_template", data=np.array([0], dtype=np.uint32))
         zero.create_dataset(
             "@library/model_template", data=np.array([model_name], dtype=h5py.string_dtype())
@@ -237,7 +252,7 @@ def write_nestml_circuit(root: Path, model_name: str, tstop: float = 10.0) -> Pa
                         "nodes_file": "$BASE_DIR/toy/nodes.h5",
                         "populations": {
                             pop: {
-                                "type": "point_neuron",
+                                "type": "nest_point",
                                 "point_neuron_models_dir": f"$BASE_DIR/model_templates/{pop}",
                             }
                         },
@@ -260,3 +275,77 @@ def write_nestml_circuit(root: Path, model_name: str, tstop: float = 10.0) -> Pa
         sim,
     )
     return sim
+
+
+def write_cells_circuit(
+    root: Path,
+    *,
+    model: str = "nest:iaf_psc_alpha",
+    params: dict | None = None,
+    n: int = 2,
+    tstop: float = 50.0,
+    sections: dict | None = None,
+) -> NestCircuitPaths:
+    """Write a circuit of *n* ``cells`` nodes without edges, and a simulation config for it.
+
+    *sections* are added to the simulation config (``inputs``, ``reports``, ...). The node sets
+    are ``cells``, and ``first`` for node 0.
+    """
+    templates = root / "model_templates" / "cells"
+    templates.mkdir(parents=True)
+    write_json({"model": model, "params": params or {}}, templates / "cell.json")
+    (root / "network").mkdir()
+    with h5py.File(root / "network" / "cells_nodes.h5", "w") as handle:
+        group = handle.create_group("nodes/cells")
+        group.create_dataset("node_type_id", data=np.full(n, -1))
+        zero = group.create_group("0")
+        _write_enumeration(zero, "model_type", ["nest_point"] * n)
+        _write_enumeration(zero, "model_template", ["cell"] * n)
+    circuit_config = root / "circuit_config.json"
+    write_json(
+        {
+            "version": 2,
+            "target_simulator": "NEST",
+            "manifest": {"$BASE_DIR": "."},
+            "node_sets_file": "$BASE_DIR/node_sets.json",
+            "networks": {
+                "nodes": [
+                    {
+                        "nodes_file": "$BASE_DIR/network/cells_nodes.h5",
+                        "populations": {
+                            "cells": {
+                                "type": "nest_point",
+                                "point_neuron_models_dir": "$BASE_DIR/model_templates/cells",
+                            }
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+        },
+        circuit_config,
+    )
+    write_json(
+        {"cells": {"population": "cells"}, "first": {"population": "cells", "node_id": [0]}},
+        root / "node_sets.json",
+    )
+    simulation_config = root / "simulation_config.json"
+    write_json(
+        {
+            "version": 2,
+            "manifest": {"$BASE_DIR": "."},
+            "network": "$BASE_DIR/circuit_config.json",
+            "target_simulator": "NEST",
+            "run": {"dt": 0.1, "tstop": tstop, "random_seed": 0},
+            "output": {"output_dir": "$BASE_DIR/out", "spikes_file": "spikes.h5"},
+            **(sections or {}),
+        },
+        simulation_config,
+    )
+    return NestCircuitPaths(circuit_config, simulation_config)
+
+
+def read_soma_report(path: Path, population: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The node ids, frame times and ``(frames, nodes)`` data of a report, read with libsonata."""
+    frame = libsonata.SomaReportReader(str(path))[population].get()
+    return np.asarray(frame.ids), np.asarray(frame.times), np.asarray(frame.data)

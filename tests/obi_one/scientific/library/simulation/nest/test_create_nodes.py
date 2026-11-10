@@ -24,8 +24,7 @@ def test_node_types_get_their_template_params(net):
     assert _as_list(exc.get("C_m")) == pytest.approx([200.0, 200.0, 250.0, 250.0])
 
 
-def test_virtual_nodes_replay_spikes(net):
-    inputs = net.Create()["input"]
-    assert set(_as_list(inputs.get("model"))) == {"spike_train_injector"}
-    times = [list(t) for t in inputs.get("spike_times")]
-    assert times == [pytest.approx([5.0, 15.0]), pytest.approx([7.0])]
+def test_virtual_populations_get_no_nodes(net):
+    collections = net.Create()
+    assert set(collections) == {"exc"}
+    assert net.replay_collections == {}
