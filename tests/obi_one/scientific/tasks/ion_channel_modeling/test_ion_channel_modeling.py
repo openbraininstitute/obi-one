@@ -489,11 +489,15 @@ def test_a_hodgkin_huxley_fit_is_of_an_inactivating_potassium_channel(tmp_path, 
 
     extract_kwargs = builder["extract_all_equations"].call_args.kwargs
     assert set(extract_kwargs["eq_names"]) == {"minf", "mtau", "hinf", "htau"}
-    assert "hyperpolarization_activated" not in extract_kwargs
+    # ion_channel_builder's default channel type is the potassium channel
+    assert "channel_type" not in extract_kwargs
     write_kwargs = builder["write_vgate_output"].call_args.kwargs
     assert (write_kwargs["ion"], write_kwargs["m_power"], write_kwargs["h_power"]) == ("k", 3, 2)
+    assert "channel_type" not in write_kwargs
     assert "erev" not in write_kwargs
-    assert builder["plot_in_fresh_process"].call_args.kwargs["mech_current"] == "ik"
+    plot_kwargs = builder["plot_in_fresh_process"].call_args.kwargs
+    assert plot_kwargs["mech_current"] == "ik"
+    assert "channel_type" not in plot_kwargs
     range_vars = builder["save"].call_args.kwargs["range_vars"]
     assert {"ik": "mA/cm2"} in range_vars
     assert {"hTau": "ms"} in range_vars
@@ -504,14 +508,15 @@ def test_a_hyperpolarization_activated_fit_has_no_inactivation(tmp_path, monkeyp
 
     extract_kwargs = builder["extract_all_equations"].call_args.kwargs
     assert extract_kwargs["eq_names"] == {"minf": "sig_fit_minf", "mtau": "bell_fit_mtau"}
-    assert extract_kwargs["hyperpolarization_activated"] is True
+    assert extract_kwargs["channel_type"] == "hcn"
     assert extract_kwargs["erev"] == pytest.approx(-35.0)
     write_kwargs = builder["write_vgate_output"].call_args.kwargs
     assert (write_kwargs["ion"], write_kwargs["m_power"], write_kwargs["h_power"]) == ("hcn", 2, 0)
+    assert write_kwargs["channel_type"] == "hcn"
     assert write_kwargs["erev"] == pytest.approx(-35.0)
     plot_kwargs = builder["plot_in_fresh_process"].call_args.kwargs
     assert plot_kwargs["mech_current"] == "ihcn"
-    assert plot_kwargs["hyperpolarization_activated"] is True
+    assert plot_kwargs["channel_type"] == "hcn"
     range_vars = builder["save"].call_args.kwargs["range_vars"]
     assert {"ihcn": "mA/cm2"} in range_vars
     assert {"mTau": "ms"} in range_vars

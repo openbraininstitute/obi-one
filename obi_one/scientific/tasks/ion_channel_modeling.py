@@ -74,6 +74,7 @@ except ImportError:
         m_power: int,
         h_power: int,
         output_name: str,
+        channel_type: str = "kv",
         erev: float | None = None,
     ) -> None:
         pass
@@ -446,7 +447,7 @@ class HyperpolarizationActivatedIonChannelModel(Block):
     # The channel current, a NONSPECIFIC_CURRENT rather than the current of one ion.
     ion: ClassVar[str] = "hcn"
     # Keyword arguments of ion_channel_builder's run_ion_channel_model.
-    plot_options: ClassVar[dict[str, Any]] = {"hyperpolarization_activated": True}
+    plot_options: ClassVar[dict[str, Any]] = {"channel_type": "hcn"}
     # RANGE variables of the gates, as written by ion_channel_builder's mod template.
     gating_range_vars: ClassVar[list[dict[str, str | None]]] = [{"mInf": None}, {"mTau": "ms"}]
 
@@ -459,7 +460,7 @@ class HyperpolarizationActivatedIonChannelModel(Block):
 
     def fitting_options(self) -> dict[str, Any]:
         """Keyword arguments of ion_channel_builder's extract_all_equations."""
-        return {"hyperpolarization_activated": True, "erev": self.reversal_potential}
+        return {"channel_type": "hcn", "erev": self.reversal_potential}
 
     def mod_file_options(self) -> dict[str, Any]:
         """Keyword arguments of ion_channel_builder's write_vgate_output."""
@@ -467,6 +468,7 @@ class HyperpolarizationActivatedIonChannelModel(Block):
             "ion": self.ion,
             "m_power": self.m_power,
             "h_power": 0,
+            "channel_type": "hcn",
             "erev": self.reversal_potential,
         }
 
