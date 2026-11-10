@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from entitysdk.schemas.memodel import DownloadedMEModel
+from entitysdk.types import EntityLifecycleStatus
 
 from obi_one.scientific.validations.base import InvalidValidationContextError
 from obi_one.scientific.validations.memodel import workflow as workflow_module
@@ -233,3 +234,109 @@ class TestWorkflowSetup:
             context = workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
 
         assert context.simulator_config == workflow.validation_profile.simulator_config_fallback
+
+    def _run_with_build_failure(self, tmp_path, client):
+        """Run setup() where mechanism compilation fails, i.e. the artifact can't load."""
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="default")
+        with ExitStack() as stack:
+            for p in self._patches(
+                tmp_path, sim_config=SimulatorConfig(celsius=34.0, v_init=-70.0)
+            ):
+                stack.enter_context(p)
+            stack.enter_context(
+                patch.object(
+                    workflow_module,
+                    "_compile_mechanisms",
+                    side_effect=InvalidValidationContextError("nrnivmodl failed"),
+                )
+            )
+            stack.enter_context(pytest.raises(InvalidValidationContextError, match="nrnivmodl"))
+            workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+
+    def test_build_failure_disqualifies_the_memodel_and_reraises(self, tmp_path):
+        client = self._client(SimpleNamespace(holding_current=0.0, threshold_current=0.1, rin=None))
+
+        self._run_with_build_failure(tmp_path, client)
+
+        client.update_entity.assert_called_once()
+        kwargs = client.update_entity.call_args.kwargs
+        assert kwargs["attrs_or_entity"] == {"lifecycle_status": EntityLifecycleStatus.disqualified}
+
+    def test_failed_lifecycle_update_does_not_mask_the_load_error(self, tmp_path):
+        # e.g. the client may not edit this entity: the original load error must
+        # still surface, not the lifecycle-update error.
+        client = self._client(SimpleNamespace(holding_current=0.0, threshold_current=0.1, rin=None))
+        client.update_entity.side_effect = PermissionError("forbidden")
+
+        self._run_with_build_failure(tmp_path, client)
+
+        client.update_entity.assert_called_once()
+
+    def _setup_thalamic(self, tmp_path, calibration, computed_rin):
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="thalamic")
+        client = self._client(calibration)
+        with ExitStack() as stack:
+            for p in self._patches(
+                tmp_path, sim_config=SimulatorConfig(celsius=34.0, v_init=-70.0)
+            ):
+                stack.enter_context(p)
+            compute = stack.enter_context(
+                patch("bluecellulab.tools.calculate_input_resistance", return_value=computed_rin)
+            )
+            context = workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+        return context, compute
+
+    def test_valid_calibrated_rin_is_reused(self, tmp_path):
+        calibration = SimpleNamespace(holding_current=-0.03, threshold_current=0.1, rin=120.0)
+
+        context, compute = self._setup_thalamic(tmp_path, calibration, computed_rin=150.0)
+
+        assert context.rin == pytest.approx(120.0)
+        compute.assert_not_called()
+
+    @pytest.mark.parametrize("calibrated_rin", [0.0, float("nan")])
+    def test_invalid_calibrated_rin_is_recomputed(self, tmp_path, calibrated_rin):
+        calibration = SimpleNamespace(
+            holding_current=-0.03, threshold_current=0.1, rin=calibrated_rin
+        )
+
+        context, compute = self._setup_thalamic(tmp_path, calibration, computed_rin=150.0)
+
+        assert context.rin == pytest.approx(150.0)
+        compute.assert_called_once()
+
+    def test_download_failure_does_not_disqualify(self, tmp_path):
+        # A failed download may be transient (network, server), so the model must
+        # not be marked as unusable.
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="default")
+        client = self._client(SimpleNamespace(holding_current=0.0, threshold_current=0.1, rin=None))
+        download_fails = patch.object(
+            workflow_module, "download_memodel", side_effect=RuntimeError("timeout")
+        )
+        with download_fails, pytest.raises(RuntimeError, match="timeout"):
+            workflow.setup("12a65005-a035-4a36-afe0-605de815861d", client)
+
+        client.update_entity.assert_not_called()
+
+    def test_rin_failure_after_load_does_not_disqualify(self, tmp_path):
+        # The cell loads fine; only the Rin requirement fails. That is a config
+        # error, not an unloadable artifact, so the entity must NOT be disqualified.
+        entity_id = "12a65005-a035-4a36-afe0-605de815861d"
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path, validation_profile="thalamic")
+        client = self._client(
+            SimpleNamespace(holding_current=-0.03, threshold_current=0.1, rin=None)
+        )
+
+        with ExitStack() as stack:
+            for p in self._patches(
+                tmp_path, sim_config=SimulatorConfig(celsius=34.0, v_init=-70.0)
+            ):
+                stack.enter_context(p)
+            # Force a non-physiological Rin so the thalamic profile's Rin guard trips.
+            stack.enter_context(
+                patch("bluecellulab.tools.calculate_input_resistance", return_value=0.0)
+            )
+            with pytest.raises(InvalidValidationContextError, match="Rin"):
+                workflow.setup(entity_id, client)
+
+        client.update_entity.assert_not_called()

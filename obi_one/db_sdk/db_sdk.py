@@ -15,6 +15,7 @@ from entitysdk.types import (
     ActivityStatus,
     AssetLabel,
     ContentType,
+    EntityLifecycleStatus,
     ExecutorType,
     FetchFileStrategy,
     TaskActivityType,
@@ -307,6 +308,21 @@ def update_activity_status(
         entity_id=activity_id,
         entity_type=activity_type,
         attrs_or_entity={"status": status},
+    )
+
+
+def update_entity_lifecycle_status[T: Identifiable](
+    *,
+    client: Client,
+    entity_id: UUID,
+    entity_type: type[T],
+    lifecycle_status: EntityLifecycleStatus,
+) -> T:
+    """Set an entity's lifecycle status, e.g. ``disqualified`` when no task can use it."""
+    return client.update_entity(
+        entity_id=entity_id,
+        entity_type=entity_type,
+        attrs_or_entity={"lifecycle_status": lifecycle_status},
     )
 
 
