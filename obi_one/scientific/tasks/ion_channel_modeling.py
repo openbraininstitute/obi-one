@@ -13,8 +13,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal
 
-import entitysdk
-from entitysdk import models
+from entitysdk.client import Client
+from entitysdk.models import BrainRegion, IonChannelModel, NeuronBlock, Subject, UseIon
 from entitysdk.types import AssetLabel, ContentType, Sex
 from pydantic import Discriminator, Field, StringConstraints
 
@@ -62,8 +62,9 @@ except ImportError:
     ) -> None:
         pass
 
-    def get_range_params_with_units(eq_names: dict[str, str]) -> list[dict[str, str | None]]:  # ty:ignore[empty-body]
-        pass
+    def get_range_params_with_units(eq_names: dict[str, str]) -> list[dict[str, str | None]]:
+        msg = "ion_channel_builder is required"
+        raise NotImplementedError(msg)
 
     def write_vgate_output(
         eq_names: dict[str, str],
@@ -167,18 +168,16 @@ def _shared(items: list, what: str, key: Callable = _id, label: Callable = str) 
     return next(iter(distinct.values()))
 
 
-def _ancestors(region_id: uuid.UUID, db_client: entitysdk.client.Client) -> list:
-    chain = [db_client.get_entity(entity_id=region_id, entity_type=models.BrainRegion)]
+def _ancestors(region_id: uuid.UUID, db_client: Client) -> list:
+    chain = [db_client.get_entity(entity_id=region_id, entity_type=BrainRegion)]
     while chain[-1].parent_structure_id:
         chain.append(
-            db_client.get_entity(
-                entity_id=chain[-1].parent_structure_id, entity_type=models.BrainRegion
-            )
+            db_client.get_entity(entity_id=chain[-1].parent_structure_id, entity_type=BrainRegion)
         )
     return chain
 
 
-def common_parent_region(regions: list, db_client: entitysdk.client.Client) -> Any:
+def common_parent_region(regions: list, db_client: Client) -> Any:
     """The deepest region that contains every one of the regions."""
     region_ids = list(dict.fromkeys(region.id for region in regions))
     if len(region_ids) == 1:
@@ -192,14 +191,14 @@ def common_parent_region(regions: list, db_client: entitysdk.client.Client) -> A
     raise ConfigValidationError(msg)
 
 
-def generic_subject(species: Any, strain: Any, db_client: entitysdk.client.Client) -> Any:
+def generic_subject(species: Any, strain: Any, db_client: Client) -> Any:
     """The `Generic <species>[/<strain>]` subject, registered in the project when there is none."""
     name = f"Generic {species.name}" + (f"/{strain.name}" if strain else "")
-    for subject in db_client.search_entity(entity_type=models.Subject, query={"name": name}):
+    for subject in db_client.search_entity(entity_type=Subject, query={"name": name}):
         if subject.species.id == species.id and _id(subject.strain) == _id(strain):
             return subject
     return db_client.register_entity(
-        models.Subject(
+        Subject(
             name=name,
             description=f"Subject for models of {species.name} built from several subjects.",
             sex=Sex.unknown,
@@ -379,7 +378,7 @@ class HodgkinHuxleyIonChannelModel(Block):
         """The useion and nonspecific entries of the model's NEURON block."""
         return {
             "useion": [
-                entitysdk.models.UseIon(  # ty:ignore[possibly-missing-submodule]
+                UseIon(
                     ion_name=self.ion,
                     read=[f"e{self.ion}"],
                     write=[self.current],
@@ -545,7 +544,7 @@ class IonChannelFittingScanConfig(InfoScanConfig):
         },
     )
 
-    def input_entities(self, db_client: entitysdk.client.Client) -> list:
+    def input_entities(self, db_client: Client) -> list:
         entities = [
             recording.entity(db_client=db_client) for recording in self.initialize.recordings
         ]
@@ -573,7 +572,7 @@ class IonChannelFittingScanConfig(InfoScanConfig):
             raise ConfigValidationError(msg)
 
     def resolve_model_properties(
-        self, recordings: list, db_client: entitysdk.client.Client
+        self, recordings: list, db_client: Client
     ) -> ResolvedModelProperties:
         given = self.initialize.model_properties
 
@@ -663,7 +662,7 @@ class IonChannelFittingTask(Task):
 
     def download_input(
         self,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
     ) -> tuple[list[Path], list[float]]:
         """Download every recording, and return their traces and ljp values."""
         trace_paths = []
@@ -680,25 +679,23 @@ class IonChannelFittingTask(Task):
         return trace_paths, trace_ljps
 
     @staticmethod
-    def register_json(
-        client: entitysdk.client.Client, id_: str | uuid.UUID, json_path: str | Path
-    ) -> None:
+    def register_json(client: Client, id_: str | uuid.UUID, json_path: str | Path) -> None:
         client.upload_file(
-            entity_id=id_,  # ty:ignore[invalid-argument-type]
-            entity_type=models.IonChannelModel,
-            file_path=json_path,  # ty:ignore[invalid-argument-type]
+            entity_id=uuid.UUID(str(id_)),
+            entity_type=IonChannelModel,
+            file_path=Path(json_path),
             file_content_type=ContentType.application_json,
             asset_label=AssetLabel.ion_channel_model_figure_summary_json,
         )
 
     @staticmethod
     def register_thumbnail(
-        client: entitysdk.client.Client, id_: str | uuid.UUID, path_to_register: str | Path
+        client: Client, id_: str | uuid.UUID, path_to_register: str | Path
     ) -> None:
         client.upload_file(
-            entity_id=id_,  # ty:ignore[invalid-argument-type]
-            entity_type=models.IonChannelModel,
-            file_path=path_to_register,  # ty:ignore[invalid-argument-type]
+            entity_id=uuid.UUID(str(id_)),
+            entity_type=IonChannelModel,
+            file_path=Path(path_to_register),
             file_content_type=ContentType.image_png,
             asset_label=AssetLabel.ion_channel_model_thumbnail,
         )
@@ -712,19 +709,19 @@ class IonChannelFittingTask(Task):
 
     @staticmethod
     def register_plots(
-        client: entitysdk.client.Client, id_: str | uuid.UUID, paths_to_register: list[str | Path]
+        client: Client, id_: str | uuid.UUID, paths_to_register: list[str | Path]
     ) -> None:
         for path in paths_to_register:
             client.upload_file(
-                entity_id=id_,  # ty:ignore[invalid-argument-type]
-                entity_type=models.IonChannelModel,
-                file_path=path,  # ty:ignore[invalid-argument-type]
+                entity_id=uuid.UUID(str(id_)),
+                entity_type=IonChannelModel,
+                file_path=Path(path),
                 file_content_type=ContentType.application_pdf,
                 asset_label=AssetLabel.ion_channel_model_figure,
             )
 
     def register_plots_and_json(
-        self, db_client: entitysdk.client.Client, figure_filepaths: dict, model_id: str | uuid.UUID
+        self, db_client: Client, figure_filepaths: dict, model_id: str | uuid.UUID
     ) -> None:
         # get the paths of the pdf figures
         figure_types = ["traces", "stimuli", "steady state", "time constant"]
@@ -751,12 +748,12 @@ class IonChannelFittingTask(Task):
         self,
         mod_filepath: Path,
         figure_filepaths: dict[Path],  # ty:ignore[invalid-type-arguments]
-        db_client: entitysdk.client.Client,
+        db_client: Client,
         range_vars: list[dict[str, str | None]],
         properties: ResolvedModelProperties,
-    ) -> None:
+    ) -> uuid.UUID:
         # reproduce here what is being done in ion_channel_builder.io.write_output
-        neuron_block = entitysdk.models.NeuronBlock(  # ty:ignore[possibly-missing-submodule]
+        neuron_block = NeuronBlock(
             **{"global": [{"celsius": "degree C"}]},
             range=range_vars,
             **self.config.model_type.neuron_block_currents(),
@@ -771,7 +768,7 @@ class IonChannelFittingTask(Task):
         )
 
         model = db_client.register_entity(
-            entitysdk.models.IonChannelModel(  # ty:ignore[possibly-missing-submodule]
+            IonChannelModel(
                 name=self.config.info.campaign_name,
                 nmodl_suffix=properties.ion_channel_name,
                 description=(
@@ -796,10 +793,10 @@ class IonChannelFittingTask(Task):
 
         _ = db_client.upload_file(
             entity_id=model.id,
-            entity_type=entitysdk.models.IonChannelModel,  # ty:ignore[possibly-missing-submodule]
+            entity_type=IonChannelModel,
             file_path=mod_filepath,
             file_content_type=ContentType.application_mod,
-            asset_label="neuron_mechanisms",  # ty:ignore[invalid-argument-type]
+            asset_label=AssetLabel.neuron_mechanisms,
         )
 
         self.register_plots_and_json(db_client, figure_filepaths, model.id)
@@ -809,7 +806,7 @@ class IonChannelFittingTask(Task):
     def execute(
         self,
         *,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
         entity_cache: bool = False,  # ruff: ignore[unused-method-argument]
         execution_activity_id: str | None = None,
     ) -> str:  # returns the id of the generated ion channel model

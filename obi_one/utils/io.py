@@ -49,7 +49,7 @@ def extract_tar_gz(
         shutil.rmtree(output_dir)
 
     with tarfile.open(archive_path, "r:gz") as tar:
-        tar.extractall(path=output_dir)  # ruff: ignore[tarfile-unsafe-members]
+        tar.extractall(path=output_dir, filter="data")
 
     return output_dir
 

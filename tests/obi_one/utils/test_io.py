@@ -1,3 +1,4 @@
+import io
 import tarfile
 import tempfile
 from pathlib import Path
@@ -8,6 +9,14 @@ from PIL import Image
 from obi_one.utils import io as test_module
 
 from tests.utils import CIRCUIT_DIR
+
+
+def _write_tar_gz_with_member(archive_path: Path, *, name: str, content: bytes = b"pwned") -> None:
+    """Write a .tar.gz containing a single member with an explicit archive name."""
+    info = tarfile.TarInfo(name=name)
+    info.size = len(content)
+    with tarfile.open(archive_path, "w:gz") as tar:
+        tar.addfile(info, io.BytesIO(content))
 
 
 def test_write_and_load_json(tmp_path):
@@ -141,3 +150,52 @@ def test_extract_tar_gz_clean_existing_dir(tmp_path):
     assert result == output_dir
     assert (output_dir / "data" / "file.txt").read_text() == "new content"
     assert not (output_dir / "stale.txt").exists()
+
+
+def test_extract_tar_gz_rejects_path_traversal(tmp_path):
+    """filter='data' must refuse members that escape the extraction directory."""
+    archive_path = tmp_path / "evil.tar.gz"
+    _write_tar_gz_with_member(archive_path, name="../escaped.txt")
+
+    output_dir = tmp_path / "out"
+    escaped = tmp_path / "escaped.txt"
+
+    with pytest.raises(tarfile.OutsideDestinationError):
+        test_module.extract_tar_gz(archive_path, output_dir=output_dir)
+
+    assert not escaped.exists()
+
+
+def test_extract_tar_gz_strips_absolute_member_path(tmp_path):
+    """filter='data' strips leading '/' so absolute members stay under output_dir."""
+    archive_path = tmp_path / "evil.tar.gz"
+    absolute_target = tmp_path / "absolute.txt"
+    _write_tar_gz_with_member(archive_path, name=str(absolute_target))
+
+    output_dir = tmp_path / "out"
+    result = test_module.extract_tar_gz(archive_path, output_dir=output_dir)
+
+    assert not absolute_target.exists()
+    # Leading '/' is stripped; the path is re-rooted under the extraction directory.
+    extracted = result / str(absolute_target).lstrip("/")
+    assert extracted.read_bytes() == b"pwned"
+
+
+def test_extract_tar_gz_rejects_symlink_outside_destination(tmp_path):
+    """filter='data' must refuse symlinks that point outside the extraction directory."""
+    archive_path = tmp_path / "evil.tar.gz"
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret")
+
+    info = tarfile.TarInfo(name="link_to_outside")
+    info.type = tarfile.SYMTYPE
+    info.linkname = "../outside.txt"
+    with tarfile.open(archive_path, "w:gz") as tar:
+        tar.addfile(info)
+
+    output_dir = tmp_path / "out"
+
+    with pytest.raises(tarfile.LinkOutsideDestinationError):
+        test_module.extract_tar_gz(archive_path, output_dir=output_dir)
+
+    assert not (output_dir / "link_to_outside").exists()

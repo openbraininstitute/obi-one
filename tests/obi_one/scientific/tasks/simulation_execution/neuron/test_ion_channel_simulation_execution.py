@@ -179,8 +179,9 @@ def test_execute_tracked_registers_and_updates_activity(
     mock_stage_circuit.return_value = staged_circuit
     mechanism_build = _neurodamus_mechanism_build(tmp_path)
     mock_compile.return_value = mechanism_build
+    execution_activity_id = UUID("00000000-0000-4000-8000-000000000456")
     execution_activity = MagicMock()
-    execution_activity.id = "act-456"
+    execution_activity.id = execution_activity_id
     db_client.get_entity.return_value = execution_activity
     mock_stage_sim.return_value = tmp_path / "sim_config.json"
     mock_get_params.return_value = _neurodamus_simulation_parameters(tmp_path, mechanism_build)
@@ -194,10 +195,10 @@ def test_execute_tracked_registers_and_updates_activity(
     mock_register.return_value = generated_entity
 
     task = IonChannelModelSimulationExecutionTask(config=config)
-    task.execute(db_client=db_client, execution_activity_id="act-456")
+    task.execute(db_client=db_client, execution_activity_id=execution_activity_id)
 
     db_client.get_entity.assert_called_once_with(
-        entity_id="act-456",
+        entity_id=execution_activity_id,
         entity_type=test_module.IonChannelModelSimulationExecutionTask.activity_type,
     )
     mock_register.assert_called_once()
@@ -207,7 +208,7 @@ def test_execute_tracked_registers_and_updates_activity(
     assert call_kw["voltage_report_files"] == sim_results.voltage_report_files
     assert call_kw["simulation_id"] == config.single_entity.id
     db_client.update_entity.assert_called_once_with(
-        entity_id="act-456",
+        entity_id=execution_activity_id,
         entity_type=test_module.IonChannelModelSimulationExecutionTask.activity_type,
         attrs_or_entity={"generated_ids": ["gen-789"]},
     )

@@ -132,7 +132,8 @@ def test_spike_replay(tmp_path):
         node_ids=node_ids,
     )
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # tstop just past the asserted 0.9 ms spike; longer only when delay=1.9 needs it.
+        "run": {"tstop": 1.0, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -169,8 +170,8 @@ def test_spike_replay(tmp_path):
     for i in range(3):
         assert not spikes[i].any()
 
-    # run sim for longer, should spike now
-    config["run"]["tstop"] = 4
+    # run sim past delayed spike time (1.9 + 0.3 + 0.9 = 3.1 ms)
+    config["run"]["tstop"] = 3.2
     spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     assert len(spikes[0]) == 0
@@ -181,7 +182,7 @@ def test_spike_replay(tmp_path):
 
     # set *target* node_set to only include 0, this means no spikes should be delivered
     config["inputs"]["replay"]["node_set"] = "0"
-    spike_monitor = _run_simulation(tmp_path, config, plot_voltage=True)[1].spike_monitor
+    spike_monitor = _run_simulation(tmp_path, config)[1].spike_monitor
     spikes = dict(spike_monitor.spike_trains().items())
     for i in range(3):
         assert not spikes[i].any()
@@ -191,7 +192,7 @@ def _poisson_config(node_set, rate=10000):
     # at dt = 0.1 ms, a rate of 10 kHz kicks every targeted neuron on every step, so the spike
     # times do not depend on how the random stream is drawn
     return {
-        "run": {"tstop": 1, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 0.5, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -587,22 +588,22 @@ def test_current_stim_report(tmp_path):
     npt.assert_allclose(soma1["drosophila", 0], soma0["drosophila", 0])
 
 
-@pytest.mark.parametrize(
-    ("start_time", "end_time", "first_frame", "frame_count"),
-    [
-        (0.0, 2.0, 0, 20),  # the whole run
-        (0.5, 1.5, 5, 10),  # a window inside the run used to get a frame at `end_time` as well
-        (0.3, 0.7, 3, 4),  # 0.3 / 0.1 == 2.9999999999999996, which floor() put a frame early
-        (1.0, 5.0, 10, 10),  # a window running past tstop ends with the run
-    ],
-)
-def test_time_window_report(tmp_path, start_time, end_time, first_frame, frame_count):
+def test_time_window_report(tmp_path):
     """A window holds (end - start) / dt frames, each the full report's frame at that time.
 
     SONATA reports are end-exclusive: libsonata reads frames at `start + k * dt` for `t < end`,
     so an extra frame at `end` is dropped by it but not by a reader of the raw dataset.
+
+    One Brian2 run covers every window case: whole run, interior, float-edge start, and past tstop.
     """
     dt = 0.1
+    # (report name, start, end, first_frame, frame_count)
+    windows = (
+        ("window_full", 0.0, 2.0, 0, 20),
+        ("window_interior", 0.5, 1.5, 5, 10),  # used to get a frame at `end_time` as well
+        ("window_float_edge", 0.3, 0.7, 3, 4),  # 0.3 / 0.1 == 2.999…, floor() put a frame early
+        ("window_past_tstop", 1.0, 5.0, 10, 10),  # a window running past tstop ends with the run
+    )
     config = {
         "run": {"tstop": 2, "dt": dt, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
@@ -628,27 +629,28 @@ def test_time_window_report(tmp_path, start_time, end_time, first_frame, frame_c
                 "start_time": start,
                 "end_time": end,
             }
-            for name, start, end in (("full", 0, 2), ("window", start_time, end_time))
+            for name, start, end in (("full", 0, 2), *((n, s, e) for n, s, e, _, _ in windows))
         },
     }
     simulation, _ = _run_simulation(tmp_path, config)
 
-    path = simulation.to_libsonata.report("window").file_name
-    with h5py.File(path) as h5:
-        assert h5["report/drosophila/data"].shape == (frame_count, 3)
-        npt.assert_allclose(
-            h5["report/drosophila/mapping/time"][:],
-            [first_frame * dt, (first_frame + frame_count) * dt, dt],
-        )
-
-    window = libsonata.ElementReportReader(path)["drosophila"].get()
-    npt.assert_allclose(window.times, (first_frame + np.arange(frame_count)) * dt)
-
     full = libsonata.ElementReportReader(simulation.to_libsonata.report("full").file_name)
     full = full["drosophila"].get()
-    npt.assert_array_equal(
-        np.asarray(window.data), np.asarray(full.data)[first_frame : first_frame + frame_count]
-    )
+
+    for name, _start, _end, first_frame, frame_count in windows:
+        path = simulation.to_libsonata.report(name).file_name
+        with h5py.File(path) as h5:
+            assert h5["report/drosophila/data"].shape == (frame_count, 3)
+            npt.assert_allclose(
+                h5["report/drosophila/mapping/time"][:],
+                [first_frame * dt, (first_frame + frame_count) * dt, dt],
+            )
+
+        window = libsonata.ElementReportReader(path)["drosophila"].get()
+        npt.assert_allclose(window.times, (first_frame + np.arange(frame_count)) * dt)
+        npt.assert_array_equal(
+            np.asarray(window.data), np.asarray(full.data)[first_frame : first_frame + frame_count]
+        )
 
 
 def test_current_stim_report_failure(tmp_path):
@@ -691,7 +693,8 @@ def test_current_stim_report_failure(tmp_path):
 
 def test_connection_override(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # Assertions are absence of spikes; keep short (setup dominates Brian2 wall time).
+        "run": {"tstop": 1.0, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {
@@ -734,7 +737,8 @@ def test_connection_override(tmp_path):
 def test_connection_override_mid_simulation(tmp_path):
     delay = 1.5
     config = {
-        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        # Just past the disconnect so we can assert spikes before and none after.
+        "run": {"tstop": 2.0, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -744,7 +748,7 @@ def test_connection_override_mid_simulation(tmp_path):
                 "module": "linear",
                 "amp_start": 12000000000,
                 "delay": 0,
-                "duration": 4,
+                "duration": 2.0,
                 "node_set": "0",
             },
         },
@@ -774,8 +778,8 @@ def test_connection_override_mid_simulation(tmp_path):
 def test_connection_override_reconnect_restores_circuit(tmp_path):
     disconnect, reconnect = 1.5, 3.0
     config = {
-        # long enough after `reconnect` for 1 & 2 to recharge from rest, where they leak to
-        "run": {"tstop": 8, "dt": 0.1, "random_seed": 42},
+        # Past reconnect with margin for 1 & 2 to recharge from rest (fails below ~6 ms).
+        "run": {"tstop": 6.0, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -785,7 +789,7 @@ def test_connection_override_reconnect_restores_circuit(tmp_path):
                 "module": "linear",
                 "amp_start": 12000000000,
                 "delay": 0,
-                "duration": 8,
+                "duration": 6.0,
                 "node_set": "0",
             },
         },
@@ -810,7 +814,8 @@ def test_connection_override_reconnect_restores_circuit(tmp_path):
 
 def test_connection_override_weight_scales_circuit_weights(tmp_path):
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # Second override applies at 1.0 ms.
+        "run": {"tstop": 1.2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "connection_overrides": [
@@ -831,7 +836,7 @@ def test_connection_overrides_at_the_same_time_apply_in_config_order(tmp_path):
     # As in neurodamus, the last of the overrides selecting a synapse sets its weight.
     factors = [2.0, 0.0, 0.5, 1.5]
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        "run": {"tstop": 0.5, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "connection_overrides": [
@@ -867,7 +872,8 @@ def test_connection_override_reaches_spike_replay(tmp_path):
     )
     reconnect = 1.5
     config = {
-        "run": {"tstop": 4, "dt": 0.1, "random_seed": 42},
+        # Past delayed spike time (1.9 + 0.3 + 0.9 = 3.1 ms).
+        "run": {"tstop": 3.2, "dt": 0.1, "random_seed": 42},
         "conditions": {"v_init": NORMALISED_MODEL_V_INIT_MV},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
@@ -902,7 +908,8 @@ def test_connection_override_changes_only_the_replayed_edges_it_selects(tmp_path
     # `sugar` is 0 and 1, so of the replayed edges 0 -> 1 and 0 -> 2 only 0 -> 1 is selected
     sugar = {"source": "sugar", "target": "sugar"}
     config = {
-        "run": {"tstop": 2, "dt": 0.1, "random_seed": 42},
+        # Second weight override applies at 1.0 ms.
+        "run": {"tstop": 1.2, "dt": 0.1, "random_seed": 42},
         "target_simulator": "Brian2",
         "network": str(DATA / "circuit_config.json"),
         "inputs": {"replay": _replay_input(path, delay=0.0)},

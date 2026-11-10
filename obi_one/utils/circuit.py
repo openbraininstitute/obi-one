@@ -17,6 +17,7 @@ from obi_one.core.path import NamedPath
 
 if TYPE_CHECKING:
     import pandas as pd
+    from bluepysnap.nodes import NodePopulation
 
 import h5py
 import numpy as np
@@ -24,7 +25,10 @@ from bluepysnap import BluepySnapError
 from entitysdk import types
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_constants import TYPES_OF_POINT_NODES
+from obi_one.scientific.library.circuit_constants import (
+    SYNAPSE_PHYSIOLOGY_PROPERTIES,
+    TYPES_OF_POINT_NODES,
+)
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
 
@@ -257,7 +261,7 @@ def rebase_config(config_dict: dict, old_base: str, new_base: str) -> None:
 
 def get_morph_dirs(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> tuple[dict, dict]:
     """Returns source and destination morphology directories for a node population."""
@@ -293,7 +297,7 @@ def get_morph_dirs(
 
 def copy_morphologies(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy morphologies for a node population from original to extracted circuit."""
@@ -352,7 +356,7 @@ def copy_morphologies(
 
 def copy_hoc_files(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy biophysical neuron model (.hoc) files for a node population."""
@@ -382,7 +386,7 @@ def copy_hoc_files(
 
 def copy_mod_files(
     pop_name: str,
-    pop: snap.nodes.NodePopulation,  # ty:ignore[possibly-missing-submodule]
+    pop: NodePopulation,
     original_circuit: snap.Circuit,
 ) -> None:
     """Copy mechanisms (.mod) files for a node population."""
@@ -416,7 +420,7 @@ def _any_not_empty(data_series: pd.Series) -> bool:
     return any(v not in {"", "none", "null"} for v in values)
 
 
-def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff: ignore[complex-structure]
+def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:
     """Returns circuit properties derived from the circuit files.
 
     Args:
@@ -450,16 +454,7 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff
             break
 
     # Check electrical models
-    has_electrical_cell_models = False
-    for npop_name in c_sonata.nodes.population_names:
-        npop = c_sonata.nodes[npop_name]
-        if npop.size == 0:
-            continue
-        if "model_template" in npop.property_names and _any_not_empty(
-            npop.get(properties="model_template")
-        ):
-            has_electrical_cell_models = True
-            break
+    has_cell_models = has_electrical_cell_models(c)
 
     # Check spines
     has_spines = False
@@ -471,7 +466,41 @@ def get_circuit_properties(c: Circuit) -> tuple[bool, bool, bool, bool]:  # ruff
             has_spines = True
             break
 
-    return has_morphologies, has_point_neurons, has_electrical_cell_models, has_spines
+    return has_morphologies, has_point_neurons, has_cell_models, has_spines
+
+
+def has_electrical_cell_models(c: Circuit) -> bool:
+    """Returns True if any non-empty node population has a non-empty model_template.
+
+    Args:
+        c: A Circuit object pointing to a valid SONATA circuit.
+    """
+    c_sonata = c.sonata_circuit
+    for npop_name in c_sonata.nodes.population_names:
+        npop = c_sonata.nodes[npop_name]
+        if npop.size == 0:
+            continue
+        if "model_template" in npop.property_names and _any_not_empty(
+            npop.get(properties="model_template")
+        ):
+            return True
+    return False
+
+
+def has_synapse_physiology(c: Circuit) -> bool:
+    """Returns True if any non-empty edge population has physiological synapse properties.
+
+    Args:
+        c: A Circuit object pointing to a valid SONATA circuit.
+    """
+    c_sonata = c.sonata_circuit
+    for epop_name in c_sonata.edges.population_names:
+        epop = c_sonata.edges[epop_name]
+        if epop.size == 0:
+            continue
+        if any(prop in epop.property_names for prop in SYNAPSE_PHYSIOLOGY_PROPERTIES):
+            return True
+    return False
 
 
 def generate_overview_figure(basic_plots_dir: Path | None, output_file: Path) -> Path | None:

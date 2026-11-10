@@ -133,7 +133,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             location=settings.OBI_ONE_REPO,
             ref=release_tag_ref(settings.APP_VERSION),
             path="obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            dependencies="launch_scripts/launch_brian2_simulation/dependencies/default.txt",
+            dependencies="launch_scripts/launch_brian2_simulation/dependencies/brian2.txt",
             staged_directories=[],
         ),
         resources=MachineResources(
@@ -175,7 +175,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="01:00",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.fargate,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
             image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
@@ -216,7 +216,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.memodel_build,
         config_type=TaskConfigType.memodel_build__config,
         activity_type=TaskActivityType.memodel_build__execution,
-        code=_obi_one_code("default.txt"),
+        code=_obi_one_code("memodel_build.txt"),
         resources=MachineResources(
             cores=4,
             memory=8,

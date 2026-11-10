@@ -202,13 +202,13 @@ def task_failure_endpoint(
     activity_id: UUID,
     db_client: DatabaseClientDep,
     _user_context: UserContextWithProjectIdDep,
-) -> None:
+) -> Response:
     task_service.handle_task_failure_callback(
         db_client=db_client,
         activity_id=activity_id,
         task_definition=TASK_DEFINITIONS[task_type],
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
+    return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @router.post(
@@ -220,7 +220,7 @@ def task_success_endpoint(
     json_model: TaskCallBackSuccessRequest,
     accounting_factory: AccountingSessionFactoryDep,
     user_context: UserContextWithProjectIdDep,
-) -> None:
+) -> Response:
     accounting_service.finish_accounting_session(
         accounting_job_id=json_model.job_id,
         service_subtype=json_model.accounting_service_subtype,
@@ -228,7 +228,7 @@ def task_success_endpoint(
         project_id=user_context.project_id,
         http_client=accounting_factory._http_client,  # ruff: ignore[private-member-access]  # ty:ignore[invalid-argument-type]
     )
-    return Response(status_code=HTTPStatus.NO_CONTENT)  # ty:ignore[invalid-return-type]
+    return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
 @router.get(

@@ -52,6 +52,7 @@ CLUSTER_TASK_TYPES = [
 # Tasks routed to ECS EC2. Everything else keeps the pre-existing behaviour of
 # running on Fargate on the AWS cell.
 ECS_EC2_TASK_TYPES = {
+    TaskType.circuit_simulation_neurodamus_machine,
     TaskType.ion_channel_fitting,
     TaskType.ion_channel_model_simulation_execution,
     TaskType.single_neuron_simulation_execution,
@@ -442,7 +443,7 @@ def test_brian2_job_data(config_id, activity_id, callbacks):
             "location": task_definition.code.location,
             "ref": release_tag_ref(settings.APP_VERSION),
             "path": "obi_one/scientific/library/simulation/brian2/simulate_brian2.py",
-            "dependencies": "launch_scripts/launch_brian2_simulation/dependencies/default.txt",
+            "dependencies": "launch_scripts/launch_brian2_simulation/dependencies/brian2.txt",
             "capabilities": {"private_packages": False, "env_secrets": []},
             "staged_directories": [],
         },

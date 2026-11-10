@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from scipy.stats._distn_infrastructure import rv_frozen
 
 try:
-    from conntility.subcellular import MorphologyPathDistanceCalculator
+    from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 except ImportError:
     warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
@@ -29,7 +29,7 @@ _PRE_IDX = "source_index"
 def path_distance_all_segments_from(
     locs_ref: pd.DataFrame,
     m: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
     normalized_seg_loc: float = 0.5,
     lst_sec_types: list | None = None,
 ) -> pd.DataFrame:
@@ -40,11 +40,10 @@ def path_distance_all_segments_from(
 
     Args:
         locs_ref (pd.DataFrame): Defines the reference locations. For details how, see
-        conntility.subcellular.MorphologyPathDistanceCalculator.
+        conntility.subcellular.OptimizedMorphologyPathDistanceCalculator.
         m (morphio.Morphology): Morphology to use.
-        path_distance_calculator (conntility.subcellular.MorphologyPathDistanceCalculator): \
-            Path distance calculator
-        must be created on morphology m.
+        path_distance_calculator (OptimizedMorphologyPathDistanceCalculator): Path distance \
+            calculator, must be created on morphology m.
         normalized_seg_loc (float, default: 0.5): Between 0 and 1. Normalized segment location.
         Path distances will be calculated to the part of each segment.
         lst_sec_types (list, default=None): List of section types to consider.
@@ -197,7 +196,7 @@ def candidate_segments_for_center(
     locs: pd.DataFrame,
     max_dist: float,
     m: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
     lst_sec_types: list | None = None,
 ) -> pd.DataFrame:
     """Creates dataframe specifying candidate locations to be picked around center of a cluster.
@@ -216,8 +215,8 @@ def candidate_segments_for_center(
             segments
         max_dist (float): Maximum distance from the center allowed
         m (morphio.morphology): morphology to use
-        path_distance_calculator (conntility.subcellular.MorphologyPathDistanceCalculator): must \
-            be defined on 'm'
+        path_distance_calculator (OptimizedMorphologyPathDistanceCalculator): must be \
+            defined on 'm'
         lst_sec_types (list, default=None): List of section types allowed. If None, then all \
             types are allowed.
     """
@@ -302,7 +301,7 @@ def map_presynaptic_ids(dataframe: pd.DataFrame, n_per_center: int) -> None:
 def add_normalized_section_offset(
     dataframe: pd.DataFrame,
     m: morphio.Morphology,
-    path_distance_calculator: MorphologyPathDistanceCalculator,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
 ) -> None:
     """Adds the normalized section offset to a dataframe that defines morphology locations.
 
@@ -312,8 +311,8 @@ def add_normalized_section_offset(
 
         m (morphio.Morphology): morphology used
 
-        path_distance_calculator (conntility.subcellular.MorphologyPathDistanceCalculator): Must \
-            be defined on m.
+        path_distance_calculator (OptimizedMorphologyPathDistanceCalculator): Must be \
+            defined on m.
     """
     sec_lengths = np.array(
         [np.linalg.norm(np.diff(sec.points, axis=0), axis=1).sum() for sec in m.sections]
@@ -400,7 +399,7 @@ def generate_neurite_locations_on(
     if seed is not None:
         np.random.seed(seed)  # ruff: ignore[numpy-legacy-random]
 
-    path_distance_calculator = MorphologyPathDistanceCalculator(m)
+    path_distance_calculator = OptimizedMorphologyPathDistanceCalculator(m)
 
     soma = pd.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0]})
 

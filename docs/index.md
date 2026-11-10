@@ -100,6 +100,9 @@ make install-service
 # Notebook development
 make install-notebooks
 
+# Brian2 simulation runner
+make install-brian2
+
 # Production build (all deps, no dev tools)
 make install-all
 ```

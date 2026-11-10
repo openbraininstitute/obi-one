@@ -12,6 +12,12 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 
 
 def process_value_validation_errors(e: ValidationError) -> None:
+    """Translate recognized value-constraint failures into HTTP 400 responses.
+
+    Raises an ``HTTPException`` for every known constraint error type. If none of
+    the errors are recognized, the original ``ValidationError`` is re-raised so the
+    failure is not silently swallowed.
+    """
     for err in e.errors():
         if err["type"] == "greater_than":
             raise HTTPException(
@@ -33,6 +39,7 @@ def process_value_validation_errors(e: ValidationError) -> None:
             raise HTTPException(status_code=400, detail=err["msg"]) from e
         if err["type"] == "custom_n_greater_than_max":
             raise HTTPException(status_code=400, detail=err["msg"]) from e
+    raise e
 
 
 @router.post(
@@ -59,8 +66,5 @@ def parametric_multi_value_endpoint(
 
     except ValidationError as e:
         process_value_validation_errors(e)
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Unknown Error") from e
 
     return list(mvh.multi_value_class)  # ty:ignore[invalid-argument-type]

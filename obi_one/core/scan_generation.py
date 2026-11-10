@@ -235,7 +235,7 @@ class ScanGenerationTask(Task, abc.ABC):
 
     def execute(
         self,
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: entitysdk.client.Client | None = None,
     ) -> None:
         Path.mkdir(self.output_root, parents=True, exist_ok=True)
 

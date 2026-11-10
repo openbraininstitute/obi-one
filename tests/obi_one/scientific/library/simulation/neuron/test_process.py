@@ -378,7 +378,7 @@ def test_compile_mechanisms_unsupported_backend(tmp_path):
         test_module.compile_mechanisms(
             output_dir=tmp_path,
             mechanisms_dirs=[tmp_path / "mech"],
-            simulation_backend="unsupported",  # ty:ignore[invalid-argument-type]
+            simulation_backend="unsupported",
         )
 
 

@@ -13,12 +13,15 @@ from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
 from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks import basic_connectivity_plots
 from obi_one.utils.circuit import (
     copy_mod_files,
     count_cells_in_simulation_node_set,
     generate_overview_figure,
     get_circuit_properties,
     get_circuit_size,
+    has_electrical_cell_models,
+    has_synapse_physiology,
     resolve_simulation_node_set_ids,
     run_basic_connectivity_plots,
     run_circuit_folder_compression,
@@ -45,8 +48,12 @@ def _copy_circuit(tmp_path, circuit_name=CIRCUIT_NAME):
 
 
 def test_run_circuit_folder_compression(tmp_path):
-    """Test folder compression of a tiny circuit."""
-    circuit_path = _copy_circuit(tmp_path)
+    """Helper compresses circuit_path.parent; use a tiny synthetic tree (not a real circuit)."""
+    circuit_dir = tmp_path / "synthetic_circuit"
+    circuit_dir.mkdir()
+    circuit_path = circuit_dir / "circuit_config.json"
+    circuit_path.write_text("{}")
+    (circuit_dir / "payload.txt").write_text("compress me")
 
     result = run_circuit_folder_compression(
         circuit_path=circuit_path,
@@ -77,8 +84,28 @@ def test_run_connectivity_matrix_extraction(tmp_path):
     assert edge_pop in config
 
 
-def test_run_basic_connectivity_plots(tmp_path):
+def test_run_basic_connectivity_plots(tmp_path, monkeypatch):
     """Test basic connectivity plot generation from a connectivity matrix."""
+    # Same small-canvas patches as test_basic_connectivity_plots (4/16 of production).
+    scale = 4 / 16
+    monkeypatch.setattr(basic_connectivity_plots, "FULL_WIDTH", 4)
+    monkeypatch.setattr(
+        basic_connectivity_plots,
+        "CIRCULAR_FIGSIZE",
+        (
+            basic_connectivity_plots.CIRCULAR_FIGSIZE[0] * scale,
+            basic_connectivity_plots.CIRCULAR_FIGSIZE[1] * scale,
+        ),
+    )
+    monkeypatch.setattr(
+        basic_connectivity_plots,
+        "PROPERTY_TABLE_FIGSIZE",
+        (
+            max(basic_connectivity_plots.PROPERTY_TABLE_FIGSIZE[0] * scale, 1.0),
+            max(basic_connectivity_plots.PROPERTY_TABLE_FIGSIZE[1] * scale, 1.0),
+        ),
+    )
+
     # Set up a circuit_path (only used for naming, not for reading circuit data)
     circuit_dir = tmp_path / CIRCUIT_NAME
     circuit_dir.mkdir()
@@ -306,6 +333,29 @@ def test_generate_overview_figure_raises_on_extension_mismatch(tmp_path):
 
     with pytest.raises(OBIONEError, match="does not match"):
         generate_overview_figure(basic_plots_dir=plots_dir, output_file=output_file)
+
+
+def test_has_synapse_physiology_detects_listed_properties(monkeypatch):
+    """True when an edge population has any listed property, False when none match."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_small", path=circuit_path)
+    constants_module = "obi_one.utils.circuit.SYNAPSE_PHYSIOLOGY_PROPERTIES"
+
+    monkeypatch.setattr(constants_module, ["conductance", "not_a_property"])
+    assert has_synapse_physiology(c) is True
+
+    monkeypatch.setattr(constants_module, ["not_a_property"])
+    assert has_synapse_physiology(c) is False
+
+    monkeypatch.setattr(constants_module, [])
+    assert has_synapse_physiology(c) is False
+
+
+def test_has_electrical_cell_models_detects_model_template():
+    """True for a circuit with a non-empty model_template, matching get_circuit_properties."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_small", path=circuit_path)
+    assert has_electrical_cell_models(c) is True
 
 
 def test_get_circuit_properties_small_circuit():

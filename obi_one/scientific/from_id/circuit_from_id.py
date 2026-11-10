@@ -20,7 +20,7 @@ class CircuitFromID(EntityFromID[models.Circuit]):
         self,
         *,
         dest_dir: Path = Path(),
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
         entity_cache: bool = False,
         nodes_only: bool = False,
     ) -> Circuit:
@@ -87,7 +87,7 @@ class MEModelWithSynapsesCircuitFromID(EntityFromID[models.Circuit]):
         self,
         *,
         dest_dir: Path = Path(),
-        db_client: Client = None,  # ty:ignore[invalid-parameter-default]
+        db_client: Client,
         entity_cache: bool = False,
     ) -> MEModelWithSynapsesCircuit:
         for asset in self.entity(db_client=db_client).assets:

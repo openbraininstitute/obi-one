@@ -5,7 +5,10 @@ from entitysdk.models import TaskResult
 from entitysdk.types import AssetLabel, FetchFileStrategy
 
 from obi_one.core.entity_from_id import EntityFromID
-from obi_one.db_sdk.db_sdk import fetch_asset_by_label, fetch_directory_asset_by_label
+from obi_one.db_sdk.db_sdk import (
+    fetch_asset_by_label,
+    fetch_directory_asset_by_label,
+)
 
 
 class TaskResultFromID(EntityFromID[TaskResult]):
@@ -17,7 +20,8 @@ class TaskResultFromID(EntityFromID[TaskResult]):
         self,
         asset_label: AssetLabel,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        *,
+        db_client: entitysdk.client.Client,
         strategy: FetchFileStrategy = FetchFileStrategy.link_or_download,
     ) -> Path:
         """Download a single asset matching the given label to dest_dir.
@@ -36,7 +40,8 @@ class TaskResultFromID(EntityFromID[TaskResult]):
         self,
         asset_label: AssetLabel,
         dest_dir: Path = Path(),
-        db_client: entitysdk.client.Client = None,  # ty:ignore[invalid-parameter-default]
+        *,
+        db_client: entitysdk.client.Client,
     ) -> Path:
         """Download a directory asset matching the given label to dest_dir.
 

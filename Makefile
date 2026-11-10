@@ -12,7 +12,10 @@ ifneq ($(ENVIRONMENT), prod)
 	export IMAGE_TAG_ALIAS := $(IMAGE_TAG_ALIAS)-$(ENVIRONMENT)
 endif
 
-.PHONY: help install install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint build publish test-local test-docker run-local run-docker destroy
+.PHONY: help install install-bluecellulab install-brian2 install-docs serve-docs compile-deps upgrade-deps check-deps compile-launch-deps upgrade-launch-deps check-launch-deps pin-launch-deps format lint lint-lib lint-app image-env build publish test-local test-lib-local test-app-local test-app-docker test-app-docker-run-only run-local run-docker destroy
+
+LIB_TEST_PATHS := tests/obi_one tests/launch_scripts
+APP_TEST_PATHS := tests/app tests/ui_schema
 
 define load_env
 	# all the variables in the included file must be prefixed with export
@@ -25,31 +28,37 @@ help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-23s\033[0m %s\n", $$1, $$2}'
 
 install:  ## Default installation (for running tasks and local scripts)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync
+	uv sync
+
+install-bluecellulab:  ## Install with BlueCelluLab (simulation, MEModel calibration/validation)
+	uv sync --extra bluecellulab
+
+install-brian2:  ## Install with Brian2 (Brian2 SONATA simulation runner)
+	uv sync --extra brian2
 
 install-meshing:  ## Install with private meshing dependencies (Requires AWS auth)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra meshing
+	uv sync --extra meshing
 
 install-simplification:  ## Install with private circuit simplification dependencies (Requires AWS auth)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra simplification
+	uv sync --extra simplification
 
 install-connectivity:  ## Install with connectivity dependencies (for connectivity analysis & plots) -- needs notebooks as well
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks --extra connectivity
+	uv sync --extra notebooks --extra connectivity
 
 install-notebooks:  ## Install with notebooks dependencies (for running notebooks locally)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra notebooks
+	uv sync --extra notebooks
 
 install-service:  ## Install with service dependencies (for running as a service)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service
+	uv sync --extra service
 
 install-service-meshing: ## Install both service and meshing dependencies
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra service --extra meshing
+	uv sync --extra service --extra meshing
 
 install-all:  ## Install all dependencies (for production/deployment)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all
+	uv sync --extra all
 
 install-dev:  ## Install all dependencies + dev tools (for development)
-	CMAKE_POLICY_VERSION_MINIMUM=3.5 uv sync --extra all --group dev
+	uv sync --extra all --group dev
 
 install-ipython: install-all ## Create a virtual environment and install the ipython kernel
 	uv run python -m ipykernel install --user --name=obi-one --display-name "obi-one"
@@ -86,10 +95,20 @@ format:  ## Run formatters
 	uv run ruff check --fix $(FILE)
 	uv run ty check --fix $(FILE)
 
-lint:  ## Run linters
-	uv run ruff format --check
-	uv run ruff check
-	uv run ty check --error-on-warning
+# Shared test helpers used by both suites (owned by the lib lint path).
+SHARED_TEST_PATHS := tests/conftest.py tests/utils.py tests/httpx_mock.py
+
+lint-lib:  ## Lint/format-check obi_one + its tests + launch_scripts
+	uv run ruff format --check obi_one tests/obi_one launch_scripts tests/launch_scripts $(SHARED_TEST_PATHS)
+	uv run ruff check obi_one tests/obi_one launch_scripts tests/launch_scripts $(SHARED_TEST_PATHS)
+	uv run ty check --error-on-warning obi_one launch_scripts
+
+lint-app:  ## Lint/format-check app + its tests + ui_schema
+	uv run ruff format --check app tests/app tests/ui_schema
+	uv run ruff check app tests/app tests/ui_schema
+	uv run ty check --error-on-warning app
+
+lint: lint-lib lint-app  ## Run all linters (lib then app)
 
 format_count: ## Count the number of errors by file
 	uv run ruff check --output-format=json | jq '.[].filename' | sort | uniq -c
@@ -97,17 +116,41 @@ format_count: ## Count the number of errors by file
 format_types: ## Count the number of errors by type
 	uv run ruff check --output-format=json | jq -r '.[] | [.code, .message] | @tsv' | sort | uniq -c
 
+image-env:  ## Print IMAGE_*/build-arg exports for CI (append to $$GITHUB_ENV)
+	@printf '%s\n' \
+		'ENVIRONMENT=$(ENVIRONMENT)' \
+		'APP_NAME=$(APP_NAME)' \
+		'APP_VERSION=$(APP_VERSION)' \
+		'COMMIT_SHA=$(COMMIT_SHA)' \
+		'IMAGE_NAME=$(IMAGE_NAME)' \
+		'IMAGE_TAG=$(IMAGE_TAG)' \
+		'IMAGE_TAG_ALIAS=$(IMAGE_TAG_ALIAS)'
+
 build:  ## Build the Docker image
 	docker compose --profile "*" --progress=plain build app
 
 publish: build  ## Publish the Docker image to DockerHub
 	docker compose push app
 
-test-local:  ## Run tests locally
+test-lib-local:  ## Run lib (obi_one + launch_scripts) tests locally with coverage
 	@$(call load_env,test-local)
-	uv run -m pytest
-	uv run -m coverage xml
-	uv run -m coverage html
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-lib.db \
+	uv run -m pytest $(LIB_TEST_PATHS) \
+		--cov=obi_one \
+		--cov-report=term-missing \
+		--cov-report=xml:.coverage/coverage-lib.xml
+
+test-app-local:  ## Run app tests locally with coverage (expects install-service / --extra service)
+	@$(call load_env,test-local)
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-app.db \
+	uv run -m pytest $(APP_TEST_PATHS) \
+		--cov=app \
+		--cov-report=term-missing \
+		--cov-report=xml:.coverage/coverage-app.xml
+
+test-local: test-lib-local test-app-local  ## Run lib then app tests locally (host)
 
 test-file: ## Run tests in a single test file locally. Usage: make test-file FILE=path/to/test_file.py
 	@$(call load_env,test-local)
@@ -121,7 +164,12 @@ test-schema-verbose: ## Run schema tests locally with verbose output.
 	@$(call load_env,test-local)
 	uv run -m pytest tests/ui_schema/test_schema.py tests/ui_schema/test_titles.py --no-cov --disable-warnings --log-cli-level=INFO
 
-test-docker: build  ## Run tests in Docker
+test-app-docker: build test-app-docker-run-only  ## Build then run app tests in Docker (production image, --extra service)
+
+test-app-docker-run-only:  ## Run app Docker tests (image must already be built/loaded)
+	mkdir -p .coverage
+	COVERAGE_FILE=.coverage/coverage-app.db \
+	PYTEST_ARGS="$(APP_TEST_PATHS) --cov=app --cov-report=term-missing --cov-report=xml:.coverage/coverage-app.xml" \
 	docker compose run --rm --remove-orphans test
 
 pip-audit:  ## Run package auditing

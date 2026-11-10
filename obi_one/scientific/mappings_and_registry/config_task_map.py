@@ -235,6 +235,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         campaign_generation_task_activity_type=TaskActivityType.memodel_build__config_generation,
         single_task_config_type=TaskConfigType.memodel_build__config,
         single_task_activity_type=TaskActivityType.memodel_build__execution,
+        requires_package="bluecellulab",
     ),
     TaskType.ion_channel_model_simulation: TaskSpec(
         task_ref=_GENERATE_SIMULATION_TASK_REF,
@@ -394,6 +395,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             TaskActivityType.optimized_emodel_analysis_validation__execution
         ),
         requires_package="bluepyemodel",
+    ),
+    TaskType.memodel_validation: TaskSpec(
+        task_ref=("obi_one.scientific.validations.memodel.task", "MEModelValidationTask"),
+        single_config_ref=(
+            "obi_one.scientific.validations.memodel.task",
+            "MEModelValidationSingleConfig",
+        ),
+        asset_label=None,
+        requires_package="bluecellulab",
     ),
 }
 

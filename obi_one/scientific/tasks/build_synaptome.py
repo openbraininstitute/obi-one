@@ -25,7 +25,7 @@ from obi_one.scientific.unions_and_references.distributions import (
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
-    MorphologyLocationUnion,
+    SingleMorphologySamplingLocationUnion,
 )
 from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
@@ -174,7 +174,9 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
             SchemaKey.GROUP_ORDER: 1,
         },
     )
-    morphology_locations: dict[str, MorphologyLocationUnion] = Field(
+    # Narrowed to the blocks that sample a morphology: placement calls `points_on`, which
+    # per-neuron explicit locations do not implement -- their rows already name their neurons.
+    morphology_locations: dict[str, SingleMorphologySamplingLocationUnion] = Field(
         default_factory=dict,
         title="Placement strategies",
         description="Reusable morphology-location strategies for incoming synapse groups.",
@@ -258,7 +260,6 @@ class MEModelSynapticModelPlacementTask(Task):
             license=me_model.license or me_model.morphology.license,
             derived_from_emodel=me_model.emodel,
             derivation_label=result.model_template,
-            skip_validation=True,
         )
         if circuit is None:
             msg = "Build Synaptome circuit registration did not return a Circuit."

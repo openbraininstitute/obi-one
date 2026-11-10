@@ -3,7 +3,7 @@ from pathlib import Path
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
 from entitysdk.models.asset import Asset
-from entitysdk.types import AssetLabel
+from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -48,7 +48,7 @@ def _upload_or_replace_file(
     *,
     asset_label: AssetLabel,
     file_path: Path,
-    file_content_type: str,
+    file_content_type: ContentType,
     transfer_config: MultipartUploadTransferConfig | None = None,
 ) -> Asset:
     """Upload a file asset, replacing any existing asset with the same label.
@@ -65,7 +65,7 @@ def _upload_or_replace_file(
             entity_type=models.Circuit,
             asset_id=existing[0].id,
             file_path=file_path,
-            file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
+            file_content_type=file_content_type,
         )
         L.info("'%s' asset replaced under asset ID %s", asset_label, asset.id)
         return asset
@@ -80,7 +80,7 @@ def _upload_or_replace_file(
         entity_id=registered_circuit.id,
         entity_type=models.Circuit,
         file_path=file_path,
-        file_content_type=file_content_type,  # ty:ignore[invalid-argument-type]
+        file_content_type=file_content_type,
         asset_label=asset_label,
         transfer_config=transfer_config,
     )
@@ -118,7 +118,7 @@ def _upload_or_replace_directory(
 def resolve_circuit(
     circuit: Circuit | CircuitFromID,
     *,
-    db_client: Client,
+    db_client: Client | None,
     entity_cache: bool,
     cache_root: Path,
     temp_dir: Path,
@@ -145,6 +145,9 @@ def resolve_circuit(
 
     if isinstance(circuit, CircuitFromID):
         L.info("Circuit is a CircuitFromID instance.")
+        if db_client is None:
+            msg = "db_client is required to stage a CircuitFromID"
+            raise ValueError(msg)
         circuit_id = circuit.id_str
 
         if entity_cache:

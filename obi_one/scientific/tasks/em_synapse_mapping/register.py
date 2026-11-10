@@ -84,7 +84,6 @@ def register_output(
         derived_from_emodel=list(emodel_by_label.values()) or None,
         derivation_label=list(emodel_by_label) or None,
         skip_additional_assets=False,
-        skip_validation=True,
     )
 
     L.info(f"Output registered as: {registered_circuit.id}")  # ty:ignore[unresolved-attribute]
