@@ -68,6 +68,10 @@ libsonata==0.2.2
 mpi4py==4.1.2
 ```
 
+The NEST executor image works the same way.
+`nest_image.override` pins `nest-simulator==X`, the version the `python3.12-compiler-nest` runtime builds from source, and `nest_image.txt` gives the NESTML version.
+The image reads both at the obi-one release it is built for, so changing them changes the image.
+
 **`*.override` files are owned by the maintainers of the launch-system images** and are updated when the image changes; task developers only edit the `*.in`. Only a task whose `image_type` provides the build may have one, and an `*.override` without a matching `*.in` is an error.
 
 Compiling excludes those packages from the resolver output and writes the `*.override` requirements into the `*.txt` in their place, so editing one makes its `*.txt` stale. The rest of the closure is still resolved against the version on the index, which suits a dev build of an already-resolvable package (NEURON dev builds share the dependencies of the matching release).
