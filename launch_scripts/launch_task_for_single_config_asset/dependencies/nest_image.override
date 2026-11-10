@@ -1,0 +1,3 @@
+# Provided by the python_3_12_compiler_nest launch-system image.
+# Maintained with that image; not edited by task developers.
+nest-simulator==3.10.0
