@@ -2409,11 +2409,9 @@ dependencies = [
     { name = "neurom" },
     { name = "numpy" },
     { name = "obi-auth" },
-    { name = "obp-accounting-sdk" },
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pylmesh" },
-    { name = "python-multipart" },
     { name = "scipy" },
 ]
 
@@ -2542,7 +2540,6 @@ requires-dist = [
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["bluecellulab", "brian2", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
     { name = "obi-one", extras = ["connectivity", "emodel"], marker = "extra == 'service'" },
-    { name = "obp-accounting-sdk", specifier = ">=0.6.8" },
     { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
@@ -2550,7 +2547,6 @@ requires-dist = [
     { name = "pydantic-settings", marker = "extra == 'service'", specifier = ">=2.8.1" },
     { name = "pyjwt", marker = "extra == 'service'", specifier = ">=2.10.1" },
     { name = "pylmesh" },
-    { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },

@@ -49,8 +49,6 @@ dependencies = [
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
-    "python-multipart>=0.0.26",
-    "obp-accounting-sdk>=0.6.8",
     "numpy",
     "scipy",
 ]
