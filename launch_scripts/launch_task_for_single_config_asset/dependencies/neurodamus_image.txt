@@ -9,7 +9,6 @@ neurodamus==4.2.11
 h5py==3.16.0
 libsonata==0.2.2
 mpi4py==4.1.2
-aiofiles==25.1.0
 annotated-types==0.8.0
 anyio==4.15.1
 asttokens==3.0.2

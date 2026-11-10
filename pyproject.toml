@@ -36,7 +36,6 @@ dependencies = [
     "entitysdk>=0.19.33",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
-    "aiofiles",
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.10",
     "brainbuilder>=0.20.9",
