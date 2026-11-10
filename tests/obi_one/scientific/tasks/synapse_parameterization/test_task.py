@@ -27,6 +27,7 @@ from obi_one.scientific.blocks.neuron_sets.id import (
     BiophysicalPopulationIDNeuronSet,
     VirtualPopulationIDNeuronSet,
 )
+from obi_one.scientific.blocks.neuron_sets.population import BiophysicalPopulationNeuronSet
 from obi_one.scientific.blocks.synaptic_model_assigners.all_pairs import (
     AllPairsSynapticModelAssigner,
 )
@@ -572,7 +573,7 @@ def _id_neuron_set(name, ids, population=BIOPHYSICAL_POPULATION):
     )
 
 
-def _neuron_set_config(tmp_path, *, circuit=None, extra_neuron_sets=None):
+def _neuron_set_config(tmp_path, *, circuit=None, extra_neuron_sets=None, sources=None):
     """A config with an inter-set assigner and four neuron sets of its own.
 
     "Sources" and "Targets" are the two ends of the assigner. "Unused" is referenced by nothing
@@ -582,7 +583,7 @@ def _neuron_set_config(tmp_path, *, circuit=None, extra_neuron_sets=None):
     config.set(Info(campaign_name="Test", campaign_description="Test neuron sets"), name="info")
     config.set(config.Initialize(circuit=circuit or _local_circuit()), name="initialize")
 
-    sources = _id_neuron_set("sources", [0, 1, 2])
+    sources = sources or _id_neuron_set("sources", [0, 1, 2])
     targets = _id_neuron_set("targets", [3, 4])
     config.add(sources, "Sources")
     config.add(targets, "Targets")
@@ -736,3 +737,26 @@ def test_execute_declares_a_node_sets_file_for_a_circuit_without_one(tmp_path):
     assert set(stored) >= {"Sources", "Targets", "Unused", "SourcesOrTargets"}
     # The circuit had no node sets of its own, so these are all there is (plus helpers).
     assert all(name.startswith("__") or name in config.neuron_sets for name in stored)
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_a_sampled_neuron_set_is_stored_as_the_ids_the_assigner_used(tmp_path):
+    sampled = BiophysicalPopulationNeuronSet(
+        population=BIOPHYSICAL_POPULATION, sample_percentage=50.0, sample_seed=3
+    )
+    config = _neuron_set_config(tmp_path, sources=sampled)
+
+    SynapseParameterizationTask(config=config).execute(db_client=None)
+
+    # Sampling has no SONATA equivalent, so the set is stored as the explicit sampled IDs.
+    stored = _output_circuit(config).node_sets.content["Sources"]
+    sampled_ids = config.neuron_sets["Sources"].get_neuron_ids(_local_circuit())[
+        BIOPHYSICAL_POPULATION
+    ]
+    assert len(sampled_ids) == 5
+    assert stored == {"population": BIOPHYSICAL_POPULATION, "node_id": sampled_ids}
+    # The synapses the assigner selected all start at neurons of the stored set.
+    assigner = config.synapse_model_assigners["inter"]
+    selected = assigner.edge_indices(_local_circuit())
+    assert len(selected) > 0
+    assert set(selected["@source_node"]) <= set(stored["node_id"])
