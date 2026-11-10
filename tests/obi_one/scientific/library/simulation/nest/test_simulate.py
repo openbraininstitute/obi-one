@@ -11,7 +11,10 @@ from obi_one.scientific.library.simulation.nest.simulate_nest import (
 )
 from obi_one.utils.io import load_json, write_json
 
-from tests.obi_one.scientific.library.simulation.nest._circuits import write_nest_circuit
+from tests.obi_one.scientific.library.simulation.nest._circuits import (
+    read_soma_report,
+    write_nest_circuit,
+)
 
 
 def test_replayed_spikes_drive_neurons(tmp_path):
@@ -37,7 +40,7 @@ def test_simulate_requires_build(tmp_path):
 def test_run_simulation_writes_sonata_spike_report(tmp_path):
     result = write_nest_circuit(tmp_path, input_weight=5000.0)
 
-    report = run_simulation(result.simulation_config)
+    report = run_simulation(result.simulation_config).spike_report_file
 
     assert report.exists()
     with h5py.File(report, "r") as handle:
@@ -53,25 +56,31 @@ def test_run_simulation_writes_sonata_spike_report(tmp_path):
         assert {0, 2} <= set(node_ids.tolist())
 
 
-def test_run_simulation_rejects_voltage_reports(tmp_path):
+def test_run_simulation_writes_a_soma_report_that_libsonata_reads(tmp_path):
     result = write_nest_circuit(tmp_path)
-    sim_config = result.simulation_config
-    data = load_json(sim_config)
+    data = load_json(result.simulation_config)
+    data["output"] = {"output_dir": "$BASE_DIR/out", "spikes_file": "spikes.h5"}
     data["reports"] = {
         "soma_v": {
             "cells": "exc",
             "variable_name": "v",
             "sections": "soma",
             "type": "compartment",
-            "dt": 0.1,
+            "dt": 0.5,
             "start_time": 0.0,
             "end_time": 20.0,
         }
     }
-    write_json(data, sim_config)
+    write_json(data, result.simulation_config)
 
-    with pytest.raises(NotImplementedError, match="eports"):
-        run_simulation(sim_config)
+    results = run_simulation(result.simulation_config)
+
+    assert results.voltage_report_files == [tmp_path / "out" / "soma_v.h5"]
+    ids, times, values = read_soma_report(results.voltage_report_files[0], "exc")
+    assert ids.tolist() == [0, 1, 2, 3]
+    assert times == pytest.approx(np.arange(0.0, 20.0, 0.5))
+    assert values.shape == (40, 4)
+    assert np.isfinite(values).all()
 
 
 def test_kernel_runs_on_the_requested_threads(tmp_path):
@@ -95,7 +104,7 @@ def test_spike_report_does_not_depend_on_the_thread_count(tmp_path):
     reports = {}
     for threads in (1, 4):
         result = write_nest_circuit(tmp_path / str(threads), input_weight=5000.0)
-        report = run_simulation(result.simulation_config, num_threads=threads)
+        report = run_simulation(result.simulation_config, num_threads=threads).spike_report_file
         assert nest.local_num_threads == threads
         with h5py.File(report, "r") as handle:
             reports[threads] = (
@@ -125,7 +134,7 @@ def _stochastic_spikes(root, seed):
             root / "model_templates" / "exc" / f"{name}.json",
         )
     _set_run(result.simulation_config, random_seed=seed, tstop=200.0)
-    report = run_simulation(result.simulation_config)
+    report = run_simulation(result.simulation_config).spike_report_file
     with h5py.File(report, "r") as handle:
         group = handle["spikes/exc"]
         return group["timestamps"][:].tolist(), group["node_ids"][:].tolist()
@@ -157,3 +166,55 @@ def test_random_models_repeat_with_the_same_seed(tmp_path):
     assert first[0]
     assert first == again
     assert first != other
+
+
+def edit_template(circuit, population, name, edit):
+    path = circuit.circuit_config.parent / "model_templates" / population / f"{name}.json"
+    template = load_json(path)
+    edit(template)
+    write_json(template, path)
+
+
+def test_unknown_node_parameter_is_reported_with_model_and_template(tmp_path):
+    result = write_nest_circuit(tmp_path)
+    edit_template(result, "exc", "iaf_psc_alpha_type1", lambda t: t["params"].update({"C_mm": 1.0}))
+
+    with pytest.raises(ValueError, match="'exc': template 'iaf_psc_alpha_type1'") as error:
+        NestSonataNetwork(result.simulation_config).BuildNetwork()
+    assert "['C_mm']" in str(error.value)
+    assert "'iaf_psc_alpha'" in str(error.value)
+    assert "'C_m'" in str(error.value)
+
+
+def test_unknown_edge_parameter_is_reported(tmp_path):
+    result = write_nest_circuit(tmp_path)
+    edit_template(
+        result,
+        "input__exc",
+        "static_synapse",
+        lambda t: t.setdefault("params", {}).update({"U": 0.5}),
+    )
+
+    with pytest.raises(ValueError, match=r"template 'static_synapse'.*\['U'\]"):
+        NestSonataNetwork(result.simulation_config).BuildNetwork()
+
+
+def test_unknown_dynamics_parameter_is_reported(tmp_path):
+    result = write_nest_circuit(tmp_path)
+    edit_template(
+        result,
+        "exc__exc",
+        "tsodyks2_synapse",
+        lambda t: t["dynamics_params"].update({"tau_recc": "ms"}),
+    )
+
+    with pytest.raises(ValueError, match=r"\['tau_recc'\]"):
+        NestSonataNetwork(result.simulation_config).BuildNetwork()
+
+
+def test_parameters_of_the_model_are_accepted(tmp_path):
+    result = write_nest_circuit(tmp_path)
+
+    network = NestSonataNetwork(result.simulation_config)
+    network.BuildNetwork()
+    assert nest.network_size > 0
