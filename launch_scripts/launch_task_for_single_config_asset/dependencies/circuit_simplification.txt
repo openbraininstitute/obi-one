@@ -2,8 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[connectivity]==2026.11.1
-aiofiles==25.1.0
+obi-one[connectivity]==2026.11.2
 annotated-types==0.8.0
 anyio==4.15.1
 asttokens==3.0.2
@@ -94,7 +93,6 @@ neuron-reduce==0.0.7
 numexpr==2.14.2
 numpy==2.4.6
 obi-auth==1.2.1
-obp-accounting-sdk==0.6.8
 packaging==26.3
 pandas==2.3.3
 parso==0.8.7
@@ -124,7 +122,6 @@ pyparsing==3.3.3
 pytest==9.1.1
 python-dateutil==3.0.0
 python-dotenv==1.2.4
-python-multipart==0.0.32
 pytz==2026.5
 pyyaml==6.0.3
 pyzmq==27.2.0
