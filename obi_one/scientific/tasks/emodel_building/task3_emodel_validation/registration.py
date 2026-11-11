@@ -2,8 +2,8 @@
 
 Registers one ``TaskResult`` holding the run summary and figures, an overall
 ``ValidationResult`` and one ``ValidationResult`` per validation protocol, all
-validated against the EModel. The ValidationResults overwrite earlier ones of the same
-name, so the EModel carries the latest verdict (see :func:`result_name_suffix`).
+validated against the EModel. A ValidationResult of the same name is updated in place,
+so the EModel carries the latest verdict (see :func:`result_name_suffix`).
 """
 
 import json
@@ -56,8 +56,8 @@ def result_name_suffix(
 ) -> str:
     """Suffix naming the targets and settings of a Task 3 run that differ from the defaults.
 
-    Results are overwritten by name, so the latest run replaces the earlier ones of the
-    same name. A run with the optimisation's own targets and default settings has no
+    Results of the same name are updated in place, so the latest run replaces the
+    earlier ones. A run with the optimisation's own targets and default settings has no
     suffix: it replaces Task 2's results, and the EModel shows the latest verdict. Any
     other run is suffixed with what differs and replaces only its own earlier run.
     ``mark_validation`` adds ``validation``, for results that must not replace
@@ -210,7 +210,9 @@ def register_output_entities(
         "figure_files": figures,
     }
     try:
-        result_ids = register_validation_results(**results, name_suffix=suffix, overwrite=True)
+        result_ids = register_validation_results(
+            **results, name_suffix=suffix, update_existing=True
+        )
     except EntitySDKError as error:
         if not is_forbidden(error):
             raise
@@ -220,7 +222,7 @@ def register_output_entities(
             config, uses_optimisation_targets=optimisation_targets, mark_validation=True
         )
         L.warning(
-            "Not allowed to overwrite the ValidationResults of EModel %s; registering "
+            "Not allowed to update the ValidationResults of EModel %s; registering "
             "this run's results with the suffix %r instead.",
             emodel.id,
             fallback,

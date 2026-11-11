@@ -386,71 +386,24 @@ def test_result_name_suffix():
     ) == (" [validation, extraction 12345678, validation protocols only, mean_score, threshold 3]")
 
 
-def test_register_output_entities(tmp_path, monkeypatch):
-    figures = tmp_path / "figures"
-    figures.mkdir()
-    (figures / "traces.pdf").write_bytes(b"%PDF")
-    (figures / "ignored.txt").write_text("x")
-    registered = []
-
-    def fake_register(**kwargs):
-        registered.append(kwargs)
-        return SimpleNamespace(id=f"vr-{len(registered)}")
-
-    monkeypatch.setattr(validation_scoring, "register_validation_result", fake_register)
-    client = MagicMock()
-    client.register_entity.return_value = SimpleNamespace(id="tr-id")
-    asset = SimpleNamespace(id="asset-1", path="emodel_optimization_output.json")
-    client.select_assets.return_value = SimpleNamespace(one=Mock(return_value=asset))
-    client.download_content.return_value = json.dumps(
-        {"passedValidation": None, "scoreValidation": [], "parameter": []}
-    ).encode()
-    staged = SimpleNamespace(
-        provenance=SimpleNamespace(
-            emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
-        )
-    )
-    summary = {
-        "passed": False,
-        "score": 6.0,
-        "settings": {},
-        "protocols": {
-            "IDrest_150": {
-                "validation": False,
-                "passed": True,
-                "features": {"f_skip": {"score": 0.1}},
-            },
-            "IDrest_250": {
-                "validation": True,
-                "passed": False,
-                "features": {"f_val": {"score": 6.0}},
-            },
+SUMMARY = {
+    "passed": False,
+    "score": 6.0,
+    "settings": {},
+    "protocols": {
+        "IDrest_150": {
+            "validation": False,
+            "passed": True,
+            "features": {"f_skip": {"score": 0.1}},
         },
-    }
-    outputs = registration.register_output_entities(
-        make_config(),
-        tmp_path,
-        client,
-        staged=staged,
-        summary=summary,
-        figures_dir=figures,
-    )
-    assert outputs.generated_ids == ["tr-id", "vr-1", "vr-2"]
-    # Task 2's names, overwritten in place: the EModel carries the latest verdict
-    assert [r["name"] for r in registered] == [
-        "E-feature score validation",
-        "E-feature validation: IDrest_250",
-    ]
-    assert all(r["overwrite"] is True for r in registered)
-    assert registered[0]["figure_files"] == [figures / "traces.pdf"]
-    assert client.upload_file.call_count == 2
-
-    # the EModel's optimisation output verdict is refreshed with the new summary
-    update = client.update_asset_file.call_args.kwargs
-    assert update["asset_id"] == "asset-1"
-    updated = json.loads((tmp_path / "emodel_optimization_output.json").read_text())
-    assert updated["passedValidation"] is False
-    assert updated["scoreValidation"] == [{"name": "f_val", "value": 6.0, "unitCode": ""}]
+        "IDrest_250": {
+            "validation": True,
+            "passed": False,
+            "features": {"f_val": {"score": 6.0}},
+        },
+    },
+}
+TASK2_NAMES = ["E-feature score validation", "E-feature validation: IDrest_250"]
 
 
 def http_error(status_code):
@@ -462,59 +415,146 @@ def http_error(status_code):
     return error
 
 
-def register_minimal_output(tmp_path, monkeypatch, fake_register):
-    """Run register_output_entities with one validation protocol and no figures."""
-    monkeypatch.setattr(validation_scoring, "register_validation_result", fake_register)
-    monkeypatch.setattr(registration, "sync_emodel_output_verdict", Mock())
+def validation_client(existing=()):
+    """A client whose EModel already has ValidationResults named ``existing`` (one each)."""
     client = MagicMock()
     client.register_entity.return_value = SimpleNamespace(id="tr-id")
+
+    def search_entity(*, entity_type, query):
+        del entity_type
+        name = query["name"]
+        matches = [SimpleNamespace(id=f"old {name}")] if name in existing else []
+        return SimpleNamespace(all=Mock(return_value=matches))
+
+    client.search_entity.side_effect = search_entity
+    return client
+
+
+def run_registration(tmp_path, monkeypatch, client, *, register=None, update=None):
+    """register_output_entities on SUMMARY, with fake entitysdk register/update helpers."""
+    registered, updated = [], []
+
+    def fake_register(**kwargs):
+        registered.append(kwargs)
+        return SimpleNamespace(id=f"new {kwargs['name']}")
+
+    def fake_update(**kwargs):
+        updated.append(kwargs)
+        return SimpleNamespace(id=kwargs["validation_result_id"])
+
+    monkeypatch.setattr(validation_scoring, "register_validation_result", register or fake_register)
+    monkeypatch.setattr(validation_scoring, "update_validation_result", update or fake_update)
+    monkeypatch.setattr(registration, "sync_emodel_output_verdict", Mock())
+    figures = tmp_path / "figures"
+    figures.mkdir(exist_ok=True)
+    (figures / "traces.pdf").write_bytes(b"%PDF")
+    (figures / "ignored.txt").write_text("x")
     staged = SimpleNamespace(
         provenance=SimpleNamespace(
             emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
         )
     )
-    summary = {
-        "passed": True,
-        "score": 1.0,
-        "settings": {},
-        "protocols": {"IDrest_250": {"validation": True, "passed": True, "features": {}}},
-    }
-    return registration.register_output_entities(
+    outputs = registration.register_output_entities(
+        make_config(), tmp_path, client, staged=staged, summary=SUMMARY, figures_dir=figures
+    )
+    return outputs, registered, updated
+
+
+def test_register_output_entities_registers_new_results(tmp_path, monkeypatch):
+    client = validation_client()
+
+    outputs, registered, updated = run_registration(tmp_path, monkeypatch, client)
+
+    # the optimisation's own targets and default settings: Task 2's names, no suffix
+    assert [r["name"] for r in registered] == TASK2_NAMES
+    assert updated == []
+    assert registered[0]["figure_files"] == [tmp_path / "figures" / "traces.pdf"]
+    assert outputs.generated_ids == ["tr-id", *(f"new {name}" for name in TASK2_NAMES)]
+    assert client.upload_file.call_count == 2  # TaskResult: summary + one figure
+
+
+def test_register_output_entities_updates_task2_results(tmp_path, monkeypatch):
+    """Task 2's results are updated in place, so the EModel carries the latest verdict."""
+    client = validation_client(existing=TASK2_NAMES)
+
+    outputs, registered, updated = run_registration(tmp_path, monkeypatch, client)
+
+    assert registered == []
+    assert [u["validation_result_id"] for u in updated] == [f"old {n}" for n in TASK2_NAMES]
+    assert [u["passed"] for u in updated] == [False, False]
+    # the overall result's figures are replaced; the per-protocol results have none
+    assert updated[0]["figure_files"] == [tmp_path / "figures" / "traces.pdf"]
+    assert updated[1]["figure_files"] is None
+    assert all(json.loads(u["details_text"]) for u in updated)
+    assert outputs.generated_ids == ["tr-id", *(f"old {name}" for name in TASK2_NAMES)]
+
+
+def test_register_output_entities_rejects_ambiguous_results(tmp_path, monkeypatch):
+    client = validation_client()
+    client.search_entity.side_effect = None
+    client.search_entity.return_value.all.return_value = [
+        SimpleNamespace(id="a"),
+        SimpleNamespace(id="b"),
+    ]
+
+    with pytest.raises(ValueError, match="cannot choose the one to update"):
+        run_registration(tmp_path, monkeypatch, client)
+
+
+def test_register_output_entities_falls_back_when_results_are_another_users(tmp_path, monkeypatch):
+    """Results owned by another user (403) are not updated: this run's go next to them."""
+
+    def forbidden(**_):
+        raise http_error(403)
+
+    client = validation_client(existing=TASK2_NAMES)
+
+    outputs, registered, _ = run_registration(tmp_path, monkeypatch, client, update=forbidden)
+
+    assert [r["name"] for r in registered] == [f"{name} [validation]" for name in TASK2_NAMES]
+    assert outputs.generated_ids == ["tr-id", *(f"new {r['name']}" for r in registered)]
+
+
+def test_register_output_entities_reraises_other_errors(tmp_path, monkeypatch):
+    def server_error(**_):
+        raise http_error(500)
+
+    client = validation_client(existing=TASK2_NAMES)
+
+    with pytest.raises(EntitySDKError, match="HTTP error 500"):
+        run_registration(tmp_path, monkeypatch, client, update=server_error)
+
+
+def test_register_output_entities_refreshes_optimisation_output(tmp_path, monkeypatch):
+    """The EModel's optimisation output verdict is refreshed with the new summary."""
+    monkeypatch.setattr(
+        validation_scoring, "register_validation_result", lambda **_: SimpleNamespace(id="vr")
+    )
+    client = validation_client()
+    asset = SimpleNamespace(id="asset-1", path="emodel_optimization_output.json")
+    client.select_assets.return_value = SimpleNamespace(one=Mock(return_value=asset))
+    client.download_content.return_value = json.dumps(
+        {"passedValidation": None, "scoreValidation": [], "parameter": []}
+    ).encode()
+    staged = SimpleNamespace(
+        provenance=SimpleNamespace(
+            emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
+        )
+    )
+
+    registration.register_output_entities(
         make_config(),
         tmp_path,
         client,
         staged=staged,
-        summary=summary,
-        figures_dir=tmp_path / "figures",
+        summary=SUMMARY,
+        figures_dir=tmp_path / "no-figures",
     )
 
-
-def test_register_output_entities_falls_back_when_results_are_another_users(tmp_path, monkeypatch):
-    """Results owned by another user (403) are not overwritten: this run's go next to them."""
-    calls = []
-
-    def fake_register(**kwargs):
-        calls.append(kwargs)
-        if kwargs["overwrite"]:
-            raise http_error(403)
-        return SimpleNamespace(id=f"vr-{len(calls)}")
-
-    outputs = register_minimal_output(tmp_path, monkeypatch, fake_register)
-
-    fallback = [c["name"] for c in calls if not c["overwrite"]]
-    assert fallback == [
-        "E-feature score validation [validation]",
-        "E-feature validation: IDrest_250 [validation]",
-    ]
-    assert outputs.generated_ids == ["tr-id", "vr-2", "vr-3"]
-
-
-def test_register_output_entities_reraises_other_errors(tmp_path, monkeypatch):
-    def fake_register(**_):
-        raise http_error(500)
-
-    with pytest.raises(EntitySDKError, match="HTTP error 500"):
-        register_minimal_output(tmp_path, monkeypatch, fake_register)
+    assert client.update_asset_file.call_args.kwargs["asset_id"] == "asset-1"
+    updated = json.loads((tmp_path / "emodel_optimization_output.json").read_text())
+    assert updated["passedValidation"] is False
+    assert updated["scoreValidation"] == [{"name": "f_val", "value": 6.0, "unitCode": ""}]
 
 
 def test_is_forbidden():
