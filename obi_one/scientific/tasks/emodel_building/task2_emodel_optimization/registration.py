@@ -27,7 +27,6 @@ from entitysdk.registration.memodel import (
 from entitysdk.registration.validation_result import (
     SUFFIX_TO_NAME,
     register_memodel_validation_results,
-    register_validation_result,
 )
 from entitysdk.types import (
     ID,
@@ -39,6 +38,9 @@ from entitysdk.types import (
 )
 
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.library.memodel_calibration_validation import (
+    registrable_validation_results,
+)
 from obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.config import (
     EModelOptimizationSingleConfig,
 )
@@ -77,13 +79,17 @@ class RegisteredOptimizationOutputs:
     generated_ids: list[str]
 
 
-def parse_final_json(final_path: Path, emodel_name: str) -> dict:
-    """Parse final.json (written by store_best_model) for score, calibration, iteration.
+def parse_final_json(final_path: Path, emodel_name: str, seed: int) -> dict:
+    """Parse final.json (written by store_best_model) for the model's score and iteration.
 
-    BluePyEModel's ``store_best_model`` writes ``final.json`` at the
-    coordinate output root. Its structure is::
+    BluePyEModel's ``store_best_model`` writes ``final.json`` at the coordinate
+    output root, one entry per optimised model keyed ``{emodel}__{seed}``::
 
-        {emodel_name: [{fitness, holding_current, threshold_current, ...}]}
+        {"L5PC__1": {"emodel": "L5PC", "seed": 1, "score": <sum of the objective
+                     scores>, "fitness": {<objective>: <score>}, "iteration": ..., ...}}
+
+    ``final.json`` holds no holding/threshold currents, so those are ``None``; the
+    MEModel calibration computes them.
 
     Returns a dict with keys: name, total_score, holding_current,
     threshold_current, iteration.
@@ -100,37 +106,34 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
         return defaults
 
     data = json.loads(final_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
+    entry = find_emodel_data(data, emodel_name, seed) if isinstance(data, dict) else None
+    if entry is None or entry.get("score") is None:
+        L.warning(
+            "final.json at %s has no scored entry for emodel=%r, seed=%s; using defaults.",
+            final_path,
+            emodel_name,
+            seed,
+        )
         return defaults
 
-    models = data.get(emodel_name, [])
-    if not models:
-        # Try the placeholder key "emodel" that extraction stage writes
-        models = data.get("emodel", [])
-    if not models:
-        return defaults
-
-    best = models[0] if isinstance(models, list) else models
-    total_score = float(best.get("fitness", best.get("score", 0.0)))
-    holding_current = best.get("holding_current")
-    threshold_current = best.get("threshold_current")
-
-    # Iteration from the model dict or filename convention
-    iteration = str(best.get("iteration", "0"))
-
+    iteration = entry.get("iteration")
     return {
         "name": emodel_name,
-        "total_score": total_score,
-        "holding_current": holding_current,
-        "threshold_current": threshold_current,
-        "iteration": iteration,
+        "total_score": float(entry["score"]),
+        "holding_current": entry.get("holding_current"),
+        "threshold_current": entry.get("threshold_current"),
+        "iteration": defaults["iteration"] if iteration is None else str(iteration),
     }
 
 
 def find_emodel_data(data: dict, emodel_name: str, seed: int) -> dict | None:
     """Return the ``final.json`` entry matching ``emodel_name`` and ``seed``, if any."""
     for entry in data.values():
-        if entry.get("emodel") == emodel_name and entry.get("seed") == seed:
+        if (
+            isinstance(entry, dict)
+            and entry.get("emodel") == emodel_name
+            and entry.get("seed") == seed
+        ):
             return entry
     return None
 
@@ -316,7 +319,9 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
 
     # EModel analysis figures are registered as ValidationResult assets by
     # register_emodel; entitysdk uploads them with extension-preserving names.
-    # Only BluePyEModel figure kinds known to entitysdk are registered.
+    # Only BluePyEModel figure kinds known to entitysdk are registered, including its
+    # thumbnail (thumbnail generation looks up ValidationResult(name="thumbnail") on the
+    # EModel).
     emodel_figures: list[Path] = [
         fp
         for fp in sorted(figures_dir.rglob("*"))
@@ -394,7 +399,10 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         ),
         electrical_cell_recording_ids=trace_ids or [],
         validation_result_figure_files=emodel_figures,
-        validation_result_status=False,
+        # Analysis figures are not tests. The platform's EModel verdict is the AND of
+        # all its ValidationResults, so it comes from the e-feature score validation
+        # registered below.
+        validation_result_status=True,
     )
     L.info("EModel registered: %s", emodel_entity.id)
 
@@ -443,32 +451,14 @@ def register_output_entities(  # ruff: ignore[too-many-locals,too-many-statement
         if calibration_result is not None:
             generated_ids.append(str(calibration_result.id))
     if validation is not None:
-        # Thumbnail generation looks up ValidationResult(name="thumbnail") on
-        # the EModel; bluecellulab's thumbnail entry is also registered against
-        # the MEModel below.
-        thumbnail_figures = [
-            Path(figure)
-            for value in validation.values()
-            if isinstance(value, dict) and value.get("name") == "thumbnail"
-            for figure in value.get("figures", [])
-        ]
-        if thumbnail_figures:
-            emodel_thumbnail = register_validation_result(
-                client=db_client,
-                name="thumbnail",
-                passed=True,
-                validated_entity_id=emodel_entity.id,
-                authorized_public=authorized_public,
-                figure_files=thumbnail_figures,
-            )
-            if emodel_thumbnail is not None:
-                generated_ids.append(str(emodel_thumbnail.id))
+        # The bluecellulab validations (with their thumbnail) belong to the MEModel only;
+        # the EModel carries its own analysis figures and e-feature validation.
         generated_ids.extend(
             str(result.id)
             for result in register_memodel_validation_results(
                 client=db_client,
                 memodel_id=memodel_entity.id,
-                validation_dict=validation,
+                validation_dict=registrable_validation_results(validation),
                 authorized_public=authorized_public,
             )
         )

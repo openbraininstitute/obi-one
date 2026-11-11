@@ -570,7 +570,8 @@ def test_register_output_entities_registers_all_outputs_and_updates_activity(tmp
     assert calls["emodel"]["score"] == pytest.approx(2.5)
     assert calls["emodel"]["iteration"] == "4"
     assert calls["emodel"]["electrical_cell_recording_ids"] == ["trace-1"]
-    assert calls["emodel"]["validation_result_status"] is False
+    # analysis figures are not tests
+    assert calls["emodel"]["validation_result_status"] is True
     assert calls["memodel"]["emodel"].id == "emodel-id"
     assert calls["memodel"]["validation_status"] == ValidationStatus.created
     assert calls["emodel"]["lifecycle_status"] == EntityLifecycleStatus.active
@@ -603,10 +604,8 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
     _install_registration_helpers(monkeypatch, calls)
     config, db_client, _, _, _, _ = _registration_fixture(tmp_path)
     cal = Mock(return_value=SimpleNamespace(id="cal-1"))
-    thumb = Mock(return_value=SimpleNamespace(id="thumb-1"))
-    reg_val = Mock(return_value=[SimpleNamespace(id="vr-1")])
+    reg_val = Mock(side_effect=lambda **kw: [SimpleNamespace(id=f"vr-{kw['memodel_id']}")])
     monkeypatch.setattr(registration, "register_memodel_calibration_result", cal)
-    monkeypatch.setattr(registration, "register_validation_result", thumb)
     monkeypatch.setattr(registration, "register_memodel_validation_results", reg_val)
 
     outputs = registration.register_output_entities(
@@ -617,6 +616,11 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
             calibration={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0},
             memodel_validation={
                 "spike_test": {"name": "SpikeTest", "passed": True},
+                "ais_test": {
+                    "name": "AisTest",
+                    "passed": True,
+                    "validation_details": "Validation skipped: Cell does not have an axon section.",
+                },
                 "thumbnail_test": {
                     "name": "thumbnail",
                     "passed": True,
@@ -632,21 +636,52 @@ def test_register_output_entities_registers_calibration_and_validation(tmp_path,
     cal.assert_called_once()
     assert cal.call_args.kwargs["calibrated_entity_id"] == "memodel-id"
     assert cal.call_args.kwargs["threshold_current"] == pytest.approx(0.2)
-    # thumbnail generation expects a "thumbnail" ValidationResult on the EModel
-    thumb.assert_called_once()
-    assert thumb.call_args.kwargs["name"] == "thumbnail"
-    assert thumb.call_args.kwargs["validated_entity_id"] == "emodel-id"
-    assert thumb.call_args.kwargs["figure_files"] == [Path("t.png")]
+    # the bluecellulab validations (with their thumbnail) go on the MEModel only;
+    # skipped checks are not registered
     reg_val.assert_called_once()
     assert reg_val.call_args.kwargs["memodel_id"] == "memodel-id"
+    assert reg_val.call_args.kwargs["validation_dict"] == {
+        "spike_test": {"name": "SpikeTest", "passed": True},
+        "thumbnail_test": {"name": "thumbnail", "passed": True, "figures": ["t.png"]},
+    }
     assert outputs.generated_ids == [
         "task-result-id",
         "emodel-id",
         "memodel-id",
         "cal-1",
-        "thumb-1",
-        "vr-1",
+        "vr-memodel-id",
     ]
+
+
+@pytest.mark.parametrize("emodel_passed", [True, False])
+def test_register_output_entities_figure_results_are_not_verdicts(
+    tmp_path, monkeypatch, emodel_passed
+):
+    """Figures pass whatever the verdict; the e-feature verdict gets its own results."""
+    calls = {}
+    _install_registration_helpers(monkeypatch, calls)
+    config, db_client, _, _, _, _ = _registration_fixture(tmp_path)
+    reg_results = Mock(return_value=[])
+    monkeypatch.setattr(registration, "register_validation_results", reg_results)
+
+    registration.register_output_entities(
+        config,
+        tmp_path,
+        db_client,
+        pipeline_results=_pipeline_results(
+            emodel_validation={
+                "passed": emodel_passed,
+                "score": 1.0,
+                "settings": {},
+                "protocols": {},
+            }
+        ),
+    )
+
+    assert calls["emodel"]["validation_result_status"] is True
+    reg_results.assert_called_once()
+    assert reg_results.call_args.kwargs["validated_entity_id"] == "emodel-id"
+    assert reg_results.call_args.kwargs["summary"]["passed"] is emodel_passed
 
 
 def test_register_output_entities_raises_when_checkpoint_missing(tmp_path, monkeypatch):
@@ -705,6 +740,8 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
     (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
     traces = tmp_path / "figures" / "nested" / "emodel=test__seed=7__traces.pdf"
     traces.write_text("pdf", encoding="utf-8")
+    thumbnail = tmp_path / "figures" / "nested" / "emodel=test__seed=7__thumbnail.png"
+    thumbnail.write_text("png", encoding="utf-8")
     (tmp_path / "final.json").write_text(json.dumps({"test": [{"fitness": 1.0}]}), encoding="utf-8")
 
     registration.register_output_entities(
@@ -713,8 +750,9 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
 
     figure_paths = db_client.upload_directory.call_args.kwargs["paths"]
     assert Path("nested/validation.pdf") in figure_paths
-    # only recognised BluePyEModel figure kinds go to entitysdk's register_emodel
-    assert calls["emodel"]["validation_result_figure_files"] == [traces]
+    # only recognised BluePyEModel figure kinds, its thumbnail included, go to
+    # entitysdk's register_emodel
+    assert calls["emodel"]["validation_result_figure_files"] == [thumbnail, traces]
 
 
 def _config_data_for_selection(selection, distributions=None, **overrides):
@@ -939,6 +977,11 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     monkeypatch.setattr(staging, "stage_traces", Mock(return_value=["trace-1"]))
     artifacts = Mock()
     monkeypatch.setattr(staging, "build_artifacts", Mock(return_value=artifacts))
+    monkeypatch.setattr(
+        "obi_one.scientific.tasks.emodel_building.task2_emodel_optimization.task."
+        "align_validation_protocols",
+        Mock(return_value=[]),
+    )
     register_outputs = Mock(
         return_value=RegisteredOptimizationOutputs(
             task_result_id="task-result-id",
@@ -963,14 +1006,15 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     (tmp_path / "final.json").write_text(
         json.dumps(
             {
-                "test": [
-                    {
-                        "fitness": 1.5,
-                        "holding_current": -0.05,
-                        "threshold_current": 0.15,
-                        "iteration": 2,
-                    }
-                ]
+                "test__7": {
+                    "emodel": "test",
+                    "seed": 7,
+                    "score": 1.5,
+                    "fitness": {"IDrest_150.soma.v.mean_frequency": 1.5},
+                    "holding_current": -0.05,
+                    "threshold_current": 0.15,
+                    "iteration": 2,
+                }
             }
         ),
         encoding="utf-8",

@@ -23,9 +23,9 @@ The task:
 1. registers the `MEModel` with `validation_status=created` and writes it to the activity's `generated` straight away, so it can be linked while the rest runs, then registers its creator `Contribution` and its m-type and e-type classifications;
 2. downloads the ME-model's hoc, morphology and mechanisms and compiles the mechanisms;
 3. calibrates it (holding current, rheobase and input resistance, starting from a holding current of 0 nA and a threshold current of 0.1 nA) and registers an `MEModelCalibrationResult` straight away, so the ME-model can be simulated while it is validated;
-4. runs the bluecellulab validations with the calibrated currents, registers one `ValidationResult` per validation, then sets `validation_status=done`.
+4. runs the bluecellulab validations with the calibrated currents, registers one `ValidationResult` per validation (skipped checks, e.g. the AIS test on an axonless cell, are not registered), then sets `validation_status=done` when every test passed.
 
-`done` means the validations ran; each `ValidationResult` says whether its test passed. When a step after the registration fails, the ME-model stays with `validation_status=error` and the activity ends in error. A calibration registered before a failed validation stays.
+`done` means every validation test passed; when one fails the status stays `created`, and each `ValidationResult` says whether its test passed. The `thumbnail` entry is a figure, not a test, and does not count. When a step after the registration fails, the ME-model stays with `validation_status=error` and the activity ends in error. A calibration registered before a failed validation stays.
 
 ## Running
 

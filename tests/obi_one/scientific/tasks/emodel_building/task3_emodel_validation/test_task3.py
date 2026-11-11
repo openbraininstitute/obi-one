@@ -1,9 +1,10 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
 
 import pytest
+from entitysdk.exception import EntitySDKError, IteratorResultError
 from pydantic import ValidationError
 
 pytest.importorskip("bluepyemodel")
@@ -98,7 +99,7 @@ def test_stage_final_entry_keeps_only_the_seed(tmp_path, monkeypatch):
     provenance = SimpleNamespace(
         emodel=SimpleNamespace(seed=1),
         config=SimpleNamespace(initialize=SimpleNamespace(emodel="L5PC")),
-        task_result=None,
+        task_result=SimpleNamespace(id="tr-id"),
     )
     entry = staging.stage_final_entry(provenance, tmp_path, MagicMock())
     written = json.loads((tmp_path / "final.json").read_text())
@@ -114,10 +115,66 @@ def test_stage_final_entry_missing_seed_raises(tmp_path, monkeypatch):
     provenance = SimpleNamespace(
         emodel=SimpleNamespace(seed=1),
         config=SimpleNamespace(initialize=SimpleNamespace(emodel="L5PC")),
-        task_result=None,
+        task_result=SimpleNamespace(id="tr-id"),
     )
     with pytest.raises(ValueError, match="seed=1"):
         staging.stage_final_entry(provenance, tmp_path, MagicMock())
+
+
+def synthesized_provenance(task_result=None):
+    return SimpleNamespace(
+        emodel=SimpleNamespace(
+            id="emodel-id",
+            seed=7,
+            iteration="thalamoreticular",
+            score=3.5,
+            species=SimpleNamespace(name="Mus musculus"),
+            brain_region=SimpleNamespace(name="TH"),
+            etypes=[SimpleNamespace(pref_label="dNAD_ltb")],
+            mtypes=[SimpleNamespace(pref_label="VPM_TC")],
+        ),
+        config=SimpleNamespace(initialize=SimpleNamespace(emodel="EM__test__0")),
+        task_result=task_result,
+    )
+
+
+def test_stage_final_entry_synthesized_from_emodel_output(tmp_path, monkeypatch):
+    output = {
+        "parameter": [{"name": "g_pas.all", "value": 4e-5}],
+        "fitness": 3.5,
+        "score": [{"name": "Step_150.soma.v.AP_amplitude", "value": 0.2}],
+        "features": [{"name": "Step_150.soma.v.AP_amplitude", "value": 45.0}],
+        "seed": 7,
+    }
+    monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: output)
+    entry = staging.stage_final_entry(synthesized_provenance(), tmp_path, MagicMock())
+    written = json.loads((tmp_path / "final.json").read_text())
+    assert list(written) == ["EM__test__0__7"]
+    assert entry["parameters"] == {"g_pas.all": 4e-5}
+    assert entry["etype"] == "dNAD_ltb"
+    assert entry["mtype"] == "VPM_TC"
+    assert entry["species"] == "Mus musculus"
+    assert entry["brain_region"] == "TH"
+    assert entry["iteration"] == "thalamoreticular"
+    assert entry["fitness"] == {"Step_150.soma.v.AP_amplitude": 0.2}
+    assert entry["features"] == {"Step_150.soma.v.AP_amplitude": 45.0}
+    assert entry["validated"] is None
+    assert entry["validation_fitness"] == {}
+
+
+def test_stage_final_entry_synthesized_requires_parameters(tmp_path, monkeypatch):
+    monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: {"parameter": []})
+    with pytest.raises(ValueError, match="no parameters"):
+        staging.stage_final_entry(synthesized_provenance(), tmp_path, MagicMock())
+
+
+def test_stage_final_entry_synthesized_requires_optimisation_output(tmp_path, monkeypatch):
+    def raise_empty(**_):
+        raise IteratorResultError
+
+    monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", raise_empty)
+    with pytest.raises(ValueError, match="no emodel_optimization_output asset"):
+        staging.stage_final_entry(synthesized_provenance(), tmp_path, MagicMock())
 
 
 def test_resolve_provenance_without_activity_raises():
@@ -125,6 +182,110 @@ def test_resolve_provenance_without_activity_raises():
     client.search_entity.return_value.first.return_value = None
     with pytest.raises(ValueError, match="only e-models optimised on the platform"):
         staging.resolve_optimisation_provenance(str(uuid4()), client)
+
+
+class TestTaskConfigJson:
+    @staticmethod
+    def raise_empty(**_):
+        raise IteratorResultError
+
+    def test_missing_asset_returns_none(self, monkeypatch):
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", self.raise_empty)
+        task_config = SimpleNamespace(id="config-id", assets=[])
+        assert staging._task_config_json(task_config, MagicMock()) is None
+
+    def test_duplicate_assets_raise(self, monkeypatch):
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", self.raise_empty)
+        asset = SimpleNamespace(label=staging.AssetLabel.task_config)
+        task_config = SimpleNamespace(id="config-id", assets=[asset, asset])
+        with pytest.raises(IteratorResultError):
+            staging._task_config_json(task_config, MagicMock())
+
+
+# A scanned (list-valued) field cannot be deserialized as a single optimisation config.
+UNBUILDABLE_CONFIG = {"type": "EModelOptimizationSingleConfig", "initialize": {"seed": [1, 2]}}
+
+
+def single_task_config_client():
+    """A client whose optimisation activity used exactly one TaskConfig."""
+    task_config_id = uuid4()
+    activity = SimpleNamespace(
+        id="activity-id",
+        used=[SimpleNamespace(id=task_config_id, type=staging.EntityType.task_config)],
+        generated=[],
+    )
+    client = MagicMock()
+    client.search_entity.return_value.first.return_value = activity
+    client.get_entity.return_value = SimpleNamespace(id=task_config_id)
+    return client
+
+
+def test_resolve_provenance_unrebuildable_campaign_config_raises(monkeypatch):
+    monkeypatch.setattr(staging, "_task_config_json", lambda *_: None)
+    monkeypatch.setattr(staging, "_campaign_config_json", lambda *_: UNBUILDABLE_CONFIG)
+    with pytest.raises(ValueError, match="cannot be rebuilt as a single optimisation config"):
+        staging.resolve_optimisation_provenance(str(uuid4()), single_task_config_client())
+
+
+def test_resolve_provenance_invalid_own_config_raises_validation_error(monkeypatch):
+    """A TaskConfig's own invalid config is reported as is, not as a campaign problem."""
+    campaign_config_json = Mock()
+    monkeypatch.setattr(staging, "_task_config_json", lambda *_: UNBUILDABLE_CONFIG)
+    monkeypatch.setattr(staging, "_campaign_config_json", campaign_config_json)
+    with pytest.raises(ValidationError):
+        staging.resolve_optimisation_provenance(str(uuid4()), single_task_config_client())
+    campaign_config_json.assert_not_called()
+
+
+class TestCampaignConfigJson:
+    @staticmethod
+    def task_config(**kwargs):
+        defaults = {
+            "id": "config-id",
+            "meta": {"scan_parameters": {}},
+            "task_config_generator_id": "campaign-id",
+        }
+        return SimpleNamespace(**(defaults | kwargs))
+
+    def test_rebuilds_single_config_from_scan_form(self, monkeypatch):
+        scan = {
+            "type": "GridScanGenerationTask",
+            "form": {"type": "EModelOptimizationScanConfig", "initialize": {"emodel": "L5PC"}},
+        }
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: scan)
+        client = MagicMock()
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id", assets=[])
+        result = staging._campaign_config_json(self.task_config(), client)
+        assert result["type"] == "EModelOptimizationSingleConfig"
+        assert result["initialize"] == {"emodel": "L5PC"}
+
+    def test_bare_scan_config_without_form(self, monkeypatch):
+        scan = {"type": "EModelOptimizationScanConfig", "initialize": {"emodel": "L5PC"}}
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", lambda **_: scan)
+        client = MagicMock()
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id", assets=[])
+        result = staging._campaign_config_json(self.task_config(), client)
+        assert result["type"] == "EModelOptimizationSingleConfig"
+
+    def test_scan_parameters_raise(self):
+        task_config = self.task_config(meta={"scan_parameters": {"seed": [1, 2]}})
+        with pytest.raises(ValueError, match="cannot be reconstructed"):
+            staging._campaign_config_json(task_config, MagicMock())
+
+    def test_missing_campaign_raises(self):
+        task_config = self.task_config(task_config_generator_id=None)
+        with pytest.raises(ValueError, match="no task_config asset and no campaign"):
+            staging._campaign_config_json(task_config, MagicMock())
+
+    def test_missing_campaign_asset_raises(self, monkeypatch):
+        def raise_empty(**_):
+            raise IteratorResultError
+
+        monkeypatch.setattr(staging.db_sdk, "select_json_asset_content", raise_empty)
+        client = MagicMock()
+        client.get_entity.return_value = SimpleNamespace(id="campaign-id", assets=[])
+        with pytest.raises(ValueError, match="no task_config asset either"):
+            staging._campaign_config_json(self.task_config(), client)
 
 
 class TestSummariseModel:
@@ -201,8 +362,14 @@ def test_uses_optimisation_targets():
 
 
 def test_result_name_suffix():
-    suffix = registration.result_name_suffix(make_config(), uses_optimisation_targets=True)
-    assert suffix == " [validation]"
+    # the optimisation's own targets and default settings: Task 2's names
+    assert not registration.result_name_suffix(make_config(), uses_optimisation_targets=True)
+    assert (
+        registration.result_name_suffix(
+            make_config(), uses_optimisation_targets=True, mark_validation=True
+        )
+        == " [validation]"
+    )
     config = make_config(
         targets="1234567890",
         settings={
@@ -212,53 +379,199 @@ def test_result_name_suffix():
         },
     )
     assert registration.result_name_suffix(config, uses_optimisation_targets=False) == (
-        " [validation, extraction 12345678, validation protocols only, mean_score, threshold 3]"
+        " [extraction 12345678, validation protocols only, mean_score, threshold 3]"
     )
+    assert registration.result_name_suffix(
+        config, uses_optimisation_targets=False, mark_validation=True
+    ) == (" [validation, extraction 12345678, validation protocols only, mean_score, threshold 3]")
 
 
-def test_register_output_entities(tmp_path, monkeypatch):
-    figures = tmp_path / "figures"
-    figures.mkdir()
-    (figures / "traces.pdf").write_bytes(b"%PDF")
-    (figures / "ignored.txt").write_text("x")
-    registered = []
+SUMMARY = {
+    "passed": False,
+    "score": 6.0,
+    "settings": {},
+    "protocols": {
+        "IDrest_150": {
+            "validation": False,
+            "passed": True,
+            "features": {"f_skip": {"score": 0.1}},
+        },
+        "IDrest_250": {
+            "validation": True,
+            "passed": False,
+            "features": {"f_val": {"score": 6.0}},
+        },
+    },
+}
+TASK2_NAMES = ["E-feature score validation", "E-feature validation: IDrest_250"]
+
+
+def http_error(status_code):
+    """An entitysdk error raised from an HTTP error with ``status_code``."""
+    cause = Exception("HTTP status error")
+    cause.response = SimpleNamespace(status_code=status_code)  # like httpx's HTTPStatusError
+    error = EntitySDKError(f"HTTP error {status_code}")
+    error.__cause__ = cause
+    return error
+
+
+def validation_client(existing=()):
+    """A client whose EModel already has ValidationResults named ``existing`` (one each)."""
+    client = MagicMock()
+    client.register_entity.return_value = SimpleNamespace(id="tr-id")
+
+    def search_entity(*, entity_type, query):
+        del entity_type
+        name = query["name"]
+        matches = [SimpleNamespace(id=f"old {name}")] if name in existing else []
+        return SimpleNamespace(all=Mock(return_value=matches))
+
+    client.search_entity.side_effect = search_entity
+    return client
+
+
+def run_registration(tmp_path, monkeypatch, client, *, register=None, update=None):
+    """register_output_entities on SUMMARY, with fake entitysdk register/update helpers."""
+    registered, updated = [], []
 
     def fake_register(**kwargs):
         registered.append(kwargs)
-        return SimpleNamespace(id=f"vr-{len(registered)}")
+        return SimpleNamespace(id=f"new {kwargs['name']}")
 
-    monkeypatch.setattr(validation_scoring, "register_validation_result", fake_register)
-    client = MagicMock()
-    client.register_entity.return_value = SimpleNamespace(id="tr-id")
+    def fake_update(**kwargs):
+        updated.append(kwargs)
+        return SimpleNamespace(id=kwargs["validation_result_id"])
+
+    monkeypatch.setattr(validation_scoring, "register_validation_result", register or fake_register)
+    monkeypatch.setattr(validation_scoring, "update_validation_result", update or fake_update)
+    monkeypatch.setattr(registration, "sync_emodel_output_verdict", Mock())
+    figures = tmp_path / "figures"
+    figures.mkdir(exist_ok=True)
+    (figures / "traces.pdf").write_bytes(b"%PDF")
+    (figures / "ignored.txt").write_text("x")
     staged = SimpleNamespace(
         provenance=SimpleNamespace(
             emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
         )
     )
-    summary = {
-        "passed": False,
-        "score": 6.0,
-        "settings": {},
-        "protocols": {
-            "IDrest_150": {"validation": False, "passed": True},
-            "IDrest_250": {"validation": True, "passed": False},
-        },
-    }
     outputs = registration.register_output_entities(
+        make_config(), tmp_path, client, staged=staged, summary=SUMMARY, figures_dir=figures
+    )
+    return outputs, registered, updated
+
+
+def test_register_output_entities_registers_new_results(tmp_path, monkeypatch):
+    client = validation_client()
+
+    outputs, registered, updated = run_registration(tmp_path, monkeypatch, client)
+
+    # the optimisation's own targets and default settings: Task 2's names, no suffix
+    assert [r["name"] for r in registered] == TASK2_NAMES
+    assert updated == []
+    assert registered[0]["figure_files"] == [tmp_path / "figures" / "traces.pdf"]
+    assert outputs.generated_ids == ["tr-id", *(f"new {name}" for name in TASK2_NAMES)]
+    assert client.upload_file.call_count == 2  # TaskResult: summary + one figure
+
+
+def test_register_output_entities_updates_task2_results(tmp_path, monkeypatch):
+    """Task 2's results are updated in place, so the EModel carries the latest verdict."""
+    client = validation_client(existing=TASK2_NAMES)
+
+    outputs, registered, updated = run_registration(tmp_path, monkeypatch, client)
+
+    assert registered == []
+    assert [u["validation_result_id"] for u in updated] == [f"old {n}" for n in TASK2_NAMES]
+    assert [u["passed"] for u in updated] == [False, False]
+    # the overall result's figures are replaced; the per-protocol results have none
+    assert updated[0]["figure_files"] == [tmp_path / "figures" / "traces.pdf"]
+    assert updated[1]["figure_files"] is None
+    assert all(json.loads(u["details_text"]) for u in updated)
+    assert outputs.generated_ids == ["tr-id", *(f"old {name}" for name in TASK2_NAMES)]
+
+
+def test_register_output_entities_rejects_ambiguous_results(tmp_path, monkeypatch):
+    client = validation_client()
+    client.search_entity.side_effect = None
+    client.search_entity.return_value.all.return_value = [
+        SimpleNamespace(id="a"),
+        SimpleNamespace(id="b"),
+    ]
+
+    with pytest.raises(ValueError, match="cannot choose the one to update"):
+        run_registration(tmp_path, monkeypatch, client)
+
+
+def test_register_output_entities_falls_back_when_results_are_another_users(tmp_path, monkeypatch):
+    """Results owned by another user (403) are not updated: this run's go next to them."""
+
+    def forbidden(**_):
+        raise http_error(403)
+
+    client = validation_client(existing=TASK2_NAMES)
+
+    outputs, registered, _ = run_registration(tmp_path, monkeypatch, client, update=forbidden)
+
+    assert [r["name"] for r in registered] == [f"{name} [validation]" for name in TASK2_NAMES]
+    assert outputs.generated_ids == ["tr-id", *(f"new {r['name']}" for r in registered)]
+
+
+def test_register_output_entities_reraises_other_errors(tmp_path, monkeypatch):
+    def server_error(**_):
+        raise http_error(500)
+
+    client = validation_client(existing=TASK2_NAMES)
+
+    with pytest.raises(EntitySDKError, match="HTTP error 500"):
+        run_registration(tmp_path, monkeypatch, client, update=server_error)
+
+
+def test_register_output_entities_refreshes_optimisation_output(tmp_path, monkeypatch):
+    """The EModel's optimisation output verdict is refreshed with the new summary."""
+    monkeypatch.setattr(
+        validation_scoring, "register_validation_result", lambda **_: SimpleNamespace(id="vr")
+    )
+    client = validation_client()
+    asset = SimpleNamespace(id="asset-1", path="emodel_optimization_output.json")
+    client.select_assets.return_value = SimpleNamespace(one=Mock(return_value=asset))
+    client.download_content.return_value = json.dumps(
+        {"passedValidation": None, "scoreValidation": [], "parameter": []}
+    ).encode()
+    staged = SimpleNamespace(
+        provenance=SimpleNamespace(
+            emodel=SimpleNamespace(id="emodel-id", name="L5PC"), config=optimisation_config()
+        )
+    )
+
+    registration.register_output_entities(
         make_config(),
         tmp_path,
         client,
         staged=staged,
-        summary=summary,
-        figures_dir=figures,
+        summary=SUMMARY,
+        figures_dir=tmp_path / "no-figures",
     )
-    assert outputs.generated_ids == ["tr-id", "vr-1", "vr-2"]
-    assert [r["name"] for r in registered] == [
-        "E-feature score validation [validation]",
-        "E-feature validation: IDrest_250 [validation]",
-    ]
-    assert registered[0]["figure_files"] == [figures / "traces.pdf"]
-    assert client.upload_file.call_count == 2
+
+    assert client.update_asset_file.call_args.kwargs["asset_id"] == "asset-1"
+    updated = json.loads((tmp_path / "emodel_optimization_output.json").read_text())
+    assert updated["passedValidation"] is False
+    assert updated["scoreValidation"] == [{"name": "f_val", "value": 6.0, "unitCode": ""}]
+
+
+def test_is_forbidden():
+    assert registration.is_forbidden(http_error(403))
+    assert not registration.is_forbidden(http_error(404))
+    assert not registration.is_forbidden(EntitySDKError("no HTTP cause"))
+
+
+def test_sync_emodel_output_verdict_missing_asset(tmp_path):
+    """A missing optimisation-output asset warns but does not fail registration."""
+    client = MagicMock()
+    client.select_assets.return_value.one.side_effect = IteratorResultError
+    emodel = SimpleNamespace(id="emodel-id", type="emodel", assets=[])
+    registration.sync_emodel_output_verdict(
+        client, emodel, {"passed": True, "protocols": {}}, tmp_path
+    )
+    client.update_asset_file.assert_not_called()
 
 
 def write_typed_features(path, protocol_type, pre_protocols=()):

@@ -14,7 +14,9 @@ from entitysdk.types import ID, ValidationStatus
 from obi_one.core.task import Task
 from obi_one.scientific.library.memodel_calibration_validation import (
     compute_calibration_in_subprocess,
+    registrable_validation_results,
     run_validations_in_subprocess,
+    validation_passed,
 )
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.memodel_build import registration
@@ -53,7 +55,8 @@ def calibrate_and_validate(
     staged: DownloadedMEModel,
     *,
     authorized_public: bool,
-) -> None:
+) -> dict:
+    """Calibrate and validate the ME-model, register the results, return the validations."""
     hoc_path, morphology_path = staged.hoc_path, staged.morphology_paths[0]
     calibration = compute_calibration_in_subprocess(
         coord_root,
@@ -84,9 +87,10 @@ def calibrate_and_validate(
     register_memodel_validation_results(
         client=db_client,
         memodel_id=memodel_id,
-        validation_dict=validation,
+        validation_dict=registrable_validation_results(validation),
         authorized_public=authorized_public,
     )
+    return validation
 
 
 class MEModelBuildTask(Task):
@@ -157,9 +161,14 @@ class MEModelBuildTask(Task):
             mechanisms_dirs=[staged.mechanisms_dir],
             simulation_backend=SimulationBackend.bluecellulab,
         )
-        calibrate_and_validate(
+        validation = calibrate_and_validate(
             db_client, memodel.id, coord_root, staged, authorized_public=authorized_public
         )
+        # done only when every real test passed; the thumbnail and skipped checks don't count
         registration.set_validation_status(
-            db_client, memodel_id=memodel.id, validation_status=ValidationStatus.done
+            db_client,
+            memodel_id=memodel.id,
+            validation_status=(
+                ValidationStatus.done if validation_passed(validation) else ValidationStatus.created
+            ),
         )

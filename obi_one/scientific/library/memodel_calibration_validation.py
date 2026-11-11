@@ -30,6 +30,7 @@ DEFAULT_CELSIUS = 34.0
 DEFAULT_V_INIT = -80.0
 # bluecellulab's run_validations defaults to 7 nested processes; keep that as the cap.
 VALIDATION_MAX_PROCESSES = 7
+SKIPPED_DETAILS_PREFIX = "Validation skipped"
 
 
 def json_default(obj: object) -> object:
@@ -291,3 +292,42 @@ def run_validations_in_subprocess(
         ),
         "Validation",
     )
+
+
+def _is_skipped(value: dict) -> bool:
+    return str(value.get("validation_details") or "").startswith(SKIPPED_DETAILS_PREFIX)
+
+
+def registrable_validation_results(validation_dict: dict) -> dict:
+    """Return the entries of a validation dict to register as ``ValidationResult``s.
+
+    bluecellulab's ``run_validations`` reports skipped checks — e.g. the AIS spiking
+    test on an axonless cell — with ``passed=True`` and details starting
+    ``"Validation skipped"``. They are not verdicts and are dropped. The
+    ``thumbnail`` figure entry is kept: the platform displays it with the
+    ME-model's validation results.
+    """
+    return {
+        key: value
+        for key, value in validation_dict.items()
+        if isinstance(value, dict) and not _is_skipped(value)
+    }
+
+
+def scored_validation_results(validation_dict: dict) -> dict:
+    """Return only the entries of a validation dict that carry a real verdict.
+
+    Like :func:`registrable_validation_results`, minus the ``thumbnail`` figure
+    entry, which bluecellulab always reports with ``passed=True``.
+    """
+    return {
+        key: value
+        for key, value in registrable_validation_results(validation_dict).items()
+        if value.get("name") != "thumbnail" and "passed" in value
+    }
+
+
+def validation_passed(validation_dict: dict) -> bool:
+    """Whether at least one real validation test ran and every one of them passed."""
+    tests = scored_validation_results(validation_dict).values()
+    return bool(tests) and all(bool(value["passed"]) for value in tests)

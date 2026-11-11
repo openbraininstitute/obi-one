@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 
 import entitysdk
-from entitysdk.registration.validation_result import register_validation_result
+from entitysdk.models import ValidationResult
+from entitysdk.registration.validation_result import (
+    register_validation_result,
+    update_validation_result,
+)
 from entitysdk.types import ID
 
 L = logging.getLogger(__name__)
@@ -38,6 +42,24 @@ def flagged_validation_protocols(features_path: Path) -> list[str]:
     """
     data = json.loads(features_path.read_text(encoding="utf-8"))
     return [p["name"] for p in data.get("protocols", []) if p.get("validation")]
+
+
+def mark_validation_protocols(features_path: Path, validation_protocols: list[str]) -> None:
+    """Align each protocol's ``validation`` flag with the chosen validation protocols.
+
+    BluePyEModel skips flagged protocols but filters their e-features by the recipe's
+    ``validation_protocols``; the two must agree or the evaluator cannot be built.
+    """
+    from bluepyemodel.tools.utils import (  # ruff: ignore[import-outside-top-level]
+        are_same_protocol,
+    )
+
+    data = json.loads(features_path.read_text(encoding="utf-8"))
+    for protocol in data.get("protocols", []):
+        protocol["validation"] = any(
+            are_same_protocol(protocol.get("name"), name) for name in validation_protocols
+        )
+    features_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def aggregate(scores: list[float], validation_function: str) -> float:
@@ -194,6 +216,54 @@ def score_model_isolated(
         ).result()
 
 
+def _register_or_update(
+    *,
+    client: entitysdk.Client,
+    update_existing: bool,
+    name: str,
+    passed: bool,
+    validated_entity_id: ID,
+    authorized_public: bool,
+    details_text: str,
+    figure_files: list[Path] | None = None,
+) -> str | None:
+    """Register a result, or update the one of the same name; return its ID.
+
+    Without ``update_existing`` an existing result of the same name is kept and
+    ``None`` is returned (entitysdk's create-or-skip).
+    """
+    if update_existing:
+        matches = client.search_entity(
+            entity_type=ValidationResult,
+            query={"name": name, "validated_entity_id": validated_entity_id},
+        ).all()
+        if len(matches) > 1:
+            msg = (
+                f"{len(matches)} ValidationResults named {name!r} exist for "
+                f"{validated_entity_id}; cannot choose the one to update."
+            )
+            raise ValueError(msg)
+        if matches:
+            updated = update_validation_result(
+                client=client,
+                validation_result_id=matches[0].id,
+                passed=passed,
+                figure_files=figure_files,
+                details_text=details_text,
+            )
+            return str(updated.id)
+    registered = register_validation_result(
+        client=client,
+        name=name,
+        passed=passed,
+        validated_entity_id=validated_entity_id,
+        authorized_public=authorized_public,
+        figure_files=figure_files,
+        details_text=details_text,
+    )
+    return None if registered is None else str(registered.id)
+
+
 def register_validation_results(
     *,
     client: entitysdk.Client,
@@ -202,36 +272,39 @@ def register_validation_results(
     authorized_public: bool,
     name_suffix: str = "",
     figure_files: list[Path] | None = None,
+    update_existing: bool = False,
 ) -> list[str]:
-    """Register overall and per-validation-protocol results; return the new IDs.
+    """Register overall and per-validation-protocol results; return their IDs.
 
-    entitysdk skips results whose name already exists on the entity.
+    A result whose name already exists on the entity is kept (entitysdk skips it),
+    or, with ``update_existing``, updated in place: same ID, new verdict, details
+    and (for the overall result) figures.
     """
-    generated: list[str] = []
-    overall = register_validation_result(
-        client=client,
+    common = {
+        "client": client,
+        "update_existing": update_existing,
+        "validated_entity_id": validated_entity_id,
+        "authorized_public": authorized_public,
+    }
+    overall = _register_or_update(
+        **common,
         name=f"{OVERALL_RESULT_NAME}{name_suffix}",
         passed=bool(summary["passed"]),
-        validated_entity_id=validated_entity_id,
-        authorized_public=authorized_public,
         figure_files=figure_files,
         details_text=json.dumps(summary, indent=2),
     )
-    if overall is not None:
-        generated.append(str(overall.id))
+    generated = [overall] if overall is not None else []
     for protocol, entry in summary["protocols"].items():
         if not entry["validation"]:
             continue
-        result = register_validation_result(
-            client=client,
+        result = _register_or_update(
+            **common,
             name=f"{PROTOCOL_RESULT_PREFIX}: {protocol}{name_suffix}",
             passed=bool(entry["passed"]),
-            validated_entity_id=validated_entity_id,
-            authorized_public=authorized_public,
             details_text=json.dumps(
                 {"protocol": protocol, "settings": summary["settings"], **entry}, indent=2
             ),
         )
         if result is not None:
-            generated.append(str(result.id))
+            generated.append(result)
     return generated
