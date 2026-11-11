@@ -1,5 +1,7 @@
 import json
 import logging
+import tempfile
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -7,7 +9,7 @@ from uuid import UUID
 
 from entitysdk import Client
 from entitysdk.exception import EntitySDKError
-from entitysdk.models import Entity, TaskActivity, TaskConfig
+from entitysdk.models import ElectricalCellRecording, Entity, TaskActivity, TaskConfig
 from entitysdk.models.activity import Activity
 from entitysdk.models.asset import Asset
 from entitysdk.models.core import Identifiable
@@ -20,8 +22,13 @@ from entitysdk.types import (
     TaskActivityType,
 )
 from entitysdk.utils.filesystem import create_dir
+from pydantic import ValidationError
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.library.recording_summary import (
+    RecordingSummary,
+    compute_recording_summary,
+)
 
 L = logging.getLogger(__name__)
 
@@ -107,83 +114,125 @@ def fetch_asset_by_label(
     return asset.path
 
 
-def get_recording_protocols(
+def get_electrical_cell_recordings(
     recording_ids: list[str],
     db_client: Client,
-) -> dict[str, list[str]]:
-    """Return ``{recording_id: [protocol_class_name, ...]}`` for each recording.
+) -> dict[str, ElectricalCellRecording]:
+    """Return ``{recording_id: ElectricalCellRecording}``, one request per recording."""
+    return {
+        rid: db_client.get_entity(UUID(rid), entity_type=ElectricalCellRecording)
+        for rid in recording_ids
+    }
 
-    Reads the stimulus names from each ``ElectricalCellRecording`` entity (no NWB
-    download) and maps them to the matching ``Protocol`` subclass name via
+
+def recording_protocol_classes(recording: ElectricalCellRecording) -> list[str]:
+    """Return the ``Protocol`` subclass names of a recording's stimuli, sorted.
+
+    Reads the stimulus names from the entity (no NWB download) and maps them with
     ``protocol_class_name_for``. Stimuli with no matching protocol are dropped.
     """
-    from entitysdk.models import ElectricalCellRecording  # ruff: ignore[import-outside-top-level]
-
     from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
         protocol_class_name_for,
     )
 
-    by_recording: dict[str, list[str]] = {}
-    for rid in recording_ids:
-        entity = db_client.get_entity(
-            entity_id=UUID(rid),
-            entity_type=ElectricalCellRecording,
-        )
-        stimuli = entity.stimuli or []
-        class_names = {
+    return sorted(
+        {
             class_name
-            for s in stimuli
+            for s in recording.stimuli or []
             if s.name and (class_name := protocol_class_name_for(s.name)) is not None
         }
-        by_recording[rid] = sorted(class_names)
-    return by_recording
+    )
 
 
-def get_recording_amplitudes(
+def get_recording_protocols(
     recording_ids: list[str],
     db_client: Client,
-) -> dict[str, list[float]]:
-    """Return ``{protocol_class_name: [step_amplitude_nA, ...]}`` unioned across recordings.
+) -> dict[str, list[str]]:
+    """Return ``{recording_id: [protocol_class_name, ...]}`` for each recording."""
+    recordings = get_electrical_cell_recordings(recording_ids, db_client)
+    return {rid: recording_protocol_classes(recording) for rid, recording in recordings.items()}
 
-    Unlike protocol names, amplitudes are not stored on the entity, so each
-    ``ElectricalCellRecording``'s NWB asset is downloaded and its per-protocol step
-    amplitudes (nA) are estimated with ``read_amplitudes_from_nwb``. Results are then
-    keyed by the matching ``Protocol`` subclass name (via ``protocol_class_name_for``)
-    so they align with :func:`get_recording_protocols`; stimuli with no matching
-    protocol are dropped.
+
+def fetch_recording_summary(
+    client: Client,
+    recording: ElectricalCellRecording,
+) -> RecordingSummary | None:
+    """The recording's stored ``recording_summary`` asset, if any.
+
+    Returns ``None`` when the recording has no such asset or its content fails
+    validation. When several exist (entitycore does not prevent it), the last
+    one listed is used.
     """
-    import tempfile  # ruff: ignore[import-outside-top-level]
-
-    from entitysdk.models import ElectricalCellRecording  # ruff: ignore[import-outside-top-level]
-
-    from obi_one.scientific.library.electrical_cell_recording_properties import (  # ruff: ignore[import-outside-top-level]
-        read_amplitudes_from_nwb,
+    assets = [a for a in recording.assets or [] if a.label == AssetLabel.recording_summary]
+    if not assets:
+        return None
+    if len(assets) > 1:
+        L.warning("Recording %s has %d recording summaries", recording.id, len(assets))
+    content = client.fetch_content(
+        entity_id=recording.id,
+        entity_type=ElectricalCellRecording,
+        asset_or_id=assets[-1],
     )
+    try:
+        return RecordingSummary.model_validate_json(content)
+    except ValidationError as e:
+        L.warning("Invalid recording summary %s of %s: %s", assets[-1].id, recording.id, e)
+        return None
+
+
+def compute_recording_summary_from_nwb(
+    client: Client,
+    recording: ElectricalCellRecording,
+) -> RecordingSummary | None:
+    """Download the recording's NWB asset and compute its summary (not uploaded).
+
+    Returns ``None`` when the recording has no NWB asset.
+    """
+    if not any(a.label == AssetLabel.nwb for a in recording.assets or []):
+        return None
+    with tempfile.TemporaryDirectory() as tmp:
+        asset = client.fetch_assets(
+            recording,
+            selection={"content_type": ContentType.application_nwb, "label": AssetLabel.nwb},
+            output_path=Path(tmp),
+        ).one()
+        return compute_recording_summary(Path(asset.path))
+
+
+def get_recording_summary(
+    client: Client,
+    recording: ElectricalCellRecording,
+) -> RecordingSummary | None:
+    """The recording's stored summary, else one computed from its NWB file."""
+    summary = fetch_recording_summary(client, recording)
+    if summary is None:
+        summary = compute_recording_summary_from_nwb(client, recording)
+    return summary
+
+
+def amplitudes_by_protocol_class(
+    summaries: Mapping[str, RecordingSummary | None],
+) -> dict[str, list[float]]:
+    """Return ``{protocol_class_name: [amp_nA, ...]}`` unioned across recordings.
+
+    Uses each protocol's ``amp`` (the amplitude extraction matches targets on).
+    Protocols are keyed by the matching ``Protocol`` subclass name (via
+    ``protocol_class_name_for``), so they align with
+    :func:`recording_protocol_classes`; protocols with no match are dropped.
+    """
     from obi_one.scientific.tasks.emodel_building.task1_efeature_extraction.protocols_and_features.protocols import (  # ruff: ignore[line-too-long, import-outside-top-level]
         protocol_class_name_for,
     )
 
     combined: dict[str, set[float]] = {}
-    for rid in recording_ids:
-        entity = db_client.get_entity(
-            entity_id=UUID(rid),
-            entity_type=ElectricalCellRecording,
-        )
-        protocol_names = sorted({s.name for s in (entity.stimuli or []) if s.name})
-        if not protocol_names:
+    for summary in summaries.values():
+        if summary is None:
             continue
-        with tempfile.TemporaryDirectory() as tmp:
-            asset = db_client.fetch_assets(
-                entity,
-                selection={"content_type": ContentType.application_nwb, "label": AssetLabel.nwb},
-                output_path=Path(tmp),
-            ).one()
-            per_protocol = read_amplitudes_from_nwb(Path(asset.path), protocol_names)
-        for raw_name, amplitudes in per_protocol.items():
+        for raw_name, protocol in summary.protocols.items():
             class_name = protocol_class_name_for(raw_name)
             if class_name is not None:
-                combined.setdefault(class_name, set()).update(amplitudes)
-    return {protocol: sorted(values) for protocol, values in combined.items()}
+                combined.setdefault(class_name, set()).update(protocol.amp)
+    return {name: sorted(values) for name, values in combined.items()}
 
 
 def fetch_directory_asset_by_label(

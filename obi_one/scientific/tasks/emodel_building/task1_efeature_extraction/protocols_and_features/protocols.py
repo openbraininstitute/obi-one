@@ -3,7 +3,7 @@
 The hierarchy has three levels:
 
 * :class:`Protocol` — the base, holding the fields every protocol shares
-  (amplitudes, role flags, feature selection).
+  (amplitudes, feature selection).
 * a *shape* intermediate per BluePyEfe eCode class (:class:`StepShapeProtocol`,
   :class:`SAHPShapeProtocol`, …). The stimulus shape decides which timing
   parameters exist, so each intermediate fixes ``ecode_class`` and declares
@@ -60,8 +60,9 @@ class Protocol(OBIBaseModel, abc.ABC):
     variables; instances carry only what the user can edit.
 
     Protocol-level stimulus timing (``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2``) may be
-    user-specified; when left at ``0.0`` it is auto-detected from each
-    ``ElectricalCellRecording``'s NWB asset at task execution time.
+    user-specified; when left at ``0.0``, each recording's own timing is taken from
+    its ``recording_summary`` (detected from the NWB file), or detected by bluepyefe
+    when the summary has none.
 
     Per-feature eFEL detection knobs (spike_detection_threshold,
     trace_resampling_timestep, stim_start, stim_end) live on :class:`EFeature` and
@@ -73,17 +74,30 @@ class Protocol(OBIBaseModel, abc.ABC):
     protocol_name: ClassVar[str] = ""
     """Name of the BluePyEfe protocol name class implementing this stimulus shape."""
 
+    ecode_class: ClassVar[str] = ""
+    """BluePyEfe eCode class of the stimulus shape, fixed by the shape intermediate."""
+
+    amplitude_targeted: ClassVar[bool] = True
+    """Whether the eCode's ``in_target`` compares an amplitude (nA).
+
+    ``SpikeRec`` matches the target against the inter-spike interval ``delta``
+    (ms) instead, so ``extraction_amplitudes``/``relative_extraction_amplitudes``
+    do not describe what it extracts on.
+    """
+
     # ------------------------------------------------------------------
-    # Per-protocol extraction amplitudes (threshold-based / relative mode)
+    # Extraction amplitudes (nA, or % of rheobase in relative mode)
     # ------------------------------------------------------------------
     extraction_amplitudes: tuple[tuple[float, bool], ...] = Field(
         default=(),
         title="Extraction amplitudes",
         description=(
-            "Step amplitudes (nA) to extract from this protocol, populated from the"
-            " recordings' NWBs via the ``AmplitudesByProtocol`` property of"
-            " ``/declared/mapped-electrical-cell-recording-properties``. Each amplitude is"
-            " paired with a boolean marking whether it is used for validation."
+            "Amplitudes to extract from this protocol, each paired with a boolean"
+            " marking whether it is used for validation. In nA, offered by the"
+            " ``AmplitudesByProtocol`` property of"
+            " ``/declared/mapped-electrical-cell-recording-properties``; when the"
+            " settings' ``amplitude_mode`` is ``relative``, in % of each recording's"
+            " rheobase instead, offered by ``RelativeAmplitudesByProtocol``."
         ),
         json_schema_extra={
             SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.ELECTRICAL_CELL_RECORDINGS,
@@ -141,8 +155,8 @@ class Protocol(OBIBaseModel, abc.ABC):
         """Return user-set stimulus timing, keyed as bluepyefe eCode metadata.
 
         Maps the shape's ``stim_start``/``stim_end``/``stim_mid``/``stim_mid_2`` to
-        bluepyefe's ``ton``/``toff``/``tmid``/``tmid2``; 0.0 values are omitted so
-        bluepyefe auto-detects them from the NWB.
+        bluepyefe's ``ton``/``toff``/``tmid``/``tmid2``; 0.0 values are omitted, so the
+        timing of each recording's summary applies instead.
         """
         mapping = {
             "stim_start": "ton",
@@ -159,7 +173,7 @@ class Protocol(OBIBaseModel, abc.ABC):
 
 
 def _timing_field(title: str, description: str) -> Any:
-    """Build a stimulus-timing field (ms); 0.0 means auto-detect from the NWB."""
+    """Build a stimulus-timing field (ms); 0.0 means each recording's detected timing."""
     return Field(
         default=0.0,
         title=title,
@@ -175,7 +189,7 @@ def stim_start_field() -> Any:
     """Stimulus onset, declared by shapes whose eCode reads ``stim_start``."""
     return _timing_field(
         "Stimulus onset (stim_start)",
-        "Stimulus onset time (ms). Set to 0 to auto-detect from the NWB.",
+        "Stimulus onset time (ms). Set to 0 to use the time detected in each recording.",
     )
 
 
@@ -183,7 +197,7 @@ def stim_end_field() -> Any:
     """Stimulus end, declared by shapes whose eCode reads ``stim_end``."""
     return _timing_field(
         "Stimulus end (stim_end)",
-        "Stimulus end time (ms). Set to 0 to auto-detect from the NWB.",
+        "Stimulus end time (ms). Set to 0 to use the time detected in each recording.",
     )
 
 
@@ -191,7 +205,8 @@ def stim_mid_field() -> Any:
     """First mid-transition, declared by two-step shapes."""
     return _timing_field(
         "Mid-transition 1 (stim_mid)",
-        "First mid-transition point for two-step protocols (ms). Set to 0 to auto-detect.",
+        "First mid-transition point for two-step protocols (ms). Set to 0 to use the time"
+        " detected in each recording.",
     )
 
 
@@ -199,7 +214,8 @@ def stim_mid_2_field() -> Any:
     """Second mid-transition, declared by the sAHP shape."""
     return _timing_field(
         "Mid-transition 2 (stim_mid_2)",
-        "Second mid-transition point for two-step protocols (ms). Set to 0 to auto-detect.",
+        "Second mid-transition point for two-step protocols (ms). Set to 0 to use the time"
+        " detected in each recording.",
     )
 
 
@@ -298,6 +314,9 @@ class SpikeRecShapeProtocol(Protocol, abc.ABC):
     """Train of short suprathreshold pulses (``SpikeRec`` eCode): timing is not configurable."""
 
     ecode_class: ClassVar[str] = "SpikeRec"
+    # ``in_target`` matches ``delta`` — the ms gap between pulses, not an
+    # amplitude — so amplitude-based extraction does not apply to SpikeRec.
+    amplitude_targeted: ClassVar[bool] = False
 
     # SpikeRec exposes no configurable stimulus timing.
 
@@ -600,3 +619,16 @@ def protocol_class_name_for(stimulus_name: str) -> str | None:
         if cls.protocol_name.lower() in lowered:
             return cls.__name__
     return None
+
+
+def protocol_class_for(stimulus_name: str) -> type[Protocol] | None:
+    """Return the ``Protocol`` subclass matching a recording's stimulus name."""
+    class_name = protocol_class_name_for(stimulus_name)
+    if class_name is None:
+        return None
+    return next((cls for cls in _PROTOCOL_CLASSES if cls.__name__ == class_name), None)
+
+
+def protocol_class_by_type(type_name: str) -> type[Protocol] | None:
+    """Return the ``Protocol`` subclass named ``type_name`` (e.g. ``"IVProtocol"``)."""
+    return next((cls for cls in _PROTOCOL_CLASSES if cls.__name__ == type_name), None)

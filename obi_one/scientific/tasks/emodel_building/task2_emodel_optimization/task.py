@@ -358,7 +358,9 @@ def run_optimization_pipeline(
     # final.json is written by store_best_model above; parse once here and reuse
     # for registration. Validation figures land outside ``figures/`` so they are
     # not swept into the EModel optimisation-figure ValidationResults.
-    em_metrics = registration.parse_final_json(coord_root / "final.json", emodel)
+    em_metrics = registration.parse_final_json(
+        coord_root / "final.json", emodel, cast("int", seeds[0])
+    )
     calibration_dict: dict | None = None
     validation_dict: dict | None = None
     validation_status = ValidationStatus.created
