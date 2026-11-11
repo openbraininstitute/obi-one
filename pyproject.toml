@@ -38,7 +38,6 @@ dependencies = [
     # -- SCIENTIFIC
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.10",
-    "brainbuilder>=0.20.9",
     "caveclient>=7.11.0",
     "connectome-utilities>=0.4.18",
     "connectome-manipulator>=1.0.4",
@@ -61,6 +60,9 @@ bluecellulab = ["bluecellulab>=2.6.113"]
 # BRIAN2 - optional, needed to run Brian2 SONATA simulations
 # (simulate_brian2 / circuit_simulation_brian2_machine). Config generation does not need it.
 brian2 = ["brian2"]
+
+# CIRCUIT EXTRACTION - optional, needed for brainbuilder subcircuit extraction
+circuit-extraction = ["brainbuilder>=0.20.9"]
 
 # EMODEL - optional, needed for emodel optimisation workflows (extraction, optimisation, validation).
 # Includes bluecellulab for MEModel calibration and validation after fitting.
@@ -105,7 +107,7 @@ service = [
 
 # ALL - convenience alias to install all optional dependencies.
 # connectivity and emodel are listed explicitly (also pulled by service) so all stays complete if they leave service later.
-all = ["obi-one[bluecellulab,brian2,connectivity,emodel,meshing,notebooks,service]"]
+all = ["obi-one[bluecellulab,brian2,circuit-extraction,connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
 # neurodamus 4.2.8 frees the memory of the cells built in each batch.
