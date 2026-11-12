@@ -1,13 +1,21 @@
 """Entity registration for the ME-model build task.
 
-The ME-model is registered before it is calibrated and validated, so it exists (and can be
-linked from the execution activity) while the slow part runs.
+The ME-model is registered after calibration, once holding and threshold currents are known.
 """
 
 import logging
 
 import entitysdk
-from entitysdk.models import Contribution, MEModel, Person, Role
+from entitysdk.models import (
+    BrainRegion,
+    CellMorphology,
+    Contribution,
+    EModel,
+    MEModel,
+    Person,
+    Role,
+    Species,
+)
 from entitysdk.registration.classification import (
     register_etype_classification,
     register_mtype_classification,
@@ -25,18 +33,19 @@ def register_memodel(
     config: MEModelBuildSingleConfig,
     db_client: entitysdk.Client,
     *,
+    morphology: CellMorphology,
+    emodel: EModel,
+    species: Species,
+    brain_region: BrainRegion,
+    holding_current: float,
+    threshold_current: float,
     authorized_public: bool,
 ) -> MEModel:
-    """Register the ME-model alone, with ``validation_status=created``.
+    """Register the ME-model with calibrated currents and its m-/e-type classifications.
 
-    ``entitysdk.registration.memodel.register_memodel`` is not used: it requires the holding
-    and threshold currents, which are only known after calibration, and has no ``strain``.
+    ``entitysdk.registration.memodel.register_memodel`` is not used: it requires a
+    ``license`` and has no ``strain``.
     """
-    morphology_ref = config.initialize.morphology
-    morphology = morphology_ref.entity(db_client=db_client)
-    emodel = config.initialize.emodel.entity(db_client=db_client)
-    species, brain_region = morphology_ref.metadata_entities(db_client=db_client)
-
     memodel = db_client.register_entity(
         MEModel(
             name=config.info.campaign_name,
@@ -44,23 +53,25 @@ def register_memodel(
             morphology=morphology,
             emodel=emodel,
             species=species,
-            # metadata_entities above raises when the morphology has no subject
+            # morphology.subject is required by the caller (metadata_entities raises otherwise)
             strain=morphology.subject.strain,  # ty:ignore[unresolved-attribute]
             brain_region=brain_region,
+            holding_current=holding_current,
+            threshold_current=threshold_current,
             validation_status=ValidationStatus.created,
             authorized_public=authorized_public,
         )
     )
     L.info("MEModel registered: %s", memodel.id)
+
+    for mtype in morphology.mtypes or []:
+        register_mtype_classification(client=db_client, entity=memodel, mtype_class=mtype)
+    for etype in emodel.etypes or []:
+        register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
     return memodel
 
 
-def register_creator_and_classifications(
-    config: MEModelBuildSingleConfig, db_client: entitysdk.Client, memodel: MEModel
-) -> None:
-    morphology = config.initialize.morphology.entity(db_client=db_client)
-    emodel = config.initialize.emodel.entity(db_client=db_client)
-
+def register_creator(db_client: entitysdk.Client, memodel: MEModel) -> None:
     creator = db_client.search_entity(
         entity_type=Person, query={"sub_id": memodel.created_by.id}, limit=1
     ).one()
@@ -68,11 +79,6 @@ def register_creator_and_classifications(
         entity_type=Role, query={"name": CREATOR_ROLE_NAME}, limit=1
     ).one()
     db_client.register_entity(Contribution(agent=creator, role=creator_role, entity=memodel))
-
-    for mtype in morphology.mtypes or []:
-        register_mtype_classification(client=db_client, entity=memodel, mtype_class=mtype)
-    for etype in emodel.etypes or []:
-        register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
 
 
 def set_validation_status(

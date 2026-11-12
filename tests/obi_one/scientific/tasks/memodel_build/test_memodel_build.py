@@ -4,7 +4,13 @@ from uuid import uuid4
 
 import pytest
 from entitysdk.models import MEModel
-from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType, ValidationStatus
+from entitysdk.types import (
+    AssetLabel,
+    ContentType,
+    TaskActivityType,
+    TaskConfigType,
+    ValidationStatus,
+)
 
 from obi_one.core.info import Info
 from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
@@ -82,7 +88,33 @@ class TestConfig:
 
 
 @pytest.fixture
-def steps(monkeypatch, tmp_path):
+def build_inputs(monkeypatch):
+    """Morphology, e-model and metadata resolved once at the start of the build."""
+    morphology = SimpleNamespace(
+        id=uuid4(),
+        assets=[SimpleNamespace(content_type=ContentType.application_asc)],
+        subject=SimpleNamespace(strain=object()),
+        mtypes=[SimpleNamespace(id=uuid4())],
+        ion_channel_models=None,
+    )
+    emodel = SimpleNamespace(
+        id=uuid4(),
+        etypes=[SimpleNamespace(id=uuid4())],
+        ion_channel_models=[SimpleNamespace(id=uuid4())],
+    )
+    species, brain_region = object(), object()
+    monkeypatch.setattr(CellMorphologyFromID, "entity", Mock(return_value=morphology))
+    monkeypatch.setattr(
+        CellMorphologyFromID, "metadata_entities", Mock(return_value=(species, brain_region))
+    )
+    monkeypatch.setattr(EModelFromID, "entity", Mock(return_value=emodel))
+    return SimpleNamespace(
+        morphology=morphology, emodel=emodel, species=species, brain_region=brain_region
+    )
+
+
+@pytest.fixture
+def steps(monkeypatch, tmp_path, build_inputs):
     """Replace every step of the task with a mock attached to one parent, to see their order."""
     parent = Mock()
     parent.register_memodel.return_value = SimpleNamespace(id=MEMODEL_ID)
@@ -94,7 +126,7 @@ def steps(monkeypatch, tmp_path):
     parent.calibrate.return_value = CALIBRATION
     parent.validate.return_value = VALIDATION
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
-    monkeypatch.setattr(registration, "register_creator_and_classifications", parent.register_links)
+    monkeypatch.setattr(registration, "register_creator", parent.register_creator)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
     monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
@@ -110,41 +142,59 @@ def steps(monkeypatch, tmp_path):
     monkeypatch.setattr(
         task_module.Task, "_update_execution_activity", parent.update_execution_activity
     )
+    parent.inputs = build_inputs
     return parent
 
 
 class TestExecute:
-    def test_registers_links_calibrates_validates_then_sets_done(self, tmp_path, steps):
+    def test_stages_calibrates_registers_then_validates(self, tmp_path, steps):
         db_client = _db_client()
+        task = _task(tmp_path)
 
-        memodel_id = _task(tmp_path).execute(db_client=db_client, execution_activity_id=ACTIVITY_ID)
+        memodel_id = task.execute(db_client=db_client, execution_activity_id=ACTIVITY_ID)
 
         assert memodel_id == str(MEMODEL_ID)
         assert [name for name, *_ in steps.mock_calls] == [
-            "register_memodel",
-            "update_execution_activity",
-            "register_links",
             "stage_memodel",
             "compile",
             "calibrate",
+            "register_memodel",
+            "register_creator",
             "register_calibration",
+            "update_execution_activity",
             "validate",
             "register_validation",
             "set_validation_status",
         ]
-        assert steps.update_execution_activity.call_args.kwargs["generated"] == [str(MEMODEL_ID)]
-        steps.stage_memodel.assert_called_once_with(db_client, MEMODEL_ID, tmp_path)
-        compile_kwargs = steps.compile.call_args.kwargs
-        assert compile_kwargs["output_dir"] == tmp_path
-        assert compile_kwargs["mechanisms_dirs"] == [tmp_path / "mechanisms"]
-        assert steps.calibrate.call_args.args == (
-            tmp_path,
-            tmp_path / "cell.hoc",
-            tmp_path / "cell.asc",
+        steps.stage_memodel.assert_called_once_with(
+            db_client=db_client,
+            morphology=steps.inputs.morphology,
+            emodel=steps.inputs.emodel,
+            output_dir=tmp_path,
         )
-        calibrate_kwargs = steps.calibrate.call_args.kwargs
-        assert calibrate_kwargs["holding_current"] == task_module.INITIAL_HOLDING_CURRENT
-        assert calibrate_kwargs["threshold_current"] == task_module.INITIAL_THRESHOLD_CURRENT
+        assert steps.compile.call_args.kwargs == {
+            "output_dir": tmp_path,
+            "mechanisms_dirs": [tmp_path / "mechanisms"],
+            "simulation_backend": task_module.SimulationBackend.bluecellulab,
+        }
+        assert steps.calibrate.call_args.kwargs == {
+            "coord_root": tmp_path,
+            "hoc_path": tmp_path / "cell.hoc",
+            "morphology_path": tmp_path / "cell.asc",
+            "holding_current": task_module.INITIAL_HOLDING_CURRENT,
+            "threshold_current": task_module.INITIAL_THRESHOLD_CURRENT,
+        }
+        assert steps.register_memodel.call_args.kwargs == {
+            "config": task.config,
+            "db_client": db_client,
+            "morphology": steps.inputs.morphology,
+            "emodel": steps.inputs.emodel,
+            "species": steps.inputs.species,
+            "brain_region": steps.inputs.brain_region,
+            "holding_current": CALIBRATION["holding_current"],
+            "threshold_current": CALIBRATION["rheobase"],
+            "authorized_public": False,
+        }
         steps.register_calibration.assert_called_once_with(
             client=db_client,
             calibrated_entity_id=MEMODEL_ID,
@@ -153,11 +203,17 @@ class TestExecute:
             rin=120.0,
             authorized_public=False,
         )
-        validate_kwargs = steps.validate.call_args.kwargs
-        assert validate_kwargs["cell_name"] == str(MEMODEL_ID)
-        assert validate_kwargs["holding_current"] == CALIBRATION["holding_current"]
-        assert validate_kwargs["threshold_current"] == CALIBRATION["rheobase"]
-        assert validate_kwargs["n_processes"] == task_module.DEFAULT_VALIDATION_PROCESSES
+        assert steps.update_execution_activity.call_args.kwargs["generated"] == [str(MEMODEL_ID)]
+        assert steps.validate.call_args.kwargs == {
+            "coord_root": tmp_path,
+            "hoc_path": tmp_path / "cell.hoc",
+            "morphology_path": tmp_path / "cell.asc",
+            "cell_name": str(MEMODEL_ID),
+            "holding_current": CALIBRATION["holding_current"],
+            "threshold_current": CALIBRATION["rheobase"],
+            "output_dir": tmp_path / task_module.VALIDATION_FIGURES_DIRNAME,
+            "n_processes": task_module.DEFAULT_VALIDATION_PROCESSES,
+        }
         steps.register_validation.assert_called_once_with(
             client=db_client,
             memodel_id=MEMODEL_ID,
@@ -166,7 +222,9 @@ class TestExecute:
         )
         # done means validation ran, whether or not every test passed
         steps.set_validation_status.assert_called_once_with(
-            db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.done
+            db_client=db_client,
+            memodel_id=MEMODEL_ID,
+            validation_status=ValidationStatus.done,
         )
 
     def test_validates_on_the_launch_system_job_cpus(self, tmp_path, steps, monkeypatch):
@@ -188,12 +246,29 @@ class TestExecute:
     @pytest.mark.parametrize(
         "failing_step",
         [
-            "update_execution_activity",
-            "register_links",
             "stage_memodel",
             "compile",
             "calibrate",
+        ],
+    )
+    def test_failure_before_registration_leaves_nothing_to_mark(
+        self, tmp_path, steps, failing_step
+    ):
+        getattr(steps, failing_step).side_effect = RuntimeError("NEURON crashed")
+
+        with pytest.raises(RuntimeError, match="NEURON crashed"):
+            _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
+
+        steps.register_memodel.assert_not_called()
+        steps.set_validation_status.assert_not_called()
+        steps.update_execution_activity.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "failing_step",
+        [
+            "register_creator",
             "register_calibration",
+            "update_execution_activity",
             "validate",
             "register_validation",
         ],
@@ -205,9 +280,11 @@ class TestExecute:
         with pytest.raises(RuntimeError, match="NEURON crashed"):
             _task(tmp_path).execute(db_client=db_client, execution_activity_id=ACTIVITY_ID)
 
-        steps.update_execution_activity.assert_called_once()
+        steps.register_memodel.assert_called_once()
         steps.set_validation_status.assert_called_once_with(
-            db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.error
+            db_client=db_client,
+            memodel_id=MEMODEL_ID,
+            validation_status=ValidationStatus.error,
         )
 
     def test_a_failed_done_status_sets_error(self, tmp_path, steps):
@@ -231,7 +308,7 @@ class TestExecute:
         steps.register_validation.assert_not_called()
 
     def test_a_failed_error_status_keeps_the_original_exception(self, tmp_path, steps):
-        steps.calibrate.side_effect = RuntimeError("NEURON crashed")
+        steps.validate.side_effect = RuntimeError("NEURON crashed")
         steps.set_validation_status.side_effect = ConnectionError("502")
 
         with pytest.raises(RuntimeError, match="NEURON crashed"):
@@ -248,24 +325,6 @@ class TestExecute:
 
 
 @pytest.fixture
-def inputs(monkeypatch):
-    """Morphology, e-model and their metadata, as the FromID refs resolve them."""
-    morphology = SimpleNamespace(
-        subject=SimpleNamespace(strain=object()), mtypes=[SimpleNamespace(id=uuid4())]
-    )
-    emodel = SimpleNamespace(etypes=[SimpleNamespace(id=uuid4())])
-    species, brain_region = object(), object()
-    monkeypatch.setattr(CellMorphologyFromID, "entity", Mock(return_value=morphology))
-    monkeypatch.setattr(
-        CellMorphologyFromID, "metadata_entities", Mock(return_value=(species, brain_region))
-    )
-    monkeypatch.setattr(EModelFromID, "entity", Mock(return_value=emodel))
-    return SimpleNamespace(
-        morphology=morphology, emodel=emodel, species=species, brain_region=brain_region
-    )
-
-
-@pytest.fixture
 def entity_classes(monkeypatch):
     classes = Mock()
     monkeypatch.setattr(registration, "MEModel", classes.MEModel)
@@ -276,39 +335,52 @@ def entity_classes(monkeypatch):
 
 
 class TestRegistration:
-    def test_register_memodel(self, tmp_path, inputs, entity_classes):
+    def test_register_memodel(self, tmp_path, build_inputs, entity_classes):
         db_client = Mock()
         memodel = SimpleNamespace(id=MEMODEL_ID)
         db_client.register_entity.return_value = memodel
 
         result = registration.register_memodel(
-            _task(tmp_path).config, db_client, authorized_public=True
+            config=_task(tmp_path).config,
+            db_client=db_client,
+            morphology=build_inputs.morphology,
+            emodel=build_inputs.emodel,
+            species=build_inputs.species,
+            brain_region=build_inputs.brain_region,
+            holding_current=-0.05,
+            threshold_current=0.2,
+            authorized_public=True,
         )
 
         assert result is memodel
         entity_classes.MEModel.assert_called_once_with(
             name="L5 TPC",
             description="Built from a morphology",
-            morphology=inputs.morphology,
-            emodel=inputs.emodel,
-            species=inputs.species,
-            strain=inputs.morphology.subject.strain,
-            brain_region=inputs.brain_region,
+            morphology=build_inputs.morphology,
+            emodel=build_inputs.emodel,
+            species=build_inputs.species,
+            strain=build_inputs.morphology.subject.strain,
+            brain_region=build_inputs.brain_region,
+            holding_current=-0.05,
+            threshold_current=0.2,
             validation_status=ValidationStatus.created,
             authorized_public=True,
         )
+        entity_classes.register_mtype.assert_called_once_with(
+            client=db_client, entity=memodel, mtype_class=build_inputs.morphology.mtypes[0]
+        )
+        entity_classes.register_etype.assert_called_once_with(
+            client=db_client, entity=memodel, etype_class=build_inputs.emodel.etypes[0]
+        )
         entity_classes.Contribution.assert_not_called()
-        entity_classes.register_mtype.assert_not_called()
 
-    def test_register_creator_and_classifications(self, tmp_path, inputs, entity_classes):
+    def test_register_creator(self, entity_classes):
         db_client = Mock()
         memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
         creator, creator_role = object(), object()
         db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
 
-        registration.register_creator_and_classifications(
-            _task(tmp_path).config, db_client, memodel
-        )
+        registration.register_creator(db_client=db_client, memodel=memodel)
 
         assert db_client.search_entity.call_args_list[0].kwargs["query"] == {"sub_id": "user-sub"}
         assert db_client.search_entity.call_args_list[1].kwargs["query"] == {
@@ -317,18 +389,14 @@ class TestRegistration:
         entity_classes.Contribution.assert_called_once_with(
             agent=creator, role=creator_role, entity=memodel
         )
-        entity_classes.register_mtype.assert_called_once_with(
-            client=db_client, entity=memodel, mtype_class=inputs.morphology.mtypes[0]
-        )
-        entity_classes.register_etype.assert_called_once_with(
-            client=db_client, entity=memodel, etype_class=inputs.emodel.etypes[0]
-        )
 
     def test_set_validation_status(self):
         db_client = Mock()
 
         registration.set_validation_status(
-            db_client, memodel_id=MEMODEL_ID, validation_status=ValidationStatus.error
+            db_client=db_client,
+            memodel_id=MEMODEL_ID,
+            validation_status=ValidationStatus.error,
         )
 
         assert db_client.update_entity.call_args == call(
@@ -338,14 +406,23 @@ class TestRegistration:
         )
 
 
-def test_stage_memodel_downloads_into_the_coordinate_root(tmp_path, monkeypatch):
+def test_stage_memodel_downloads_from_the_build_inputs(tmp_path, monkeypatch):
+    morphology, emodel = object(), object()
     download = Mock()
     monkeypatch.setattr(task_module, "download_memodel", download)
     db_client = Mock()
 
-    staged = task_module.stage_memodel(db_client, MEMODEL_ID, tmp_path)
+    staged = task_module.stage_memodel(
+        db_client=db_client,
+        morphology=morphology,
+        emodel=emodel,
+        output_dir=tmp_path,
+    )
 
     assert staged is download.return_value
-    db_client.get_entity.assert_called_once_with(entity_id=MEMODEL_ID, entity_type=MEModel)
-    assert download.call_args.kwargs["memodel"] is db_client.get_entity.return_value
+    assert download.call_args.args == (db_client,)
+    memodel = download.call_args.kwargs["memodel"]
+    assert memodel.morphology is morphology
+    assert memodel.emodel is emodel
     assert download.call_args.kwargs["output_dir"] == tmp_path
+    assert download.call_args.kwargs["max_concurrent"] == task_module.DOWNLOAD_CONCURRENCY
