@@ -31,6 +31,7 @@ from obi_one.scientific.validations.memodel.tests import (
     HyperpolarizationTest,
     IVCurveTest,
     RinTest,
+    ThumbnailTest,
 )
 
 if TYPE_CHECKING:
@@ -130,11 +131,12 @@ class DefaultMEModelValidationProfile(MEModelValidationProfile):
 
     @staticmethod
     def build_tests(context: MEModelWorkflowContext) -> list[ValidationTest]:
-        """Build the standard spiking and depolarization-block validations."""
+        """Build the standard spiking and depolarization-block validations, plus the thumbnail."""
         _ = context
         return [
             spiking_preset(),
             depolarization_block_preset(),
+            ThumbnailTest(),
         ]
 
 
@@ -232,7 +234,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         return True
 
     def build_tests(self, context: MEModelWorkflowContext) -> list[ValidationTest]:
-        """Build the complete nine-test thalamic validation policy."""
+        """Build the complete nine-test thalamic validation policy, plus the thumbnail."""
         self.validate_context(context)
         rin = context.rin
         if rin is None:
@@ -296,6 +298,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             RinTest(rin=rin),
             IVCurveTest(n_processes=None, simulator_config=simulator_config),
             FICurveTest(n_processes=None, simulator_config=simulator_config),
+            ThumbnailTest(),
         ]
 
 

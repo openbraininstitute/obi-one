@@ -45,6 +45,7 @@ from obi_one.scientific.validations.memodel.tests import (
     HyperpolarizationTest,
     IVCurveTest,
     RinTest,
+    ThumbnailTest,
     _count_bpap_spikes,
 )
 from obi_one.scientific.validations.memodel.workflow import (
@@ -87,10 +88,11 @@ class TestMEModelValidationWorkflow:
             out_dir=tmp_path,
         )
         tests = workflow.get_tests(context)
-        assert len(tests) == 2  # spiking and depolarization-block presets
+        assert len(tests) == 3  # spiking and depolarization-block presets, plus thumbnail
         assert [test.name for test in tests] == [
             "Spiking Validation",
             "Depolarization Block Validation",
+            "thumbnail",
         ]
 
     def test_get_tests_thalamic_profile(self, tmp_path):
@@ -120,8 +122,9 @@ class TestMEModelValidationWorkflow:
             "Input Resistance Validation",
             "IV Curve Validation",
             "FI Curve Validation",
+            "thumbnail",
         ]
-        assert len(tests) == 9
+        assert len(tests) == 10
         assert sum(test.name == "Spiking Validation" for test in tests) == 1
 
         # Tonic firing applies the calibrated hold via add_hypamp, so the step
@@ -510,8 +513,8 @@ class TestMEModelValidationWorkflow:
             out_dir=tmp_path,
         )
         tests = workflow.get_tests(context)
-        assert len(tests) == 3
-        assert tests[2] == custom
+        assert len(tests) == 4
+        assert tests[3] == custom
 
     def test_run_executes_all_tests(self, tmp_path):
         mock_test = MagicMock()
@@ -739,7 +742,7 @@ class TestMEModelValidationProfiles:
     def test_default_profile_builds_spiking_and_depol_block(self, tmp_path):
         tests = DefaultMEModelValidationProfile().build_tests(self._context(tmp_path))
         names = [t.name for t in tests]
-        assert names == ["Spiking Validation", "Depolarization Block Validation"]
+        assert names == ["Spiking Validation", "Depolarization Block Validation", "thumbnail"]
 
     def test_thalamic_requires_rin_and_holding(self):
         profile = ThalamicMEModelValidationProfile()
@@ -747,9 +750,10 @@ class TestMEModelValidationProfiles:
         assert profile.requires_holding_current is True
         assert profile.recompute_rheobase is True
 
-    def test_thalamic_builds_full_nine_test_policy(self, tmp_path):
+    def test_thalamic_builds_nine_tests_plus_thumbnail(self, tmp_path):
         tests = ThalamicMEModelValidationProfile().build_tests(self._context(tmp_path))
-        assert len(tests) == 9
+        assert len(tests) == 10
+        assert tests[-1].name == "thumbnail"
 
     def test_thalamic_requires_rin(self, tmp_path):
         profile = ThalamicMEModelValidationProfile()
@@ -845,6 +849,31 @@ class TestValidationTaskExecute:
 
         assert ids == ["id-A"]
         assert any("skipped" in r.message.lower() for r in caplog.records)
+
+
+class TestThumbnailTest:
+    def test_plots_soma_trace_without_current_and_always_passes(self, tmp_path):
+        recording = SimpleNamespace(time=np.array([0.0, 1.0]), voltage=np.array([-70.0, 20.0]))
+        with (
+            patch(
+                "obi_one.scientific.validations.memodel.tests.run_stimulus",
+                return_value=recording,
+            ) as run,
+            patch(
+                "obi_one.scientific.validations.memodel.tests.plot_trace",
+                return_value=tmp_path / "thumbnail.png",
+            ) as plot,
+        ):
+            result = ThumbnailTest().run(MagicMock(), 1.0, tmp_path)
+
+        # Same protocol and output as the legacy bluecellulab thumbnail_test.
+        assert run.call_args.args[2:4] == ("soma[0]", 0.5)
+        assert run.call_args.kwargs["add_hypamp"] is True
+        assert plot.call_args.kwargs["fname"] == "thumbnail.png"
+        assert plot.call_args.kwargs["plot_current"] is False
+        assert result.name == "thumbnail"
+        assert result.passed is True
+        assert result.figures == [tmp_path / "thumbnail.png"]
 
 
 class TestRinTest:

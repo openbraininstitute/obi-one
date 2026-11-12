@@ -169,6 +169,41 @@ class RinTest(ValidationTest):
         return TestResult(name=self.name, passed=passed, details=details, figures=[])
 
 
+class ThumbnailTest(ValidationTest):
+    """Thumbnail: soma trace of a step at 130% of rheobase, used as the model's preview.
+
+    This is not a check, so it always passes. It reproduces the legacy BlueCelluLab
+    ``thumbnail_test`` (same protocol, PNG, no current trace) so the platform finds
+    the same ValidationResult.
+    """
+
+    @property
+    def name(self) -> str:
+        return ValidationName.THUMBNAIL
+
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        stim_factory = StimulusFactory(dt=1.0)
+        step_stimulus = stim_factory.idrest(threshold_current=rheobase, threshold_percentage=130)
+        recording = run_stimulus(
+            template_params,
+            step_stimulus,
+            "soma[0]",
+            0.5,
+            add_hypamp=True,
+        )
+        fig_path = plot_trace(
+            recording,
+            out_dir,
+            fname="thumbnail.png",
+            title="",
+            plot_current=False,
+        )
+        return TestResult(name=self.name, passed=True, details="", figures=[fig_path])
+
+
 class AISSpikingTest(ValidationTest):
     """AIS spiking: axon should spike before soma at 200% rheobase."""
 
