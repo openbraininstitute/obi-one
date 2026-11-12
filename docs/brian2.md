@@ -107,8 +107,7 @@ A recording without a neuron set records every neuron in the circuit, so on a wh
 All three become SONATA `connection_overrides`, applied part-way through the run at the timestamps the
 block references. Brian2 honours a connection override's `weight` and `synapse_delay_override`,
 and raises on `spont_minis`, `synapse_configure`, `modoverride` and the neuromodulation fields —
-so the mechanism-specific manipulations (`SynapticMgManipulation`,
-`ScaleAcetylcholineUSESynapticManipulation`) are not offered.
+so the mechanism-specific `ScaleAcetylcholineUSESynapticManipulation` is not offered.
 
 `weight` is a factor on each synapse's weight as the circuit defines it, not on its current value,
 so overrides never compound: a Connect (weight 1) after a Disconnect (weight 0) restores the

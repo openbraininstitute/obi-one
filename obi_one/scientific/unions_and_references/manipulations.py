@@ -10,20 +10,17 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
 )
 from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
-    SynapticMgManipulation,
 )
 
 _SYNAPTIC_MANIPULATIONS = (
     DisconnectSynapticManipulation
     | ConnectSynapticManipulation
     | ScaleWeightSynapticManipulation
-    | SynapticMgManipulation
     | ScaleAcetylcholineUSESynapticManipulation
 )
 
 # Brian2 applies a connection override's `weight` and `synapse_delay_override` and rejects the
-# config outright on `synapse_configure` or `modoverride`, which is what the mechanism-specific
-# manipulations emit.
+# config outright on `synapse_configure`, which the acetylcholine manipulation emits.
 _BRIAN2_SYNAPTIC_MANIPULATIONS = (
     DisconnectSynapticManipulation | ConnectSynapticManipulation | ScaleWeightSynapticManipulation
 )
