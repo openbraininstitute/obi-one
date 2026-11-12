@@ -147,7 +147,6 @@ These mechanisms support:
 
 Optional modifications to synaptic properties:
 
-- **SynapticMgManipulation**: Modify magnesium block of NMDA receptors
 - **ScaleAcetylcholineUSESynapticManipulation**: Scale acetylcholine effects
 - **ScaleWeightSynapticManipulation**: Scale the weight (conductance) of every synapse between two neuron sets
 

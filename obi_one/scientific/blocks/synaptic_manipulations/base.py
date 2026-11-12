@@ -83,27 +83,6 @@ class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticMan
         return [manipulation]  # ty:ignore[invalid-return-type]
 
 
-class ModSpecificVariableInterNeuronSetSynapticManipulation(
-    InterNeuronSetSynapticManipulation, ABC
-):
-    """Base class for synaptic manipulation of a single variable applied to a single mechanism."""
-
-    @abstractmethod
-    def _get_synapse_configure(self) -> str:
-        pass
-
-    @abstractmethod
-    def _get_modoverride_name(self) -> str:
-        pass
-
-    def _sonata_manipulations_list(self) -> dict:
-        manipulation = super()._sonata_manipulations_list()[0]
-        manipulation["synapse_configure"] = self._get_synapse_configure()
-        manipulation["modoverride"] = self._get_modoverride_name()
-
-        return [manipulation]  # ty:ignore[invalid-return-type]
-
-
 class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
     """Base class for synaptic manipulations applied with a delay at different timestamps."""
 

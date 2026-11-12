@@ -24,7 +24,6 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
 )
 from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
-    SynapticMgManipulation,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -47,7 +46,6 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 )
 
 SYNAPTIC_MANIPULATIONS = {
-    "SynapticMgManipulation": SynapticMgManipulation(magnesium_value=2.4),
     "ScaleAcetylcholineUSESynapticManipulation": ScaleAcetylcholineUSESynapticManipulation(
         use_scaling=0.7
     ),
@@ -70,8 +68,7 @@ class TestUnionCoverage:
     def test_brian2_excludes_the_mechanism_specific_manipulations(self):
         """Brian2 honours a connection override's weight and delay.
 
-        It raises on `synapse_configure` and `modoverride`, which is what the magnesium and
-        acetylcholine manipulations emit.
+        It raises on `synapse_configure`, which is what the acetylcholine manipulation emits.
         """
         assert union_member_names(Brian2SynapticManipulationsUnion) == {
             "ConnectSynapticManipulation",
@@ -85,25 +82,6 @@ class TestSynapticManipulations:
         result = generate(circuit_config(), tmp_path)
 
         assert "connection_overrides" not in result.sonata_config
-
-    def test_magnesium_manipulation(self, circuit, tmp_path):
-        config = build_config(
-            CircuitSimulationSingleConfig,
-            circuit=circuit,
-            blocks={"Magnesium": SynapticMgManipulation(magnesium_value=2.4)},
-        )
-
-        result = generate(config, tmp_path)
-
-        assert result.sonata_config["connection_overrides"] == [
-            {
-                "name": "Magnesium",
-                "source": DEFAULT_BIOPHYSICAL_NODE_SET,
-                "target": DEFAULT_BIOPHYSICAL_NODE_SET,
-                "modoverride": "GluSynapse",
-                "synapse_configure": "mg = 2.4",
-            }
-        ]
 
     def test_acetylcholine_use_scaling(self, circuit, tmp_path):
         config = build_config(
@@ -179,8 +157,8 @@ class TestSynapticManipulations:
             blocks={
                 "Pre": presynaptic,
                 "Post": postsynaptic,
-                "Magnesium": lambda: SynapticMgManipulation(
-                    magnesium_value=2.0,
+                "Acetylcholine": lambda: ScaleAcetylcholineUSESynapticManipulation(
+                    use_scaling=0.5,
                     presynaptic_neuron_set=presynaptic.ref,
                     postsynaptic_neuron_set=postsynaptic.ref,
                 ),
@@ -200,15 +178,15 @@ class TestSynapticManipulations:
             circuit=circuit,
             blocks={
                 "Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5),
-                "Magnesium": SynapticMgManipulation(magnesium_value=2.0),
                 "Disconnect": DisconnectSynapticManipulation(),
+                "Scale": ScaleWeightSynapticManipulation(weight_scaling=1.5),
             },
         )
 
         result = generate(config, tmp_path)
 
         names = [override["name"] for override in result.sonata_config["connection_overrides"]]
-        assert names == ["Acetylcholine", "Magnesium", "Disconnect"]
+        assert names == ["Acetylcholine", "Disconnect", "Scale"]
 
 
 class TestNeuronalManipulations:

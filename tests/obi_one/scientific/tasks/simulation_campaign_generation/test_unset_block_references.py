@@ -36,7 +36,6 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
 )
 from obi_one.scientific.blocks.synaptic_manipulations.demo import (
     ScaleAcetylcholineUSESynapticManipulation,
-    SynapticMgManipulation,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -428,7 +427,7 @@ class TestNoDanglingNodeSetReferences:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Manip": SynapticMgManipulation()},
+            blocks={"Manip": ScaleAcetylcholineUSESynapticManipulation()},
         )
 
         result = generate(config, tmp_path)
@@ -446,7 +445,6 @@ class TestNoDanglingNodeSetReferences:
                 "Spikes": PoissonSpikeStimulus(),
                 "Voltage": SomaVoltageRecording(),
                 "Window": TimeWindowSomaVoltageRecording(start_time=0.0, end_time=10.0),
-                "Magnesium": SynapticMgManipulation(),
                 "Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(),
                 "Combined": BiophysicalCombinedNeuronSet(),
             },
@@ -559,12 +557,12 @@ class TestWhichReferencesAreFilledInPlace:
         config = build_config(
             CircuitSimulationSingleConfig,
             circuit=circuit,
-            blocks={"Magnesium": SynapticMgManipulation()},
+            blocks={"Acetylcholine": ScaleAcetylcholineUSESynapticManipulation()},
         )
 
         result = generate(config, tmp_path)
 
-        manipulation = config.synaptic_manipulations["Magnesium"]
+        manipulation = config.synaptic_manipulations["Acetylcholine"]
         assert manipulation.presynaptic_neuron_set is None
         assert manipulation.postsynaptic_neuron_set is None
         assert result.sonata_config["connection_overrides"][0]["source"] == (

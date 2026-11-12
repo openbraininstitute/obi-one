@@ -3,37 +3,9 @@ from typing import ClassVar
 from pydantic import Field, NonNegativeFloat
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.core.units import Units
 from obi_one.scientific.blocks.synaptic_manipulations.base import (
     GlobalVariableInterNeuronSetSynapticManipulation,
-    ModSpecificVariableInterNeuronSetSynapticManipulation,
 )
-
-
-class SynapticMgManipulation(ModSpecificVariableInterNeuronSetSynapticManipulation):
-    """Manipulate the extracellular synaptic magnesium (Mg2+) concentration.
-
-    This is applied for all synapses between biophysical neurons.
-    """
-
-    title: ClassVar[str] = "Demo: synaptic Mg2+ concentration manipulation"
-
-    magnesium_value: NonNegativeFloat | list[NonNegativeFloat] = Field(
-        default=2.4,
-        title="Extracellular magnesium concentration",
-        description="Extracellular magnesium concentration in millimoles (mM).",
-        json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-            SchemaKey.UNITS: Units.MILLIMOLAR,
-        },
-    )
-
-    def _get_synapse_configure(self) -> str:
-        return f"mg = {self.magnesium_value}"
-
-    @staticmethod
-    def _get_modoverride_name() -> str:
-        return "GluSynapse"
 
 
 class ScaleAcetylcholineUSESynapticManipulation(GlobalVariableInterNeuronSetSynapticManipulation):
