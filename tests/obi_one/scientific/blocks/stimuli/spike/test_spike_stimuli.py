@@ -1,10 +1,11 @@
 import json
+from collections import UserDict
 
 import h5py
 import numpy as np
 import pytest
 
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.info import Info
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
@@ -814,3 +815,65 @@ class TestSpikeStimParameterSweep:
 
         # Higher frequency should produce more spikes
         assert spike_counts[1] > spike_counts[0]
+
+
+# ---------------------------------------------------------------------------
+# Source population must have edges to the target population
+# ---------------------------------------------------------------------------
+
+
+class _StubPopulation:
+    def __init__(self, name):
+        self.name = name
+
+
+class _StubEdgePopulation:
+    def __init__(self, source, target):
+        self.source = _StubPopulation(source)
+        self.target = _StubPopulation(target)
+
+
+class _StubEdges(UserDict):
+    @property
+    def population_names(self):
+        return list(self)
+
+
+class _StubNeuronSet:
+    def __init__(self, populations):
+        self._populations = populations
+
+    def get_populations(self, _circuit):
+        return self._populations
+
+
+class _StubCircuit:
+    def __init__(self, edges):
+        self.sonata_circuit = type("C", (), {"edges": _StubEdges(edges)})()
+
+
+def _synaptome_like_circuit():
+    # Like a synaptome circuit: only virtual sources project onto the cell, no self edges.
+    return _StubCircuit(
+        {
+            "POm__cell__chemical": _StubEdgePopulation("POm", "cell"),
+            "external__cell__chemical": _StubEdgePopulation("external", "cell"),
+        }
+    )
+
+
+def test_spike_source_without_edges_to_target_is_rejected():
+    with pytest.raises(ConfigValidationError, match="have no edges to the target"):
+        SpikeStimulus._validate_source_connects_to_target(
+            circuit=_synaptome_like_circuit(),
+            source_neuron_set=_StubNeuronSet(["cell"]),
+            target_neuron_set=_StubNeuronSet(["cell"]),
+        )
+
+
+def test_spike_source_with_edges_to_target_is_accepted():
+    SpikeStimulus._validate_source_connects_to_target(
+        circuit=_synaptome_like_circuit(),
+        source_neuron_set=_StubNeuronSet(["external"]),
+        target_neuron_set=_StubNeuronSet(["cell"]),
+    )

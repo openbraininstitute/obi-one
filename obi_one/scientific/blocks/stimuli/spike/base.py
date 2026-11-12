@@ -84,6 +84,11 @@ class SpikeStimulus(StimulusWithTimestamps):
             msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
             raise ConfigValidationError(msg)
 
+        self._validate_source_connects_to_target(
+            circuit=circuit,
+            source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
+            target_neuron_set=target_neuron_set,  # ty:ignore[invalid-argument-type]
+        )
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
@@ -98,6 +103,34 @@ class SpikeStimulus(StimulusWithTimestamps):
         )
 
         return sonata_config
+
+    @staticmethod
+    def _validate_source_connects_to_target(
+        circuit: Circuit,
+        source_neuron_set: NeuronSet,
+        target_neuron_set: NeuronSet,
+    ) -> None:
+        """Check that the source population(s) have edges to the target population(s).
+
+        Spikes are replayed through those edges, so a source without any has nothing to drive.
+        """
+        source_populations = source_neuron_set.get_populations(circuit)
+        target_populations = set(target_neuron_set.get_populations(circuit))
+        edges = circuit.sonata_circuit.edges
+        connected = {
+            edges[name].source.name
+            for name in edges.population_names
+            if edges[name].target.name in target_populations
+        }
+        unconnected = [pop for pop in source_populations if pop not in connected]
+        if unconnected:
+            msg = (
+                f"Spike stimulus source population(s) {unconnected} have no edges to the "
+                f"target population(s) {sorted(target_populations)}, so the spikes cannot be "
+                "replayed. Choose a source neuron set whose population is connected to the "
+                f"target (populations with edges to the target: {sorted(connected)})."
+            )
+            raise ConfigValidationError(msg)
 
     def generate_spikes(
         self,
