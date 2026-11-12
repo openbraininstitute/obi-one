@@ -5,8 +5,7 @@ from typing import ClassVar
 
 import entitysdk
 from entitysdk.downloaders.memodel import download_memodel
-from entitysdk.models import CellMorphology, EModel, MEModel, TaskActivity
-from entitysdk.registration.memodel import register_memodel_calibration_result
+from entitysdk.models import CellMorphology, EModel, MEModel
 from entitysdk.registration.validation_result import register_memodel_validation_results
 from entitysdk.schemas.memodel import DownloadedMEModel
 from entitysdk.types import ValidationStatus
@@ -53,7 +52,7 @@ def stage_memodel(
 
 
 class MEModelBuildTask(Task):
-    """See docs/memodel-build.md. A failure after registration sets ``validation_status=error``."""
+    """See docs/memodel-build.md. A failure during validation sets ``validation_status=error``."""
 
     name: ClassVar[str] = "ME-model Build"
     description: ClassVar[str] = (
@@ -110,13 +109,19 @@ class MEModelBuildTask(Task):
             brain_region=brain_region,
             holding_current=calibration["holding_current"],
             threshold_current=calibration["rheobase"],
+            rin=calibration.get("rin"),
             authorized_public=authorized_public,
         )
+        registration.register_creator(db_client=db_client, memodel=memodel)
+        self._update_execution_activity(
+            db_client=db_client,
+            execution_activity=execution_activity,
+            generated=[str(memodel.id)],
+        )
         try:
-            self._after_registration(
+            self._try_validation(
                 db_client=db_client,
                 memodel=memodel,
-                execution_activity=execution_activity,
                 output_dir=output_dir,
                 hoc_path=hoc_path,
                 morphology_path=morphology_path,
@@ -137,34 +142,17 @@ class MEModelBuildTask(Task):
         L.info("ME-model build completed: %s", memodel.id)
         return str(memodel.id)
 
-    def _after_registration(
+    def _try_validation(  # ruff: ignore[no-self-use]
         self,
         *,
         db_client: entitysdk.Client,
         memodel: MEModel,
-        execution_activity: TaskActivity | None,
         output_dir: Path,
         hoc_path: Path,
         morphology_path: Path,
         calibration: dict,
         authorized_public: bool,
     ) -> None:
-        registration.register_creator(db_client=db_client, memodel=memodel)
-        # registered before validating, so the ME-model can be simulated while validation runs
-        register_memodel_calibration_result(
-            client=db_client,
-            calibrated_entity_id=memodel.id,
-            holding_current=calibration["holding_current"],
-            threshold_current=calibration["rheobase"],
-            rin=calibration.get("rin"),
-            authorized_public=authorized_public,
-        )
-        self._update_execution_activity(
-            db_client=db_client,
-            execution_activity=execution_activity,
-            generated=[str(memodel.id)],
-        )
-
         validation = run_validations_in_subprocess(
             coord_root=output_dir,
             hoc_path=hoc_path,

@@ -20,6 +20,7 @@ from entitysdk.registration.classification import (
     register_etype_classification,
     register_mtype_classification,
 )
+from entitysdk.registration.memodel import register_memodel_calibration_result
 from entitysdk.types import ID, ValidationStatus
 
 from obi_one.scientific.tasks.memodel_build.config import MEModelBuildSingleConfig
@@ -39,9 +40,10 @@ def register_memodel(
     brain_region: BrainRegion,
     holding_current: float,
     threshold_current: float,
+    rin: float | None,
     authorized_public: bool,
 ) -> MEModel:
-    """Register the ME-model with calibrated currents and its m-/e-type classifications.
+    """Register the ME-model, its classifications, and its calibration result.
 
     ``entitysdk.registration.memodel.register_memodel`` is not used: it requires a
     ``license`` and has no ``strain``.
@@ -68,6 +70,15 @@ def register_memodel(
         register_mtype_classification(client=db_client, entity=memodel, mtype_class=mtype)
     for etype in emodel.etypes or []:
         register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
+
+    register_memodel_calibration_result(
+        client=db_client,
+        calibrated_entity_id=memodel.id,
+        holding_current=holding_current,
+        threshold_current=threshold_current,
+        rin=rin,
+        authorized_public=authorized_public,
+    )
     return memodel
 
 

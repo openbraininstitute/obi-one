@@ -132,9 +132,6 @@ def steps(monkeypatch, tmp_path, build_inputs):
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
     monkeypatch.setattr(task_module, "run_validations_in_subprocess", parent.validate)
     monkeypatch.setattr(
-        task_module, "register_memodel_calibration_result", parent.register_calibration
-    )
-    monkeypatch.setattr(
         task_module, "register_memodel_validation_results", parent.register_validation
     )
     monkeypatch.setattr(registration, "set_validation_status", parent.set_validation_status)
@@ -160,7 +157,6 @@ class TestExecute:
             "calibrate",
             "register_memodel",
             "register_creator",
-            "register_calibration",
             "update_execution_activity",
             "validate",
             "register_validation",
@@ -193,16 +189,9 @@ class TestExecute:
             "brain_region": steps.inputs.brain_region,
             "holding_current": CALIBRATION["holding_current"],
             "threshold_current": CALIBRATION["rheobase"],
+            "rin": CALIBRATION["rin"],
             "authorized_public": False,
         }
-        steps.register_calibration.assert_called_once_with(
-            client=db_client,
-            calibrated_entity_id=MEMODEL_ID,
-            holding_current=-0.05,
-            threshold_current=0.2,
-            rin=120.0,
-            authorized_public=False,
-        )
         assert steps.update_execution_activity.call_args.kwargs["generated"] == [str(MEMODEL_ID)]
         assert steps.validate.call_args.kwargs == {
             "coord_root": tmp_path,
@@ -240,7 +229,6 @@ class TestExecute:
         )
 
         assert steps.register_memodel.call_args.kwargs["authorized_public"] is True
-        assert steps.register_calibration.call_args.kwargs["authorized_public"] is True
         assert steps.register_validation.call_args.kwargs["authorized_public"] is True
 
     @pytest.mark.parametrize(
@@ -266,14 +254,29 @@ class TestExecute:
     @pytest.mark.parametrize(
         "failing_step",
         [
+            "register_memodel",
             "register_creator",
-            "register_calibration",
             "update_execution_activity",
+        ],
+    )
+    def test_failure_before_validation_fails_without_marking_error(
+        self, tmp_path, steps, failing_step
+    ):
+        getattr(steps, failing_step).side_effect = RuntimeError("entitycore down")
+
+        with pytest.raises(RuntimeError, match="entitycore down"):
+            _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
+
+        steps.set_validation_status.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "failing_step",
+        [
             "validate",
             "register_validation",
         ],
     )
-    def test_failure_after_registration_sets_error_and_raises(self, tmp_path, steps, failing_step):
+    def test_failure_during_validation_sets_error_and_raises(self, tmp_path, steps, failing_step):
         getattr(steps, failing_step).side_effect = RuntimeError("NEURON crashed")
         db_client = _db_client()
 
@@ -298,13 +301,12 @@ class TestExecute:
             ValidationStatus.error
         )
 
-    def test_a_failed_validation_keeps_the_registered_calibration(self, tmp_path, steps):
+    def test_a_failed_validation_does_not_register_results(self, tmp_path, steps):
         steps.validate.side_effect = RuntimeError("NEURON crashed")
 
         with pytest.raises(RuntimeError, match="NEURON crashed"):
             _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
 
-        steps.register_calibration.assert_called_once()
         steps.register_validation.assert_not_called()
 
     def test_a_failed_error_status_keeps_the_original_exception(self, tmp_path, steps):
@@ -314,15 +316,6 @@ class TestExecute:
         with pytest.raises(RuntimeError, match="NEURON crashed"):
             _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
 
-    def test_failed_registration_leaves_nothing_to_mark(self, tmp_path, steps):
-        steps.register_memodel.side_effect = RuntimeError("entitycore down")
-
-        with pytest.raises(RuntimeError, match="entitycore down"):
-            _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
-
-        steps.update_execution_activity.assert_not_called()
-        steps.set_validation_status.assert_not_called()
-
 
 @pytest.fixture
 def entity_classes(monkeypatch):
@@ -331,6 +324,9 @@ def entity_classes(monkeypatch):
     monkeypatch.setattr(registration, "Contribution", classes.Contribution)
     monkeypatch.setattr(registration, "register_mtype_classification", classes.register_mtype)
     monkeypatch.setattr(registration, "register_etype_classification", classes.register_etype)
+    monkeypatch.setattr(
+        registration, "register_memodel_calibration_result", classes.register_calibration
+    )
     return classes
 
 
@@ -349,6 +345,7 @@ class TestRegistration:
             brain_region=build_inputs.brain_region,
             holding_current=-0.05,
             threshold_current=0.2,
+            rin=120.0,
             authorized_public=True,
         )
 
@@ -372,7 +369,36 @@ class TestRegistration:
         entity_classes.register_etype.assert_called_once_with(
             client=db_client, entity=memodel, etype_class=build_inputs.emodel.etypes[0]
         )
+        entity_classes.register_calibration.assert_called_once_with(
+            client=db_client,
+            calibrated_entity_id=MEMODEL_ID,
+            holding_current=-0.05,
+            threshold_current=0.2,
+            rin=120.0,
+            authorized_public=True,
+        )
         entity_classes.Contribution.assert_not_called()
+
+    def test_failed_calibration_registration_fails_register_memodel(
+        self, tmp_path, build_inputs, entity_classes
+    ):
+        db_client = Mock()
+        db_client.register_entity.return_value = SimpleNamespace(id=MEMODEL_ID)
+        entity_classes.register_calibration.side_effect = RuntimeError("entitycore down")
+
+        with pytest.raises(RuntimeError, match="entitycore down"):
+            registration.register_memodel(
+                config=_task(tmp_path).config,
+                db_client=db_client,
+                morphology=build_inputs.morphology,
+                emodel=build_inputs.emodel,
+                species=build_inputs.species,
+                brain_region=build_inputs.brain_region,
+                holding_current=-0.05,
+                threshold_current=0.2,
+                rin=120.0,
+                authorized_public=True,
+            )
 
     def test_register_creator(self, entity_classes):
         db_client = Mock()
