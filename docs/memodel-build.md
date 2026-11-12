@@ -22,11 +22,11 @@ The task:
 
 1. resolves the morphology and e-model once, downloads their hoc, morphology and mechanisms, and compiles the mechanisms;
 2. calibrates holding current, rheobase and input resistance (starting from a holding current of 0 nA and a threshold current of 0.1 nA);
-3. registers the `MEModel` with those currents, `validation_status=created`, its m-type / e-type classifications, and an `MEModelCalibrationResult` (required; failure fails the task);
-4. registers the creator `Contribution` and writes the ME-model to the activity's `generated`;
+3. registers the `MEModel` with those currents, `validation_status=created`, its m-type / e-type classifications, an `MEModelCalibrationResult`, and the creator `Contribution` (required; failure fails the task);
+4. writes the ME-model to the activity's `generated`;
 5. runs the bluecellulab validations with the calibrated currents, registers one `ValidationResult` per validation, then sets `validation_status=done`.
 
-`done` means the validations ran; each `ValidationResult` says whether its test passed. Failures before or during ME-model / calibration / creator / activity registration fail the task without setting `validation_status=error`. When validation fails, the ME-model stays with `validation_status=error` and the activity ends in error; the calibration result stays.
+`done` means the validations ran; each `ValidationResult` says whether its test passed. Failures before or during ME-model registration (including calibration / creator) or activity update fail the task without setting `validation_status=error`. When validation fails, the ME-model stays with `validation_status=error` and the activity ends in error; the calibration result stays.
 
 ## Running
 

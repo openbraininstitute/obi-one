@@ -90,16 +90,13 @@ class MEModelBuildTask(Task):
             mechanisms_dirs=[staged.mechanisms_dir],
             simulation_backend=SimulationBackend.bluecellulab,
         )
-
-        hoc_path, morphology_path = staged.hoc_path, staged.morphology_paths[0]
         calibration = compute_calibration_in_subprocess(
             coord_root=output_dir,
-            hoc_path=hoc_path,
-            morphology_path=morphology_path,
+            hoc_path=staged.hoc_path,
+            morphology_path=staged.morphology_paths[0],
             holding_current=INITIAL_HOLDING_CURRENT,
             threshold_current=INITIAL_THRESHOLD_CURRENT,
         )
-
         memodel = registration.register_memodel(
             config=self.config,
             db_client=db_client,
@@ -112,19 +109,18 @@ class MEModelBuildTask(Task):
             rin=calibration.get("rin"),
             authorized_public=authorized_public,
         )
-        registration.register_creator(db_client=db_client, memodel=memodel)
         self._update_execution_activity(
             db_client=db_client,
             execution_activity=execution_activity,
             generated=[str(memodel.id)],
         )
         try:
-            self._try_validation(
+            _try_validation(
                 db_client=db_client,
                 memodel=memodel,
                 output_dir=output_dir,
-                hoc_path=hoc_path,
-                morphology_path=morphology_path,
+                hoc_path=staged.hoc_path,
+                morphology_path=staged.morphology_paths[0],
                 calibration=calibration,
                 authorized_public=authorized_public,
             )
@@ -142,35 +138,35 @@ class MEModelBuildTask(Task):
         L.info("ME-model build completed: %s", memodel.id)
         return str(memodel.id)
 
-    def _try_validation(  # ruff: ignore[no-self-use]
-        self,
-        *,
-        db_client: entitysdk.Client,
-        memodel: MEModel,
-        output_dir: Path,
-        hoc_path: Path,
-        morphology_path: Path,
-        calibration: dict,
-        authorized_public: bool,
-    ) -> None:
-        validation = run_validations_in_subprocess(
-            coord_root=output_dir,
-            hoc_path=hoc_path,
-            morphology_path=morphology_path,
-            cell_name=str(memodel.id),
-            holding_current=calibration["holding_current"],
-            threshold_current=calibration["rheobase"],
-            output_dir=output_dir / VALIDATION_FIGURES_DIRNAME,
-            n_processes=int(os.environ.get("JOB_CPUS") or DEFAULT_VALIDATION_PROCESSES),
-        )
-        register_memodel_validation_results(
-            client=db_client,
-            memodel_id=memodel.id,
-            validation_dict=validation,
-            authorized_public=authorized_public,
-        )
-        registration.set_validation_status(
-            db_client=db_client,
-            memodel_id=memodel.id,
-            validation_status=ValidationStatus.done,
-        )
+
+def _try_validation(
+    *,
+    db_client: entitysdk.Client,
+    memodel: MEModel,
+    output_dir: Path,
+    hoc_path: Path,
+    morphology_path: Path,
+    calibration: dict,
+    authorized_public: bool,
+) -> None:
+    validation = run_validations_in_subprocess(
+        coord_root=output_dir,
+        hoc_path=hoc_path,
+        morphology_path=morphology_path,
+        cell_name=str(memodel.id),
+        holding_current=calibration["holding_current"],
+        threshold_current=calibration["rheobase"],
+        output_dir=output_dir / VALIDATION_FIGURES_DIRNAME,
+        n_processes=int(os.environ.get("JOB_CPUS") or DEFAULT_VALIDATION_PROCESSES),
+    )
+    register_memodel_validation_results(
+        client=db_client,
+        memodel_id=memodel.id,
+        validation_dict=validation,
+        authorized_public=authorized_public,
+    )
+    registration.set_validation_status(
+        db_client=db_client,
+        memodel_id=memodel.id,
+        validation_status=ValidationStatus.done,
+    )

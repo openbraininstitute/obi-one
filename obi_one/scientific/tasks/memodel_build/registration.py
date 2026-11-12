@@ -43,7 +43,7 @@ def register_memodel(
     rin: float | None,
     authorized_public: bool,
 ) -> MEModel:
-    """Register the ME-model, its classifications, and its calibration result.
+    """Register the ME-model, classifications, calibration result, and creator contribution.
 
     ``entitysdk.registration.memodel.register_memodel`` is not used: it requires a
     ``license`` and has no ``strain``.
@@ -79,10 +79,11 @@ def register_memodel(
         rin=rin,
         authorized_public=authorized_public,
     )
+    _register_creator(db_client=db_client, memodel=memodel)
     return memodel
 
 
-def register_creator(db_client: entitysdk.Client, memodel: MEModel) -> None:
+def _register_creator(db_client: entitysdk.Client, memodel: MEModel) -> None:
     creator = db_client.search_entity(
         entity_type=Person, query={"sub_id": memodel.created_by.id}, limit=1
     ).one()

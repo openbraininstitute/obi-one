@@ -126,7 +126,6 @@ def steps(monkeypatch, tmp_path, build_inputs):
     parent.calibrate.return_value = CALIBRATION
     parent.validate.return_value = VALIDATION
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
-    monkeypatch.setattr(registration, "register_creator", parent.register_creator)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
     monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
@@ -156,7 +155,6 @@ class TestExecute:
             "compile",
             "calibrate",
             "register_memodel",
-            "register_creator",
             "update_execution_activity",
             "validate",
             "register_validation",
@@ -255,7 +253,6 @@ class TestExecute:
         "failing_step",
         [
             "register_memodel",
-            "register_creator",
             "update_execution_activity",
         ],
     )
@@ -333,8 +330,10 @@ def entity_classes(monkeypatch):
 class TestRegistration:
     def test_register_memodel(self, tmp_path, build_inputs, entity_classes):
         db_client = Mock()
-        memodel = SimpleNamespace(id=MEMODEL_ID)
+        memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
         db_client.register_entity.return_value = memodel
+        creator, creator_role = object(), object()
+        db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
 
         result = registration.register_memodel(
             config=_task(tmp_path).config,
@@ -377,13 +376,21 @@ class TestRegistration:
             rin=120.0,
             authorized_public=True,
         )
-        entity_classes.Contribution.assert_not_called()
+        assert db_client.search_entity.call_args_list[0].kwargs["query"] == {"sub_id": "user-sub"}
+        assert db_client.search_entity.call_args_list[1].kwargs["query"] == {
+            "name": registration.CREATOR_ROLE_NAME
+        }
+        entity_classes.Contribution.assert_called_once_with(
+            agent=creator, role=creator_role, entity=memodel
+        )
 
     def test_failed_calibration_registration_fails_register_memodel(
         self, tmp_path, build_inputs, entity_classes
     ):
         db_client = Mock()
-        db_client.register_entity.return_value = SimpleNamespace(id=MEMODEL_ID)
+        db_client.register_entity.return_value = SimpleNamespace(
+            id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub")
+        )
         entity_classes.register_calibration.side_effect = RuntimeError("entitycore down")
 
         with pytest.raises(RuntimeError, match="entitycore down"):
@@ -400,21 +407,7 @@ class TestRegistration:
                 authorized_public=True,
             )
 
-    def test_register_creator(self, entity_classes):
-        db_client = Mock()
-        memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
-        creator, creator_role = object(), object()
-        db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
-
-        registration.register_creator(db_client=db_client, memodel=memodel)
-
-        assert db_client.search_entity.call_args_list[0].kwargs["query"] == {"sub_id": "user-sub"}
-        assert db_client.search_entity.call_args_list[1].kwargs["query"] == {
-            "name": registration.CREATOR_ROLE_NAME
-        }
-        entity_classes.Contribution.assert_called_once_with(
-            agent=creator, role=creator_role, entity=memodel
-        )
+        entity_classes.Contribution.assert_not_called()
 
     def test_set_validation_status(self):
         db_client = Mock()
