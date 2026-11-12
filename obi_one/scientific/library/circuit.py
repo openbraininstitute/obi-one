@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 CIRCUIT_MOD_DIR = "mod"
+CIRCUIT_NODE_SETS_FILE = "node_sets.json"
 
 # SONATA `alternate_morphologies` keys, mapped to their file extension. Order matters: it is
 # also the format-resolution priority used by app.services.circuit_visualization.resolve_morph_path.
@@ -464,3 +465,30 @@ def ensure_mechanisms_dir(
     InhibitoryTsodyksMarkramSynapticModel.copy_mod_files(mechanisms_dir)
 
     return mechanisms_dir
+
+
+def ensure_node_sets_file(circuit_config_path: Path) -> Path:
+    """The circuit's node sets file, declaring and creating an empty one if it has none.
+
+    The path is read through libsonata, which resolves manifest variables and returns an
+    absolute path, or an empty string when the config declares no node sets file. In that case
+    `CIRCUIT_NODE_SETS_FILE` is declared in the config (adding a ``$BASE_DIR`` manifest entry if
+    there is none) and created as an empty file, so that node sets can be added to the circuit
+    without leaving the file unreferenced. The path is read again after declaring it, so a
+    ``$BASE_DIR`` that points elsewhere than the config's directory is honored.
+    """
+    node_sets_path = libsonata.CircuitConfig.from_file(str(circuit_config_path)).node_sets_path
+
+    if not node_sets_path:
+        with circuit_config_path.open(encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+        cfg_dict.setdefault("manifest", {}).setdefault("$BASE_DIR", "./")
+        cfg_dict["node_sets_file"] = f"$BASE_DIR/{CIRCUIT_NODE_SETS_FILE}"
+        with circuit_config_path.open("w", encoding="utf-8") as f:
+            json.dump(cfg_dict, f, indent=2)
+        node_sets_path = libsonata.CircuitConfig.from_file(str(circuit_config_path)).node_sets_path
+
+    node_sets_file = Path(node_sets_path)
+    if not node_sets_file.exists():
+        node_sets_file.write_text("{}", encoding="utf-8")
+    return node_sets_file

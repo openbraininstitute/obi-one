@@ -34,6 +34,7 @@ from obi_one.scientific.library.compartment_sets import MaterializedCompartmentS
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.sonata_circuit_helpers import (
+    add_neuron_sets_to_sonata_circuit,
     write_circuit_compartment_set_file,
     write_circuit_node_set_file,
 )
@@ -497,32 +498,17 @@ class GenerateSimulationTask(Task):
         back to explicit neuron IDs. This keeps the written file small and, more importantly,
         means generation does not have to read node properties for the common cases.
         """
-        sonata_circuit = self._circuit.sonata_circuit  # ty:ignore[unresolved-attribute]
-
+        # 1. Add the node sets to one SONATA circuit object - raises error if already existing
         if hasattr(self.config, "neuron_sets"):
-            # circuit.sonata_circuit should be created once. Currently this would break other code.
-
             L.info("self.config.neuron_sets: %s", self.config.neuron_sets)
-
-            for neuron_set_key, neuron_set_ in self.config.neuron_sets.items():  # ty:ignore[unresolved-attribute]
-                # 1. Check that the neuron sets block name matches the dict key
-                if neuron_set_key != neuron_set_.block_name:
-                    msg = "Neuron set name mismatch! \
-                        Using sim_conf.add(neuron_set, name=neuron_set_name) should ensure this."
-                    raise OBIONEError(msg)
-
-                # 2.Add node set to SONATA circuit object - raises error if already existing
-                neuron_set_.add_node_set_definition_to_sonata_circuit(self._circuit, sonata_circuit)
-
+            neuron_sets = self.config.neuron_sets
         else:
             neuron_set = self.config.default_neuron_set_type()
             neuron_set.set_block_name(self.config.default_node_set_name)
-            neuron_set.add_node_set_definition_to_sonata_circuit(
-                self._circuit,  # ty:ignore[invalid-argument-type]
-                sonata_circuit,
-            )
+            neuron_sets = {self.config.default_node_set_name: neuron_set}
+        sonata_circuit = add_neuron_sets_to_sonata_circuit(self._circuit, neuron_sets)  # ty:ignore[invalid-argument-type]
 
-        # 3. Write node sets from SONATA circuit object to .json file
+        # 2. Write node sets from SONATA circuit object to .json file
         write_circuit_node_set_file(
             sonata_circuit,
             self.config.coordinate_output_root,  # ty:ignore[invalid-argument-type]
