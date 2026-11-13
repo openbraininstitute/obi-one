@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one[bluecellulab]==2026.11.4
+obi-one[bluecellulab]==2026.11.5
 annotated-types==0.8.0
 anyio==4.15.1
 asttokens==3.0.2
