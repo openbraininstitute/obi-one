@@ -9,11 +9,13 @@ from obi_one.scientific.unions_and_references.point_neuron_populations import (
 
 
 class PathwayConnectionProbability(Block):
-    """Connection probability of a single pathway between two point-neuron populations.
+    """Connectivity of a single pathway between two point-neuron populations.
 
-    Defines one entry of the connection-probability matrix: the probability that a neuron in
-    the ``source`` population is connected to a neuron in the ``target`` population. Pathways
-    for which no ``PathwayConnectionProbability`` is given default to a probability of 0.0.
+    Defines one entry of the connection-probability matrix, the probability that a neuron in
+    the ``source`` population is connected to a neuron in the ``target`` population, together
+    with the mean amplitude and the relative standard deviation of the synaptic weights of the
+    pathway. Pathways for which no ``PathwayConnectionProbability`` is given have no
+    connections (probability 0.0).
     """
 
     source: PointNeuronPopulationReference = Field(
@@ -32,5 +34,18 @@ class PathwayConnectionProbability(Block):
     )
     connection_probability: float | list[float] = Field(
         description="Probability that a source neuron connects to a target neuron, in [0, 1).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    psp_mean: float | list[float] = Field(
+        title="PSP mean",
+        description="Mean amplitude of the postsynaptic potential (in mV) of the connections of"
+        " this pathway, as a non-negative value. The sign (excitatory or inhibitory) is given by"
+        " the synapse class of the source population.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    weight_rel_std: float | list[float] = Field(
+        default=0.1,
+        title="Relative weight standard deviation",
+        description="Relative standard deviation of the synaptic weights of this pathway.",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )

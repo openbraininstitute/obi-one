@@ -1,11 +1,9 @@
-import copy
 import logging
 import warnings
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-import numpy as np
 from entitysdk import models, types
 from entitysdk.client import Client
 from pydantic import Discriminator, Field
@@ -21,7 +19,6 @@ from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.point_neuron_populations.pathway import (
     PathwayConnectionProbability,
 )
-from obi_one.scientific.blocks.point_neuron_populations.population import PointNeuronPopulation
 from obi_one.scientific.unions_and_references.pathway_connection_probabilities import (
     PATHWAY_CONNECTION_PROBABILITY_REFERENCE_TYPES,
 )
@@ -33,12 +30,10 @@ from obi_one.scientific.unions_and_references.point_neuron_populations import (
 L = logging.getLogger(__name__)
 
 try:
-    from microcircuit.sonata_network import SonataNetwork
-    from microcircuit.stimulus_params import default_stim_dict
+    from obi_one.scientific.library.pd14_sonata_network import SonataNetworkFromConfig
 except ImportError:
     warnings.warn(
-        "PD14 network functionalities not available (the 'microcircuit' package is not"
-        " installed).",
+        "PD14 network functionalities not available (the 'microcircuit' package is not installed).",
         UserWarning,
         stacklevel=1,
     )
@@ -63,7 +58,8 @@ class PD14NetworkWriteScanConfig(ScanConfig):
       population (name, neuron count, synapse class, external indegree, spatial extent, ...).
       The number of populations is arbitrary.
     - ``pathway_connection_probabilities`` holds one ``PathwayConnectionProbability`` block
-      per connected pathway, each referencing a source and a target population. Together they
+      per connected pathway, each referencing a source and a target population and giving the
+      mean PSP amplitude and relative weight standard deviation of the pathway. Together they
       define the connection-probability matrix: a pathway without a block defaults to a
       probability of 0.0, and two blocks with the same (source, target) pair raise an error.
 
@@ -131,23 +127,11 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             " 'k_scaling' == 1.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
-        psp_exc_mean: float | list[float] = Field(
+        psp_ext: float | list[float] = Field(
             default=0.15,
-            title="Excitatory PSP mean",
-            description="Mean amplitude of the excitatory postsynaptic potential (in mV).",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-        )
-        g: float | list[float] = Field(
-            default=-4.0,
-            title="Relative inhibitory weight",
-            description="Relative inhibitory weight: the inhibitory PSP is 'g' times the"
-            " excitatory PSP.",
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-        )
-        weight_rel_std: float | list[float] = Field(
-            default=0.1,
-            title="Relative weight standard deviation",
-            description="Relative standard deviation of the synaptic weights.",
+            title="External PSP mean",
+            description="Mean amplitude of the postsynaptic potential (in mV) of the external"
+            " (background) input.",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         delay_exc_mean: float | list[float] = Field(
@@ -190,6 +174,12 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             description="Mean amplitude of the thalamic postsynaptic potential (in mV).",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
+        weight_th_rel_std: float | list[float] = Field(
+            default=0.1,
+            title="Thalamic relative weight standard deviation",
+            description="Relative standard deviation of the thalamic synaptic weights.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        )
         delay_th_mean: float | list[float] = Field(
             default=1.5,
             title="Thalamic delay mean",
@@ -200,6 +190,29 @@ class PD14NetworkWriteScanConfig(ScanConfig):
             default=0.5,
             title="Thalamic relative delay standard deviation",
             description="Relative standard deviation of the thalamic delay.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        )
+        c_m: float | list[float] = Field(
+            default=250.0,
+            title="Membrane capacitance",
+            description="Membrane capacitance C_m (in pF) of all neurons. Together with 'tau_m'"
+            " and 'tau_syn' it determines the conversion of PSPs (mV) to synaptic currents (pA),"
+            " so it also affects the connection weights.",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        )
+        tau_m: float | list[float] = Field(
+            default=10.0,
+            title="Membrane time constant",
+            description="Membrane time constant tau_m (in ms) of all neurons. Also affects the"
+            " connection weights (see 'c_m').",
+            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+        )
+        tau_syn: float | list[float] = Field(
+            default=0.5,
+            title="Synaptic time constant",
+            description="Time constant (in ms) of the postsynaptic currents of all neurons, used"
+            " for both excitatory and inhibitory synapses. Also affects the connection weights"
+            " (see 'c_m').",
             json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
         )
         population_name: str | list[str] = Field(
@@ -273,137 +286,12 @@ class PD14NetworkWriteScanConfig(ScanConfig):
 class PD14NetworkWriteSingleConfig(PD14NetworkWriteScanConfig, SingleConfigMixin):
     """Parameterizes a point-neuron network and writes it to SONATA files in the output dir."""
 
-    def ordered_populations(self) -> list[PointNeuronPopulation]:
-        """Populations in a deterministic order (sorted by block name)."""
-        return [
-            self.point_neuron_populations[name] for name in sorted(self.point_neuron_populations)
-        ]
-
-    def population_index_by_name(self) -> dict[str, int]:
-        """Map each population's block name to its index in ``ordered_populations()``."""
-        return {name: i for i, name in enumerate(sorted(self.point_neuron_populations))}
-
-    def connection_probability_matrix(self) -> "np.ndarray":
-        """Assemble the connection-probability matrix from the pathway blocks.
-
-        ``conn_probs[i][j]`` is the probability that a neuron of population ``j`` (source)
-        connects to a neuron of population ``i`` (target), matching the ``SonataNetwork``
-        convention. Missing pathways default to 0.0; a duplicate (source, target) pair raises.
-        """
-        index_by_name = self.population_index_by_name()
-        num_pops = len(index_by_name)
-        conn_probs = np.zeros((num_pops, num_pops))
-        seen: set[tuple[int, int]] = set()
-        for pathway in self.pathway_connection_probabilities.values():
-            source_name = pathway.source.block.block_name
-            target_name = pathway.target.block.block_name
-            if source_name not in index_by_name:
-                msg = (
-                    f"Pathway source population '{source_name}' is not in"
-                    " point_neuron_populations."
-                )
-                raise OBIONEError(msg)
-            if target_name not in index_by_name:
-                msg = (
-                    f"Pathway target population '{target_name}' is not in"
-                    " point_neuron_populations."
-                )
-                raise OBIONEError(msg)
-            j = index_by_name[source_name]
-            i = index_by_name[target_name]
-            if (i, j) in seen:
-                msg = (
-                    f"Duplicate pathway connection probability for source '{source_name}' and"
-                    f" target '{target_name}'."
-                )
-                raise OBIONEError(msg)
-            seen.add((i, j))
-            conn_probs[i][j] = pathway.connection_probability
-        return conn_probs
-
 
 class PD14NetworkWriteTask(Task):
     config: PD14NetworkWriteSingleConfig
 
     # SONATA circuit configuration written at the root of the output directory.
     OUTPUT_CONFIG: ClassVar[str] = "circuit_config.json"
-
-    def _build_net_dict(self) -> dict:
-        """Assemble the microcircuit ``net_dict`` from the config's blocks."""
-        init = self.config.initialize
-        populations = self.config.ordered_populations()
-        if len(populations) == 0:
-            msg = "At least one point neuron population must be defined."
-            raise OBIONEError(msg)
-
-        names = [p.population_name for p in populations]
-        if len(set(names)) != len(names):
-            msg = "Point neuron population names must be unique."
-            raise OBIONEError(msg)
-
-        num_pops = len(populations)
-        synapse_classes = [str(p.synapse_class) for p in populations]
-
-        # Excitatory/inhibitory PSP and delay matrices, built per source population from its
-        # synapse class (column j), rather than from index parity as in the default model.
-        exc_mean = init.psp_exc_mean
-        inh_mean = init.psp_exc_mean * init.g
-        psp_matrix = np.zeros((num_pops, num_pops))
-        delay_matrix = np.zeros((num_pops, num_pops))
-        for j, pop in enumerate(populations):
-            is_exc = str(pop.synapse_class) == "EXC"
-            psp_matrix[:, j] = exc_mean if is_exc else inh_mean
-            delay_matrix[:, j] = init.delay_exc_mean if is_exc else init.delay_inh_mean
-
-        net_dict = {
-            "N_scaling": init.n_scaling,
-            "K_scaling": init.k_scaling,
-            "neuron_model": "iaf_psc_exp",
-            "populations": names,
-            "full_num_neurons": np.array([p.num_neurons for p in populations]),
-            "full_mean_rates": np.array([p.mean_rate for p in populations]),
-            "conn_probs": self.config.connection_probability_matrix(),
-            "PSP_exc_mean": init.psp_exc_mean,
-            "weight_rel_std": init.weight_rel_std,
-            "g": init.g,
-            "delay_exc_mean": init.delay_exc_mean,
-            "delay_inh_mean": init.delay_inh_mean,
-            "delay_rel_std": init.delay_rel_std,
-            "bg_input_type": "poisson",
-            "K_ext": np.array([p.k_ext for p in populations]),
-            "bg_rate": init.bg_rate,
-            "delay_poisson": init.delay_exc_mean,
-            "V0_type": "optimized",
-            "synapse_classes": synapse_classes,
-            "layer_geometry": {
-                p.population_name: {
-                    "x": [p.x_min, p.x_max],
-                    "y": [p.y_min, p.y_max],
-                    "z": [p.z_min, p.z_max],
-                }
-                for p in populations
-            },
-            "neuron_params": {
-                "V0_mean": {
-                    "original": -58.0,
-                    "optimized": [p.v0_mean for p in populations],
-                },
-                "V0_std": {
-                    "original": 10.0,
-                    "optimized": [p.v0_std for p in populations],
-                },
-                "E_L": -65.0,
-                "V_th": -50.0,
-                "V_reset": -65.0,
-                "C_m": 250.0,
-                "tau_m": 10.0,
-                "tau_syn": 0.5,
-                "t_ref": 2.0,
-            },
-            "PSP_matrix_mean": psp_matrix,
-            "delay_matrix_mean": delay_matrix,
-        }
-        return net_dict
 
     def _register_output(self, db_client: Client, circuit_path: Path) -> models.Circuit | None:
         # Find static entities
@@ -451,28 +339,6 @@ class PD14NetworkWriteTask(Task):
             skip_validation=True,
         )
 
-    def _build_stim_dict(self) -> dict:
-        """Assemble the thalamic ``stim_dict`` from the config's parameters.
-
-        The per-population thalamo-cortical connection probabilities come from the populations;
-        the thalamic weight and delay from initialize. The thalamic input timing and rate
-        (th_start, th_duration, th_rate) do not affect the SONATA output (the thalamus is a
-        virtual population with no activity), so the model defaults are kept. Setting
-        num_th_neurons to 0 disables the thalamic input (see ``execute``).
-        """
-        init = self.config.initialize
-        conn_probs_th = np.array(
-            [p.thalamic_connection_probability for p in self.config.ordered_populations()]
-        )
-        stim_dict = copy.deepcopy(default_stim_dict)
-        stim_dict["thalamic_input"] = int(init.num_th_neurons) > 0
-        stim_dict["num_th_neurons"] = int(init.num_th_neurons)
-        stim_dict["conn_probs_th"] = conn_probs_th
-        stim_dict["PSP_th"] = init.psp_th
-        stim_dict["delay_th_mean"] = init.delay_th_mean
-        stim_dict["delay_th_rel_std"] = init.delay_th_rel_std
-        return stim_dict
-
     def execute(
         self,
         *,
@@ -493,51 +359,29 @@ class PD14NetworkWriteTask(Task):
 
         L.info(f"Info: Running idx {self.config.idx}")
 
-        try:
-            net_dict = self._build_net_dict()
-        except OBIONEError:
-            raise
-        except Exception as e:
-            message = f"Internal Server Error: {e}"
-            raise OBIONEError(message) from e
-
         L.info(
             f"Writing PD14 SONATA network to '{output_root}' "
-            f"({len(net_dict['populations'])} populations, N_scaling={init.n_scaling}, "
-            f"K_scaling={init.k_scaling}, rng_seed={init.rng_seed})"
+            f"({len(self.config.point_neuron_populations)} populations, "
+            f"N_scaling={init.n_scaling}, K_scaling={init.k_scaling}, rng_seed={init.rng_seed})"
         )
 
-        # Thalamic input: disabled (no thalamus population written) when num_th_neurons is 0.
-        thalamus_name = init.thalamus_name if int(init.num_th_neurons) > 0 else None
-        stim_dict = self._build_stim_dict()
-
-        sonata_dict = {
-            "population_name": init.population_name,
-            "background_name": init.background_name,
-            "thalamus_name": thalamus_name,
-            "write_indices": init.write_indices,
-        }
-
         try:
-            network = SonataNetwork(
-                net_dict,
-                str(output_root),
-                stim_dict=stim_dict,
-                sonata_dict=sonata_dict,
-                rng_seed=init.rng_seed,
-            )
+            network = SonataNetworkFromConfig(self.config.model_dump(), str(output_root))
             network.create()
             network.connect()
             network.store_metadata()
         except NameError as e:
-            # SonataNetwork could not be imported (see module-level warning).
+            # SonataNetworkFromConfig could not be imported (see module-level warning).
             msg = (
-                "The PD14 network exporter (microcircuit.SonataNetwork) is not available."
+                "The PD14 network exporter (microcircuit.SonataNetworkFromConfig) is not available."
                 " Install the 'microcircuit' package to use PD14NetworkWriteTask."
             )
             raise OBIONEError(msg) from e
         except OBIONEError:
             raise
+        except ValueError as e:
+            # Invalid configuration (e.g. duplicate pathway, unknown population reference).
+            raise OBIONEError(str(e)) from e
         except Exception as e:
             message = f"Internal Server Error: {e}"
             raise OBIONEError(message) from e

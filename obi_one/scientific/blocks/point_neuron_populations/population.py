@@ -115,3 +115,27 @@ class PointNeuronPopulation(Block):
         " potential (in mV).",
         json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
     )
+    e_l: float | list[float] = Field(
+        default=-65.0,
+        title="Leak potential",
+        description="Leak (resting) potential E_L of the neurons (in mV).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    v_th: float | list[float] = Field(
+        default=-50.0,
+        title="Threshold potential",
+        description="Spike threshold V_th of the neurons (in mV). Must exceed 'v_reset'.",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    v_reset: float | list[float] = Field(
+        default=-65.0,
+        title="Reset potential",
+        description="Reset potential V_reset of the neurons after a spike (in mV).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )
+    t_ref: float | list[float] = Field(
+        default=2.0,
+        title="Refractory period",
+        description="Absolute refractory period t_ref of the neurons (in ms).",
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
+    )

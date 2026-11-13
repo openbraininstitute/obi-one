@@ -63,6 +63,10 @@ def _pd14_preset_parameters(preset: str) -> dict:
         "z_max": float(geometry["z"][1]),
         "v0_mean": float(net_dict["neuron_params"]["V0_mean"]["optimized"][index]),
         "v0_std": float(net_dict["neuron_params"]["V0_std"]["optimized"][index]),
+        "e_l": float(net_dict["neuron_params"]["E_L"]),
+        "v_th": float(net_dict["neuron_params"]["V_th"]),
+        "v_reset": float(net_dict["neuron_params"]["V_reset"]),
+        "t_ref": float(net_dict["neuron_params"]["t_ref"]),
     }
 
 
@@ -155,6 +159,26 @@ class PD14PointNeuron(PointNeuronPopulation):
     v0_std: float | list[float | None] | None = Field(
         default=None,
         description="Std of the initial membrane potential. Defaults to the preset's value.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    e_l: float | list[float | None] | None = Field(
+        default=None,
+        description="Leak potential. Defaults to the preset's value.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    v_th: float | list[float | None] | None = Field(
+        default=None,
+        description="Threshold potential. Defaults to the preset's value.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    v_reset: float | list[float | None] | None = Field(
+        default=None,
+        description="Reset potential. Defaults to the preset's value.",
+        json_schema_extra={SchemaKey.UI_HIDDEN: True},
+    )
+    t_ref: float | list[float | None] | None = Field(
+        default=None,
+        description="Refractory period. Defaults to the preset's value.",
         json_schema_extra={SchemaKey.UI_HIDDEN: True},
     )
 
