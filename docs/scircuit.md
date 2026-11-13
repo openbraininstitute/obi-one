@@ -147,7 +147,6 @@ These mechanisms support:
 
 Optional modifications to synaptic properties:
 
-- **ScaleAcetylcholineUSESynapticManipulation**: Scale acetylcholine effects
 - **ScaleWeightSynapticManipulation**: Scale the weight (conductance) of every synapse between two neuron sets
 
 Manipulations are applied as `connection_overrides` in the SONATA config.

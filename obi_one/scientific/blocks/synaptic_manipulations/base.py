@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from pydantic import Field, PrivateAttr
 
@@ -67,20 +67,6 @@ class InterNeuronSetSynapticManipulation(Block, ABC):
         }
 
         return [sonata_config]  # ty:ignore[invalid-return-type]
-
-
-class GlobalVariableInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):
-    """Base class for synaptic manipulations applied to all mechanisms using the variable."""
-
-    @abstractmethod
-    def _get_synapse_configure(self) -> str:
-        pass
-
-    def _sonata_manipulations_list(self) -> dict:
-        manipulation = super()._sonata_manipulations_list()[0]
-        manipulation["synapse_configure"] = self._get_synapse_configure()
-
-        return [manipulation]  # ty:ignore[invalid-return-type]
 
 
 class DelayedInterNeuronSetSynapticManipulation(InterNeuronSetSynapticManipulation, ABC):

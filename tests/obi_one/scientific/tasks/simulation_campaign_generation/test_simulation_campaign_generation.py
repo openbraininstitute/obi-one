@@ -32,8 +32,8 @@ from obi_one.scientific.blocks.stimuli.spike.isi_distribution import (
 )
 from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
 from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
-from obi_one.scientific.blocks.synaptic_manipulations.demo import (
-    ScaleAcetylcholineUSESynapticManipulation,
+from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import (
+    ScaleWeightSynapticManipulation,
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
@@ -111,8 +111,8 @@ def _setup_sim():
     )
     sim_conf.add(voltage_recording, name="VoltageRecording")
 
-    syn_manip_use = ScaleAcetylcholineUSESynapticManipulation(use_scaling=[0.7050728631217412, 1.0])
-    sim_conf.add(syn_manip_use, name="ScaleAcetylcholineUSESynapticManipulation")
+    syn_manip_scale = ScaleWeightSynapticManipulation(weight_scaling=[0.7050728631217412, 1.0])
+    sim_conf.add(syn_manip_scale, name="ScaleWeightSynapticManipulation")
 
     simulations_initialize = CircuitSimulationScanConfig.Initialize(
         circuit=circuit_list, node_set=sim_neuron_set.ref, simulation_length=sim_duration
@@ -216,16 +216,15 @@ def _check_generated_sonata_configs(tmp_path, scan):
             "end_time": 3000.0,
         }
         assert cfg.pop("reports") == {"VoltageRecording": volt_dict}
-        use = instance.synaptic_manipulations[
-            "ScaleAcetylcholineUSESynapticManipulation"
-        ].use_scaling
-        use_dict = {
-            "name": "ScaleAcetylcholineUSESynapticManipulation",
+        scale = instance.synaptic_manipulations["ScaleWeightSynapticManipulation"].weight_scaling
+        scale_dict = {
+            "name": "ScaleWeightSynapticManipulation",
             "source": "Default: All Biophysical Neurons",
             "target": "Default: All Biophysical Neurons",
-            "synapse_configure": f"%s.Use *= {use}",
+            "delay": 0.0,
+            "weight": scale,
         }
-        assert cfg.pop("connection_overrides") == [use_dict]
+        assert cfg.pop("connection_overrides") == [scale_dict]
         assert cfg.pop("node_set") == "ID10"
         assert cfg.pop("node_sets_file") == "node_sets.json"
         assert len(cfg) == 0  # No additional entries
@@ -313,13 +312,15 @@ def _check_generated_obi_config(tmp_path, scan):  # ruff: ignore[too-many-locals
         "sample_seed": 1,
         "neuron_ids": vpm_ids,
     }
-    use_dict = {
-        "type": "ScaleAcetylcholineUSESynapticManipulation",
-        "use_scaling": scan.form.synaptic_manipulations[
-            "ScaleAcetylcholineUSESynapticManipulation"
-        ].use_scaling,
+    scale_dict = {
+        "type": "ScaleWeightSynapticManipulation",
+        "weight_scaling": scan.form.synaptic_manipulations[
+            "ScaleWeightSynapticManipulation"
+        ].weight_scaling,
         "presynaptic_neuron_set": None,
         "postsynaptic_neuron_set": None,
+        "timestamps": None,
+        "timestamp_offset": 0.0,
     }
     circuit_list = [
         {
@@ -356,7 +357,7 @@ def _check_generated_obi_config(tmp_path, scan):  # ruff: ignore[too-many-locals
             "ID3": id3_dict,
             "VPM_input": vpm_dict,
         },
-        "synaptic_manipulations": {"ScaleAcetylcholineUSESynapticManipulation": use_dict},
+        "synaptic_manipulations": {"ScaleWeightSynapticManipulation": scale_dict},
         "neuronal_manipulations": {},
         "initialize": init_dict,
         "info": info_dict,
@@ -378,9 +379,7 @@ def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-
         assert cfg.pop("idx") == instance.idx
         assert cfg.pop("coordinate_output_root") == str(scan.output_root / str(instance.idx))
         assert cfg.pop("scan_output_root") == str(scan.output_root)
-        use = instance.synaptic_manipulations[
-            "ScaleAcetylcholineUSESynapticManipulation"
-        ].use_scaling
+        scale = instance.synaptic_manipulations["ScaleWeightSynapticManipulation"].weight_scaling
         circuit_dict = {
             "name": instance.initialize.circuit.name,
             "path": str(instance.initialize.circuit.path),
@@ -388,16 +387,16 @@ def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-
             "type": "Circuit",
         }
         circuit_scan_param = instance.single_coordinate_scan_params.scan_params[0]
-        use_scan_param = instance.single_coordinate_scan_params.scan_params[1]
+        scale_scan_param = instance.single_coordinate_scan_params.scan_params[1]
         scan_dict1 = {
             "location_list": [
                 "synaptic_manipulations",
-                "ScaleAcetylcholineUSESynapticManipulation",
-                "use_scaling",
+                "ScaleWeightSynapticManipulation",
+                "weight_scaling",
             ],
             "type": "SingleValueScanParam",
-            "value": use,
-            "index_in_scan_dimension": use_scan_param.index_in_scan_dimension,
+            "value": scale,
+            "index_in_scan_dimension": scale_scan_param.index_in_scan_dimension,
         }
         scan_dict2 = {
             "location_list": ["initialize", "circuit"],
@@ -495,15 +494,15 @@ def _check_generated_instance_configs(tmp_path, scan):  # ruff: ignore[too-many-
             "ID3": id3_dict,
             "VPM_input": vpm_dict,
         }
-        use_dict = {
-            "type": "ScaleAcetylcholineUSESynapticManipulation",
-            "use_scaling": use,
+        scale_dict = {
+            "type": "ScaleWeightSynapticManipulation",
+            "weight_scaling": scale,
             "presynaptic_neuron_set": None,
             "postsynaptic_neuron_set": None,
+            "timestamps": None,
+            "timestamp_offset": 0.0,
         }
-        assert cfg.pop("synaptic_manipulations") == {
-            "ScaleAcetylcholineUSESynapticManipulation": use_dict
-        }
+        assert cfg.pop("synaptic_manipulations") == {"ScaleWeightSynapticManipulation": scale_dict}
         init_dict = {
             "type": "CircuitSimulationScanConfig.Initialize",
             "circuit": circuit_dict,
@@ -599,7 +598,7 @@ def test_simulation_campaign_generation(tmp_path):
         )
 
     # Use different numbers of coordinates in coupled scan --> Error
-    sim_conf.synaptic_manipulations["ScaleAcetylcholineUSESynapticManipulation"].use_scaling = [
+    sim_conf.synaptic_manipulations["ScaleWeightSynapticManipulation"].weight_scaling = [
         0.5,
         0.7,
         1.0,
