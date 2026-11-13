@@ -2,7 +2,8 @@
 
 1. Find the ``model_template`` values of the selected neurons in ``nodes.h5``.
 2. Read each template's hoc file and the mod files of its mechanisms, fetched in parallel.
-3. Fill units the mod files leave undeclared from the ion channel model entities.
+3. Fill units the mod files leave undeclared, and each channel's entity_id, from the ion
+   channel model entities.
 4. A template whose files cannot be read uses its emodel_circuit derivation instead.
 5. Return the channels, variables and section lists common to all templates.
 
@@ -550,7 +551,7 @@ def _read_template_models(
             if isinstance(parsed, HocBiophysics)
             else _public_reason(parsed)
         )
-    _fill_units_from_database(
+    warnings += _fill_from_database(
         db_client,
         [
             mechanism
@@ -580,56 +581,85 @@ def _entity_units(model: IonChannelModel) -> dict[str, str]:
     return {name: unit for entry in entries for name, unit in entry.items() if unit}
 
 
+def _matching_models(
+    mechanism: ModMechanism, models: Iterable[IonChannelModel]
+) -> list[IonChannelModel]:
+    """The entities with the mechanism's suffix that describe the same mechanism.
+
+    Two mechanisms can share a suffix, so an entity counts only when every unit it shares
+    with the mod file is equal.
+    """
+    declared = {name: _normalized_unit(unit) for name, unit in mechanism.units.items()}
+    matching = []
+    for model in models:
+        units = _entity_units(model)
+        if all(_normalized_unit(units[n]) == u for n, u in declared.items() if n in units):
+            matching.append(model)
+    return matching
+
+
 def _database_units(mechanism: ModMechanism, models: Iterable[IonChannelModel]) -> dict[str, str]:
     """Units for the mechanism's undeclared variables, from entities with its suffix.
 
-    Two mechanisms can share a suffix, so an entity counts only when every unit it shares
-    with the mod file is equal, and a unit is taken only when all such entities agree.
+    Only matching entities count (``_matching_models``), and a unit is taken only when all
+    of them agree.
 
     Returns:
         Variable -> unit, for the variables a unit was found for.
     """
-    declared = {name: _normalized_unit(unit) for name, unit in mechanism.units.items()}
     missing = _undeclared_units(mechanism)
     # Missing variable -> {normalized unit: unit as written}.
     found: dict[str, dict[str, str]] = defaultdict(dict)
-    for model in models:
+    for model in _matching_models(mechanism, models):
         units = _entity_units(model)
-        if any(_normalized_unit(units[n]) != u for n, u in declared.items() if n in units):
-            continue  # same suffix, different mechanism
         for name in missing:
             if name in units:
                 found[name][_normalized_unit(units[name])] = units[name]
     return {name: next(iter(units.values())) for name, units in found.items() if len(units) == 1}
 
 
-def _fill_units_from_database(
+def _fill_from_database(
     db_client: entitysdk.client.Client, mechanisms: Iterable[ModMechanism]
-) -> None:
-    """Fill, in place, the units the mod files leave undeclared from ion channel entities.
+) -> list[str]:
+    """Fill, in place, each mechanism's ``entity_id`` and undeclared units.
 
-    One search per suffix with a missing unit, in parallel: entitycore filters one
-    ``nmodl_suffix`` per request. A failed search is logged and leaves the unit empty.
+    One search per distinct suffix, in parallel on ``FETCH_POOL``: entitycore filters one
+    ``nmodl_suffix`` per request, and a template's 10-20 mechanisms then cost one round.
+    The ``entity_id`` is set only when exactly one entity matches, so the UI never links
+    a channel to the wrong model. A failed search is logged and leaves both empty.
+
+    Returns:
+        One warning naming the mechanisms left without an ``entity_id``, if any.
     """
     by_suffix: dict[str, list[ModMechanism]] = defaultdict(list)
     for mechanism in mechanisms:
-        if _undeclared_units(mechanism):
-            by_suffix[mechanism.suffix].append(mechanism)
+        by_suffix[mechanism.suffix].append(mechanism)
 
-    def search(suffix: str) -> list[IonChannelModel] | Exception:
+    def search(suffix: str) -> list[IonChannelModel] | None:
         try:
             return db_client.search_entity(
                 entity_type=IonChannelModel, query={"nmodl_suffix": suffix}
             ).all()
-        except Exception as err:  # ruff: ignore[blind-except]
+        except EntitySDKError:
             L.warning("Could not search ion channel models for %s", suffix, exc_info=True)
-            return err
+            return None
 
+    unmatched: list[str] = []
     for suffix, models in zip(by_suffix, FETCH_POOL.map(search, by_suffix), strict=True):
-        if isinstance(models, Exception):
-            continue
         for mechanism in by_suffix[suffix]:
-            mechanism.units.update(_database_units(mechanism, models))
+            matching = _matching_models(mechanism, models or [])
+            mechanism.entity_id = str(matching[0].id) if len(matching) == 1 else None
+            mechanism.units.update(_database_units(mechanism, matching))
+        if any(mechanism.entity_id is None for mechanism in by_suffix[suffix]):
+            unmatched.append(suffix)
+    if not unmatched:
+        return []
+    warning = (
+        f"No single ion channel model matches {_counted(len(unmatched), 'mechanism')}"
+        f" ({_named_list(sorted(unmatched))}): none or several share the nmodl_suffix,"
+        " so their entity_id is null."
+    )
+    return [warning]
 
 
 def _template_model(biophysics: HocBiophysics, index: ModIndex) -> TemplateModel | str:
@@ -1181,9 +1211,13 @@ def _compute_common_mechanism_variables(
                 section_lists_original_values=dict.fromkeys(common_section_lists),
             )
 
+        # The channel keeps its ion channel model only when every group names the same one.
+        entity_ids = {
+            g["mechanism_variables_by_ion_channel"][channel].entity_id for g in groups_with_vars
+        }
         result[channel] = IonChannelVariables(
             section_lists=common_section_lists,
-            entity_id=None,
+            entity_id=entity_ids.pop() if len(entity_ids) == 1 else None,
             variables=variables,
         )
 

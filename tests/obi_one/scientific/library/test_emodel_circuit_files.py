@@ -155,8 +155,16 @@ class TestGoldenAgainstDatabaseResponse:
             "somatic": 1.151226556055784e-05,
         }
 
-    def test_entity_ids_are_unknown_from_files(self, from_files):
+    def test_entity_ids_are_unknown_from_files_alone(self, from_files):
         assert all(entry["entity_id"] is None for entry in from_files.values())
+
+    def test_entity_id_comes_from_the_mod_mechanism(self):
+        """Filled from the database by suffix; NEURON built-ins have no entity."""
+        biophysics, mechanisms = _model_from_files(HOC_PATH.read_text())
+        mechanisms["NaTg"].entity_id = "natg-id"
+        _variables, mapping = mechanism_variables(biophysics, mechanisms)
+        assert mapping.channel_to_section_lists["NaTg"].entity_id == "natg-id"
+        assert mapping.channel_to_section_lists["pas"].entity_id is None
 
 
 class TestRoundTripThroughTheRealTemplate:

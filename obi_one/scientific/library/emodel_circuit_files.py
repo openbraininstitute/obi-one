@@ -423,7 +423,8 @@ def mechanism_variables(
 
     Returns:
         The ``(variables, channel_mapping)`` pair ``get_mechanism_variables_for_emodel``
-        returns. Channel ``entity_id`` is None: the files do not know database IDs.
+        returns. A channel's ``entity_id`` is its mod file's ``ModMechanism.entity_id``
+        (None for NEURON built-ins).
 
     Raises:
         HocTemplateError: An inserted mechanism has no mod file.
@@ -438,7 +439,10 @@ def mechanism_variables(
 
     mapping = ChannelSectionListMapping(
         channel_to_section_lists={
-            channel: ChannelInfo(section_lists=section_lists, entity_id=None)
+            channel: ChannelInfo(
+                section_lists=section_lists,
+                entity_id=None if channel in BUILTIN_MECHANISMS else mechanisms[channel].entity_id,
+            )
             for channel, section_lists in channel_sections.items()
         }
     )

@@ -5,7 +5,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import h5py
@@ -51,7 +51,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _compute_common_mechanism_variables,
     _database_units,
     _fetch_emodel_derivation_mapping,
-    _fill_units_from_database,
+    _fill_from_database,
     _get_circuit_asset,
     _match_templates_to_emodels,
     _population_templates,
@@ -236,12 +236,24 @@ class TestComputeCommonMechanismVariables:
 
         assert "NaTg" in result
         assert result["NaTg"].section_lists == ["somatic"]
-        assert result["NaTg"].entity_id is None  # ambiguous across emodels
+        assert result["NaTg"].entity_id == "some-entity-id"  # every group names it
         var = result["NaTg"].variables["gNaTgbar_NaTg"]
         # Most restrictive limits: max(0.0, 0.0)=0.0, min(1.0, 0.8)=0.8
         assert var.limits == [0.0, 0.8]
         # Original values are None (ambiguous)
         assert var.section_lists_original_values == {"somatic": None}
+
+    def test_entity_id_is_dropped_when_groups_disagree(self):
+        var = _make_var(limits=[0.0, 1.0], section_lists_original_values={"somatic": 0.04})
+        groups = {
+            name: _make_emodel_group(
+                [index],
+                f"hoc:{name}",
+                {"NaTg": _make_channel(["somatic"], {"gNaTgbar_NaTg": var}, entity_id)},
+            )
+            for index, (name, entity_id) in enumerate([("a", "id-1"), ("b", "id-2")])
+        }
+        assert _compute_common_mechanism_variables(groups)["NaTg"].entity_id is None
 
     def test_two_emodels_partial_overlap(self):
         """Channel A in both, channel B only in one -> intersection has only A."""
@@ -1151,7 +1163,7 @@ class TestStageCircuitForNeuronSetResolution:
         assert {population for population, _ in node_to_template} == (
             {"S1nonbarrel_neurons"} if with_biophysical else set()
         )
-        assert warnings == [
+        assert [w for w in warnings if "entity_id" not in w] == [
             (
                 "3 selected neurons are in populations that are not biophysical"
                 " ('lif' (point_process)), so they have no mechanism variables and are left out."
@@ -1695,7 +1707,8 @@ class TestVariablesReadFromCircuitFiles:
 
         assert _searches(mock_db_client, DerivationModel) == []
         assert result["populations"] == ["S1nonbarrel_neurons"]
-        assert result["warnings"] is None
+        # Only the entity_id one: the mock database has no ion channel model.
+        assert [w for w in result["warnings"] if "entity_id" not in w] == []
         channels = result["MechanismVariablesByIonChannel"]
         assert {"pas", "NaTg", "-"} <= set(channels)
         g_pas = channels["pas"].variables["g_pas"].section_lists_original_values
@@ -1708,7 +1721,7 @@ class TestVariablesReadFromCircuitFiles:
 
         assert _searches(mock_db_client, DerivationModel) == []
         assert result["populations"] is None
-        assert result["warnings"] is None
+        assert [w for w in result["warnings"] if "entity_id" not in w] == []
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
 
     @pytest.mark.parametrize("node_ids", [None, [0]])
@@ -1919,7 +1932,7 @@ def _asset() -> MagicMock:
 
 
 def _read_models(client, tmp_path, templates, dirs):
-    models, warnings = _read_template_models(
+    models, _warnings = _read_template_models(
         client,
         str(uuid4()),
         _asset(),
@@ -1928,7 +1941,6 @@ def _read_models(client, tmp_path, templates, dirs):
         {"S1nonbarrel_neurons": dirs},
         _asset_files(client, str(uuid4()), _asset()),
     )
-    assert warnings == []
     return models
 
 
@@ -2351,12 +2363,13 @@ class TestPopulationTemplatesReadPath:
 
 
 def _entity(range_units: dict, global_units: dict | None = None) -> SimpleNamespace:
-    """An ion channel model entity as far as its units go."""
+    """An ion channel model entity as far as its id and units go."""
     return SimpleNamespace(
+        id=uuid4(),
         neuron_block=SimpleNamespace(
             range=[{name: unit} for name, unit in range_units.items()],
             global_=[{name: unit} for name, unit in (global_units or {}).items()],
-        )
+        ),
     )
 
 
@@ -2396,31 +2409,48 @@ class TestUnitsFromTheDatabase:
         entity = _entity({"ik": "mA/cm2"}, {"q10": "1"})
         assert _database_units(mechanism, [entity]) == {"q10": "1"}
 
-    def test_one_search_per_suffix_that_misses_a_unit(self):
+    def test_one_search_per_distinct_suffix(self):
         client = MagicMock()
         client.search_entity.return_value.all.return_value = [
             _entity({"gbar": "S/cm2", "sh": "mV", "tau": "ms"})
         ]
         kmb, kmb_again = _kmb(), _kmb()
         complete = ModMechanism(suffix="pas2", range_variables=["g"], units={"g": "S/cm2"})
-        _fill_units_from_database(client, [kmb, kmb_again, complete])
-        assert client.search_entity.call_args_list == [
-            call(entity_type=IonChannelModel, query={"nmodl_suffix": "kmb"})
-        ]
+        _fill_from_database(client, [kmb, kmb_again, complete])
+        assert sorted(
+            c.kwargs["query"]["nmodl_suffix"] for c in client.search_entity.call_args_list
+        ) == ["kmb", "pas2"]
         assert kmb.units == kmb_again.units == {"gbar": "mho/cm2", "sh": "mV", "tau": "ms"}
 
-    def test_nothing_missing_means_no_search(self):
+    def test_the_one_matching_entity_gives_the_entity_id(self):
+        entity = _entity({"gbar": "S/cm2"})
+        other_mechanism = _entity({"gbar": "mV"})  # same suffix, different units
         client = MagicMock()
-        _fill_units_from_database(
-            client, [ModMechanism(suffix="a", range_variables=["g"], units={"g": "S/cm2"})]
-        )
-        client.search_entity.assert_not_called()
+        client.search_entity.return_value.all.return_value = [entity, other_mechanism]
+        kmb = _kmb()
+        assert _fill_from_database(client, [kmb]) == []
+        assert kmb.entity_id == str(entity.id)
+
+    @pytest.mark.parametrize("count", [0, 2])
+    def test_none_or_several_matching_entities_give_null_and_a_warning(self, count):
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = [
+            _entity({"gbar": "S/cm2"}) for _ in range(count)
+        ]
+        kmb = _kmb()
+        assert _fill_from_database(client, [kmb]) == [
+            (
+                "No single ion channel model matches 1 mechanism (kmb): none or several share"
+                " the nmodl_suffix, so their entity_id is null."
+            )
+        ]
+        assert kmb.entity_id is None
 
     def test_a_failed_search_leaves_the_units_empty(self, caplog):
         client = MagicMock()
         client.search_entity.side_effect = EntitySDKError("HTTP error 503")
         kmb = _kmb()
-        _fill_units_from_database(client, [kmb])
+        _fill_from_database(client, [kmb])
         assert kmb.units == {"gbar": "mho/cm2"}
         assert "Could not search ion channel models for kmb" in caplog.text
 
