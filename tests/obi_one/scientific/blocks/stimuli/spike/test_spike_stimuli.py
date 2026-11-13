@@ -29,7 +29,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 )
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
-from tests.utils import CIRCUIT_DIR
+from tests.utils import CIRCUIT_DIR, stage_circuit_without_edges
 
 CIRCUIT_PATH = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
@@ -877,3 +877,34 @@ def test_spike_source_with_edges_to_target_is_accepted():
         source_neuron_set=_StubNeuronSet(["external"]),
         target_neuron_set=_StubNeuronSet(["cell"]),
     )
+
+
+def test_spike_stimulus_generates_on_a_circuit_staged_without_edges(tmp_path):
+    """Campaign generation stages full circuits without their edges, so they cannot be checked."""
+    config = stage_circuit_without_edges(CIRCUIT_DIR / CIRCUIT_NAME, tmp_path / "staged")
+    circuit = Circuit(name="nodes_only", path=str(config))
+
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    sim_conf.set(Info(campaign_name="NodesOnly", campaign_description="x"), name="info")
+    timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
+    sim_conf.add(timestamps, name="Timestamps")
+    sim_conf.add(
+        PoissonSpikeStimulus(
+            duration=200.0, timestamps=timestamps.ref, frequency=10.0, random_seed=0
+        ),
+        name="Poisson",
+    )
+    sim_conf.set(
+        CircuitSimulationScanConfig.Initialize(circuit=circuit, simulation_length=500.0),
+        name="initialize",
+    )
+    scan = GridScanGenerationTask(
+        form=sim_conf.validated_config(),
+        output_root=tmp_path / "scan",
+        coordinate_directory_option="ZERO_INDEX",
+    )
+    scan.execute()
+    run_tasks_for_generated_scan(scan)
+
+    with h5py.File(tmp_path / "scan" / "0" / "Poisson_spikes.h5", "r") as f:
+        assert list(f["spikes"]) == ["S1nonbarrel_neurons"]
