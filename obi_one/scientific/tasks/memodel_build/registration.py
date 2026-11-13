@@ -1,6 +1,8 @@
 """Entity registration for the ME-model build task.
 
-The ME-model is registered after calibration, once holding and threshold currents are known.
+The ME-model entity is registered after calibration, once holding and threshold currents are known.
+Calibration result, classifications, and creator are finalized separately so failures after the
+entity exists can set ``validation_status=error``.
 """
 
 import logging
@@ -40,13 +42,12 @@ def register_memodel(
     brain_region: BrainRegion,
     holding_current: float,
     threshold_current: float,
-    rin: float | None,
     authorized_public: bool,
 ) -> MEModel:
-    """Register the ME-model, classifications, calibration result, and creator contribution.
+    """Register the ME-model entity with calibrated currents and ``validation_status=created``.
 
     ``entitysdk.registration.memodel.register_memodel`` is not used: it requires a
-    ``license`` and has no ``strain``.
+    ``license`` and has no ``strain``. Call ``finalize_memodel`` next.
     """
     memodel = db_client.register_entity(
         MEModel(
@@ -65,12 +66,21 @@ def register_memodel(
         )
     )
     L.info("MEModel registered: %s", memodel.id)
+    return memodel
 
-    for mtype in morphology.mtypes or []:
-        register_mtype_classification(client=db_client, entity=memodel, mtype_class=mtype)
-    for etype in emodel.etypes or []:
-        register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
 
+def finalize_memodel(
+    db_client: entitysdk.Client,
+    *,
+    memodel: MEModel,
+    morphology: CellMorphology,
+    emodel: EModel,
+    holding_current: float,
+    threshold_current: float,
+    rin: float | None,
+    authorized_public: bool,
+) -> None:
+    """Register calibration result, classifications, and creator contribution."""
     register_memodel_calibration_result(
         client=db_client,
         calibrated_entity_id=memodel.id,
@@ -79,8 +89,11 @@ def register_memodel(
         rin=rin,
         authorized_public=authorized_public,
     )
+    for mtype in morphology.mtypes or []:
+        register_mtype_classification(client=db_client, entity=memodel, mtype_class=mtype)
+    for etype in emodel.etypes or []:
+        register_etype_classification(client=db_client, entity=memodel, etype_class=etype)
     _register_creator(db_client=db_client, memodel=memodel)
-    return memodel
 
 
 def _register_creator(db_client: entitysdk.Client, memodel: MEModel) -> None:

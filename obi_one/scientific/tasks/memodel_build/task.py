@@ -4,10 +4,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import entitysdk
-from entitysdk.downloaders.memodel import download_memodel
-from entitysdk.models import CellMorphology, EModel, MEModel
+from entitysdk.models import MEModel
 from entitysdk.registration.validation_result import register_memodel_validation_results
-from entitysdk.schemas.memodel import DownloadedMEModel
 from entitysdk.types import ValidationStatus
 
 from obi_one.core.task import Task
@@ -18,6 +16,7 @@ from obi_one.scientific.library.memodel_calibration_validation import (
 from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.memodel_build import registration
 from obi_one.scientific.tasks.memodel_build.config import MEModelBuildSingleConfig
+from obi_one.scientific.tasks.memodel_build.staging import stage_memodel
 from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
@@ -25,34 +24,17 @@ L = logging.getLogger(__name__)
 # Starting currents for calibration, before the ME-model's own are known.
 INITIAL_HOLDING_CURRENT = 0.0
 INITIAL_THRESHOLD_CURRENT = 0.1
-DOWNLOAD_CONCURRENCY = 8
 # Launch-system jobs validate on the CPUs they were given (JOB_CPUS); other runs, such as
 # Bluenaas, on as many as the former Bluenaas validation job.
 DEFAULT_VALIDATION_PROCESSES = 4
 VALIDATION_FIGURES_DIRNAME = "validation_figures"
 
 
-def stage_memodel(
-    db_client: entitysdk.Client,
-    morphology: CellMorphology,
-    emodel: EModel,
-    output_dir: Path,
-) -> DownloadedMEModel:
-    """Download hoc, morphology and mechanisms from the build inputs.
-
-    The first morphology path is the one to use: asc over swc over h5.
-    """
-    # No MEModel is registered yet; download_memodel only needs morphology + emodel.
-    return download_memodel(
-        db_client,
-        memodel=MEModel.model_construct(morphology=morphology, emodel=emodel),
-        output_dir=output_dir,
-        max_concurrent=DOWNLOAD_CONCURRENCY,
-    )
-
-
 class MEModelBuildTask(Task):
-    """See docs/memodel-build.md. A failure during validation sets ``validation_status=error``."""
+    """See docs/memodel-build.md.
+
+    Failures after the ME-model entity exists set ``validation_status=error``.
+    """
 
     name: ClassVar[str] = "ME-model Build"
     description: ClassVar[str] = (
@@ -93,7 +75,7 @@ class MEModelBuildTask(Task):
         calibration = compute_calibration_in_subprocess(
             coord_root=output_dir,
             hoc_path=staged.hoc_path,
-            morphology_path=staged.morphology_paths[0],
+            morphology_path=staged.morphology_path,
             holding_current=INITIAL_HOLDING_CURRENT,
             threshold_current=INITIAL_THRESHOLD_CURRENT,
         )
@@ -106,21 +88,30 @@ class MEModelBuildTask(Task):
             brain_region=brain_region,
             holding_current=calibration["holding_current"],
             threshold_current=calibration["rheobase"],
-            rin=calibration.get("rin"),
             authorized_public=authorized_public,
         )
-        self._update_execution_activity(
-            db_client=db_client,
-            execution_activity=execution_activity,
-            generated=[str(memodel.id)],
-        )
         try:
-            _try_validation(
+            registration.finalize_memodel(
+                db_client=db_client,
+                memodel=memodel,
+                morphology=morphology,
+                emodel=emodel,
+                holding_current=calibration["holding_current"],
+                threshold_current=calibration["rheobase"],
+                rin=calibration.get("rin"),
+                authorized_public=authorized_public,
+            )
+            self._update_execution_activity(
+                db_client=db_client,
+                execution_activity=execution_activity,
+                generated=[str(memodel.id)],
+            )
+            validate_memodel(
                 db_client=db_client,
                 memodel=memodel,
                 output_dir=output_dir,
                 hoc_path=staged.hoc_path,
-                morphology_path=staged.morphology_paths[0],
+                morphology_path=staged.morphology_path,
                 calibration=calibration,
                 authorized_public=authorized_public,
             )
@@ -139,14 +130,14 @@ class MEModelBuildTask(Task):
         return str(memodel.id)
 
 
-def _try_validation(
+def validate_memodel(
     *,
     db_client: entitysdk.Client,
     memodel: MEModel,
     output_dir: Path,
     hoc_path: Path,
     morphology_path: Path,
-    calibration: dict,
+    calibration: dict[str, float],
     authorized_public: bool,
 ) -> None:
     validation = run_validations_in_subprocess(

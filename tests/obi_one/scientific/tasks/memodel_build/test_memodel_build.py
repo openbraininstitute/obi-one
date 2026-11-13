@@ -18,7 +18,11 @@ from obi_one.scientific.from_id.emodel_from_id import EModelFromID
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_scan_config,
 )
-from obi_one.scientific.tasks.memodel_build import registration, task as task_module
+from obi_one.scientific.tasks.memodel_build import (
+    registration,
+    staging as staging_module,
+    task as task_module,
+)
 from obi_one.scientific.tasks.memodel_build.config import (
     MEModelBuildScanConfig,
     MEModelBuildSingleConfig,
@@ -121,11 +125,12 @@ def steps(monkeypatch, tmp_path, build_inputs):
     parent.stage_memodel.return_value = SimpleNamespace(
         hoc_path=tmp_path / "cell.hoc",
         mechanisms_dir=tmp_path / "mechanisms",
-        morphology_paths=[tmp_path / "cell.asc", tmp_path / "cell.swc"],
+        morphology_path=tmp_path / "cell.asc",
     )
     parent.calibrate.return_value = CALIBRATION
     parent.validate.return_value = VALIDATION
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
+    monkeypatch.setattr(registration, "finalize_memodel", parent.finalize_memodel)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
     monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
@@ -155,6 +160,7 @@ class TestExecute:
             "compile",
             "calibrate",
             "register_memodel",
+            "finalize_memodel",
             "update_execution_activity",
             "validate",
             "register_validation",
@@ -185,6 +191,15 @@ class TestExecute:
             "emodel": steps.inputs.emodel,
             "species": steps.inputs.species,
             "brain_region": steps.inputs.brain_region,
+            "holding_current": CALIBRATION["holding_current"],
+            "threshold_current": CALIBRATION["rheobase"],
+            "authorized_public": False,
+        }
+        assert steps.finalize_memodel.call_args.kwargs == {
+            "db_client": db_client,
+            "memodel": steps.register_memodel.return_value,
+            "morphology": steps.inputs.morphology,
+            "emodel": steps.inputs.emodel,
             "holding_current": CALIBRATION["holding_current"],
             "threshold_current": CALIBRATION["rheobase"],
             "rin": CALIBRATION["rin"],
@@ -227,6 +242,7 @@ class TestExecute:
         )
 
         assert steps.register_memodel.call_args.kwargs["authorized_public"] is True
+        assert steps.finalize_memodel.call_args.kwargs["authorized_public"] is True
         assert steps.register_validation.call_args.kwargs["authorized_public"] is True
 
     @pytest.mark.parametrize(
@@ -235,9 +251,10 @@ class TestExecute:
             "stage_memodel",
             "compile",
             "calibrate",
+            "register_memodel",
         ],
     )
-    def test_failure_before_registration_leaves_nothing_to_mark(
+    def test_failure_before_entity_exists_leaves_nothing_to_mark(
         self, tmp_path, steps, failing_step
     ):
         getattr(steps, failing_step).side_effect = RuntimeError("NEURON crashed")
@@ -245,39 +262,24 @@ class TestExecute:
         with pytest.raises(RuntimeError, match="NEURON crashed"):
             _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
 
-        steps.register_memodel.assert_not_called()
+        steps.finalize_memodel.assert_not_called()
         steps.set_validation_status.assert_not_called()
         steps.update_execution_activity.assert_not_called()
 
     @pytest.mark.parametrize(
         "failing_step",
         [
-            "register_memodel",
+            "finalize_memodel",
             "update_execution_activity",
-        ],
-    )
-    def test_failure_before_validation_fails_without_marking_error(
-        self, tmp_path, steps, failing_step
-    ):
-        getattr(steps, failing_step).side_effect = RuntimeError("entitycore down")
-
-        with pytest.raises(RuntimeError, match="entitycore down"):
-            _task(tmp_path).execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
-
-        steps.set_validation_status.assert_not_called()
-
-    @pytest.mark.parametrize(
-        "failing_step",
-        [
             "validate",
             "register_validation",
         ],
     )
-    def test_failure_during_validation_sets_error_and_raises(self, tmp_path, steps, failing_step):
-        getattr(steps, failing_step).side_effect = RuntimeError("NEURON crashed")
+    def test_failure_after_entity_exists_sets_error_and_raises(self, tmp_path, steps, failing_step):
+        getattr(steps, failing_step).side_effect = RuntimeError("entitycore down")
         db_client = _db_client()
 
-        with pytest.raises(RuntimeError, match="NEURON crashed"):
+        with pytest.raises(RuntimeError, match="entitycore down"):
             _task(tmp_path).execute(db_client=db_client, execution_activity_id=ACTIVITY_ID)
 
         steps.register_memodel.assert_called_once()
@@ -328,12 +330,10 @@ def entity_classes(monkeypatch):
 
 
 class TestRegistration:
-    def test_register_memodel(self, tmp_path, build_inputs, entity_classes):
+    def test_register_memodel_creates_entity_only(self, tmp_path, build_inputs, entity_classes):
         db_client = Mock()
         memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
         db_client.register_entity.return_value = memodel
-        creator, creator_role = object(), object()
-        db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
 
         result = registration.register_memodel(
             config=_task(tmp_path).config,
@@ -344,7 +344,6 @@ class TestRegistration:
             brain_region=build_inputs.brain_region,
             holding_current=-0.05,
             threshold_current=0.2,
-            rin=120.0,
             authorized_public=True,
         )
 
@@ -362,12 +361,36 @@ class TestRegistration:
             validation_status=ValidationStatus.created,
             authorized_public=True,
         )
-        entity_classes.register_mtype.assert_called_once_with(
-            client=db_client, entity=memodel, mtype_class=build_inputs.morphology.mtypes[0]
+        entity_classes.register_calibration.assert_not_called()
+        entity_classes.register_mtype.assert_not_called()
+        entity_classes.register_etype.assert_not_called()
+        entity_classes.Contribution.assert_not_called()
+
+    def test_finalize_memodel_registers_calibration_before_classifications(
+        self, build_inputs, entity_classes
+    ):
+        db_client = Mock()
+        memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
+        creator, creator_role = object(), object()
+        db_client.search_entity.return_value.one.side_effect = [creator, creator_role]
+
+        registration.finalize_memodel(
+            db_client=db_client,
+            memodel=memodel,
+            morphology=build_inputs.morphology,
+            emodel=build_inputs.emodel,
+            holding_current=-0.05,
+            threshold_current=0.2,
+            rin=120.0,
+            authorized_public=True,
         )
-        entity_classes.register_etype.assert_called_once_with(
-            client=db_client, entity=memodel, etype_class=build_inputs.emodel.etypes[0]
-        )
+
+        assert [name for name, *_ in entity_classes.mock_calls] == [
+            "register_calibration",
+            "register_mtype",
+            "register_etype",
+            "Contribution",
+        ]
         entity_classes.register_calibration.assert_called_once_with(
             client=db_client,
             calibrated_entity_id=MEMODEL_ID,
@@ -375,6 +398,12 @@ class TestRegistration:
             threshold_current=0.2,
             rin=120.0,
             authorized_public=True,
+        )
+        entity_classes.register_mtype.assert_called_once_with(
+            client=db_client, entity=memodel, mtype_class=build_inputs.morphology.mtypes[0]
+        )
+        entity_classes.register_etype.assert_called_once_with(
+            client=db_client, entity=memodel, etype_class=build_inputs.emodel.etypes[0]
         )
         assert db_client.search_entity.call_args_list[0].kwargs["query"] == {"sub_id": "user-sub"}
         assert db_client.search_entity.call_args_list[1].kwargs["query"] == {
@@ -384,29 +413,26 @@ class TestRegistration:
             agent=creator, role=creator_role, entity=memodel
         )
 
-    def test_failed_calibration_registration_fails_register_memodel(
-        self, tmp_path, build_inputs, entity_classes
+    def test_failed_calibration_registration_fails_finalize_memodel(
+        self, build_inputs, entity_classes
     ):
         db_client = Mock()
-        db_client.register_entity.return_value = SimpleNamespace(
-            id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub")
-        )
+        memodel = SimpleNamespace(id=MEMODEL_ID, created_by=SimpleNamespace(id="user-sub"))
         entity_classes.register_calibration.side_effect = RuntimeError("entitycore down")
 
         with pytest.raises(RuntimeError, match="entitycore down"):
-            registration.register_memodel(
-                config=_task(tmp_path).config,
+            registration.finalize_memodel(
                 db_client=db_client,
+                memodel=memodel,
                 morphology=build_inputs.morphology,
                 emodel=build_inputs.emodel,
-                species=build_inputs.species,
-                brain_region=build_inputs.brain_region,
                 holding_current=-0.05,
                 threshold_current=0.2,
                 rin=120.0,
                 authorized_public=True,
             )
 
+        entity_classes.register_mtype.assert_not_called()
         entity_classes.Contribution.assert_not_called()
 
     def test_set_validation_status(self):
@@ -426,22 +452,43 @@ class TestRegistration:
 
 
 def test_stage_memodel_downloads_from_the_build_inputs(tmp_path, monkeypatch):
-    morphology, emodel = object(), object()
-    download = Mock()
-    monkeypatch.setattr(task_module, "download_memodel", download)
+    morphology = SimpleNamespace(
+        id=uuid4(),
+        assets=[
+            SimpleNamespace(content_type=ContentType.application_swc),
+            SimpleNamespace(content_type=ContentType.application_asc),
+        ],
+    )
+    ion_channel = object()
+    emodel = SimpleNamespace(id=uuid4(), ion_channel_models=[ion_channel])
     db_client = Mock()
+    hoc_path = tmp_path / "hoc" / "cell.hoc"
+    hoc_path.parent.mkdir()
+    hoc_path.touch()
+    morph_path = tmp_path / "morphology" / "asc" / "cell.asc"
+    mechanism_path = tmp_path / "mechanisms" / "Na.mod"
+    download_hoc = Mock(return_value=hoc_path)
+    download_morphology = Mock(return_value=morph_path)
+    download_mechanism = Mock(return_value=mechanism_path)
+    monkeypatch.setattr(staging_module, "download_hoc", download_hoc)
+    monkeypatch.setattr(staging_module, "download_morphology", download_morphology)
+    monkeypatch.setattr(staging_module, "download_ion_channel_mechanism", download_mechanism)
 
-    staged = task_module.stage_memodel(
+    staged = staging_module.stage_memodel(
         db_client=db_client,
         morphology=morphology,
         emodel=emodel,
         output_dir=tmp_path,
     )
 
-    assert staged is download.return_value
-    assert download.call_args.args == (db_client,)
-    memodel = download.call_args.kwargs["memodel"]
-    assert memodel.morphology is morphology
-    assert memodel.emodel is emodel
-    assert download.call_args.kwargs["output_dir"] == tmp_path
-    assert download.call_args.kwargs["max_concurrent"] == task_module.DOWNLOAD_CONCURRENCY
+    db_client.get_entity.assert_not_called()
+    download_hoc.assert_called_once_with(db_client, emodel, tmp_path / "hoc")
+    download_morphology.assert_called_once_with(
+        db_client, morphology, tmp_path / "morphology" / "asc", "asc"
+    )
+    download_mechanism.assert_called_once_with(db_client, ion_channel, tmp_path / "mechanisms")
+    assert staged == staging_module.StagedMEModel(
+        hoc_path=hoc_path,
+        morphology_path=morph_path,
+        mechanisms_dir=tmp_path / "mechanisms",
+    )
