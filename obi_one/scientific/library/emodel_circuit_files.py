@@ -2,7 +2,8 @@
 
 - ``.hoc`` cell template (one per ``model_template``): which mechanism is inserted in
   which section list, and the value of each variable there.
-- ``.mod`` file (one per mechanism): its ``RANGE`` / ``GLOBAL`` variables and their units.
+- ``.mod`` file (one per mechanism): its ``RANGE`` / ``GLOBAL`` variables, which of them are
+  inputs (``PARAMETER``), and their units.
 
 The hoc files are printed by BluePyEModel's template (format:
 https://sonata-extension.readthedocs.io/en/latest/hoc-emodel.html). In ``insertChannel()``
@@ -57,6 +58,11 @@ MOD_NEURON_KEYWORD_RE = re.compile(
 )
 # ``name (unit)`` or ``name = value (unit)``; a line may declare several names.
 MOD_UNIT_RE = re.compile(rf"\b([A-Za-z_]\w*)\s*(?:=\s*{NUMBER_PATTERN}\s*)?\(([^)]*)\)")
+# What follows a name in a PARAMETER declaration: ``= value``, ``(unit)`` and ``<low, high>``.
+MOD_DECLARATION_EXTRAS_RE = re.compile(
+    rf"=\s*[-+]?{NUMBER_PATTERN.removeprefix('-?')}|\([^)]*\)|<[^>]*>"
+)
+IDENTIFIER_RE = re.compile(r"\b[A-Za-z_]\w*")
 # NMODL comments: ``COMMENT ... ENDCOMMENT`` blocks and ``:`` to the end of the line.
 MOD_COMMENT_RE = re.compile(r"^\s*COMMENT\b.*?^\s*ENDCOMMENT\b|:[^\n]*", re.DOTALL | re.MULTILINE)
 
@@ -73,24 +79,36 @@ class ModMechanism:
         suffix: Mechanism name, from ``SUFFIX``; variables are set as ``<name>_<suffix>``.
         range_variables: ``RANGE`` names: one value per section, e.g. a conductance.
         global_variables: ``GLOBAL`` names: one value for the whole simulation.
+        parameter_variables: ``PARAMETER`` names: the mechanism's inputs.
         units: Variable -> unit, for the variables whose unit is declared.
+        entity_id: ID of the ion channel model entity of this mechanism, when exactly one
+            matches; filled from the database.
     """
 
     suffix: str
     range_variables: list[str] = field(default_factory=list)
     global_variables: list[str] = field(default_factory=list)
+    parameter_variables: list[str] = field(default_factory=list)
     units: dict[str, str] = field(default_factory=dict)
+    entity_id: str | None = None
 
     @property
     def settable_range_variables(self) -> list[str]:
-        """RANGE variables a user can set: all but the currents (``ina``, ``ik``...)."""
-        # TODO: ``i`` prefix is a heuristic; USEION ... WRITE / NONSPECIFIC_CURRENT is exact.
-        return [name for name in self.range_variables if not name.startswith("i")]
+        """RANGE variables a user can set: those in ``PARAMETER``.
+
+        Every other RANGE name is computed by the mod file itself: currents (``ina``),
+        ``STATE`` variables, and ``ASSIGNED`` values that ``BREAKPOINT`` recomputes every
+        step (``gNaTg``), so setting them changes nothing.
+        """
+        parameters = set(self.parameter_variables)
+        return [name for name in self.range_variables if name in parameters]
 
 
 # Mechanisms NEURON ships without a mod file; variables and units from the NEURON docs.
 BUILTIN_MECHANISMS: dict[str, ModMechanism] = {
-    name: ModMechanism(suffix=name, range_variables=variables, units=units)
+    name: ModMechanism(
+        suffix=name, range_variables=variables, parameter_variables=variables, units=units
+    )
     for name, variables, units in (
         ("pas", ["g", "e"], {"g": "S/cm2", "e": "mV"}),
         ("fastpas", ["g", "e"], {"g": "S/cm2", "e": "mV"}),
@@ -173,8 +191,15 @@ def read_mod_mechanism(mod_text: str) -> ModMechanism:
         msg = "mod file NEURON block has no SUFFIX"
         raise HocTemplateError(msg)
 
+    mechanism.parameter_variables = _declared_names(blocks.get("PARAMETER", ""))
     mechanism.units = _declared_units(blocks)
     return mechanism
+
+
+def _declared_names(block: str) -> list[str]:
+    """Names declared in a block such as ``PARAMETER``, in file order."""
+    names = IDENTIFIER_RE.findall(MOD_DECLARATION_EXTRAS_RE.sub(" ", block))
+    return list(dict.fromkeys(names))
 
 
 def _declared_units(blocks: dict[str, str]) -> dict[str, str]:

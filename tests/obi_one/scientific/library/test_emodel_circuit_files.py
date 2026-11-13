@@ -50,8 +50,26 @@ class Distribution(NamedTuple):
 
 
 # The EModel metadata lists this STATE variable of CaDynamics_DC0 as if it were RANGE.
-# The mod file does not declare it in RANGE, so the files cannot produce it.
-KNOWN_DB_ONLY_VARIABLES = {"CaDynamics_DC0": {"cai_CaDynamics_DC0"}}
+# The mod file does not declare it in RANGE, so the files cannot produce it. The other
+# entries are conductances in ASSIGNED that BREAKPOINT recomputes every step: the database
+# lists them, the files hide them since setting them changes nothing.
+KNOWN_DB_ONLY_VARIABLES = {
+    "CaDynamics_DC0": {"cai_CaDynamics_DC0"},
+    **{
+        channel: {f"{conductance}_{channel}"}
+        for channel, conductance in (
+            ("Ca_HVA2", "gCa_HVA"),
+            ("Ca_LVAst", "gCa_LVAst"),
+            ("Ih", "gIh"),
+            ("K_Pst", "gK_Pst"),
+            ("K_Tst", "gK_Tst"),
+            ("NaTg", "gNaTg"),
+            ("Nap_Et2", "gNap_Et2"),
+            ("SK_E2", "gSK_E2"),
+            ("SKv3_1", "gSKv3_1"),
+        )
+    },
+}
 
 
 def _model_from_files(hoc_text: str):
@@ -296,6 +314,27 @@ class TestModReader:
         assert mechanism.units["gNaTgbar"] == "S/cm2"
         assert mechanism.units["vshifth"] == "mV"
         assert "slopeh" not in mechanism.units
+
+    def test_only_range_parameters_are_settable(self):
+        """``gNaTg`` (ASSIGNED, recomputed by BREAKPOINT) and ``ina`` (a current) are hidden."""
+        mechanism = read_mod_mechanism((CIRCUIT_DIR / "mod" / "NaTg.mod").read_text())
+        assert mechanism.settable_range_variables == [
+            "gNaTgbar",
+            "vshifth",
+            "vshiftm",
+            "slopeh",
+            "slopem",
+        ]
+
+    def test_an_input_starting_with_i_is_settable(self):
+        """``epsp.mod`` has the input ``imax``; currents and STATE variables stay hidden."""
+        mechanism = read_mod_mechanism(
+            "NEURON {\n  SUFFIX demo\n  RANGE imax, i, g, m\n  NONSPECIFIC_CURRENT i\n}\n"
+            "PARAMETER {\n  imax = -0.5 (nA) <-1e9, 1e9>\n  celsius (degC)\n}\n"
+            "ASSIGNED {\n  i (mA/cm2)\n  g (S/cm2)\n}\nSTATE { m }\n"
+        )
+        assert mechanism.parameter_variables == ["imax", "celsius"]
+        assert mechanism.settable_range_variables == ["imax"]
 
     def test_reads_global_variables(self):
         mechanism = read_mod_mechanism(

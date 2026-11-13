@@ -2219,7 +2219,10 @@ def _entity(range_units: dict, global_units: dict | None = None) -> SimpleNamesp
 def _kmb() -> ModMechanism:
     """rCA1's kmb.mod: gbar has a unit, sh and tau none, ik is a current."""
     return ModMechanism(
-        suffix="kmb", range_variables=["gbar", "ik", "sh", "tau"], units={"gbar": "mho/cm2"}
+        suffix="kmb",
+        range_variables=["gbar", "ik", "sh", "tau"],
+        parameter_variables=["gbar", "sh", "tau"],
+        units={"gbar": "mho/cm2"},
     )
 
 
