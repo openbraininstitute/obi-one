@@ -3,6 +3,7 @@ from unittest.mock import Mock, call
 from uuid import uuid4
 
 import pytest
+from entitysdk.exception import StagingError
 from entitysdk.models import MEModel
 from entitysdk.types import (
     AssetLabel,
@@ -451,44 +452,114 @@ class TestRegistration:
         )
 
 
-def test_stage_memodel_downloads_from_the_build_inputs(tmp_path, monkeypatch):
-    morphology = SimpleNamespace(
-        id=uuid4(),
-        assets=[
-            SimpleNamespace(content_type=ContentType.application_swc),
-            SimpleNamespace(content_type=ContentType.application_asc),
-        ],
-    )
-    ion_channel = object()
-    emodel = SimpleNamespace(id=uuid4(), ion_channel_models=[ion_channel])
-    db_client = Mock()
-    hoc_path = tmp_path / "hoc" / "cell.hoc"
-    hoc_path.parent.mkdir()
-    hoc_path.touch()
-    morph_path = tmp_path / "morphology" / "asc" / "cell.asc"
-    mechanism_path = tmp_path / "mechanisms" / "Na.mod"
-    download_hoc = Mock(return_value=hoc_path)
-    download_morphology = Mock(return_value=morph_path)
-    download_mechanism = Mock(return_value=mechanism_path)
-    monkeypatch.setattr(staging_module, "download_hoc", download_hoc)
-    monkeypatch.setattr(staging_module, "download_morphology", download_morphology)
-    monkeypatch.setattr(staging_module, "download_ion_channel_mechanism", download_mechanism)
+class TestStaging:
+    def test_downloads_preferred_morphology_and_mechanisms(self, tmp_path, monkeypatch):
+        morphology = SimpleNamespace(
+            id=uuid4(),
+            assets=[
+                SimpleNamespace(content_type=ContentType.application_swc),
+                SimpleNamespace(content_type=ContentType.application_asc),
+            ],
+        )
+        ion_channel = object()
+        emodel = SimpleNamespace(id=uuid4(), ion_channel_models=[ion_channel])
+        db_client = Mock()
+        hoc_path = tmp_path / "hoc" / "cell.hoc"
+        hoc_path.parent.mkdir()
+        hoc_path.touch()
+        morph_path = tmp_path / "morphology" / "asc" / "cell.asc"
+        mechanism_path = tmp_path / "mechanisms" / "Na.mod"
+        download_hoc = Mock(return_value=hoc_path)
+        download_morphology = Mock(return_value=morph_path)
+        download_mechanism = Mock(return_value=mechanism_path)
+        monkeypatch.setattr(staging_module, "download_hoc", download_hoc)
+        monkeypatch.setattr(staging_module, "download_morphology", download_morphology)
+        monkeypatch.setattr(staging_module, "download_ion_channel_mechanism", download_mechanism)
 
-    staged = staging_module.stage_memodel(
-        db_client=db_client,
-        morphology=morphology,
-        emodel=emodel,
-        output_dir=tmp_path,
-    )
+        staged = staging_module.stage_memodel(
+            db_client=db_client,
+            morphology=morphology,
+            emodel=emodel,
+            output_dir=tmp_path,
+        )
 
-    db_client.get_entity.assert_not_called()
-    download_hoc.assert_called_once_with(db_client, emodel, tmp_path / "hoc")
-    download_morphology.assert_called_once_with(
-        db_client, morphology, tmp_path / "morphology" / "asc", "asc"
-    )
-    download_mechanism.assert_called_once_with(db_client, ion_channel, tmp_path / "mechanisms")
-    assert staged == staging_module.StagedMEModel(
-        hoc_path=hoc_path,
-        morphology_path=morph_path,
-        mechanisms_dir=tmp_path / "mechanisms",
-    )
+        download_hoc.assert_called_once_with(db_client, emodel, tmp_path / "hoc")
+        download_morphology.assert_called_once_with(
+            db_client, morphology, tmp_path / "morphology" / "asc", "asc"
+        )
+        download_mechanism.assert_called_once_with(db_client, ion_channel, tmp_path / "mechanisms")
+        assert staged == staging_module.StagedMEModel(
+            hoc_path=hoc_path,
+            morphology_path=morph_path,
+            mechanisms_dir=tmp_path / "mechanisms",
+        )
+
+    def test_falls_back_to_swc_when_asc_is_absent(self, tmp_path, monkeypatch):
+        morphology = SimpleNamespace(
+            id=uuid4(),
+            assets=[SimpleNamespace(content_type=ContentType.application_swc)],
+        )
+        emodel = SimpleNamespace(id=uuid4(), ion_channel_models=None)
+        db_client = Mock()
+        hoc_path = tmp_path / "hoc" / "cell.hoc"
+        hoc_path.parent.mkdir()
+        hoc_path.touch()
+        morph_path = tmp_path / "morphology" / "swc" / "cell.swc"
+        download_morphology = Mock(return_value=morph_path)
+        download_mechanism = Mock()
+        monkeypatch.setattr(staging_module, "download_hoc", Mock(return_value=hoc_path))
+        monkeypatch.setattr(staging_module, "download_morphology", download_morphology)
+        monkeypatch.setattr(staging_module, "download_ion_channel_mechanism", download_mechanism)
+
+        staged = staging_module.stage_memodel(
+            db_client=db_client,
+            morphology=morphology,
+            emodel=emodel,
+            output_dir=tmp_path,
+        )
+
+        download_morphology.assert_called_once_with(
+            db_client, morphology, tmp_path / "morphology" / "swc", "swc"
+        )
+        download_mechanism.assert_not_called()
+        assert staged.morphology_path == morph_path
+
+    def test_missing_hoc_file_raises(self, tmp_path, monkeypatch):
+        morphology = SimpleNamespace(
+            id=uuid4(),
+            assets=[SimpleNamespace(content_type=ContentType.application_asc)],
+        )
+        emodel = SimpleNamespace(id=uuid4(), ion_channel_models=[])
+        missing_hoc = tmp_path / "hoc" / "missing.hoc"
+        monkeypatch.setattr(staging_module, "download_hoc", Mock(return_value=missing_hoc))
+        monkeypatch.setattr(
+            staging_module, "download_morphology", Mock(return_value=tmp_path / "cell.asc")
+        )
+
+        with pytest.raises(StagingError, match="HOC file does not exist"):
+            staging_module.stage_memodel(
+                db_client=Mock(),
+                morphology=morphology,
+                emodel=emodel,
+                output_dir=tmp_path,
+            )
+
+    def test_no_morphology_format_raises(self, tmp_path, monkeypatch):
+        morphology = SimpleNamespace(id=uuid4(), assets=[])
+        emodel = SimpleNamespace(id=uuid4(), ion_channel_models=[])
+        hoc_path = tmp_path / "hoc" / "cell.hoc"
+        hoc_path.parent.mkdir()
+        hoc_path.touch()
+        monkeypatch.setattr(staging_module, "download_hoc", Mock(return_value=hoc_path))
+        download_morphology = Mock()
+        monkeypatch.setattr(staging_module, "download_morphology", download_morphology)
+
+        with pytest.raises(StagingError, match="No morphology file found"):
+            staging_module.stage_memodel(
+                db_client=Mock(),
+                morphology=morphology,
+                emodel=emodel,
+                output_dir=tmp_path,
+            )
+
+        download_morphology.assert_not_called()
