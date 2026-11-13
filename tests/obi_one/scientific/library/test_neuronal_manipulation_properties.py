@@ -2016,6 +2016,24 @@ class TestReadTemplateModelsFailures:
         )
         assert models == {self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'NaTg'"}
 
+    def test_missing_mechanism_names_the_mod_files_not_parsed(self, tmp_path):
+        """A file the reader rejects may hold the mechanism: the reason says so."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / "mod")
+        (circuit_dir / "mod" / "NaTg.mod").write_text("NEURON { SUFFIX NaTg\n")  # unbalanced
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert models == {
+            self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'NaTg'"
+            " (1 mod files could not be parsed: NaTg.mod)"
+        }
+
     def test_mechanism_defined_twice_fails_the_template(self, tmp_path):
         """NEURON refuses two files with one SUFFIX; the reader does not pick one."""
         circuit_dir = tmp_path / "circuit"

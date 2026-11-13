@@ -63,6 +63,8 @@ MAX_MODEL_FILE_BYTES = 1_000_000
 # Where mod files live when the config declares no mechanisms_dir: OBI circuits use
 # ``mod``, entitysdk's MEModel staging writes ``mechanisms``. First with a .mod file wins.
 UNDECLARED_MOD_DIRS = (CIRCUIT_MOD_DIR, "mechanisms")
+# Warnings name a few files or templates, not hundreds (a large circuit has ~1000 templates).
+MAX_NAMES_IN_WARNING = 5
 
 # (population, node_id) -> model_template (or EModel ID after ``_match_templates_to_emodels``).
 TemplateNodes = dict[tuple[str, int], str]
@@ -283,6 +285,13 @@ def _public_reason(err: object) -> str:
     )
 
 
+def _named_list(names: Iterable[str]) -> str:
+    """Up to ``MAX_NAMES_IN_WARNING`` names, comma separated, then ``…`` when there are more."""
+    names = list(names)
+    shown = ", ".join(names[:MAX_NAMES_IN_WARNING])
+    return f"{shown}, …" if len(names) > MAX_NAMES_IN_WARNING else shown
+
+
 def _fetch_and_parse[K: Hashable, T](
     keys: Iterable[K],
     parse: Callable[[K, str], T],
@@ -349,10 +358,13 @@ class ModIndex:
     Attributes:
         mechanisms: SUFFIX -> parsed mod file, or the error when two files define it.
         unread: Errors of files that could not be read; a missing mechanism may be in one.
+        unparsed: Names of the files the mod reader rejects; a missing mechanism may be
+            in one.
     """
 
     mechanisms: dict[str, ModMechanism | Exception]
     unread: list[Exception]
+    unparsed: list[str]
 
     def lookup(self, channel: str) -> ModMechanism | str:
         """The mechanism's parsed mod file, or the reason there is none."""
@@ -363,7 +375,13 @@ class ModIndex:
             return _public_reason(mod)
         if self.unread:
             return _public_reason(self.unread[0])
-        return f"no mod file in the circuit defines mechanism '{channel}'"
+        reason = f"no mod file in the circuit defines mechanism '{channel}'"
+        if self.unparsed:
+            reason += (
+                f" ({len(self.unparsed)} mod files could not be parsed:"
+                f" {_named_list(self.unparsed)})"
+            )
+        return reason
 
 
 def _mod_index(
@@ -371,9 +389,10 @@ def _mod_index(
 ) -> ModIndex:
     """Index the parsed mod files of one directory by ``SUFFIX``.
 
-    A file with no ``SUFFIX`` is skipped; one that could not be read goes to ``unread``.
+    A file that could not be read goes to ``unread``, one the reader rejects (no
+    ``SUFFIX``, unbalanced braces, ...) to ``unparsed``.
     """
-    index = ModIndex(mechanisms={}, unread=[])
+    index = ModIndex(mechanisms={}, unread=[], unparsed=[])
     for path in mod_paths:
         parsed = files[path]
         if isinstance(parsed, ModMechanism):
@@ -382,7 +401,9 @@ def _mod_index(
                 index.mechanisms[parsed.suffix] = HocTemplateError(msg)
             else:
                 index.mechanisms[parsed.suffix] = parsed
-        elif isinstance(parsed, Exception) and not isinstance(parsed, HocTemplateError):
+        elif isinstance(parsed, HocTemplateError):
+            index.unparsed.append(PurePosixPath(path).name)
+        elif isinstance(parsed, Exception):
             index.unread.append(parsed)
     return index
 
