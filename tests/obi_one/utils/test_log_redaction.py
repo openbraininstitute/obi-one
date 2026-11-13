@@ -7,15 +7,29 @@ import pytest
 from entitysdk.exception import EntitySDKError
 from entitysdk.utils.http import make_db_api_request
 
-from obi_one.utils.log_redaction import RedactUrlQueries, redact_url_queries
+from obi_one.utils.log_redaction import RedactPresignedCredentials, redact_presigned_credentials
 
 SIGNED = "https://s3.example/circuit/a.hoc?X-Amz-Credential=AKIAX&X-Amz-Signature=secret"
 
 
-def test_redact_url_queries_keeps_host_and_path():
+REDACTED = "https://s3.example/circuit/a.hoc?X-Amz-Credential=<redacted>&X-Amz-Signature=<redacted>"
+
+
+def test_only_the_credentials_are_redacted():
     text = f"Client error '404 Not Found' for url '{SIGNED}'"
-    assert redact_url_queries(text) == (
-        "Client error '404 Not Found' for url 'https://s3.example/circuit/a.hoc?<redacted>'"
+    assert (
+        redact_presigned_credentials(text) == f"Client error '404 Not Found' for url '{REDACTED}'"
+    )
+
+
+def test_search_filters_and_other_parameters_stay_readable():
+    url = (
+        "https://s3.example/a.hoc?X-Amz-Algorithm=AWS4-HMAC-SHA256&x-amz-security-token=tok"
+        "&X-Amz-Expires=600 and http://entitycore/ion-channel-model?nmodl_suffix=NaTg"
+    )
+    assert redact_presigned_credentials(url) == (
+        "https://s3.example/a.hoc?X-Amz-Algorithm=AWS4-HMAC-SHA256&x-amz-security-token=<redacted>"
+        "&X-Amz-Expires=600 and http://entitycore/ion-channel-model?nmodl_suffix=NaTg"
     )
 
 
@@ -25,7 +39,7 @@ def redacted_handler() -> Iterator[tuple[logging.Logger, io.StringIO]]:
     that propagates to it, and the text the handler wrote."""
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
-    handler.addFilter(RedactUrlQueries())
+    handler.addFilter(RedactPresignedCredentials())
     root = logging.getLogger()
     root.addHandler(handler)
     try:
@@ -55,7 +69,7 @@ def test_logged_storage_failure_has_no_signature(redacted_handler):
         logger.warning("Could not read %s", SIGNED, exc_info=True)
 
     logged = stream.getvalue()
-    assert "s3.example/circuit/a.hoc?<redacted>" in logged
+    assert REDACTED in logged
     assert "HTTPStatusError" in logged
     assert "secret" not in logged
     assert "AKIAX" not in logged
@@ -74,5 +88,28 @@ def test_httpx2_request_log_has_no_signature(redacted_handler):
         httpx2_logger.setLevel(level)
 
     logged = stream.getvalue()
-    assert 'HTTP Request: GET https://s3.example/circuit/a.hoc?<redacted> "HTTP/1.1 206' in logged
+    assert f'HTTP Request: GET {REDACTED} "HTTP/1.1 206' in logged
     assert "secret" not in logged
+
+
+def test_malformed_log_call_is_reported_by_logging_not_raised(capsys):
+    """A wrong argument count must not raise into the caller; its arguments stay redacted.
+
+    The logger does not propagate: pytest's own capture handler re-raises logging errors.
+    """
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.addFilter(RedactPresignedCredentials())
+    logger = logging.getLogger("test_log_redaction.malformed")
+    logger.propagate = False
+    logger.addHandler(handler)
+    try:
+        logger.warning("Could not read %s and %s", SIGNED)  # ruff: ignore[logging-too-few-args]
+    finally:
+        logger.removeHandler(handler)
+
+    assert not stream.getvalue()
+    reported = capsys.readouterr().err
+    assert "--- Logging error ---" in reported
+    assert "X-Amz-Signature=<redacted>" in reported
+    assert "secret" not in reported

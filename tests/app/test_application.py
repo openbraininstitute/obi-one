@@ -5,7 +5,7 @@ from entitysdk.exception import EntitySDKError
 
 from app.application import app
 from app.errors import ApiErrorCode
-from obi_one.utils.log_redaction import RedactUrlQueries
+from obi_one.utils.log_redaction import RedactPresignedCredentials
 
 
 @app.get("/_test/entitysdk-error")
@@ -30,8 +30,8 @@ def test_entitysdk_error_is_converted_to_api_error(client, caplog):
     assert log_messages[0].exc_info is not None
 
 
-def test_root_log_handlers_redact_url_queries():
+def test_root_log_handlers_redact_presigned_credentials():
     """Presigned storage URLs reach the logs through httpx2 and entitysdk, so the filter
     sits on the root handler, not on one module's logger."""
     root_filters = [f for handler in logging.getLogger().handlers for f in handler.filters]
-    assert any(isinstance(f, RedactUrlQueries) for f in root_filters)
+    assert any(isinstance(f, RedactPresignedCredentials) for f in root_filters)

@@ -50,7 +50,7 @@ from app.endpoints.scan_config import activate_scan_config_endpoints
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.schemas.base import ErrorResponse
-from obi_one.utils.log_redaction import RedactUrlQueries
+from obi_one.utils.log_redaction import RedactPresignedCredentials
 
 # Configure logging here (not only in app/__main__) so the level applies in the uvicorn worker
 # process too: under --reload the app runs in a spawned worker where __main__'s basicConfig never
@@ -60,7 +60,7 @@ logging.basicConfig(level=settings.LOG_LEVEL, force=True)
 # from more than one logger: httpx2 logs every request URL at INFO, and entitysdk's errors
 # quote the URL they were redirected to. One filter on the root handler covers them all.
 for root_handler in logging.getLogger().handlers:
-    root_handler.addFilter(RedactUrlQueries())
+    root_handler.addFilter(RedactPresignedCredentials())
 
 
 @asynccontextmanager
