@@ -11,6 +11,7 @@ from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     CircuitUsability,
 )
+from obi_one.scientific.library.neuronal_manipulation_properties import CircuitListingError
 
 
 def _circuit_metrics():
@@ -426,3 +427,27 @@ def test_manipulation_properties_endpoint_maps_value_error_to_400(monkeypatch):
 
     assert exc_info.value.status_code == 400
     assert "exceeds maximum allowed" in exc_info.value.detail
+
+
+def test_manipulation_properties_endpoint_maps_listing_failure_to_503(monkeypatch):
+    """A failed asset listing is transient: 503 says a retry can succeed."""
+
+    def raise_listing_error(**_kwargs):
+        msg = "Could not list the files of circuit c, please try again."
+        raise CircuitListingError(msg)
+
+    monkeypatch.setattr(
+        circuit_properties, "get_circuit_manipulation_properties", raise_listing_error
+    )
+    request = circuit_properties.CircuitNeuronalManipulationPropertiesRequest.model_validate(
+        {"entity_id": "circuit-id", "neuron_set": None}
+    )
+
+    with pytest.raises(circuit_properties.HTTPException) as exc_info:
+        circuit_properties.neuronal_manipulation_properties_endpoint_by_neuron_set(
+            request=request,
+            db_client=SimpleNamespace(),
+        )
+
+    assert exc_info.value.status_code == 503
+    assert "please try again" in exc_info.value.detail["detail"]

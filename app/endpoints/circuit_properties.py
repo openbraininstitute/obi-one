@@ -29,6 +29,7 @@ from obi_one.scientific.library.memodel_circuit import (
     get_memodel_mechanism_variables,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
+    CircuitListingError,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -401,6 +402,12 @@ def neuronal_manipulation_properties_endpoint_by_neuron_set(
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
+    except CircuitListingError as err:
+        # Transient: 503 tells the client a retry can succeed.
+        raise HTTPException(
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            detail={"code": ApiErrorCode.ENTITYSDK_API_FAILURE, "detail": str(err)},
+        ) from err
     except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,

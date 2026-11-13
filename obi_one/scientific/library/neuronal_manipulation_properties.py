@@ -22,12 +22,13 @@ import entitysdk.client
 import h5py
 import numpy as np
 from bluepysnap import Circuit as SnapCircuit
+from bluepysnap.exceptions import BluepySnapError
 from entitysdk.exception import EntitySDKError
 from entitysdk.models import Derivation as DerivationModel, IonChannelModel
 from entitysdk.models.asset import Asset
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
-from libsonata import NodeStorage
+from libsonata import NodeStorage, SonataError
 
 from obi_one.db_sdk.assets import asset_range_file
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
@@ -66,8 +67,30 @@ UNDECLARED_MOD_DIRS = (CIRCUIT_MOD_DIR, "mechanisms")
 # Warnings name a few files or templates, not hundreds (a large circuit has ~1000 templates).
 MAX_NAMES_IN_WARNING = 5
 
+# Errors that mean the circuit's files cannot be used, so its derivations are: no
+# sonata_circuit asset or a file entitycore cannot serve (ValueError, EntitySDKError), a
+# file h5py cannot read (OSError), or a config libsonata cannot parse (it raises
+# RuntimeError for bad JSON, SonataError for a bad structure). Anything else is a bug and
+# propagates. A failed listing raises CircuitListingError, which is none of these.
+CIRCUIT_FILES_ERRORS = (
+    ValueError,
+    OSError,
+    EntitySDKError,
+    BluepySnapError,
+    SonataError,
+    RuntimeError,
+)
+
 # (population, node_id) -> model_template (or EModel ID after ``_match_templates_to_emodels``).
 TemplateNodes = dict[tuple[str, int], str]
+
+
+class CircuitListingError(Exception):
+    """The files of the circuit asset could not be listed.
+
+    Usually transient (entitycore answers 503). It is raised rather than answered with the
+    derivations, so the client can retry and get the circuit-file answer.
+    """
 
 
 @dataclass
@@ -322,20 +345,22 @@ def _parse_model_file(path: str, text: str) -> HocBiophysics | ModMechanism:
 
 def _asset_files(
     db_client: entitysdk.client.Client, circuit_id: str, asset: Asset
-) -> dict[str, int] | Exception:
-    """Return asset path -> size for every file of the circuit, or the error.
+) -> dict[str, int]:
+    """Return asset path -> size for every file of the circuit.
 
     One listing serves two readers: the ``nodes.h5`` sizes for the byte-range read, and
-    the paths of the mod files. A failure is logged and returned, not raised: the callers
-    fall back and report the reason.
+    the paths of the mod files.
+
+    Raises:
+        CircuitListingError: entitycore did not list the asset.
     """
     try:
         listing = db_client.list_directory(
             entity_id=UUID(circuit_id), entity_type=Circuit, asset_id=asset.id
         )
-    except Exception as err:  # ruff: ignore[blind-except]
-        L.warning("Could not list the files of circuit %s", circuit_id, exc_info=True)
-        return err
+    except EntitySDKError as err:
+        msg = f"Could not list the files of circuit {circuit_id}, please try again."
+        raise CircuitListingError(msg) from err
     return {path.as_posix(): file.size for path, file in listing.files.items()}
 
 
@@ -452,7 +477,7 @@ def _read_template_models(
     temp_dir_path: Path,
     templates_per_population: dict[str, set[str]],
     pop_to_model_dirs: dict[str, PopulationModelDirs],
-    asset_files: dict[str, int] | Exception,
+    asset_files: dict[str, int],
 ) -> dict[str, TemplateModel | str]:
     """Read every template from its hoc file and the mod files of its directory.
 
@@ -466,7 +491,7 @@ def _read_template_models(
         temp_dir_path: Directory where files are staged for this request.
         templates_per_population: Population -> the templates to read.
         pop_to_model_dirs: Population -> where its hoc and mod files are.
-        asset_files: The asset listing, or why it failed.
+        asset_files: The asset listing.
 
     Returns:
         Template -> its model, or the reason it could not be read.
@@ -481,8 +506,6 @@ def _read_template_models(
     result: dict[str, TemplateModel | str] = dict(reasons)
     if not hoc_paths:
         return result
-    if isinstance(asset_files, Exception):
-        return result | dict.fromkeys(hoc_paths, _public_reason(asset_files))
 
     mod_paths = _mod_paths_per_dirs(
         (template_dirs[template].mod_dirs for template in hoc_paths),
@@ -796,7 +819,6 @@ def _collect_all_templates(
             stage_nodes=False,
         )
         asset_files = listing.result()
-        sizes = {} if isinstance(asset_files, Exception) else asset_files
         templates_per_population: dict[str, set[str]] = {}
         for population, nodes_relative in pop_to_nodes_path.items():
             templates = _population_templates(
@@ -806,7 +828,7 @@ def _collect_all_templates(
                 temp_dir_path,
                 population,
                 nodes_relative,
-                sizes.get(nodes_relative),
+                asset_files.get(nodes_relative),
             )
             if templates is not None:
                 templates_per_population[population] = templates
@@ -1150,7 +1172,8 @@ def get_circuit_manipulation_properties(
     With a neuron set, ``ValueError`` propagates (HTTP 400) when the circuit has no single
     sonata_circuit asset or a population has no ``model_template``; a set that selects no
     neurons gives ``populations=[]``, no variables and a warning. Without one, such a
-    circuit uses its derivations.
+    circuit uses its derivations. ``CircuitListingError`` propagates in both modes when
+    the circuit asset cannot be listed: retrying usually works.
     """
     resolved_populations: list[str] | None = None
 
@@ -1160,7 +1183,7 @@ def get_circuit_manipulation_properties(
             templates_per_population, template_models = _collect_all_templates(
                 db_client, circuit_id, asset
             )
-        except Exception as err:  # ruff: ignore[blind-except]
+        except CIRCUIT_FILES_ERRORS as err:
             # No sonata_circuit asset or unreadable files: only the derivations are left.
             L.warning("Could not read templates of circuit %s", circuit_id, exc_info=True)
             label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)

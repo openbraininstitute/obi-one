@@ -42,6 +42,7 @@ from obi_one.scientific.library.memodel_circuit import (
 from obi_one.scientific.library.neuronal_manipulation_properties import (
     MAX_MODEL_FILE_BYTES,
     UNDECLARED_MOD_DIRS,
+    CircuitListingError,
     PopulationModelDirs,
     TemplateModel,
     _asset_files,
@@ -1687,19 +1688,35 @@ class TestVariablesReadFromCircuitFiles:
         ]
         assert nodes_fetches == [FetchFileStrategy.link_only]  # the probe only, no download
 
-    def test_listing_failure_downloads_nodes_and_reports_the_templates(self, mock_db_client):
+    @pytest.mark.parametrize("with_neuron_set", [False, True])
+    def test_listing_failure_raises_instead_of_using_derivations(
+        self, mock_db_client, with_neuron_set
+    ):
+        """A failed listing is usually transient: the client retries for the file answer."""
         mock_db_client.list_directory.side_effect = EntitySDKError("HTTP error 503")
-        mock_db_client.search_entity.return_value.all.return_value = []
-        result = get_circuit_manipulation_properties(
-            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
-        )
-        nodes_fetches = [
-            c.kwargs["strategy"]
-            for c in mock_db_client.fetch_file.call_args_list
-            if str(c.kwargs["asset_path"]).endswith("nodes.h5")
-        ]
-        assert nodes_fetches == [FetchFileStrategy.link_only, FetchFileStrategy.link_or_download]
-        assert any("files not readable (EntitySDKError)" in w for w in result["warnings"])
+        neuron_set = None
+        if with_neuron_set:
+            neuron_set = MagicMock()
+            neuron_set.expand_multi_values.return_value = [neuron_set]
+            neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
+        with pytest.raises(CircuitListingError, match="please try again"):
+            get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+            )
+        mock_db_client.search_entity.assert_not_called()
+
+    def test_a_bug_while_reading_files_is_not_hidden_by_the_fallback(self, mock_db_client):
+        """Only errors that mean "the files cannot be used" lead to the derivations."""
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties._read_template_models",
+                side_effect=KeyError("model_template"),
+            ),
+            pytest.raises(KeyError),
+        ):
+            get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+            )
 
     def test_unreadable_template_falls_back_to_derivation(self, mock_db_client):
         """A hoc file that is not template output is reported and read from the database."""
@@ -2065,18 +2082,6 @@ class TestReadTemplateModelsFailures:
             self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'CaDynamics_DC0'"
         }
 
-    def test_listing_failure_fails_every_template(self, tmp_path):
-        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
-        client.list_directory.side_effect = EntitySDKError("HTTP error 503")
-        models = _read_models(
-            client,
-            tmp_path,
-            {self.HOC_TEMPLATE},
-            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
-        )
-        assert models == {self.HOC_TEMPLATE: "files not readable (EntitySDKError)"}
-        client.fetch_file.assert_not_called()
-
     def test_hoc_fetch_failure_is_reported_by_type_only(self, tmp_path):
         client = _copying_client(
             SINGLE_NEURON_CIRCUIT_DIR, failing={"emodels_hoc/cADpyr_L6BPC.hoc"}
@@ -2162,8 +2167,8 @@ class TestPopulationTemplatesReadPath:
         )
         return {t for t in pop.get_attribute("model_template", pop.select_all()) if t}
 
-    def _read(self, client, tmp_path):
-        files = _asset_files(client, str(uuid4()), _asset())
+    def _read(self, client, tmp_path, *, listed: bool = True):
+        size = _asset_files(client, str(uuid4()), _asset()).get(self.NODES) if listed else None
         return _population_templates(
             client,
             str(uuid4()),
@@ -2171,7 +2176,7 @@ class TestPopulationTemplatesReadPath:
             tmp_path / "staged",
             self.POPULATION,
             self.NODES,
-            None if isinstance(files, Exception) else files.get(self.NODES),
+            size,
         )
 
     def test_mounted_store_links_the_file_and_makes_no_http_request(self, tmp_path):
@@ -2190,11 +2195,10 @@ class TestPopulationTemplatesReadPath:
         assert strategies == [FetchFileStrategy.link_only]  # the probe only, no download
 
     def test_unknown_size_downloads_without_trying_ranges(self, tmp_path, caplog):
-        """A failed listing gives no size: the file is downloaded, storage is not asked."""
+        """A nodes file the listing does not size is downloaded; storage is not asked."""
         client = _copying_client(TINY_CIRCUIT_DIR)
-        client.list_directory.side_effect = EntitySDKError("HTTP error 503")
         client._http_client = MagicMock()
-        assert self._read(client, tmp_path) == self._expected(TINY_CIRCUIT_DIR)
+        assert self._read(client, tmp_path, listed=False) == self._expected(TINY_CIRCUIT_DIR)
         strategies = [c.kwargs["strategy"] for c in client.fetch_file.call_args_list]
         assert strategies == [FetchFileStrategy.link_only, FetchFileStrategy.link_or_download]
         assert client._http_client.mock_calls == []  # no range request of any kind
