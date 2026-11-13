@@ -1116,6 +1116,48 @@ class TestStageCircuitForNeuronSetResolution:
         # model_template values from tiny circuit
         assert all(t.startswith("hoc:") for t in node_to_template.values())
 
+    @pytest.mark.parametrize("with_biophysical", [True, False])
+    def test_point_neurons_are_left_out_with_one_warning(self, mock_db_client, with_biophysical):
+        """Allen-V1 mixes biophysical and point_process populations."""
+        circuit_id = str(uuid4())
+        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = {
+            **({"S1nonbarrel_neurons": [0]} if with_biophysical else {}),
+            "lif": [0, 1, 2],
+        }
+
+        def stage_with_a_point_population(*args, **kwargs):
+            config, nodes, dirs = _stage_circuit_for_neuron_set(*args, **kwargs)
+            dirs["lif"] = PopulationModelDirs("point_process", None, UNDECLARED_MOD_DIRS)
+            return config, nodes, dirs
+
+        with patch(
+            f"{_stage_circuit_for_neuron_set.__module__}._stage_circuit_for_neuron_set",
+            side_effect=stage_with_a_point_population,
+        ):
+            populations, node_to_template, _models, warnings = (
+                _stage_circuit_for_neuron_set_resolution(
+                    db_client=mock_db_client,
+                    circuit_id=circuit_id,
+                    circuit_entity=circuit_entity,
+                    asset=asset,
+                    neuron_set=neuron_set,
+                )
+            )
+
+        assert populations == (["S1nonbarrel_neurons", "lif"] if with_biophysical else ["lif"])
+        assert {population for population, _ in node_to_template} == (
+            {"S1nonbarrel_neurons"} if with_biophysical else set()
+        )
+        assert warnings == [
+            (
+                "3 selected neurons are in populations that are not biophysical"
+                " ('lif' (point_process)), so they have no mechanism variables and are left out."
+            )
+        ]
+
     def test_copies_config_before_loading_linked_circuit(self, tmp_path):
         """Config is copied (not symlinked) so $BASE_DIR resolves to temp dir."""
         circuit_dir = tmp_path / "circuit"
@@ -1222,7 +1264,7 @@ class TestStageCircuitForNeuronSetResolution:
                 return_value=(
                     circuit_dir / "circuit_config.json",
                     {"S1nonbarrel_neurons": "nodes.h5"},
-                    {},
+                    {"nonexistent_pop": PopulationModelDirs("biophysical", None, ("mod",))},
                 ),
             ),
             pytest.raises(ValueError, match="No nodes file found for population"),

@@ -776,7 +776,9 @@ def _stage_circuit_for_neuron_set_resolution(
     Returns:
         The populations, (population, node_id) -> model_template, model_template ->
         model or reason it could not be read, and the warnings. All are empty when the
-        neuron set selects no neurons.
+        neuron set selects no neurons. Selected neurons of a population that is not
+        biophysical (point neurons) have no mechanism variables: they are left out with
+        one warning, and their population is still listed.
 
     ``ValueError`` propagates for a population without a nodes file or without
     ``model_template``.
@@ -800,12 +802,16 @@ def _stage_circuit_for_neuron_set_resolution(
         node_to_template: TemplateNodes = {}
         populations: list[str] = []
         templates_per_population: dict[str, set[str]] = {}
+        not_biophysical: dict[str, int] = {}
 
         for population, node_ids in ids_per_population.items():
             if not node_ids:
                 continue
 
             populations.append(population)
+            if pop_to_model_dirs[population].population_type not in TYPES_OF_BIOPHYS_NODES:
+                not_biophysical[population] = len(node_ids)
+                continue
             templates = _node_templates(
                 temp_dir_path, pop_to_nodes_path, population, node_ids, circuit_id
             )
@@ -814,11 +820,17 @@ def _stage_circuit_for_neuron_set_resolution(
             )
             templates_per_population[population] = set(templates)
 
-        if not populations:
-            # No templates to read; the caller answers with a warning.
-            return [], {}, {}, []
+        warnings = (
+            [_not_biophysical_warning(not_biophysical, pop_to_model_dirs)]
+            if not_biophysical
+            else []
+        )
+        if not templates_per_population:
+            # No templates to read; with no population either, the caller answers with a
+            # warning of its own.
+            return populations, {}, {}, warnings
 
-        template_models, warnings = _read_template_models(
+        template_models, read_warnings = _read_template_models(
             db_client,
             circuit_id,
             asset,
@@ -828,7 +840,22 @@ def _stage_circuit_for_neuron_set_resolution(
             listing.result(),
         )
 
-    return populations, node_to_template, template_models, warnings
+    return populations, node_to_template, template_models, [*warnings, *read_warnings]
+
+
+def _not_biophysical_warning(
+    neuron_counts: dict[str, int], pop_to_model_dirs: dict[str, PopulationModelDirs]
+) -> str:
+    """One warning for the selected neurons whose populations have no cell models."""
+    populations = [
+        f"'{population}' ({pop_to_model_dirs[population].population_type or 'no type'})"
+        for population in neuron_counts
+    ]
+    return (
+        f"{_counted(sum(neuron_counts.values()), 'selected neuron')} are in populations"
+        f" that are not biophysical ({_named_list(populations)}), so they have no mechanism"
+        " variables and are left out."
+    )
 
 
 def _collect_all_templates(
