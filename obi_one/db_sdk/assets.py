@@ -1,5 +1,6 @@
 """Read part of a file of a directory asset without downloading the whole file."""
 
+from http import HTTPStatus
 from uuid import UUID
 
 from entitysdk.client import Client
@@ -7,7 +8,7 @@ from entitysdk.config import settings as entitysdk_settings
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.entity import Entity
 from entitysdk.route import get_assets_endpoint
-from entitysdk.utils.http import HTTPTimeout, RequestError
+from entitysdk.utils.http import HTTPStatusError, HTTPTimeout, RequestError
 
 from obi_one.utils.http_range_file import HttpRangeFile
 
@@ -18,6 +19,16 @@ ENTITYSDK_TIMEOUT = HTTPTimeout(
     write=entitysdk_settings.write_timeout,
     pool=entitysdk_settings.pool_timeout,
 )
+
+
+def is_not_found(err: EntitySDKError) -> bool:
+    """Whether the request failed because the file is not there (HTTP 404).
+
+    entitysdk raises ``EntitySDKError`` for every failure, chained from the HTTP error;
+    only the chained response tells a missing file from an outage or a refused token.
+    """
+    cause = err.__cause__
+    return isinstance(cause, HTTPStatusError) and cause.response.status_code == HTTPStatus.NOT_FOUND
 
 
 def asset_download_url(

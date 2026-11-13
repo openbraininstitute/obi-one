@@ -1796,18 +1796,30 @@ SINGLE_NEURON_CIRCUIT_DIR = Path(
 )
 
 
-def _copying_client(circuit_dir: Path, failing: set[str] = frozenset()) -> MagicMock:
+def _http_error(status: int, asset_path: object) -> EntitySDKError:
+    """The error entitysdk raises for an HTTP error: chained from the httpx2 error."""
+    request = httpx2.Request("GET", f"http://entitycore/download?asset_path={asset_path}")
+    response = httpx2.Response(status, request=request)
+    err = EntitySDKError(f"HTTP error {status} for {asset_path}")
+    err.__cause__ = httpx2.HTTPStatusError("error", request=request, response=response)
+    return err
+
+
+def _copying_client(
+    circuit_dir: Path, failing: set[str] = frozenset(), failing_status: int = 404
+) -> MagicMock:
     """A db_client whose fetch_file copies from circuit_dir.
 
-    Paths in ``failing`` or absent from ``circuit_dir`` raise ``EntitySDKError``, as
-    entitysdk does for an HTTP 404.
+    Paths absent from ``circuit_dir`` raise as entitysdk does for an HTTP 404, paths in
+    ``failing`` for ``failing_status``.
     """
     copy = _make_fetch_file_side_effect(circuit_dir)
 
     def _fetch_file(*, output_path, asset_path, **kwargs):
-        if str(asset_path) in failing or not (circuit_dir / asset_path).exists():
-            msg = f"HTTP error 404 for {asset_path}"
-            raise EntitySDKError(msg)
+        if str(asset_path) in failing:
+            raise _http_error(failing_status, asset_path)
+        if not (circuit_dir / asset_path).exists():
+            raise _http_error(404, asset_path)
         copy(output_path=output_path, asset_path=asset_path, **kwargs)
 
     client = MagicMock()
@@ -1887,6 +1899,12 @@ class TestCircuitFileStagingEdges:
         assert config_path.exists()
         assert not (tmp_path / "node_sets.json").exists()
         assert all((tmp_path / path).exists() for path in nodes.values())
+
+    def test_node_sets_json_that_fails_otherwise_raises(self, tmp_path):
+        """An outage is not a missing file: skipping it would hide the real cause."""
+        client = _copying_client(TINY_CIRCUIT_DIR, failing={"node_sets.json"}, failing_status=503)
+        with pytest.raises(EntitySDKError, match="HTTP error 503"):
+            _stage_circuit_for_neuron_set(client, str(uuid4()), _asset(), tmp_path)
 
     @pytest.mark.parametrize("node_sets_file", ["node_sets_new.json", None])
     def test_stages_the_node_sets_file_the_config_declares(self, tmp_path, node_sets_file):

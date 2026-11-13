@@ -10,7 +10,7 @@ from entitysdk.config import settings as entitysdk_settings
 from entitysdk.exception import EntitySDKError
 from entitysdk.models.circuit import Circuit
 
-from obi_one.db_sdk.assets import asset_download_url, asset_range_file
+from obi_one.db_sdk.assets import asset_download_url, asset_range_file, is_not_found
 
 TINY_CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
 API_URL = "http://entitycore/api/entitycore"
@@ -142,3 +142,21 @@ class TestAssetRangeFile:
             library = h5["nodes/S1nonbarrel_neurons/0/@library/model_template"].asstr()[:]
         assert "hoc:cADpyr_L6BPC" in set(library)
         assert remote.closed
+
+
+class TestIsNotFound:
+    @staticmethod
+    def _error(status: int) -> EntitySDKError:
+        request = httpx2.Request("GET", "http://entitycore/download")
+        err = EntitySDKError(f"HTTP error {status}")
+        err.__cause__ = httpx2.HTTPStatusError(
+            "error", request=request, response=httpx2.Response(status, request=request)
+        )
+        return err
+
+    def test_404_is_not_found(self):
+        assert is_not_found(self._error(404))
+
+    def test_other_status_or_no_response_is_not(self):
+        assert not is_not_found(self._error(503))
+        assert not is_not_found(EntitySDKError("Request error: timed out"))

@@ -30,7 +30,7 @@ from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 from libsonata import NodeStorage, SonataError
 
-from obi_one.db_sdk.assets import asset_range_file
+from obi_one.db_sdk.assets import asset_range_file, is_not_found
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSet
 from obi_one.scientific.library.circuit import CIRCUIT_MOD_DIR, Circuit as ObiCircuit
 from obi_one.scientific.library.circuit_constants import TYPES_OF_BIOPHYS_NODES
@@ -277,10 +277,15 @@ def _stage_circuit_for_neuron_set(
         return _stage_file(db_client, circuit_id, asset, temp_dir_path, asset_path)
 
     def stage_node_sets(asset_path: str) -> None:
+        # Declared but missing is tolerated, as with no node sets file at all. Any other
+        # failure (outage, refused token) raises: skipping it would hide the cause of the
+        # "unknown node set" error that follows.
         try:
             stage(asset_path)
-        except Exception:  # ruff: ignore[blind-except]
-            L.debug("%s not available, continuing without it", asset_path)
+        except EntitySDKError as err:
+            if not is_not_found(err):
+                raise
+            L.info("%s is not in the circuit asset, continuing without it", asset_path)
 
     if stage_nodes:
         # A failed nodes.h5 re-raises from result().
