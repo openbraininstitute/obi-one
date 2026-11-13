@@ -30,8 +30,8 @@ from obi_one.scientific.unions_and_references.distributions import (
     AllDistributionsUnion,
 )
 from obi_one.scientific.unions_and_references.manipulations import (
-    Brian2SynapticManipulationsUnion,
     SynapticManipulationsReference,
+    SynapticManipulationsUnion,
 )
 from obi_one.scientific.unions_and_references.neuron_sets import PointNeuronSetReference
 from obi_one.scientific.unions_and_references.stimuli import (
@@ -144,7 +144,7 @@ class Brian2CircuitSimulationScanConfig(Brian2SimulationScanConfig):
         },
     )
 
-    synaptic_manipulations: dict[str, Brian2SynapticManipulationsUnion] = Field(
+    synaptic_manipulations: dict[str, SynapticManipulationsUnion] = Field(
         title="Synaptic manipulations",
         default_factory=dict,
         description="Synaptic manipulations for the simulation.",

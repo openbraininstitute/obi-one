@@ -22,16 +22,10 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
     DisconnectSynapticManipulation,
     ScaleWeightSynapticManipulation,
 )
-from obi_one.scientific.blocks.synaptic_manipulations.demo import (
-    ScaleAcetylcholineUSESynapticManipulation,
-)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
-from obi_one.scientific.unions_and_references.manipulations import (
-    Brian2SynapticManipulationsUnion,
-    SynapticManipulationsUnion,
-)
+from obi_one.scientific.unions_and_references.manipulations import SynapticManipulationsUnion
 from obi_one.scientific.unions_and_references.neuronal_manipulations import (
     NeuronalManipulationReference,
     NeuronalManipulationUnion,
@@ -46,9 +40,6 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 )
 
 SYNAPTIC_MANIPULATIONS = {
-    "ScaleAcetylcholineUSESynapticManipulation": ScaleAcetylcholineUSESynapticManipulation(
-        use_scaling=0.7
-    ),
     "ConnectSynapticManipulation": ConnectSynapticManipulation(),
     "DisconnectSynapticManipulation": DisconnectSynapticManipulation(),
     "ScaleWeightSynapticManipulation": ScaleWeightSynapticManipulation(weight_scaling=0.5),
@@ -65,41 +56,12 @@ class TestUnionCoverage:
             "ByNeuronMechanismVariableNeuronalManipulation",
         }
 
-    def test_brian2_excludes_the_mechanism_specific_manipulations(self):
-        """Brian2 honours a connection override's weight and delay.
-
-        It raises on `synapse_configure`, which is what the acetylcholine manipulation emits.
-        """
-        assert union_member_names(Brian2SynapticManipulationsUnion) == {
-            "ConnectSynapticManipulation",
-            "DisconnectSynapticManipulation",
-            "ScaleWeightSynapticManipulation",
-        }
-
 
 class TestSynapticManipulations:
     def test_no_manipulations_means_no_connection_overrides_key(self, circuit_config, tmp_path):
         result = generate(circuit_config(), tmp_path)
 
         assert "connection_overrides" not in result.sonata_config
-
-    def test_acetylcholine_use_scaling(self, circuit, tmp_path):
-        config = build_config(
-            CircuitSimulationSingleConfig,
-            circuit=circuit,
-            blocks={"Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5)},
-        )
-
-        result = generate(config, tmp_path)
-
-        assert result.sonata_config["connection_overrides"] == [
-            {
-                "name": "Acetylcholine",
-                "source": DEFAULT_BIOPHYSICAL_NODE_SET,
-                "target": DEFAULT_BIOPHYSICAL_NODE_SET,
-                "synapse_configure": "%s.Use *= 0.5",
-            }
-        ]
 
     def test_connect_and_disconnect_emit_weighted_overrides(self, circuit, tmp_path):
         config = build_config(
@@ -157,8 +119,8 @@ class TestSynapticManipulations:
             blocks={
                 "Pre": presynaptic,
                 "Post": postsynaptic,
-                "Acetylcholine": lambda: ScaleAcetylcholineUSESynapticManipulation(
-                    use_scaling=0.5,
+                "Scale": lambda: ScaleWeightSynapticManipulation(
+                    weight_scaling=0.5,
                     presynaptic_neuron_set=presynaptic.ref,
                     postsynaptic_neuron_set=postsynaptic.ref,
                 ),
@@ -177,16 +139,16 @@ class TestSynapticManipulations:
             CircuitSimulationSingleConfig,
             circuit=circuit,
             blocks={
-                "Acetylcholine": ScaleAcetylcholineUSESynapticManipulation(use_scaling=0.5),
-                "Disconnect": DisconnectSynapticManipulation(),
                 "Scale": ScaleWeightSynapticManipulation(weight_scaling=1.5),
+                "Disconnect": DisconnectSynapticManipulation(),
+                "Connect": ConnectSynapticManipulation(),
             },
         )
 
         result = generate(config, tmp_path)
 
         names = [override["name"] for override in result.sonata_config["connection_overrides"]]
-        assert names == ["Acetylcholine", "Disconnect", "Scale"]
+        assert names == ["Scale", "Disconnect", "Connect"]
 
 
 class TestNeuronalManipulations:
