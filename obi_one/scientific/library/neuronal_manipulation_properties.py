@@ -798,6 +798,8 @@ def _stage_circuit_for_neuron_set_resolution(
     circuit_entity: Circuit,
     asset: Asset,
     neuron_set: NeuronSet,
+    *,
+    read_files: bool = True,
 ) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str], list[str]]:
     """Stage the circuit, resolve the neuron set to node IDs and read their templates.
 
@@ -807,6 +809,8 @@ def _stage_circuit_for_neuron_set_resolution(
         circuit_entity: The circuit entity, for its name.
         asset: The circuit's ``sonata_circuit`` asset.
         neuron_set: Neuron set to resolve; swept fields are expanded.
+        read_files: False resolves the templates without reading their hoc and mod files
+            (no listing either), so the caller uses the derivations.
 
     Returns:
         The populations, (population, node_id) -> model_template, model_template ->
@@ -819,7 +823,7 @@ def _stage_circuit_for_neuron_set_resolution(
     ``model_template``.
     """
     # Listed while the circuit is staged: no extra wait.
-    listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
+    listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset) if read_files else None
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir).resolve()
 
@@ -864,6 +868,8 @@ def _stage_circuit_for_neuron_set_resolution(
             # No templates to read; with no population either, the caller answers with a
             # warning of its own.
             return populations, {}, {}, warnings
+        if listing is None:
+            return populations, node_to_template, {}, warnings
 
         template_models, read_warnings = _read_template_models(
             db_client,
@@ -993,19 +999,23 @@ def get_circuit_node_ids(
 def _build_template_groups(
     template_models: dict[str, TemplateModel | str],
     template_to_nodes: dict[str, list[tuple[str, int]]],
-) -> tuple[dict[str, dict], dict[str, str], list[str]]:
+) -> tuple[dict[str, dict], dict[str, str | None], list[str]]:
     """Build one group of variables per template from its circuit files.
+
+    A template missing from ``template_models`` was not read on purpose (the circuit-file
+    path is switched off): it goes to the derivations with no reason.
 
     Returns:
         The groups (same shape as ``_build_emodel_groups``), template -> reason for the
-        templates not read, and warnings for values not readable.
+        templates not read (None when not read on purpose), and warnings for values not
+        readable.
     """
     groups: dict[str, dict] = {}
-    failed: dict[str, str] = {}
+    failed: dict[str, str | None] = {}
     warnings: list[str] = []
     for template, node_keys in template_to_nodes.items():
-        model = template_models.get(template, "circuit files not read")
-        if isinstance(model, str):
+        model = template_models.get(template)
+        if not isinstance(model, TemplateModel):
             failed[template] = model
             continue
         variables, mapping = mechanism_variables(model.biophysics, model.mechanisms)
@@ -1051,11 +1061,16 @@ def _build_groups_with_fallback(
     elif groups:
         source = "circuit_files"
     groups.update(derivation_groups)
-    by_outcome: dict[tuple[str, bool], list[str]] = defaultdict(list)
+    by_outcome: dict[tuple[str | None, bool], list[str]] = defaultdict(list)
     for template, reason in sorted(failed.items()):
         by_outcome[reason, template in unmatched].append(template)
     for (reason, no_derivation), templates in by_outcome.items():
         names = f"{_counted(len(templates), 'template')} ({_named_list(templates)})"
+        if reason is None:
+            # Derivations by choice: only a template without one is worth a warning.
+            if no_derivation:
+                warnings.append(f"No derivation found for {names}, so they are left out.")
+            continue
         outcome = (
             f"No derivation found for {names} either, so they are left out"
             if no_derivation
@@ -1263,10 +1278,57 @@ def no_neurons_warning(neuron_set: NeuronSet, circuit_name: str) -> str:
     )
 
 
+def _all_templates(
+    db_client: entitysdk.client.Client, circuit_id: str, *, from_circuit_files: bool
+) -> tuple[TemplateNodes, dict[str, TemplateModel | str], list[str]] | str:
+    """Every template of the circuit, with its model, for a request without a neuron set.
+
+    Read from the circuit files when ``from_circuit_files``; otherwise, or when the files
+    cannot be used, the templates are the labels of the circuit's derivations.
+
+    Returns:
+        Synthetic node -> template (one per template: no node IDs are needed), template ->
+        model or the reason it was not read, and the warnings; or the warning of an
+        empty response.
+    """
+    reason: str | None = None
+    if from_circuit_files:
+        try:
+            _circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
+            templates_per_population, template_models, warnings = _collect_all_templates(
+                db_client, circuit_id, asset
+            )
+        except CIRCUIT_FILES_ERRORS as err:
+            # No sonata_circuit asset or unreadable files: only the derivations are left.
+            L.warning("Could not read templates of circuit %s", circuit_id, exc_info=True)
+            reason = _public_reason(err)
+        else:
+            node_to_template: TemplateNodes = {
+                (population, index): template
+                for population, templates in templates_per_population.items()
+                for index, template in enumerate(sorted(templates))
+            }
+            if not node_to_template:
+                return "No population with a model_template found in this circuit."
+            return node_to_template, template_models, warnings
+
+    label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
+    if not label_to_emodel_id:
+        prefix = f"Circuit {reason}. " if reason else ""
+        return f"{prefix}No emodel_circuit derivations found for this circuit."
+    node_to_template = {
+        ("__derivations__", index): label for index, label in enumerate(sorted(label_to_emodel_id))
+    }
+    # Without a reason the templates are not in the dict: derivations by choice.
+    return node_to_template, dict.fromkeys(label_to_emodel_id, reason) if reason else {}, []
+
+
 def get_circuit_manipulation_properties(
     db_client: entitysdk.client.Client,
     circuit_id: str,
     neuron_set: NeuronSet | None = None,
+    *,
+    from_circuit_files: bool = True,
 ) -> dict:
     """Mechanism variables common to the cell templates of a circuit, or of its neuron set.
 
@@ -1279,6 +1341,8 @@ def get_circuit_manipulation_properties(
         db_client: entitysdk client.
         circuit_id: Circuit entity ID.
         neuron_set: Neuron set to resolve; may span several populations.
+        from_circuit_files: False reads no hoc or mod file: every template uses its
+            derivation, as before the circuit-file path existed (a deployment switch).
 
     Returns:
         ``entity_type``, ``populations``, ``mechanism_variables_by_ion_channel``,
@@ -1292,34 +1356,12 @@ def get_circuit_manipulation_properties(
     the circuit asset cannot be listed: retrying usually works.
     """
     resolved_populations: list[str] | None = None
-    read_warnings: list[str] = []
 
     if neuron_set is None:
-        try:
-            _circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
-            templates_per_population, template_models, read_warnings = _collect_all_templates(
-                db_client, circuit_id, asset
-            )
-        except CIRCUIT_FILES_ERRORS as err:
-            # No sonata_circuit asset or unreadable files: only the derivations are left.
-            L.warning("Could not read templates of circuit %s", circuit_id, exc_info=True)
-            label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
-            if not label_to_emodel_id:
-                return _empty_response(
-                    f"Circuit {_public_reason(err)}."
-                    " No emodel_circuit derivations found for this circuit."
-                )
-            templates_per_population = {"__derivations__": set(label_to_emodel_id)}
-            template_models: dict[str, TemplateModel | str] = dict.fromkeys(
-                label_to_emodel_id, _public_reason(err)
-            )
-        node_to_template: TemplateNodes = {
-            (population, index): template
-            for population, templates in templates_per_population.items()
-            for index, template in enumerate(sorted(templates))
-        }
-        if not node_to_template:
-            return _empty_response("No population with a model_template found in this circuit.")
+        templates = _all_templates(db_client, circuit_id, from_circuit_files=from_circuit_files)
+        if isinstance(templates, str):
+            return _empty_response(templates)
+        node_to_template, template_models, read_warnings = templates
     else:
         circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
         resolved_populations, node_to_template, template_models, read_warnings = (
@@ -1329,6 +1371,7 @@ def get_circuit_manipulation_properties(
                 circuit_entity,
                 asset,
                 neuron_set,
+                read_files=from_circuit_files,
             )
         )
         if not resolved_populations:

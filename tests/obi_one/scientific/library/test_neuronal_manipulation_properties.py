@@ -3,7 +3,7 @@
 import json
 import shutil
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -146,6 +146,11 @@ def _make_link_or_copy_fetch_file_side_effect(circuit_dir: Path):
             output_path.symlink_to(src)
 
     return _fetch_file
+
+
+def _unreadable(node_to_template: dict) -> dict[str, str]:
+    """Template -> the reason its circuit files were not read, for every template."""
+    return dict.fromkeys(node_to_template.values(), "files not readable (EntitySDKError)")
 
 
 def _make_emodel_group(
@@ -721,7 +726,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(mock_populations, mock_templates, {}, []),
+                return_value=(mock_populations, mock_templates, _unreadable(mock_templates), []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -774,7 +779,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
             "._stage_circuit_for_neuron_set_resolution",
-            return_value=(["S1nonbarrel_neurons"], mock_templates, {}, []),
+            return_value=(["S1nonbarrel_neurons"], mock_templates, _unreadable(mock_templates), []),
         ):
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
@@ -846,7 +851,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates, {}, []),
+                return_value=(
+                    ["S1nonbarrel_neurons"],
+                    mock_templates,
+                    _unreadable(mock_templates),
+                    [],
+                ),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -911,7 +921,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates, {}, []),
+                return_value=(
+                    ["S1nonbarrel_neurons"],
+                    mock_templates,
+                    _unreadable(mock_templates),
+                    [],
+                ),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -1469,7 +1484,7 @@ class TestMultiPopulationRegression:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["pop_A", "pop_B"], mock_templates, {}, []),
+                return_value=(["pop_A", "pop_B"], mock_templates, _unreadable(mock_templates), []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -1814,6 +1829,77 @@ class TestVariablesReadFromCircuitFiles:
         # The other template was still read from its files.
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
         assert result["source"] == "circuit_files"
+
+
+class TestCircuitFilesSwitchedOff:
+    """``from_circuit_files=False`` answers from the derivations only, reading no model file."""
+
+    @staticmethod
+    def _derivation(label: str) -> MagicMock:
+        derivation = MagicMock()
+        derivation.label = label
+        derivation.used.id = str(uuid4())
+        return derivation
+
+    def _run(self, client, neuron_set):
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel",
+            return_value=(
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            ),
+        ):
+            return get_circuit_manipulation_properties(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                neuron_set=neuron_set,
+                from_circuit_files=False,
+            )
+
+    def test_without_a_neuron_set_no_file_is_read(self, mock_db_client):
+        mock_db_client.search_entity.return_value.all.return_value = [
+            self._derivation("hoc:cADpyr_L6BPC")
+        ]
+        result = self._run(mock_db_client, None)
+
+        mock_db_client.fetch_file.assert_not_called()
+        mock_db_client.list_directory.assert_not_called()
+        assert result["source"] == "derivations"
+        assert result["warnings"] is None
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+
+    def test_with_a_neuron_set_only_config_and_nodes_are_read(self, mock_db_client):
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+        mock_db_client.search_entity.return_value.all.return_value = [
+            self._derivation("hoc:cADpyr_L6BPC")
+        ]
+        result = self._run(mock_db_client, neuron_set)
+
+        fetched = {
+            PurePosixPath(c.kwargs["asset_path"]).suffix
+            for c in mock_db_client.fetch_file.call_args_list
+        }
+        assert fetched <= {".json", ".h5"}
+        mock_db_client.list_directory.assert_not_called()
+        assert result["source"] == "derivations"
+        # As on the derivation-only path: no "circuit files" reason, only the template
+        # without a derivation.
+        assert result["warnings"] == [
+            "No derivation found for 1 template (hoc:cACint_L23MC), so they are left out."
+        ]
 
 
 class TestFallbackWarnings:

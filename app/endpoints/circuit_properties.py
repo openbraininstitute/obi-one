@@ -11,6 +11,7 @@ from entitysdk.types import CircuitScale
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
@@ -399,6 +400,7 @@ def neuronal_manipulation_properties_endpoint_by_neuron_set(
             db_client=db_client,
             circuit_id=request.entity_id,
             neuron_set=request.neuron_set,
+            from_circuit_files=settings.NEURONAL_MANIPULATION_FROM_CIRCUIT_FILES,
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err

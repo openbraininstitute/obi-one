@@ -451,3 +451,24 @@ def test_manipulation_properties_endpoint_maps_listing_failure_to_503(monkeypatc
 
     assert exc_info.value.status_code == 503
     assert "please try again" in exc_info.value.detail["detail"]
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_manipulation_properties_endpoint_passes_the_circuit_files_setting(monkeypatch, enabled):
+    received = {}
+
+    def capture(**kwargs):
+        received.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(circuit_properties, "get_circuit_manipulation_properties", capture)
+    monkeypatch.setattr(
+        circuit_properties.settings, "NEURONAL_MANIPULATION_FROM_CIRCUIT_FILES", enabled
+    )
+    request = circuit_properties.CircuitNeuronalManipulationPropertiesRequest.model_validate(
+        {"entity_id": "circuit-id", "neuron_set": None}
+    )
+    circuit_properties.neuronal_manipulation_properties_endpoint_by_neuron_set(
+        request=request, db_client=SimpleNamespace()
+    )
+    assert received["from_circuit_files"] is enabled
