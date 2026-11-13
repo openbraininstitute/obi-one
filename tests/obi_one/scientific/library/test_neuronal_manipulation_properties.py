@@ -47,6 +47,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     TemplateModel,
     _asset_files,
     _build_emodel_groups,
+    _build_groups_with_fallback,
     _compute_common_mechanism_variables,
     _database_units,
     _fetch_emodel_derivation_mapping,
@@ -1749,11 +1750,38 @@ class TestVariablesReadFromCircuitFiles:
 
         assert len(_searches(mock_db_client, DerivationModel)) == 1
         assert any(
-            "No derivation found for model_template: hoc:cADpyr_L6BPC" in w
+            "No derivation found for 1 template (hoc:cADpyr_L6BPC) either" in w
             for w in result["warnings"]
         )
         # The other template was still read from its files.
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
+
+
+class TestFallbackWarnings:
+    def test_one_warning_per_reason_names_a_few_templates(self):
+        """Hundreds of templates can fall back for one reason: one warning, not hundreds."""
+        templates = [f"hoc:t{index}" for index in range(7)]
+        node_to_template = {("pop", index): name for index, name in enumerate(templates)}
+        failed = dict.fromkeys(templates, "files not readable (EntitySDKError)")
+        failed["hoc:t6"] = "population has no biophysical_neuron_models_dir"
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = []
+
+        _groups, warnings = _build_groups_with_fallback(
+            client, str(uuid4()), node_to_template, failed
+        )
+
+        assert warnings == [
+            (
+                "Circuit files: files not readable (EntitySDKError). No derivation found for"
+                " 6 templates (hoc:t0, hoc:t1, hoc:t2, hoc:t3, hoc:t4, …) either, so they are"
+                " left out."
+            ),
+            (
+                "Circuit files: population has no biophysical_neuron_models_dir. No derivation"
+                " found for 1 template (hoc:t6) either, so they are left out."
+            ),
+        ]
 
 
 class TestCircuitFileSafety:
@@ -2100,7 +2128,7 @@ class TestReadTemplateModelsFailures:
         )
         assert models == {
             self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'NaTg'"
-            " (1 mod files could not be parsed: NaTg.mod)"
+            " (1 mod file could not be parsed: NaTg.mod)"
         }
 
     def test_mechanism_defined_twice_fails_the_template(self, tmp_path):

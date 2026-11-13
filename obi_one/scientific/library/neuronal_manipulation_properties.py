@@ -320,6 +320,11 @@ def _named_list(names: Iterable[str]) -> str:
     return f"{shown}, …" if len(names) > MAX_NAMES_IN_WARNING else shown
 
 
+def _counted(count: int, noun: str) -> str:
+    """``1 template``, ``2 templates``."""
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
 def _fetch_and_parse[K: Hashable, T](
     keys: Iterable[K],
     parse: Callable[[K, str], T],
@@ -408,7 +413,7 @@ class ModIndex:
         reason = f"no mod file in the circuit defines mechanism '{channel}'"
         if self.unparsed:
             reason += (
-                f" ({len(self.unparsed)} mod files could not be parsed:"
+                f" ({_counted(len(self.unparsed), 'mod file')} could not be parsed:"
                 f" {_named_list(self.unparsed)})"
             )
         return reason
@@ -473,7 +478,8 @@ def _template_hoc_paths(
                 hoc_paths[template] = f"{dirs.hoc_dir}/{name}.hoc"
     warnings = [
         f"Populations '{used}' and '{other}' declare different model directories for"
-        f" {len(names)} templates ({_named_list(names)}); the files of '{used}' are used."
+        f" {_counted(len(names), 'template')} ({_named_list(names)}); the files of '{used}'"
+        " are used."
         for (used, other), names in conflicts.items()
     ]
     return hoc_paths, template_dirs, reasons, warnings
@@ -961,7 +967,9 @@ def _build_groups_with_fallback(
     """Build groups from the circuit files, then from derivations for the templates left.
 
     Returns:
-        The groups, and one warning per template that needed the derivation or had none.
+        The groups, and one warning per reason and outcome naming the templates that
+        needed the derivation or had none (one per template is hundreds on a large
+        circuit).
     """
     template_to_nodes: dict[str, list[tuple[str, int]]] = {}
     for key, template in node_to_template.items():
@@ -975,13 +983,17 @@ def _build_groups_with_fallback(
     label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
     node_key_to_emodel, unmatched = _match_templates_to_emodels(fallback_nodes, label_to_emodel_id)
     groups.update(_build_emodel_groups(db_client, node_key_to_emodel, label_to_emodel_id))
+    by_outcome: dict[tuple[str, bool], list[str]] = defaultdict(list)
     for template, reason in sorted(failed.items()):
+        by_outcome[reason, template in unmatched].append(template)
+    for (reason, no_derivation), templates in by_outcome.items():
+        names = f"{_counted(len(templates), 'template')} ({_named_list(templates)})"
         outcome = (
-            "No derivation found for model_template"
-            if template in unmatched
-            else "used the emodel_circuit derivation instead"
+            f"No derivation found for {names} either, so they are left out"
+            if no_derivation
+            else f"Used the emodel_circuit derivation instead for {names}"
         )
-        warnings.append(f"{outcome}: {template} (circuit files: {reason})")
+        warnings.append(f"Circuit files: {reason}. {outcome}.")
     return groups, warnings
 
 
