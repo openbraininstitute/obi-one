@@ -441,28 +441,42 @@ def _mod_index(
 def _template_hoc_paths(
     templates_per_population: dict[str, set[str]],
     pop_to_model_dirs: dict[str, PopulationModelDirs],
-) -> tuple[dict[str, str], dict[str, PopulationModelDirs], dict[str, str]]:
+) -> tuple[dict[str, str], dict[str, PopulationModelDirs], dict[str, str], list[str]]:
     """Find each template's hoc file and model directories.
 
-    The first population that lists a template decides its directories.
+    The first population that lists a template decides its directories; a template whose
+    populations declare different directories is named in a warning.
 
     Returns:
-        Template -> hoc asset path, template -> directories, and template -> why it has
-        no hoc path.
+        Template -> hoc asset path, template -> directories, template -> why it has no
+        hoc path, and the warnings.
     """
     hoc_paths: dict[str, str] = {}
     template_dirs: dict[str, PopulationModelDirs] = {}
     reasons: dict[str, str] = {}
+    first_population: dict[str, str] = {}
+    conflicts: dict[tuple[str, str], list[str]] = defaultdict(list)
     for population, templates in templates_per_population.items():
         dirs = pop_to_model_dirs[population]
-        for template in templates - template_dirs.keys():
+        for template in sorted(templates):
+            if template in template_dirs:
+                used = template_dirs[template]
+                if (used.hoc_dir, used.mod_dirs) != (dirs.hoc_dir, dirs.mod_dirs):
+                    conflicts[first_population[template], population].append(template)
+                continue
             template_dirs[template] = dirs
+            first_population[template] = population
             if dirs.hoc_dir is None:
                 reasons[template] = "population has no biophysical_neuron_models_dir"
             else:
                 name = template.rsplit(":", maxsplit=1)[-1]
                 hoc_paths[template] = f"{dirs.hoc_dir}/{name}.hoc"
-    return hoc_paths, template_dirs, reasons
+    warnings = [
+        f"Populations '{used}' and '{other}' declare different model directories for"
+        f" {len(names)} templates ({_named_list(names)}); the files of '{used}' are used."
+        for (used, other), names in conflicts.items()
+    ]
+    return hoc_paths, template_dirs, reasons, warnings
 
 
 def _mod_paths_per_dirs(
@@ -483,7 +497,7 @@ def _read_template_models(
     templates_per_population: dict[str, set[str]],
     pop_to_model_dirs: dict[str, PopulationModelDirs],
     asset_files: dict[str, int],
-) -> dict[str, TemplateModel | str]:
+) -> tuple[dict[str, TemplateModel | str], list[str]]:
     """Read every template from its hoc file and the mod files of its directory.
 
     All hoc and mod files go in one parallel batch: the whole mod directory (a few dozen
@@ -499,18 +513,18 @@ def _read_template_models(
         asset_files: The asset listing.
 
     Returns:
-        Template -> its model, or the reason it could not be read.
+        Template -> its model, or the reason it could not be read; and the warnings.
     """
 
     def stage(path: str) -> Path:
         return _stage_file(db_client, circuit_id, asset, temp_dir_path, path)
 
-    hoc_paths, template_dirs, reasons = _template_hoc_paths(
+    hoc_paths, template_dirs, reasons, warnings = _template_hoc_paths(
         templates_per_population, pop_to_model_dirs
     )
     result: dict[str, TemplateModel | str] = dict(reasons)
     if not hoc_paths:
-        return result
+        return result, warnings
 
     mod_paths = _mod_paths_per_dirs(
         (template_dirs[template].mod_dirs for template in hoc_paths),
@@ -539,7 +553,7 @@ def _read_template_models(
             for mechanism in model.mechanisms.values()
         ],
     )
-    return result
+    return result, warnings
 
 
 def _undeclared_units(mechanism: ModMechanism) -> list[str]:
@@ -708,13 +722,42 @@ def _population_templates(
         return _unique_templates(h5[f"nodes/{population}/0"])
 
 
+def _node_templates(
+    temp_dir_path: Path,
+    pop_to_nodes_path: dict[str, str],
+    population: str,
+    node_ids: list[int],
+    circuit_id: str,
+) -> list[str]:
+    """The ``model_template`` of each node, read from the staged ``nodes.h5``.
+
+    Raises:
+        ValueError: The population has no nodes file or no ``model_template``.
+    """
+    try:
+        nodes_relative = pop_to_nodes_path[population]
+    except KeyError as err:
+        msg = f"No nodes file found for population '{population}'."
+        raise ValueError(msg) from err
+
+    pop_obj = NodeStorage(str(temp_dir_path / nodes_relative)).open_population(population)
+    if "model_template" not in pop_obj.attribute_names:
+        msg = (
+            f"Property 'model_template' not found in population"
+            f" '{population}' of circuit {circuit_id}."
+            f" Available: {list(pop_obj.attribute_names)}"
+        )
+        raise ValueError(msg)
+    return pop_obj.get_attribute("model_template", node_ids)
+
+
 def _stage_circuit_for_neuron_set_resolution(
     db_client: entitysdk.client.Client,
     circuit_id: str,
     circuit_entity: Circuit,
     asset: Asset,
     neuron_set: NeuronSet,
-) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str]]:
+) -> tuple[list[str], TemplateNodes, dict[str, TemplateModel | str], list[str]]:
     """Stage the circuit, resolve the neuron set to node IDs and read their templates.
 
     Args:
@@ -725,12 +768,12 @@ def _stage_circuit_for_neuron_set_resolution(
         neuron_set: Neuron set to resolve; swept fields are expanded.
 
     Returns:
-        The populations, (population, node_id) -> model_template, and
-        model_template -> model or reason it could not be read. All three are empty when
-        the neuron set selects no neurons.
+        The populations, (population, node_id) -> model_template, model_template ->
+        model or reason it could not be read, and the warnings. All are empty when the
+        neuron set selects no neurons.
 
-    Raises:
-        ValueError: A population without a nodes file or without ``model_template``.
+    ``ValueError`` propagates for a population without a nodes file or without
+    ``model_template``.
     """
     # Listed while the circuit is staged: no extra wait.
     listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
@@ -757,38 +800,19 @@ def _stage_circuit_for_neuron_set_resolution(
                 continue
 
             populations.append(population)
-
-            try:
-                nodes_relative = pop_to_nodes_path[population]
-            except KeyError as err:
-                msg = f"No nodes file found for population '{population}'."
-                raise ValueError(msg) from err
-
-            pop_obj = NodeStorage(str(temp_dir_path / nodes_relative)).open_population(population)
-
-            if "model_template" not in pop_obj.attribute_names:
-                msg = (
-                    f"Property 'model_template' not found in population"
-                    f" '{population}' of circuit {circuit_id}."
-                    f" Available: {list(pop_obj.attribute_names)}"
-                )
-                raise ValueError(msg)
-
-            templates = pop_obj.get_attribute("model_template", node_ids)
+            templates = _node_templates(
+                temp_dir_path, pop_to_nodes_path, population, node_ids, circuit_id
+            )
             node_to_template.update(
-                zip(
-                    [(population, nid) for nid in node_ids],
-                    templates,
-                    strict=True,
-                )
+                zip([(population, nid) for nid in node_ids], templates, strict=True)
             )
             templates_per_population[population] = set(templates)
 
         if not populations:
             # No templates to read; the caller answers with a warning.
-            return [], {}, {}
+            return [], {}, {}, []
 
-        template_models = _read_template_models(
+        template_models, warnings = _read_template_models(
             db_client,
             circuit_id,
             asset,
@@ -798,18 +822,19 @@ def _stage_circuit_for_neuron_set_resolution(
             listing.result(),
         )
 
-    return populations, node_to_template, template_models
+    return populations, node_to_template, template_models, warnings
 
 
 def _collect_all_templates(
     db_client: entitysdk.client.Client,
     circuit_id: str,
     asset: Asset,
-) -> tuple[dict[str, set[str]], dict[str, TemplateModel | str]]:
+) -> tuple[dict[str, set[str]], dict[str, TemplateModel | str], list[str]]:
     """Return every template of every biophysical population, with its model.
 
     Returns:
-        Population -> its templates, and template -> its model or the reason it failed.
+        Population -> its templates, template -> its model or the reason it failed, and
+        the warnings.
     """
     # Listed while the config is fetched: no extra wait.
     listing = FETCH_POOL.submit(_asset_files, db_client, circuit_id, asset)
@@ -837,7 +862,7 @@ def _collect_all_templates(
             )
             if templates is not None:
                 templates_per_population[population] = templates
-        template_models = _read_template_models(
+        template_models, warnings = _read_template_models(
             db_client,
             circuit_id,
             asset,
@@ -846,7 +871,7 @@ def _collect_all_templates(
             pop_to_model_dirs,
             asset_files,
         )
-    return templates_per_population, template_models
+    return templates_per_population, template_models, warnings
 
 
 def get_expanded_neuron_ids(neuron_set: NeuronSet, circuit: ObiCircuit) -> dict[str, list[int]]:
@@ -1181,11 +1206,12 @@ def get_circuit_manipulation_properties(
     the circuit asset cannot be listed: retrying usually works.
     """
     resolved_populations: list[str] | None = None
+    read_warnings: list[str] = []
 
     if neuron_set is None:
         try:
             _circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
-            templates_per_population, template_models = _collect_all_templates(
+            templates_per_population, template_models, read_warnings = _collect_all_templates(
                 db_client, circuit_id, asset
             )
         except CIRCUIT_FILES_ERRORS as err:
@@ -1210,7 +1236,7 @@ def get_circuit_manipulation_properties(
             return _empty_response("No population with a model_template found in this circuit.")
     else:
         circuit_entity, asset = _get_circuit_asset(db_client, circuit_id)
-        resolved_populations, node_to_template, template_models = (
+        resolved_populations, node_to_template, template_models, read_warnings = (
             _stage_circuit_for_neuron_set_resolution(
                 db_client,
                 circuit_id,
@@ -1225,9 +1251,10 @@ def get_circuit_manipulation_properties(
                 populations=[],
             )
 
-    emodel_groups, warning_messages = _build_groups_with_fallback(
+    emodel_groups, fallback_warnings = _build_groups_with_fallback(
         db_client, circuit_id, node_to_template, template_models
     )
+    warning_messages = [*read_warnings, *fallback_warnings]
 
     common_vars = _compute_common_mechanism_variables(emodel_groups)
 

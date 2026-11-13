@@ -61,6 +61,7 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     _stage_circuit_for_neuron_set,
     _stage_circuit_for_neuron_set_resolution,
     _stage_file,
+    _template_hoc_paths,
     _unique_templates,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
@@ -707,7 +708,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(mock_populations, mock_templates, {}),
+                return_value=(mock_populations, mock_templates, {}, []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -760,7 +761,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
             "._stage_circuit_for_neuron_set_resolution",
-            return_value=(["S1nonbarrel_neurons"], mock_templates, {}),
+            return_value=(["S1nonbarrel_neurons"], mock_templates, {}, []),
         ):
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
@@ -832,7 +833,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates, {}),
+                return_value=(["S1nonbarrel_neurons"], mock_templates, {}, []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -897,7 +898,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates, {}),
+                return_value=(["S1nonbarrel_neurons"], mock_templates, {}, []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -1096,12 +1097,14 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
-            db_client=mock_db_client,
-            circuit_id=circuit_id,
-            circuit_entity=circuit_entity,
-            asset=asset,
-            neuron_set=neuron_set,
+        populations, node_to_template, _models, _warnings = (
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                circuit_entity=circuit_entity,
+                asset=asset,
+                neuron_set=neuron_set,
+            )
         )
 
         assert populations == ["S1nonbarrel_neurons"]
@@ -1134,12 +1137,14 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
-            db_client=client,
-            circuit_id=str(uuid4()),
-            circuit_entity=entity,
-            asset=asset,
-            neuron_set=neuron_set,
+        populations, node_to_template, _models, _warnings = (
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                circuit_entity=entity,
+                asset=asset,
+                neuron_set=neuron_set,
+            )
         )
 
         assert populations == ["S1nonbarrel_neurons"]
@@ -1175,12 +1180,14 @@ class TestStageCircuitForNeuronSetResolution:
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         # Should not raise despite missing node_sets.json
-        populations, node_to_template, _sources = _stage_circuit_for_neuron_set_resolution(
-            db_client=client,
-            circuit_id=str(uuid4()),
-            circuit_entity=entity,
-            asset=asset,
-            neuron_set=neuron_set,
+        populations, node_to_template, _models, _warnings = (
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                circuit_entity=entity,
+                asset=asset,
+                neuron_set=neuron_set,
+            )
         )
 
         assert populations == ["S1nonbarrel_neurons"]
@@ -1406,7 +1413,7 @@ class TestMultiPopulationRegression:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["pop_A", "pop_B"], mock_templates, {}),
+                return_value=(["pop_A", "pop_B"], mock_templates, {}, []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -1842,7 +1849,7 @@ def _asset() -> MagicMock:
 
 
 def _read_models(client, tmp_path, templates, dirs):
-    return _read_template_models(
+    models, warnings = _read_template_models(
         client,
         str(uuid4()),
         _asset(),
@@ -1851,6 +1858,33 @@ def _read_models(client, tmp_path, templates, dirs):
         {"S1nonbarrel_neurons": dirs},
         _asset_files(client, str(uuid4()), _asset()),
     )
+    assert warnings == []
+    return models
+
+
+class TestTemplateDirectories:
+    @staticmethod
+    def _dirs(hoc_dir: str, mod_dir: str = "mod") -> PopulationModelDirs:
+        return PopulationModelDirs("biophysical", hoc_dir=hoc_dir, mod_dirs=(mod_dir,))
+
+    def test_populations_with_different_directories_for_one_template_warn(self):
+        hoc_paths, _dirs, _reasons, warnings = _template_hoc_paths(
+            {"a": {"hoc:x", "hoc:y"}, "b": {"hoc:x", "hoc:y", "hoc:z"}},
+            {"a": self._dirs("a_hoc"), "b": self._dirs("b_hoc")},
+        )
+        assert hoc_paths == {"hoc:x": "a_hoc/x.hoc", "hoc:y": "a_hoc/y.hoc", "hoc:z": "b_hoc/z.hoc"}
+        assert warnings == [
+            (
+                "Populations 'a' and 'b' declare different model directories for 2 templates"
+                " (hoc:x, hoc:y); the files of 'a' are used."
+            )
+        ]
+
+    def test_populations_sharing_directories_do_not_warn(self):
+        *_, warnings = _template_hoc_paths(
+            {"a": {"hoc:x"}, "b": {"hoc:x"}}, {"a": self._dirs("hoc"), "b": self._dirs("hoc")}
+        )
+        assert warnings == []
 
 
 class TestCircuitFileStagingEdges:
