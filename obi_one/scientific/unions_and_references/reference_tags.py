@@ -69,3 +69,6 @@ class ReferenceTag(StrEnum):
     POINT_NEURON_SET_OPERAND = "point_neuron_set_operand"
     VIRTUAL_NEURON_SET_OPERAND = "virtual_neuron_set_operand"
     NON_VIRTUAL_NEURON_SET_OPERAND = "non_virtual_neuron_set_operand"
+
+    # The neurons a spike stimulus replays spikes from.
+    SPIKE_STIMULUS_SOURCE = "spike_stimulus_source"
