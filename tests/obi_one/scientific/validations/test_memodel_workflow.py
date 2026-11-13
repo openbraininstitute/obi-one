@@ -23,6 +23,7 @@ from obi_one.scientific.validations.memodel.config import (
     extract_simulator_config_from_hoc,
     load_simulator_config_from_hoc,
 )
+from obi_one.scientific.validations.memodel.names import ValidationName
 from obi_one.scientific.validations.memodel.presets import (
     spiking_preset,
     thalamic_depolarization_block_preset,
@@ -895,7 +896,7 @@ class TestThumbnailTest:
         assert result.name == "thumbnail"
         assert result.passed is True
 
-    def test_thalamic_thumbnail_uses_the_tonic_firing_protocol(self, tmp_path):
+    def test_thalamic_thumbnail_uses_the_rebound_protocol(self, tmp_path):
         template_params = MagicMock()
         template_params.emodel_properties.holding_current = -0.03
         context = MEModelWorkflowContext(
@@ -905,12 +906,18 @@ class TestThumbnailTest:
             rin=100.0,
             out_dir=tmp_path,
         )
-        tests = ThalamicMEModelValidationProfile(tonic_step_current=0.35).build_tests(context)
-        tonic = tests[0]
+        profile = ThalamicMEModelValidationProfile(
+            rebound_holding_current=0.0875,
+            rebound_hyperpolarization_amplitude=-0.246484375,
+        )
+        tests = profile.build_tests(context)
+        rebound = next(t for t in tests if t.name == ValidationName.REBOUND_BURST)
         thumbnail = next(t for t in tests if t.name == "thumbnail")
 
-        assert thumbnail.protocol is tonic.protocol
-        assert thumbnail.protocol.phases[1][1] == pytest.approx(0.35)
+        assert thumbnail.protocol is rebound.protocol
+        # Per-model hold, then hold + hyperpolarizing pulse, then release.
+        assert thumbnail.protocol.phases[0][1] == pytest.approx(0.0875)
+        assert thumbnail.protocol.phases[1][1] == pytest.approx(0.0875 - 0.246484375)
 
     def test_default_thumbnail_keeps_the_legacy_step(self, tmp_path):
         context = MEModelWorkflowContext(

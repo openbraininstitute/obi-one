@@ -267,6 +267,12 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         # source protocol; ~0.8 nA for the higher-Rin Spp cells to show sustained
         # tonic firing without a rebound burst).
         tonic_firing = tonic_firing_preset(step_current=self.tonic_step_current)
+        rebound_burst = rebound_burst_preset(
+            holding_current=self.rebound_holding_current,
+            hyperpolarization_amplitude=self.rebound_hyperpolarization_amplitude,
+            hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
+            expect_spikes=True,
+        )
         return [
             tonic_firing,
             # Depolarization block uses the same calibrated hold so the step
@@ -274,12 +280,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             thalamic_depolarization_block_preset(
                 rheobase=rheobase,
             ),
-            rebound_burst_preset(
-                holding_current=self.rebound_holding_current,
-                hyperpolarization_amplitude=self.rebound_hyperpolarization_amplitude,
-                hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
-                expect_spikes=True,
-            ),
+            rebound_burst,
             # BlueCelluLab validation equivalents.
             # The full-trace guard prevents a late rebound burst from being
             # hidden by BlueCelluLab's pulse-centered recording plot.
@@ -297,9 +298,9 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             RinTest(rin=rin),
             IVCurveTest(n_processes=None, simulator_config=simulator_config),
             FICurveTest(n_processes=None, simulator_config=simulator_config),
-            # Thalamic cells burst at the standard 130% rheobase step, so the preview
-            # uses this profile's spiking test (tonic firing) instead.
-            ThumbnailTest(protocol=tonic_firing.protocol),
+            # The preview shows the rebound burst, the defining behaviour of these
+            # cells, using the same per-model protocol as the rebound validation.
+            ThumbnailTest(protocol=rebound_burst.protocol),
         ]
 
 
