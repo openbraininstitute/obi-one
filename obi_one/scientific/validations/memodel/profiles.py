@@ -262,14 +262,13 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
                 f"{calibrated_hold!r}. Populate MEModelCalibrationResult.holding_current."
             )
             raise InvalidValidationContextError(message)
+        # Tonic firing uses a depolarized hold to inactivate T-type Ca, then a
+        # depolarizing step. The step is per-e-type (0.4 nA for Ecel1 per the
+        # source protocol; ~0.8 nA for the higher-Rin Spp cells to show sustained
+        # tonic firing without a rebound burst).
+        tonic_firing = tonic_firing_preset(step_current=self.tonic_step_current)
         return [
-            # Tonic firing uses a depolarized hold to inactivate T-type Ca,
-            # then a depolarizing step. The step is per-e-type (0.4 nA for
-            # Ecel1 per the source protocol; ~0.8 nA for the higher-Rin Spp
-            # cells to show sustained tonic firing without a rebound burst).
-            tonic_firing_preset(
-                step_current=self.tonic_step_current,
-            ),
+            tonic_firing,
             # Depolarization block uses the same calibrated hold so the step
             # produces tonic firing rather than a rebound burst.
             thalamic_depolarization_block_preset(
@@ -298,7 +297,9 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             RinTest(rin=rin),
             IVCurveTest(n_processes=None, simulator_config=simulator_config),
             FICurveTest(n_processes=None, simulator_config=simulator_config),
-            ThumbnailTest(),
+            # Thalamic cells burst at the standard 130% rheobase step, so the preview
+            # uses this profile's spiking test (tonic firing) instead.
+            ThumbnailTest(protocol=tonic_firing.protocol),
         ]
 
 
