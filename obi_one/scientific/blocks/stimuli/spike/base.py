@@ -176,9 +176,9 @@ class SpikeStimulus(StimulusWithTimestamps):
         spikes_by_population: dict[str, dict[int, list[float]]] = {
             pop: {} for pop in gids_by_population
         }
-        for index, (pop, gid) in enumerate(neurons):
-            if index in spikes_by_index:
-                spikes_by_population[pop][gid] = spikes_by_index[index]
+        for index, spike_times in spikes_by_index.items():
+            pop, gid = neurons[index]
+            spikes_by_population[pop][gid] = spike_times
         return spikes_by_population
 
     def _generate_config(

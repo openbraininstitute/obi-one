@@ -924,3 +924,16 @@ def test_several_source_populations_get_independent_spikes():
     assert set(spikes) == {"A", "B"}
     assert set(spikes["A"]) == set(spikes["B"]) == {0, 1}
     assert spikes["A"][0] != spikes["B"][0]
+
+
+def test_source_neuron_set_without_population_is_rejected(tmp_path):
+    stim = PoissonSpikeStimulus(
+        duration=500.0,
+        timestamps=_make_timestamps_ref(SingleTimestamp(start_time=0.0)),
+        frequency=20.0,
+    )
+
+    with pytest.raises(ConfigValidationError, match="has no population"):
+        stim.generate_spikes(
+            circuit=None, spike_file_directory=tmp_path, source_neuron_set=_StubNeuronSet([])
+        )
