@@ -875,6 +875,52 @@ class TestThumbnailTest:
         assert result.passed is True
         assert result.figures == [tmp_path / "thumbnail.png"]
 
+    def test_runs_the_given_protocol_instead_of_the_default_step(self, tmp_path):
+        recording = SimpleNamespace(time=np.array([0.0, 1.0]), voltage=np.array([-65.0, 20.0]))
+        protocol = MagicMock()
+        protocol.execute.return_value = recording
+        template_params = MagicMock()
+        with (
+            patch("obi_one.scientific.validations.memodel.tests.run_stimulus") as run,
+            patch(
+                "obi_one.scientific.validations.memodel.tests.plot_trace",
+                return_value=tmp_path / "thumbnail.png",
+            ) as plot,
+        ):
+            result = ThumbnailTest(protocol=protocol).run(template_params, 0.2, tmp_path)
+
+        protocol.execute.assert_called_once_with(template_params, 0.2)
+        run.assert_not_called()
+        assert plot.call_args.args[0] is recording
+        assert result.name == "thumbnail"
+        assert result.passed is True
+
+    def test_thalamic_thumbnail_uses_the_tonic_firing_protocol(self, tmp_path):
+        template_params = MagicMock()
+        template_params.emodel_properties.holding_current = -0.03
+        context = MEModelWorkflowContext(
+            entity_id="test-id",
+            template_params=template_params,
+            rheobase=1.0,
+            rin=100.0,
+            out_dir=tmp_path,
+        )
+        tests = ThalamicMEModelValidationProfile(tonic_step_current=0.35).build_tests(context)
+        tonic = tests[0]
+        thumbnail = next(t for t in tests if t.name == "thumbnail")
+
+        assert thumbnail.protocol is tonic.protocol
+        assert thumbnail.protocol.phases[1][1] == pytest.approx(0.35)
+
+    def test_default_thumbnail_keeps_the_legacy_step(self, tmp_path):
+        context = MEModelWorkflowContext(
+            entity_id="test-id", template_params=MagicMock(), rheobase=1.0, out_dir=tmp_path
+        )
+        tests = DefaultMEModelValidationProfile().build_tests(context)
+        thumbnail = next(t for t in tests if t.name == "thumbnail")
+
+        assert thumbnail.protocol is None
+
 
 class TestRinTest:
     def test_passes_below_max(self, tmp_path):
