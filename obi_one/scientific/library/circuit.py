@@ -92,6 +92,15 @@ class Circuit(OBIBaseModel):
         """List of available node sets."""
         return list(self.sonata_circuit.node_sets.content)
 
+    @property
+    def has_staged_edges(self) -> bool:
+        """Whether the edge files are on disk (campaign generation may stage nodes only)."""
+        config = libsonata.CircuitConfig.from_file(self.path)
+        return all(
+            Path(config.edge_population_properties(name).elements_path).exists()
+            for name in config.edge_populations
+        )
+
     @staticmethod
     def get_node_population_names(
         c: snap.Circuit,

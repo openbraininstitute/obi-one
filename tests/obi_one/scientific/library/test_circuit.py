@@ -7,7 +7,7 @@ import pytest
 from obi_one.scientific.library import circuit as test_module
 from obi_one.scientific.library.circuit import Circuit
 
-from tests.utils import CIRCUIT_DIR
+from tests.utils import CIRCUIT_DIR, stage_circuit_without_edges
 
 
 def _patch_connectivity_matrix(monkeypatch, fake_type: type) -> None:
@@ -685,3 +685,17 @@ def test_load_morphology_falls_back_to_swc_without_an_h5(monkeypatch, tmp_path):
     morphology = circuit.load_morphology(0, population="All")
 
     assert len(morphology.sections) == 2
+
+
+def test_has_staged_edges():
+    circuit_dir = CIRCUIT_DIR / "N_10__top_nodes_dim6"
+    circuit = Circuit(name="full", path=str(circuit_dir / "circuit_config.json"))
+
+    assert circuit.has_staged_edges
+
+
+def test_has_no_staged_edges(tmp_path):
+    config = stage_circuit_without_edges(CIRCUIT_DIR / "N_10__top_nodes_dim6", tmp_path / "staged")
+    circuit = Circuit(name="nodes_only", path=str(config))
+
+    assert not circuit.has_staged_edges

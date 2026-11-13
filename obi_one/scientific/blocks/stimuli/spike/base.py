@@ -84,11 +84,13 @@ class SpikeStimulus(StimulusWithTimestamps):
             msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
             raise ConfigValidationError(msg)
 
-        self._validate_source_connects_to_target(
-            circuit=circuit,
-            source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
-            target_neuron_set=target_neuron_set,  # ty:ignore[invalid-argument-type]
-        )
+        # Connectivity is only stored in the edge files, which may not have been staged.
+        if circuit.has_staged_edges:
+            self._validate_source_connects_to_target(
+                circuit=circuit,
+                source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
+                target_neuron_set=target_neuron_set,  # ty:ignore[invalid-argument-type]
+            )
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
