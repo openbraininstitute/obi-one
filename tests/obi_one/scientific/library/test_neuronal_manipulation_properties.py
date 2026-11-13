@@ -1363,6 +1363,7 @@ class TestGetCircuitManipulationPropertiesFastPath:
         assert "MechanismVariablesByIonChannel" in result
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
         assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
+        assert result["source"] == "derivations"
 
     def test_fast_path_no_derivations(self, mock_db_client):
         """Unreadable circuit files and no derivations: empty response with a warning."""
@@ -1527,6 +1528,7 @@ class TestMultiPopulationRegression:
 
         assert result["populations"] == []
         assert result["MechanismVariablesByIonChannel"] == {}
+        assert result["source"] is None
         assert len(result["warnings"]) == 1
         warning = result["warnings"][0]
         assert "selects no neurons" in warning
@@ -1706,6 +1708,7 @@ class TestVariablesReadFromCircuitFiles:
         )
 
         assert _searches(mock_db_client, DerivationModel) == []
+        assert result["source"] == "circuit_files"
         assert result["populations"] == ["S1nonbarrel_neurons"]
         # Only the entity_id one: the mock database has no ion channel model.
         assert [w for w in result["warnings"] if "entity_id" not in w] == []
@@ -1810,9 +1813,26 @@ class TestVariablesReadFromCircuitFiles:
         )
         # The other template was still read from its files.
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
+        assert result["source"] == "circuit_files"
 
 
 class TestFallbackWarnings:
+    def test_some_templates_from_files_and_some_from_derivations_is_mixed(self):
+        module = "obi_one.scientific.library.neuronal_manipulation_properties"
+        group = _make_emodel_group([0], "hoc:a", {})
+        with (
+            patch(
+                f"{module}._build_template_groups",
+                return_value=({"hoc:a": group}, {"hoc:b": "r"}, []),
+            ),
+            patch(f"{module}._fetch_emodel_derivation_mapping", return_value={"hoc:b": "e"}),
+            patch(f"{module}._build_emodel_groups", return_value={"e": group}),
+        ):
+            _groups, _warnings, source = _build_groups_with_fallback(
+                MagicMock(), str(uuid4()), {("p", 0): "hoc:a", ("p", 1): "hoc:b"}, {}
+            )
+        assert source == "mixed"
+
     def test_one_warning_per_reason_names_a_few_templates(self):
         """Hundreds of templates can fall back for one reason: one warning, not hundreds."""
         templates = [f"hoc:t{index}" for index in range(7)]
@@ -1822,7 +1842,7 @@ class TestFallbackWarnings:
         client = MagicMock()
         client.search_entity.return_value.all.return_value = []
 
-        _groups, warnings = _build_groups_with_fallback(
+        _groups, warnings, _source = _build_groups_with_fallback(
             client, str(uuid4()), node_to_template, failed
         )
 

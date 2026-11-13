@@ -17,6 +17,7 @@ from collections.abc import Callable, Container, Hashable, Iterable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import Literal
 from uuid import UUID
 
 import entitysdk.client
@@ -81,6 +82,10 @@ CIRCUIT_FILES_ERRORS = (
     SonataError,
     RuntimeError,
 )
+
+# Where the response's variables come from: every template's circuit files, every
+# template's derivation, or some of each (a template falls back on its own).
+VariablesSource = Literal["circuit_files", "derivations", "mixed"]
 
 # (population, node_id) -> model_template (or EModel ID after ``_match_templates_to_emodels``).
 TemplateNodes = dict[tuple[str, int], str]
@@ -1020,13 +1025,13 @@ def _build_groups_with_fallback(
     circuit_id: str,
     node_to_template: TemplateNodes,
     template_models: dict[str, TemplateModel | str],
-) -> tuple[dict[str, dict], list[str]]:
+) -> tuple[dict[str, dict], list[str], VariablesSource | None]:
     """Build groups from the circuit files, then from derivations for the templates left.
 
     Returns:
-        The groups, and one warning per reason and outcome naming the templates that
-        needed the derivation or had none (one per template is hundreds on a large
-        circuit).
+        The groups; one warning per reason and outcome naming the templates that needed
+        the derivation or had none (one per template is hundreds on a large circuit); and
+        where the groups come from, None when there is none.
     """
     template_to_nodes: dict[str, list[tuple[str, int]]] = {}
     for key, template in node_to_template.items():
@@ -1034,12 +1039,18 @@ def _build_groups_with_fallback(
 
     groups, failed, warnings = _build_template_groups(template_models, template_to_nodes)
     if not failed:
-        return groups, warnings
+        return groups, warnings, "circuit_files" if groups else None
 
     fallback_nodes = {key: tpl for key, tpl in node_to_template.items() if tpl in failed}
     label_to_emodel_id = _fetch_emodel_derivation_mapping(db_client, circuit_id)
     node_key_to_emodel, unmatched = _match_templates_to_emodels(fallback_nodes, label_to_emodel_id)
-    groups.update(_build_emodel_groups(db_client, node_key_to_emodel, label_to_emodel_id))
+    derivation_groups = _build_emodel_groups(db_client, node_key_to_emodel, label_to_emodel_id)
+    source: VariablesSource | None = None
+    if derivation_groups:
+        source = "mixed" if groups else "derivations"
+    elif groups:
+        source = "circuit_files"
+    groups.update(derivation_groups)
     by_outcome: dict[tuple[str, bool], list[str]] = defaultdict(list)
     for template, reason in sorted(failed.items()):
         by_outcome[reason, template in unmatched].append(template)
@@ -1051,7 +1062,7 @@ def _build_groups_with_fallback(
             else f"Used the emodel_circuit derivation instead for {names}"
         )
         warnings.append(f"Circuit files: {reason}. {outcome}.")
-    return groups, warnings
+    return groups, warnings, source
 
 
 def _fetch_emodel_derivation_mapping(
@@ -1230,6 +1241,7 @@ def _empty_response(warning: str, populations: list[str] | None = None) -> dict:
         "entity_type": "circuit",
         "populations": populations,
         CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: {},
+        "source": None,
         "warnings": [warning],
     }
 
@@ -1269,7 +1281,8 @@ def get_circuit_manipulation_properties(
         neuron_set: Neuron set to resolve; may span several populations.
 
     Returns:
-        ``entity_type``, ``populations``, ``mechanism_variables_by_ion_channel`` and
+        ``entity_type``, ``populations``, ``mechanism_variables_by_ion_channel``,
+        ``source`` (``VariablesSource``, None when no template has variables) and
         ``warnings``.
 
     With a neuron set, ``ValueError`` propagates (HTTP 400) when the circuit has no single
@@ -1324,7 +1337,7 @@ def get_circuit_manipulation_properties(
                 populations=[],
             )
 
-    emodel_groups, fallback_warnings = _build_groups_with_fallback(
+    emodel_groups, fallback_warnings, source = _build_groups_with_fallback(
         db_client, circuit_id, node_to_template, template_models
     )
     warning_messages = [*read_warnings, *fallback_warnings]
@@ -1340,5 +1353,6 @@ def get_circuit_manipulation_properties(
         "entity_type": "circuit",
         "populations": resolved_populations,
         CircuitMappedProperties.MECHANISM_VARIABLES_BY_ION_CHANNEL: common_vars,
+        "source": source,
         "warnings": warning_messages or None,
     }
