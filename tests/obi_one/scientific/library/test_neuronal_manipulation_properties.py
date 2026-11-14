@@ -1,16 +1,31 @@
 """Tests for _compute_common_mechanism_variables and related pure-logic functions."""
 
+import json
 import shutil
-from pathlib import Path
+from datetime import UTC, datetime
+from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import h5py
+import httpx2
 import pytest
+from entitysdk.common import ProjectContext
+from entitysdk.exception import EntitySDKError
+from entitysdk.models import Derivation as DerivationModel, IonChannelModel
+from entitysdk.models.asset import DetailedFile, DetailedFileList
 from entitysdk.types import FetchFileStrategy
+from libsonata import NodeStorage
 
 from obi_one.core.exception import OBIONEError
+from obi_one.scientific.blocks.neuron_sets.predefined import (
+    BiophysicalPopulationPredefinedNeuronSet,
+)
+from obi_one.scientific.blocks.neuron_sets.specific import AllBiophysicalNeurons
 from obi_one.scientific.library import circuit as circuit_module
+from obi_one.scientific.library.circuit import Circuit as ObiCircuit
+from obi_one.scientific.library.emodel_circuit_files import HocTemplateError, ModMechanism
 from obi_one.scientific.library.emodel_parameters import (
     ChannelInfo,
     ChannelSectionListMapping,
@@ -25,15 +40,37 @@ from obi_one.scientific.library.memodel_circuit import (
     get_memodel_mechanism_variables,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
+    MAX_MODEL_FILE_BYTES,
+    UNDECLARED_MOD_DIRS,
+    CircuitListingError,
+    PopulationModelDirs,
+    TemplateModel,
+    _asset_files,
     _build_emodel_groups,
+    _build_groups_with_fallback,
     _compute_common_mechanism_variables,
+    _database_units,
     _fetch_emodel_derivation_mapping,
+    _fill_from_database,
     _get_circuit_asset,
     _match_templates_to_emodels,
+    _population_templates,
+    _public_reason,
+    _read_model_file,
+    _read_template_models,
+    _relative_dir,
+    _stage_circuit_for_neuron_set,
     _stage_circuit_for_neuron_set_resolution,
+    _stage_file,
+    _template_hoc_paths,
+    _unique_templates,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
+    get_expanded_neuron_ids,
+    no_neurons_warning,
 )
+
+from tests.obi_one.db_sdk.test_assets import storage_transport
 
 TINY_CIRCUIT_DIR = Path("examples/data/tiny_circuits/N_10__top_nodes_dim6")
 
@@ -45,16 +82,55 @@ SK_E2_CHANNEL_MAPPING = ChannelSectionListMapping(
 )
 
 
+EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+
+def _listing(circuit_dir: Path) -> DetailedFileList:
+    """What entitysdk's ``list_directory`` returns for a circuit stored in ``circuit_dir``."""
+    return DetailedFileList(
+        files={
+            path.relative_to(circuit_dir): DetailedFile(
+                name=path.name, size=path.stat().st_size, last_modified=EPOCH
+            )
+            for path in circuit_dir.rglob("*")
+            if path.is_file()
+        }
+    )
+
+
+def _sonata_entity() -> MagicMock:
+    """A circuit entity with one sonata_circuit directory asset."""
+    asset = MagicMock()
+    asset.is_directory = True
+    asset.label.value = "sonata_circuit"
+    asset.id = uuid4()
+    entity = MagicMock()
+    entity.name = "test_circuit"
+    entity.assets = [asset]
+    return entity
+
+
 def _make_fetch_file_side_effect(circuit_dir: Path):
     """Return a side effect that copies files from circuit_dir to output_path."""
 
-    def _fetch_file(*, output_path, asset_path, **_kwargs):
+    def _fetch_file(*, output_path, asset_path, strategy=None, **_kwargs):
+        if strategy == FetchFileStrategy.link_only:
+            msg = "link strategy failed: Asset path not found in store"
+            raise EntitySDKError(msg)  # no mounted asset store in tests
         src = circuit_dir / asset_path
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, output_path)
 
     return _fetch_file
+
+
+def _serve_storage(client: MagicMock, circuit_dir: Path, *, redirect: bool = True) -> None:
+    """Give a mock client the HTTP side the partial read uses (see ``storage_transport``)."""
+    client.api_url = "http://entitycore/api/entitycore"
+    client.project_context = ProjectContext(virtual_lab_id=uuid4(), project_id=uuid4())
+    client._token_manager.get_token.return_value = "token"
+    client._http_client = httpx2.Client(transport=storage_transport(circuit_dir, redirect=redirect))
 
 
 def _make_link_or_copy_fetch_file_side_effect(circuit_dir: Path):
@@ -70,6 +146,11 @@ def _make_link_or_copy_fetch_file_side_effect(circuit_dir: Path):
             output_path.symlink_to(src)
 
     return _fetch_file
+
+
+def _unreadable(node_to_template: dict) -> dict[str, str]:
+    """Template -> the reason its circuit files were not read, for every template."""
+    return dict.fromkeys(node_to_template.values(), "files not readable (EntitySDKError)")
 
 
 def _make_emodel_group(
@@ -160,12 +241,24 @@ class TestComputeCommonMechanismVariables:
 
         assert "NaTg" in result
         assert result["NaTg"].section_lists == ["somatic"]
-        assert result["NaTg"].entity_id is None  # ambiguous across emodels
+        assert result["NaTg"].entity_id == "some-entity-id"  # every group names it
         var = result["NaTg"].variables["gNaTgbar_NaTg"]
         # Most restrictive limits: max(0.0, 0.0)=0.0, min(1.0, 0.8)=0.8
         assert var.limits == [0.0, 0.8]
         # Original values are None (ambiguous)
         assert var.section_lists_original_values == {"somatic": None}
+
+    def test_entity_id_is_dropped_when_groups_disagree(self):
+        var = _make_var(limits=[0.0, 1.0], section_lists_original_values={"somatic": 0.04})
+        groups = {
+            name: _make_emodel_group(
+                [index],
+                f"hoc:{name}",
+                {"NaTg": _make_channel(["somatic"], {"gNaTgbar_NaTg": var}, entity_id)},
+            )
+            for index, (name, entity_id) in enumerate([("a", "id-1"), ("b", "id-2")])
+        }
+        assert _compute_common_mechanism_variables(groups)["NaTg"].entity_id is None
 
     def test_two_emodels_partial_overlap(self):
         """Channel A in both, channel B only in one -> intersection has only A."""
@@ -369,6 +462,18 @@ class TestComputeCommonMechanismVariables:
         # Only emodel-1 has vars, so it's treated as single group
         assert "NaTg" in result
 
+    def test_units_come_from_the_first_group_that_has_one(self):
+        """A derivation group can leave a unit empty while a file-read group has it."""
+        groups = {
+            "a": _make_emodel_group(
+                [0], "t_a", {"NaTg": _make_channel(["somatic"], {"g": _make_var(units="")})}
+            ),
+            "b": _make_emodel_group(
+                [1], "t_b", {"NaTg": _make_channel(["somatic"], {"g": _make_var(units="S/cm2")})}
+            ),
+        }
+        assert _compute_common_mechanism_variables(groups)["NaTg"].variables["g"].units == "S/cm2"
+
 
 class TestMatchTemplatesToEmodels:
     """Tests for _match_templates_to_emodels."""
@@ -448,15 +553,10 @@ class TestMatchTemplatesToEmodels:
 def mock_db_client():
     """Mock db_client with tiny circuit data."""
     client = MagicMock()
-    asset = MagicMock()
-    asset.is_directory = True
-    asset.label.value = "sonata_circuit"
-    asset.id = uuid4()
-    entity = MagicMock()
-    entity.name = "test_circuit"
-    entity.assets = [asset]
-    client.get_entity.return_value = entity
+    client.get_entity.return_value = _sonata_entity()
     client.fetch_file.side_effect = _make_fetch_file_side_effect(TINY_CIRCUIT_DIR)
+    client.list_directory.return_value = _listing(TINY_CIRCUIT_DIR)
+    _serve_storage(client, TINY_CIRCUIT_DIR)
     return client
 
 
@@ -465,9 +565,9 @@ class TestGetCircuitAsset:
 
     def test_returns_entity_and_asset_id(self, mock_db_client):
         """Returns circuit entity and asset ID."""
-        entity, asset_id = _get_circuit_asset(mock_db_client, str(uuid4()))
+        entity, asset = _get_circuit_asset(mock_db_client, str(uuid4()))
         assert entity.name == "test_circuit"
-        assert asset_id is not None
+        assert asset.id is not None
 
     def test_raises_when_no_sonata_asset(self):
         """Raises ValueError when no sonata_circuit directory asset."""
@@ -620,12 +720,13 @@ class TestGetCircuitManipulationPropertiesIntegration:
         }
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(mock_populations, mock_templates),
+                return_value=(mock_populations, mock_templates, _unreadable(mock_templates), []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -659,7 +760,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         assert "MechanismVariablesByIonChannel" in result
         # Both emodels have NaTg, so intersection should contain it
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
     def test_unmatched_templates_produce_warnings(self, mock_db_client):
         """Unmatched model_template values appear in warnings."""
@@ -673,11 +774,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
             ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         with patch(
             "obi_one.scientific.library.neuronal_manipulation_properties"
             "._stage_circuit_for_neuron_set_resolution",
-            return_value=(["S1nonbarrel_neurons"], mock_templates),
+            return_value=(["S1nonbarrel_neurons"], mock_templates, _unreadable(mock_templates), []),
         ):
             result = get_circuit_manipulation_properties(
                 db_client=mock_db_client,
@@ -709,6 +811,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         call_count = [0]
 
@@ -748,7 +851,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates),
+                return_value=(
+                    ["S1nonbarrel_neurons"],
+                    mock_templates,
+                    _unreadable(mock_templates),
+                    [],
+                ),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -790,6 +898,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
             ("S1nonbarrel_neurons", 1): "hoc:cADpyr_L6BPC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         def _mock_get_vars(_db_client, emodel_id):
             # Both emodels get the same hardcoded limits for conductance vars
@@ -812,7 +921,12 @@ class TestGetCircuitManipulationPropertiesIntegration:
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["S1nonbarrel_neurons"], mock_templates),
+                return_value=(
+                    ["S1nonbarrel_neurons"],
+                    mock_templates,
+                    _unreadable(mock_templates),
+                    [],
+                ),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -835,7 +949,7 @@ class TestGetCircuitManipulationPropertiesIntegration:
         assert natg_var.units == "S/cm2"
         assert natg_var.variable_type == "RANGE"
         assert natg.section_lists == ["somatic"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
 
 class TestComputeCommonMechanismVariablesEdgeCases:
@@ -881,6 +995,7 @@ class TestGetCircuitNodeIds:
 
         # Mock neuron set that returns dict of node IDs per population
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2, 3]}
 
         ids_per_population = get_circuit_node_ids(mock_db_client, circuit_id, neuron_set)
@@ -894,6 +1009,7 @@ class TestGetCircuitNodeIds:
         circuit_id = str(uuid4())
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {
             "S1nonbarrel_neurons": [5, 6],
             "other_pop": [10, 11, 12],
@@ -906,6 +1022,96 @@ class TestGetCircuitNodeIds:
             "other_pop": [10, 11, 12],
         }
 
+    def test_resolves_swept_node_set_to_union(self, mock_db_client):
+        """A list-valued node_set is expanded and its node IDs are unioned."""
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+        )
+
+        result = get_circuit_node_ids(mock_db_client, str(uuid4()), neuron_set)
+
+        obi_circuit = ObiCircuit(
+            name="N_10__top_nodes_dim6",
+            path=str(TINY_CIRCUIT_DIR / "circuit_config.json"),
+        )
+        expected = sorted(
+            set(
+                BiophysicalPopulationPredefinedNeuronSet(
+                    node_set="L6_IPC", population="S1nonbarrel_neurons"
+                ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+            )
+            | set(
+                BiophysicalPopulationPredefinedNeuronSet(
+                    node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+                ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+            )
+        )
+        assert result == {"S1nonbarrel_neurons": expected}
+        assert len(expected) > 0
+
+
+class TestGetExpandedNeuronIds:
+    """Tests for get_expanded_neuron_ids sweep expansion and per-population union."""
+
+    @pytest.fixture
+    def obi_circuit(self):
+        return ObiCircuit(
+            name="N_10__top_nodes_dim6",
+            path=str(TINY_CIRCUIT_DIR / "circuit_config.json"),
+        )
+
+    def test_scalar_neuron_set_unchanged(self, obi_circuit):
+        """A neuron set without swept fields resolves exactly as before."""
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="Layer6", population="S1nonbarrel_neurons"
+        )
+
+        result = get_expanded_neuron_ids(neuron_set, obi_circuit)
+
+        assert result == neuron_set.get_neuron_ids(obi_circuit)
+        assert len(result["S1nonbarrel_neurons"]) == 9
+
+    def test_node_set_list_unions_members(self, obi_circuit):
+        """A swept node_set expands per name and unions the resolved IDs."""
+        swept = BiophysicalPopulationPredefinedNeuronSet(
+            node_set=["L6_IPC", "L6_TPC:A"], population="S1nonbarrel_neurons"
+        )
+
+        result = get_expanded_neuron_ids(swept, obi_circuit)
+
+        ids_a = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="L6_IPC", population="S1nonbarrel_neurons"
+        ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+        ids_b = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="L6_TPC:A", population="S1nonbarrel_neurons"
+        ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+        assert result["S1nonbarrel_neurons"] == sorted(set(ids_a) | set(ids_b))
+
+    def test_swept_sample_percentage_unions_subsets(self, obi_circuit):
+        """A swept sample_percentage expands per value; 100% covers all sampled IDs."""
+        swept = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="Layer6",
+            population="S1nonbarrel_neurons",
+            sample_percentage=[50, 100],
+            sample_seed=1,
+        )
+
+        result = get_expanded_neuron_ids(swept, obi_circuit)
+
+        full = BiophysicalPopulationPredefinedNeuronSet(
+            node_set="Layer6", population="S1nonbarrel_neurons"
+        ).get_neuron_ids(obi_circuit)["S1nonbarrel_neurons"]
+        assert result["S1nonbarrel_neurons"] == sorted(full)
+
+    def test_unknown_node_set_member_raises(self, obi_circuit):
+        """An unknown name inside a swept node_set raises the usual error."""
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            node_set=["L6_IPC", "NONEXISTENT"], population="S1nonbarrel_neurons"
+        )
+
+        with pytest.raises(ValueError, match="not found in circuit"):
+            get_expanded_neuron_ids(neuron_set, obi_circuit)
+
 
 class TestStageCircuitForNeuronSetResolution:
     """Tests for _stage_circuit_for_neuron_set_resolution using tiny circuit data."""
@@ -913,17 +1119,20 @@ class TestStageCircuitForNeuronSetResolution:
     def test_reads_model_templates_from_circuit(self, mock_db_client):
         """Stages circuit files and reads model_template for resolved node IDs."""
         circuit_id = str(uuid4())
-        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
-            db_client=mock_db_client,
-            circuit_id=circuit_id,
-            circuit_entity=circuit_entity,
-            asset_id=asset_id,
-            neuron_set=neuron_set,
+        populations, node_to_template, _models, _warnings = (
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=mock_db_client,
+                circuit_id=circuit_id,
+                circuit_entity=circuit_entity,
+                asset=asset,
+                neuron_set=neuron_set,
+            )
         )
 
         assert populations == ["S1nonbarrel_neurons"]
@@ -933,6 +1142,48 @@ class TestStageCircuitForNeuronSetResolution:
         assert all(k[0] == "S1nonbarrel_neurons" for k in node_to_template)
         # model_template values from tiny circuit
         assert all(t.startswith("hoc:") for t in node_to_template.values())
+
+    @pytest.mark.parametrize("with_biophysical", [True, False])
+    def test_point_neurons_are_left_out_with_one_warning(self, mock_db_client, with_biophysical):
+        """Allen-V1 mixes biophysical and point_process populations."""
+        circuit_id = str(uuid4())
+        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = {
+            **({"S1nonbarrel_neurons": [0]} if with_biophysical else {}),
+            "lif": [0, 1, 2],
+        }
+
+        def stage_with_a_point_population(*args, **kwargs):
+            config, nodes, dirs = _stage_circuit_for_neuron_set(*args, **kwargs)
+            dirs["lif"] = PopulationModelDirs("point_process", None, UNDECLARED_MOD_DIRS)
+            return config, nodes, dirs
+
+        with patch(
+            f"{_stage_circuit_for_neuron_set.__module__}._stage_circuit_for_neuron_set",
+            side_effect=stage_with_a_point_population,
+        ):
+            populations, node_to_template, _models, warnings = (
+                _stage_circuit_for_neuron_set_resolution(
+                    db_client=mock_db_client,
+                    circuit_id=circuit_id,
+                    circuit_entity=circuit_entity,
+                    asset=asset,
+                    neuron_set=neuron_set,
+                )
+            )
+
+        assert populations == (["S1nonbarrel_neurons", "lif"] if with_biophysical else ["lif"])
+        assert {population for population, _ in node_to_template} == (
+            {"S1nonbarrel_neurons"} if with_biophysical else set()
+        )
+        assert [w for w in warnings if "entity_id" not in w] == [
+            (
+                "3 selected neurons are in populations that are not biophysical"
+                " ('lif' (point_process)), so they have no mechanism variables and are left out."
+            )
+        ]
 
     def test_copies_config_before_loading_linked_circuit(self, tmp_path):
         """Config is copied (not symlinked) so $BASE_DIR resolves to temp dir."""
@@ -953,14 +1204,17 @@ class TestStageCircuitForNeuronSetResolution:
         client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
-        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
-            db_client=client,
-            circuit_id=str(uuid4()),
-            circuit_entity=entity,
-            asset_id=asset.id,
-            neuron_set=neuron_set,
+        populations, node_to_template, _models, _warnings = (
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                circuit_entity=entity,
+                asset=asset,
+                neuron_set=neuron_set,
+            )
         )
 
         assert populations == ["S1nonbarrel_neurons"]
@@ -992,15 +1246,18 @@ class TestStageCircuitForNeuronSetResolution:
         client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
 
         # Should not raise despite missing node_sets.json
-        populations, node_to_template = _stage_circuit_for_neuron_set_resolution(
-            db_client=client,
-            circuit_id=str(uuid4()),
-            circuit_entity=entity,
-            asset_id=asset.id,
-            neuron_set=neuron_set,
+        populations, node_to_template, _models, _warnings = (
+            _stage_circuit_for_neuron_set_resolution(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                circuit_entity=entity,
+                asset=asset,
+                neuron_set=neuron_set,
+            )
         )
 
         assert populations == ["S1nonbarrel_neurons"]
@@ -1023,6 +1280,7 @@ class TestStageCircuitForNeuronSetResolution:
         client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(circuit_dir)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         # Return a population that doesn't exist in the circuit's nodes
         neuron_set.get_neuron_ids.return_value = {"nonexistent_pop": [0, 1]}
 
@@ -1033,6 +1291,7 @@ class TestStageCircuitForNeuronSetResolution:
                 return_value=(
                     circuit_dir / "circuit_config.json",
                     {"S1nonbarrel_neurons": "nodes.h5"},
+                    {"nonexistent_pop": PopulationModelDirs("biophysical", None, ("mod",))},
                 ),
             ),
             pytest.raises(ValueError, match="No nodes file found for population"),
@@ -1041,33 +1300,17 @@ class TestStageCircuitForNeuronSetResolution:
                 db_client=client,
                 circuit_id=str(uuid4()),
                 circuit_entity=entity,
-                asset_id=asset.id,
-                neuron_set=neuron_set,
-            )
-
-    def test_raises_when_neuron_set_resolves_to_no_nodes(self, mock_db_client):
-        """Empty node IDs raises ValueError."""
-        circuit_id = str(uuid4())
-        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
-
-        neuron_set = MagicMock()
-        neuron_set.get_neuron_ids.return_value = {}
-
-        with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _stage_circuit_for_neuron_set_resolution(
-                db_client=mock_db_client,
-                circuit_id=circuit_id,
-                circuit_entity=circuit_entity,
-                asset_id=asset_id,
+                asset=asset,
                 neuron_set=neuron_set,
             )
 
     def test_raises_when_model_template_missing(self, mock_db_client):
         """Missing model_template attribute raises ValueError."""
         circuit_id = str(uuid4())
-        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
+        circuit_entity, asset = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
         neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1]}
 
         with patch(
@@ -1082,7 +1325,7 @@ class TestStageCircuitForNeuronSetResolution:
                     db_client=mock_db_client,
                     circuit_id=circuit_id,
                     circuit_entity=circuit_entity,
-                    asset_id=asset_id,
+                    asset=asset,
                     neuron_set=neuron_set,
                 )
 
@@ -1090,9 +1333,10 @@ class TestStageCircuitForNeuronSetResolution:
 class TestGetCircuitManipulationPropertiesFastPath:
     """Tests for get_circuit_manipulation_properties with neuron_set=None (fast path)."""
 
-    def test_fast_path_with_derivations(self):
-        """Fast path fetches all derivations and computes intersection."""
-        client = MagicMock()
+    def test_fast_path_with_derivations(self, mock_db_client):
+        """Unreadable circuit files: every derivation is used and the intersection computed."""
+        client = mock_db_client
+        client.fetch_file.side_effect = EntitySDKError("storage unavailable")
         emodel_id_1 = str(uuid4())
         emodel_id_2 = str(uuid4())
 
@@ -1133,11 +1377,13 @@ class TestGetCircuitManipulationPropertiesFastPath:
         assert result["populations"] is None
         assert "MechanismVariablesByIonChannel" in result
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
+        assert result["source"] == "derivations"
 
-    def test_fast_path_no_derivations(self):
-        """Fast path with no derivations returns empty with warning."""
-        client = MagicMock()
+    def test_fast_path_no_derivations(self, mock_db_client):
+        """Unreadable circuit files and no derivations: empty response with a warning."""
+        client = mock_db_client
+        client.fetch_file.side_effect = EntitySDKError("storage unavailable")
         client.search_entity.return_value.all.return_value = []
 
         result = get_circuit_manipulation_properties(
@@ -1148,8 +1394,60 @@ class TestGetCircuitManipulationPropertiesFastPath:
 
         assert result["entity_type"] == "circuit"
         assert result["MechanismVariablesByIonChannel"] == {}
-        assert result["warnings"] is not None
-        assert any("No emodel_circuit derivations" in w for w in result["warnings"])
+        assert result["warnings"] == [
+            (
+                "Circuit files not readable (EntitySDKError)."
+                " No emodel_circuit derivations found for this circuit."
+            )
+        ]
+
+    def test_fast_path_without_a_sonata_asset_uses_derivations(self):
+        """Without a neuron set, a circuit with no sonata_circuit asset still gets results."""
+        client = MagicMock()
+        client.get_entity.return_value.assets = []
+        deriv = MagicMock()
+        deriv.label = "hoc:cACint_L23MC"
+        deriv.used.id = str(uuid4())
+        client.search_entity.return_value.all.return_value = [deriv]
+
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel",
+            return_value=(
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            ),
+        ):
+            result = get_circuit_manipulation_properties(
+                db_client=client, circuit_id=str(uuid4()), neuron_set=None
+            )
+
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+        client.fetch_file.assert_not_called()
+
+    def test_neuron_set_path_rejects_a_circuit_without_a_sonata_asset(self):
+        """With a neuron set the circuit files are required: a ValueError (HTTP 400)."""
+        client = MagicMock()
+        client.get_entity.return_value.assets = []
+        with pytest.raises(ValueError, match="exactly one sonata_circuit"):
+            get_circuit_manipulation_properties(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                neuron_set=BiophysicalPopulationPredefinedNeuronSet(
+                    population="S1nonbarrel_neurons", node_set="All"
+                ),
+            )
+        client.search_entity.assert_not_called()
 
 
 class TestMultiPopulationRegression:
@@ -1180,12 +1478,13 @@ class TestMultiPopulationRegression:
             ("pop_B", 0): "hoc:bAC_L6BTC",
         }
         neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
 
         with (
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
                 "._stage_circuit_for_neuron_set_resolution",
-                return_value=(["pop_A", "pop_B"], mock_templates),
+                return_value=(["pop_A", "pop_B"], mock_templates, _unreadable(mock_templates), []),
             ),
             patch(
                 "obi_one.scientific.library.neuronal_manipulation_properties"
@@ -1217,48 +1516,39 @@ class TestMultiPopulationRegression:
         assert mock_get_vars.call_count == 2
         # NaTg is common to both -> should appear in intersection
         assert "NaTg" in result["MechanismVariablesByIonChannel"]
-        assert result["warnings"] is None
+        assert all("emodel_circuit derivation instead" in w for w in result["warnings"])
 
-    def test_empty_node_id_lists_rejected(self, mock_db_client):
-        """Neuron set returning {"pop": []} raises ValueError, not silent empty.
-
-        Before the fix, the empty check only caught {} but not a non-empty
-        dict with all-empty node-ID lists. This caused a silent empty response.
-        """
+    @pytest.mark.parametrize(
+        "ids_per_population",
+        [{}, {"S1nonbarrel_neurons": []}, {"pop_A": [], "pop_B": []}],
+        ids=["no_population", "one_empty_population", "all_populations_empty"],
+    )
+    def test_neuron_set_selecting_no_neurons_gives_empty_response(
+        self, mock_db_client, ids_per_population
+    ):
+        """No selected neuron is not an error: empty variables and a warning naming the set."""
         circuit_id = str(uuid4())
-        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
 
         neuron_set = MagicMock()
-        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": []}
+        neuron_set.population = "S1nonbarrel_neurons"
+        neuron_set.node_set = ["SO_BS", "SO_BP"]
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = ids_per_population
 
-        with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _stage_circuit_for_neuron_set_resolution(
-                db_client=mock_db_client,
-                circuit_id=circuit_id,
-                circuit_entity=circuit_entity,
-                asset_id=asset_id,
-                neuron_set=neuron_set,
-            )
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client,
+            circuit_id=circuit_id,
+            neuron_set=neuron_set,
+        )
 
-    def test_all_populations_empty_rejected(self, mock_db_client):
-        """Multiple populations all with empty lists also raises ValueError."""
-        circuit_id = str(uuid4())
-        circuit_entity, asset_id = _get_circuit_asset(mock_db_client, circuit_id)
-
-        neuron_set = MagicMock()
-        neuron_set.get_neuron_ids.return_value = {
-            "pop_A": [],
-            "pop_B": [],
-        }
-
-        with pytest.raises(ValueError, match="resolved to no node IDs"):
-            _stage_circuit_for_neuron_set_resolution(
-                db_client=mock_db_client,
-                circuit_id=circuit_id,
-                circuit_entity=circuit_entity,
-                asset_id=asset_id,
-                neuron_set=neuron_set,
-            )
+        assert result["populations"] == []
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert result["source"] is None
+        assert len(result["warnings"]) == 1
+        warning = result["warnings"][0]
+        assert "selects no neurons" in warning
+        assert "population 'S1nonbarrel_neurons'" in warning
+        assert "node sets SO_BS, SO_BP" in warning
 
 
 class TestMemodelMechanismVariableResponse:
@@ -1417,3 +1707,894 @@ class TestMEModelCircuitValidation:
 
         with pytest.raises(OBIONEError, match="exactly one neuron"):
             circuit.confirm_single_neuron()
+
+
+class TestVariablesReadFromCircuitFiles:
+    """End to end on the tiny circuit: hoc and mod files replace the derivation lookup."""
+
+    def test_neuron_set_path_needs_no_derivation(self, mock_db_client):
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        # One node, so one template: the response keeps that template's own values.
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
+
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+        )
+
+        assert _searches(mock_db_client, DerivationModel) == []
+        assert result["source"] == "circuit_files"
+        assert result["populations"] == ["S1nonbarrel_neurons"]
+        # Only the entity_id one: the mock database has no ion channel model.
+        assert [w for w in result["warnings"] if "entity_id" not in w] == []
+        channels = result["MechanismVariablesByIonChannel"]
+        assert {"pas", "NaTg", "-"} <= set(channels)
+        g_pas = channels["pas"].variables["g_pas"].section_lists_original_values
+        assert all(value is not None for value in g_pas.values())
+
+    def test_no_neuron_set_reads_every_template(self, mock_db_client):
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+        )
+
+        assert _searches(mock_db_client, DerivationModel) == []
+        assert result["populations"] is None
+        assert [w for w in result["warnings"] if "entity_id" not in w] == []
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+
+    @pytest.mark.parametrize("node_ids", [None, [0]])
+    def test_one_listing_per_request(self, mock_db_client, node_ids):
+        """The listing gives both the nodes.h5 sizes and the mod files."""
+        neuron_set = None
+        if node_ids is not None:
+            neuron_set = MagicMock()
+            neuron_set.expand_multi_values.return_value = [neuron_set]
+            neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": node_ids}
+        get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+        )
+        mock_db_client.list_directory.assert_called_once()
+
+    def test_no_neuron_set_reads_nodes_by_ranges_although_storage_refuses_head(
+        self, mock_db_client
+    ):
+        """The test storage answers HEAD with 403, as S3 does on presigned GET URLs."""
+        get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+        )
+        nodes_fetches = [
+            c.kwargs["strategy"]
+            for c in mock_db_client.fetch_file.call_args_list
+            if str(c.kwargs["asset_path"]).endswith("nodes.h5")
+        ]
+        assert nodes_fetches == [FetchFileStrategy.link_only]  # the probe only, no download
+
+    @pytest.mark.parametrize("with_neuron_set", [False, True])
+    def test_listing_failure_raises_instead_of_using_derivations(
+        self, mock_db_client, with_neuron_set
+    ):
+        """A failed listing is usually transient: the client retries for the file answer."""
+        mock_db_client.list_directory.side_effect = EntitySDKError("HTTP error 503")
+        neuron_set = None
+        if with_neuron_set:
+            neuron_set = MagicMock()
+            neuron_set.expand_multi_values.return_value = [neuron_set]
+            neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
+        with pytest.raises(CircuitListingError, match="please try again"):
+            get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+            )
+        mock_db_client.search_entity.assert_not_called()
+
+    def test_a_bug_while_reading_files_is_not_hidden_by_the_fallback(self, mock_db_client):
+        """Only errors that mean "the files cannot be used" lead to the derivations."""
+        with (
+            patch(
+                "obi_one.scientific.library.neuronal_manipulation_properties._read_template_models",
+                side_effect=KeyError("model_template"),
+            ),
+            pytest.raises(KeyError),
+        ):
+            get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+            )
+
+    def test_unreadable_template_falls_back_to_derivation(self, mock_db_client):
+        """A hoc file that is not template output is reported and read from the database."""
+        mock_db_client.search_entity.return_value.all.return_value = []
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+        original = mock_db_client.fetch_file.side_effect
+
+        def _fetch_file(*, output_path, asset_path, **kwargs):
+            original(output_path=output_path, asset_path=asset_path, **kwargs)
+            if Path(asset_path).name == "cADpyr_L6BPC.hoc":
+                text = Path(output_path).read_text(encoding="utf-8")
+                Path(output_path).write_text(
+                    text.replace("    Ra = 100\n", "    Ra = x\n"), encoding="utf-8"
+                )
+
+        mock_db_client.fetch_file.side_effect = _fetch_file
+
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+        )
+
+        assert len(_searches(mock_db_client, DerivationModel)) == 1
+        assert any(
+            "No derivation found for 1 template (hoc:cADpyr_L6BPC) either" in w
+            for w in result["warnings"]
+        )
+        # The other template was still read from its files.
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+        assert result["source"] == "circuit_files"
+
+
+class TestCircuitFilesSwitchedOff:
+    """``from_circuit_files=False`` answers from the derivations only, reading no model file."""
+
+    @staticmethod
+    def _derivation(label: str) -> MagicMock:
+        derivation = MagicMock()
+        derivation.label = label
+        derivation.used.id = str(uuid4())
+        return derivation
+
+    def _run(self, client, neuron_set):
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties"
+            ".get_mechanism_variables_for_emodel",
+            return_value=(
+                [
+                    MechanismVariable(
+                        neuron_variable="gNaTgbar_NaTg",
+                        section_list="somatic",
+                        value=0.04,
+                        units="S/cm2",
+                        limits=[0.0, 1.0],
+                        variable_type="RANGE",
+                        channel_name="NaTg",
+                    )
+                ],
+                NATG_CHANNEL_MAPPING,
+            ),
+        ):
+            return get_circuit_manipulation_properties(
+                db_client=client,
+                circuit_id=str(uuid4()),
+                neuron_set=neuron_set,
+                from_circuit_files=False,
+            )
+
+    def test_without_a_neuron_set_no_file_is_read(self, mock_db_client):
+        mock_db_client.search_entity.return_value.all.return_value = [
+            self._derivation("hoc:cADpyr_L6BPC")
+        ]
+        result = self._run(mock_db_client, None)
+
+        mock_db_client.fetch_file.assert_not_called()
+        mock_db_client.list_directory.assert_not_called()
+        assert result["source"] == "derivations"
+        assert result["warnings"] is None
+        assert "NaTg" in result["MechanismVariablesByIonChannel"]
+
+    def test_with_a_neuron_set_only_config_and_nodes_are_read(self, mock_db_client):
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0, 1, 2]}
+        mock_db_client.search_entity.return_value.all.return_value = [
+            self._derivation("hoc:cADpyr_L6BPC")
+        ]
+        result = self._run(mock_db_client, neuron_set)
+
+        fetched = {
+            PurePosixPath(c.kwargs["asset_path"]).suffix
+            for c in mock_db_client.fetch_file.call_args_list
+        }
+        assert fetched <= {".json", ".h5"}
+        mock_db_client.list_directory.assert_not_called()
+        assert result["source"] == "derivations"
+        # As on the derivation-only path: no "circuit files" reason, only the template
+        # without a derivation.
+        assert result["warnings"] == [
+            "No derivation found for 1 template (hoc:cACint_L23MC), so they are left out."
+        ]
+
+
+class TestFallbackWarnings:
+    def test_some_templates_from_files_and_some_from_derivations_is_mixed(self):
+        module = "obi_one.scientific.library.neuronal_manipulation_properties"
+        group = _make_emodel_group([0], "hoc:a", {})
+        with (
+            patch(
+                f"{module}._build_template_groups",
+                return_value=({"hoc:a": group}, {"hoc:b": "r"}, []),
+            ),
+            patch(f"{module}._fetch_emodel_derivation_mapping", return_value={"hoc:b": "e"}),
+            patch(f"{module}._build_emodel_groups", return_value={"e": group}),
+        ):
+            _groups, _warnings, source = _build_groups_with_fallback(
+                MagicMock(), str(uuid4()), {("p", 0): "hoc:a", ("p", 1): "hoc:b"}, {}
+            )
+        assert source == "mixed"
+
+    def test_one_warning_per_reason_names_a_few_templates(self):
+        """Hundreds of templates can fall back for one reason: one warning, not hundreds."""
+        templates = [f"hoc:t{index}" for index in range(7)]
+        node_to_template = {("pop", index): name for index, name in enumerate(templates)}
+        failed = dict.fromkeys(templates, "files not readable (EntitySDKError)")
+        failed["hoc:t6"] = "population has no biophysical_neuron_models_dir"
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = []
+
+        _groups, warnings, _source = _build_groups_with_fallback(
+            client, str(uuid4()), node_to_template, failed
+        )
+
+        assert warnings == [
+            (
+                "Circuit files: files not readable (EntitySDKError). No derivation found for"
+                " 6 templates (hoc:t0, hoc:t1, hoc:t2, hoc:t3, hoc:t4, …) either, so they are"
+                " left out."
+            ),
+            (
+                "Circuit files: population has no biophysical_neuron_models_dir. No derivation"
+                " found for 1 template (hoc:t6) either, so they are left out."
+            ),
+        ]
+
+
+class TestCircuitFileSafety:
+    """Guards for paths and file content that come from user-registered circuits."""
+
+    @pytest.mark.parametrize("asset_path", ["../outside.hoc", "emodels_hoc/../../x.hoc", "/etc/x"])
+    def test_stage_file_refuses_paths_outside_the_asset(self, tmp_path, asset_path):
+        client = MagicMock()
+        with pytest.raises(ValueError, match="outside the circuit"):
+            _stage_file(client, str(uuid4()), _asset(), tmp_path, asset_path)
+        client.fetch_file.assert_not_called()
+
+    def test_oversized_model_file_is_refused(self, tmp_path):
+        big = tmp_path / "big.hoc"
+        big.write_bytes(b"x" * (MAX_MODEL_FILE_BYTES + 1))
+        with pytest.raises(HocTemplateError, match="byte limit"):
+            _read_model_file(big)
+
+    def test_fetch_errors_do_not_reach_the_response(self):
+        err = RuntimeError("https://bucket.s3.amazonaws.com/x?X-Amz-Security-Token=secret")
+        assert "secret" not in _public_reason(err)
+        assert _public_reason(HocTemplateError("unexpected line")) == "unexpected line"
+
+    def test_template_name_with_traversal_falls_back(self, mock_db_client):
+        mock_db_client.search_entity.return_value.all.return_value = []
+        neuron_set = MagicMock()
+        neuron_set.expand_multi_values.return_value = [neuron_set]
+        neuron_set.get_neuron_ids.return_value = {"S1nonbarrel_neurons": [0]}
+        with patch(
+            "obi_one.scientific.library.neuronal_manipulation_properties.NodeStorage"
+        ) as mock_ns:
+            pop = MagicMock()
+            pop.attribute_names = ["model_template"]
+            pop.get_attribute.return_value = ["hoc:../../../escape"]
+            mock_ns.return_value.open_population.return_value = pop
+            result = get_circuit_manipulation_properties(
+                db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=neuron_set
+            )
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert any("hoc:../../../escape" in w for w in result["warnings"])
+        fetched = [str(c.kwargs["asset_path"]) for c in mock_db_client.fetch_file.call_args_list]
+        assert not any("escape" in path for path in fetched)
+
+
+SINGLE_NEURON_CIRCUIT_DIR = Path(
+    "examples/data/single_neuron_circuits/SingleNeuronCircuit__top_nodes_dim6__IDX1"
+)
+
+
+def _http_error(status: int, asset_path: object) -> EntitySDKError:
+    """The error entitysdk raises for an HTTP error: chained from the httpx2 error."""
+    request = httpx2.Request("GET", f"http://entitycore/download?asset_path={asset_path}")
+    response = httpx2.Response(status, request=request)
+    err = EntitySDKError(f"HTTP error {status} for {asset_path}")
+    err.__cause__ = httpx2.HTTPStatusError("error", request=request, response=response)
+    return err
+
+
+def _copying_client(
+    circuit_dir: Path, failing: set[str] = frozenset(), failing_status: int = 404
+) -> MagicMock:
+    """A db_client whose fetch_file copies from circuit_dir.
+
+    Paths absent from ``circuit_dir`` raise as entitysdk does for an HTTP 404, paths in
+    ``failing`` for ``failing_status``.
+    """
+    copy = _make_fetch_file_side_effect(circuit_dir)
+
+    def _fetch_file(*, output_path, asset_path, **kwargs):
+        if str(asset_path) in failing:
+            raise _http_error(failing_status, asset_path)
+        if not (circuit_dir / asset_path).exists():
+            raise _http_error(404, asset_path)
+        copy(output_path=output_path, asset_path=asset_path, **kwargs)
+
+    client = MagicMock()
+    client.fetch_file.side_effect = _fetch_file
+    client.list_directory.return_value = _listing(circuit_dir)
+    _serve_storage(client, circuit_dir)
+    return client
+
+
+def _searches(client: MagicMock, entity_type: type) -> list:
+    """The ``search_entity`` calls of one entity type."""
+    return [
+        c for c in client.search_entity.call_args_list if c.kwargs["entity_type"] is entity_type
+    ]
+
+
+def _asset() -> MagicMock:
+    """A sonata_circuit directory asset as the circuit entity holds it."""
+    return MagicMock(id=uuid4(), is_directory=True)
+
+
+def _read_models(client, tmp_path, templates, dirs):
+    models, _warnings = _read_template_models(
+        client,
+        str(uuid4()),
+        _asset(),
+        tmp_path,
+        {"S1nonbarrel_neurons": templates},
+        {"S1nonbarrel_neurons": dirs},
+        _asset_files(client, str(uuid4()), _asset()),
+    )
+    return models
+
+
+class TestTemplateDirectories:
+    @staticmethod
+    def _dirs(hoc_dir: str, mod_dir: str = "mod") -> PopulationModelDirs:
+        return PopulationModelDirs("biophysical", hoc_dir=hoc_dir, mod_dirs=(mod_dir,))
+
+    def test_populations_with_different_directories_for_one_template_warn(self):
+        hoc_paths, _dirs, _reasons, warnings = _template_hoc_paths(
+            {"a": {"hoc:x", "hoc:y"}, "b": {"hoc:x", "hoc:y", "hoc:z"}},
+            {"a": self._dirs("a_hoc"), "b": self._dirs("b_hoc")},
+        )
+        assert hoc_paths == {"hoc:x": "a_hoc/x.hoc", "hoc:y": "a_hoc/y.hoc", "hoc:z": "b_hoc/z.hoc"}
+        assert warnings == [
+            (
+                "Populations 'a' and 'b' declare different model directories for 2 templates"
+                " (hoc:x, hoc:y); the files of 'a' are used."
+            )
+        ]
+
+    def test_populations_sharing_directories_do_not_warn(self):
+        *_, warnings = _template_hoc_paths(
+            {"a": {"hoc:x"}, "b": {"hoc:x"}}, {"a": self._dirs("hoc"), "b": self._dirs("hoc")}
+        )
+        assert warnings == []
+
+
+class TestCircuitFileStagingEdges:
+    def test_stage_file_reuses_an_already_staged_file(self, tmp_path):
+        (tmp_path / "circuit_config.json").write_text("{}")
+        client = MagicMock()
+        path = _stage_file(client, str(uuid4()), _asset(), tmp_path, "circuit_config.json")
+        assert path == tmp_path / "circuit_config.json"
+        client.fetch_file.assert_not_called()
+
+    def test_fetch_file_gets_the_asset_object_not_its_id(self, tmp_path):
+        """With an id, entitysdk fetches the asset metadata again before every file."""
+        client = MagicMock()
+        asset = _asset()
+        _stage_file(client, str(uuid4()), asset, tmp_path, "circuit_config.json")
+        assert client.fetch_file.call_args.kwargs["asset_id"] is asset
+
+    def test_listing_uses_the_asset_id(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        asset = _asset()
+        _read_template_models(
+            client,
+            str(uuid4()),
+            asset,
+            tmp_path,
+            {"S1nonbarrel_neurons": {"hoc:cADpyr_L6BPC"}},
+            {"S1nonbarrel_neurons": PopulationModelDirs("biophysical", "emodels_hoc", ("mod",))},
+            _asset_files(client, str(uuid4()), asset),
+        )
+        assert client.list_directory.call_args.kwargs["asset_id"] == asset.id
+        assert all(c.kwargs["asset_id"] is asset for c in client.fetch_file.call_args_list)
+
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_relative_dir_is_none_when_unset(self, tmp_path, value):
+        assert _relative_dir(value, tmp_path) is None
+
+    def test_relative_dir_is_none_outside_the_asset(self, tmp_path):
+        assert _relative_dir(str(tmp_path.parent / "elsewhere"), tmp_path) is None
+        assert _relative_dir(str(tmp_path / "mod"), tmp_path) == "mod"
+
+    def test_missing_node_sets_json_is_tolerated(self, tmp_path):
+        client = _copying_client(TINY_CIRCUIT_DIR, failing={"node_sets.json"})
+        config_path, nodes, _dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), tmp_path
+        )
+        assert config_path.exists()
+        assert not (tmp_path / "node_sets.json").exists()
+        assert all((tmp_path / path).exists() for path in nodes.values())
+
+    def test_node_sets_json_that_fails_otherwise_raises(self, tmp_path):
+        """An outage is not a missing file: skipping it would hide the real cause."""
+        client = _copying_client(TINY_CIRCUIT_DIR, failing={"node_sets.json"}, failing_status=503)
+        with pytest.raises(EntitySDKError, match="HTTP error 503"):
+            _stage_circuit_for_neuron_set(client, str(uuid4()), _asset(), tmp_path)
+
+    @pytest.mark.parametrize("node_sets_file", ["node_sets_new.json", None])
+    def test_stages_the_node_sets_file_the_config_declares(self, tmp_path, node_sets_file):
+        """rCA1 declares node_sets_new.json; a config may also declare none."""
+        source = tmp_path / "source"
+        shutil.copytree(TINY_CIRCUIT_DIR, source)
+        config = json.loads((source / "circuit_config.json").read_text())
+        if node_sets_file:
+            (source / "node_sets.json").rename(source / node_sets_file)
+            config["node_sets_file"] = f"$BASE_DIR/{node_sets_file}"
+        else:
+            del config["node_sets_file"]
+        (source / "circuit_config.json").write_text(json.dumps(config))
+        client = _copying_client(source)
+        staged = tmp_path / "staged"
+        staged.mkdir()
+
+        config_path, _nodes, _dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), staged
+        )
+
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert not any(path.startswith("node_sets") for path in fetched - {node_sets_file})
+        if node_sets_file:
+            assert (staged / node_sets_file).exists()
+            assert ObiCircuit(name="c", path=str(config_path)).node_sets
+
+    def test_node_sets_file_outside_the_asset_is_skipped(self, tmp_path):
+        """An absolute node_sets_file cannot be staged; it is optional, so no error."""
+        source = tmp_path / "source"
+        shutil.copytree(TINY_CIRCUIT_DIR, source)
+        config = json.loads((source / "circuit_config.json").read_text())
+        config["node_sets_file"] = str(tmp_path / "elsewhere" / "node_sets.json")
+        (source / "circuit_config.json").write_text(json.dumps(config))
+        client = _copying_client(source)
+        staged = tmp_path / "staged"
+        staged.mkdir()
+
+        _config, nodes, _dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), staged
+        )
+
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert fetched == {"circuit_config.json", *nodes.values()}
+
+    def test_population_types_limit_which_nodes_files_are_staged(self, tmp_path):
+        client = _copying_client(TINY_CIRCUIT_DIR)
+        _config, nodes, dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), tmp_path, population_types=["biophysical"]
+        )
+        assert set(nodes) == {"S1nonbarrel_neurons"}
+        assert {"POm", "VPM"} <= set(dirs)  # directories known for every population
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert not any(path.startswith(("POm", "VPM")) for path in fetched)
+
+    def test_undeclared_mechanisms_dir_gets_the_candidate_order(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)  # mechanisms_dir is ""
+        _config, _nodes, dirs = _stage_circuit_for_neuron_set(
+            client, str(uuid4()), _asset(), tmp_path
+        )
+        assert dirs["S1nonbarrel_neurons"].mod_dirs == UNDECLARED_MOD_DIRS
+        assert UNDECLARED_MOD_DIRS[0] == "mod"
+
+
+class TestReadTemplateModelsFailures:
+    HOC_TEMPLATE = "hoc:cADpyr_L6BPC"
+
+    def test_population_without_hoc_dir(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs(population_type="biophysical", hoc_dir=None, mod_dirs=("mod",)),
+        )
+        assert models == {self.HOC_TEMPLATE: "population has no biophysical_neuron_models_dir"}
+        client.fetch_file.assert_not_called()
+
+    @pytest.mark.parametrize("mod_folder", ["mod", "mechanisms"])
+    def test_undeclared_mod_dir_is_found_in_the_listing(self, tmp_path, mod_folder):
+        """Mod files in ``mod/`` (OBI circuits) or ``mechanisms/`` (entitysdk MEModels)."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / mod_folder)
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=UNDECLARED_MOD_DIRS),
+        )
+        assert isinstance(models[self.HOC_TEMPLATE], TemplateModel)
+        client.list_directory.assert_called_once()
+        fetched = {str(c.kwargs["asset_path"]) for c in client.fetch_file.call_args_list}
+        assert all(path.startswith((f"{mod_folder}/", "emodels_hoc/")) for path in fetched)
+        # The whole directory is read, not one probe per mechanism.
+        assert len([p for p in fetched if p.endswith(".mod")]) == len(
+            list((circuit_dir / mod_folder).glob("*.mod"))
+        )
+
+    def test_mod_file_named_differently_from_its_suffix(self, tmp_path):
+        """rCA1 keeps ``kdrb`` in ``kdrbca1.mod``: the SUFFIX decides, not the file name."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / "mod")
+        (circuit_dir / "mod" / "NaTg.mod").rename(circuit_dir / "mod" / "natg_v2.mod")
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        model = models[self.HOC_TEMPLATE]
+        assert isinstance(model, TemplateModel)
+        assert model.mechanisms["NaTg"].suffix == "NaTg"
+
+    def test_mod_file_without_a_suffix_is_ignored(self, tmp_path):
+        """A mod file that defines no mechanism (no SUFFIX) does not fail the templates."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / "mod")
+        (circuit_dir / "mod" / "helper.mod").write_text("NEURON {\n\tGLOBAL x\n}\n")
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert isinstance(models[self.HOC_TEMPLATE], TemplateModel)
+
+    def test_mechanism_without_a_mod_file_fails_the_template(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / "mod")
+        (circuit_dir / "mod" / "NaTg.mod").unlink()
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert models == {self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'NaTg'"}
+
+    def test_missing_mechanism_names_the_mod_files_not_parsed(self, tmp_path):
+        """A file the reader rejects may hold the mechanism: the reason says so."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / "mod")
+        (circuit_dir / "mod" / "NaTg.mod").write_text("NEURON { SUFFIX NaTg\n")  # unbalanced
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert models == {
+            self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'NaTg'"
+            " (1 mod file could not be parsed: NaTg.mod)"
+        }
+
+    def test_mechanism_defined_twice_fails_the_template(self, tmp_path):
+        """NEURON refuses two files with one SUFFIX; the reader does not pick one."""
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "mod", circuit_dir / "mod")
+        shutil.copy(circuit_dir / "mod" / "NaTg.mod", circuit_dir / "mod" / "NaTg_copy.mod")
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert models == {
+            self.HOC_TEMPLATE: "mechanism 'NaTg' is defined by more than one mod file"
+        }
+
+    def test_mod_file_in_no_candidate_dir_fails_the_template(self, tmp_path):
+        circuit_dir = tmp_path / "circuit"
+        shutil.copytree(SINGLE_NEURON_CIRCUIT_DIR / "emodels_hoc", circuit_dir / "emodels_hoc")
+        client = _copying_client(circuit_dir)
+        models = _read_models(
+            client,
+            tmp_path / "staged",
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=UNDECLARED_MOD_DIRS),
+        )
+        assert models == {
+            self.HOC_TEMPLATE: "no mod file in the circuit defines mechanism 'CaDynamics_DC0'"
+        }
+
+    def test_hoc_fetch_failure_is_reported_by_type_only(self, tmp_path):
+        client = _copying_client(
+            SINGLE_NEURON_CIRCUIT_DIR, failing={"emodels_hoc/cADpyr_L6BPC.hoc"}
+        )
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert models == {self.HOC_TEMPLATE: "files not readable (EntitySDKError)"}
+
+    def test_mod_fetch_failure_fails_only_that_template(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR, failing={"mod/NaTg.mod"})
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        assert models == {self.HOC_TEMPLATE: "files not readable (EntitySDKError)"}
+
+    def test_all_files_read(self, tmp_path):
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        models = _read_models(
+            client,
+            tmp_path,
+            {self.HOC_TEMPLATE},
+            PopulationModelDirs("biophysical", hoc_dir="emodels_hoc", mod_dirs=("mod",)),
+        )
+        model = models[self.HOC_TEMPLATE]
+        assert isinstance(model, TemplateModel)
+        assert set(model.mechanisms) == model.biophysics.mod_file_mechanisms
+        assert "pas" in model.biophysics.inserted_mechanisms
+
+
+class TestUniqueTemplates:
+    @pytest.mark.parametrize(
+        ("circuit_dir", "enumerated"),
+        [(TINY_CIRCUIT_DIR, True), (SINGLE_NEURON_CIRCUIT_DIR, False)],
+    )
+    def test_enumerated_and_plain_columns_give_the_same_set(self, circuit_dir, enumerated):
+        population = "S1nonbarrel_neurons"
+        nodes = circuit_dir / population / "nodes.h5"
+        pop = NodeStorage(str(nodes)).open_population(population)
+        assert ("model_template" in pop.enumeration_names) is enumerated
+        expected = {t for t in pop.get_attribute("model_template", pop.select_all()) if t}
+        with h5py.File(nodes, "r") as h5:
+            assert _unique_templates(h5[f"nodes/{population}/0"]) == expected
+
+
+def _circuit_without_model_template(tmp_path: Path) -> Path:
+    circuit_dir = tmp_path / "circuit"
+    shutil.copytree(TINY_CIRCUIT_DIR, circuit_dir)
+    with h5py.File(circuit_dir / "S1nonbarrel_neurons" / "nodes.h5", "r+") as h5:
+        group = h5["nodes/S1nonbarrel_neurons/0"]
+        del group["model_template"]
+        del group["@library/model_template"]
+    return circuit_dir
+
+
+class TestNoNeuronSetWithoutTemplates:
+    def test_circuit_without_model_template_returns_a_warning(self, tmp_path):
+        client = _copying_client(_circuit_without_model_template(tmp_path))
+        client.get_entity.return_value = _sonata_entity()
+        result = get_circuit_manipulation_properties(
+            db_client=client, circuit_id=str(uuid4()), neuron_set=None
+        )
+        assert result["MechanismVariablesByIonChannel"] == {}
+        assert result["warnings"] == ["No population with a model_template found in this circuit."]
+
+
+class TestPopulationTemplatesReadPath:
+    """Without a neuron set, model_template is read with as little transfer as possible."""
+
+    POPULATION = "S1nonbarrel_neurons"
+    NODES = "S1nonbarrel_neurons/nodes.h5"
+
+    @staticmethod
+    def _expected(circuit_dir: Path) -> set[str]:
+        pop = NodeStorage(str(circuit_dir / "S1nonbarrel_neurons/nodes.h5")).open_population(
+            "S1nonbarrel_neurons"
+        )
+        return {t for t in pop.get_attribute("model_template", pop.select_all()) if t}
+
+    def _read(self, client, tmp_path, *, listed: bool = True):
+        size = _asset_files(client, str(uuid4()), _asset()).get(self.NODES) if listed else None
+        return _population_templates(
+            client,
+            str(uuid4()),
+            _asset(),
+            tmp_path / "staged",
+            self.POPULATION,
+            self.NODES,
+            size,
+        )
+
+    def test_mounted_store_links_the_file_and_makes_no_http_request(self, tmp_path):
+        client = MagicMock()
+        client.fetch_file.side_effect = _make_link_or_copy_fetch_file_side_effect(
+            TINY_CIRCUIT_DIR.resolve()
+        )
+        assert self._read(client, tmp_path) == self._expected(TINY_CIRCUIT_DIR)
+        assert client.fetch_file.call_args.kwargs["strategy"] == FetchFileStrategy.link_only
+        assert client._http_client.mock_calls == []  # no range request of any kind
+
+    def test_without_a_store_only_byte_ranges_are_read(self, tmp_path):
+        client = _copying_client(TINY_CIRCUIT_DIR)
+        assert self._read(client, tmp_path) == self._expected(TINY_CIRCUIT_DIR)
+        strategies = [c.kwargs["strategy"] for c in client.fetch_file.call_args_list]
+        assert strategies == [FetchFileStrategy.link_only]  # the probe only, no download
+
+    def test_unknown_size_downloads_without_trying_ranges(self, tmp_path, caplog):
+        """A nodes file the listing does not size is downloaded; storage is not asked."""
+        client = _copying_client(TINY_CIRCUIT_DIR)
+        client._http_client = MagicMock()
+        assert self._read(client, tmp_path, listed=False) == self._expected(TINY_CIRCUIT_DIR)
+        strategies = [c.kwargs["strategy"] for c in client.fetch_file.call_args_list]
+        assert strategies == [FetchFileStrategy.link_only, FetchFileStrategy.link_or_download]
+        assert client._http_client.mock_calls == []  # no range request of any kind
+        assert "Partial read" not in caplog.text
+
+    def test_storage_without_ranges_falls_back_to_the_download(self, tmp_path, caplog):
+        client = _copying_client(TINY_CIRCUIT_DIR)
+        _serve_storage(client, TINY_CIRCUIT_DIR, redirect=False)
+        assert self._read(client, tmp_path) == self._expected(TINY_CIRCUIT_DIR)
+        strategies = [c.kwargs["strategy"] for c in client.fetch_file.call_args_list]
+        assert strategies == [FetchFileStrategy.link_only, FetchFileStrategy.link_or_download]
+        assert "Partial read of S1nonbarrel_neurons/nodes.h5 failed" in caplog.text
+
+    @pytest.mark.parametrize("redirect", [True, False])
+    def test_population_without_model_template_is_none_on_both_paths(self, tmp_path, redirect):
+        circuit_dir = _circuit_without_model_template(tmp_path)
+        client = _copying_client(circuit_dir)
+        _serve_storage(client, circuit_dir, redirect=redirect)
+        assert self._read(client, tmp_path) is None
+
+    def test_plain_string_column_is_read_remotely(self, tmp_path):
+        """The single-neuron circuits store model_template as strings, not an enumeration."""
+        client = _copying_client(SINGLE_NEURON_CIRCUIT_DIR)
+        assert self._read(client, tmp_path) == self._expected(SINGLE_NEURON_CIRCUIT_DIR)
+        assert [c.kwargs["strategy"] for c in client.fetch_file.call_args_list] == [
+            FetchFileStrategy.link_only
+        ]
+
+
+def _entity(range_units: dict, global_units: dict | None = None) -> SimpleNamespace:
+    """An ion channel model entity as far as its id and units go."""
+    return SimpleNamespace(
+        id=uuid4(),
+        neuron_block=SimpleNamespace(
+            range=[{name: unit} for name, unit in range_units.items()],
+            global_=[{name: unit} for name, unit in (global_units or {}).items()],
+        ),
+    )
+
+
+def _kmb() -> ModMechanism:
+    """rCA1's kmb.mod: gbar has a unit, sh and tau none, ik is a current."""
+    return ModMechanism(
+        suffix="kmb",
+        range_variables=["gbar", "ik", "sh", "tau"],
+        parameter_variables=["gbar", "sh", "tau"],
+        units={"gbar": "mho/cm2"},
+    )
+
+
+class TestUnitsFromTheDatabase:
+    """Units a circuit's mod file leaves undeclared are taken from ion channel models."""
+
+    def test_a_matching_entity_fills_the_missing_units(self):
+        entity = _entity({"gbar": "S/cm2", "ik": "mA/cm2", "sh": "mV", "tau": "ms"})
+        assert _database_units(_kmb(), [entity]) == {"sh": "mV", "tau": "ms"}
+
+    def test_an_entity_whose_declared_units_differ_is_another_mechanism(self):
+        other = _entity({"gbar": "mV", "sh": "ms", "tau": "ms"})
+        assert _database_units(_kmb(), [other]) == {}
+
+    def test_entities_that_disagree_on_a_missing_unit_give_none(self):
+        a = _entity({"gbar": "S/cm2", "sh": "mV", "tau": "ms"})
+        b = _entity({"gbar": "S/cm2", "sh": "mV", "tau": "s"})
+        assert _database_units(_kmb(), [a, b]) == {"sh": "mV"}
+
+    def test_entities_that_agree_give_one_unit(self):
+        a = _entity({"sh": "mV"})
+        b = _entity({"sh": "mV", "tau": None})
+        assert _database_units(_kmb(), [a, b]) == {"sh": "mV"}
+
+    def test_global_variables_are_filled_and_currents_are_not_looked_up(self):
+        mechanism = ModMechanism(suffix="x", range_variables=["ik"], global_variables=["q10"])
+        entity = _entity({"ik": "mA/cm2"}, {"q10": "1"})
+        assert _database_units(mechanism, [entity]) == {"q10": "1"}
+
+    def test_one_search_per_distinct_suffix(self):
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = [
+            _entity({"gbar": "S/cm2", "sh": "mV", "tau": "ms"})
+        ]
+        kmb, kmb_again = _kmb(), _kmb()
+        complete = ModMechanism(suffix="pas2", range_variables=["g"], units={"g": "S/cm2"})
+        _fill_from_database(client, [kmb, kmb_again, complete])
+        assert sorted(
+            c.kwargs["query"]["nmodl_suffix"] for c in client.search_entity.call_args_list
+        ) == ["kmb", "pas2"]
+        assert kmb.units == kmb_again.units == {"gbar": "mho/cm2", "sh": "mV", "tau": "ms"}
+
+    def test_the_one_matching_entity_gives_the_entity_id(self):
+        entity = _entity({"gbar": "S/cm2"})
+        other_mechanism = _entity({"gbar": "mV"})  # same suffix, different units
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = [entity, other_mechanism]
+        kmb = _kmb()
+        assert _fill_from_database(client, [kmb]) == []
+        assert kmb.entity_id == str(entity.id)
+
+    @pytest.mark.parametrize("count", [0, 2])
+    def test_none_or_several_matching_entities_give_null_and_a_warning(self, count):
+        client = MagicMock()
+        client.search_entity.return_value.all.return_value = [
+            _entity({"gbar": "S/cm2"}) for _ in range(count)
+        ]
+        kmb = _kmb()
+        assert _fill_from_database(client, [kmb]) == [
+            (
+                "No single ion channel model matches 1 mechanism (kmb): none or several share"
+                " the nmodl_suffix, so their entity_id is null."
+            )
+        ]
+        assert kmb.entity_id is None
+
+    def test_a_failed_search_leaves_the_units_empty(self, caplog):
+        client = MagicMock()
+        client.search_entity.side_effect = EntitySDKError("HTTP error 503")
+        kmb = _kmb()
+        _fill_from_database(client, [kmb])
+        assert kmb.units == {"gbar": "mho/cm2"}
+        assert "Could not search ion channel models for kmb" in caplog.text
+
+    def test_the_response_shows_the_unit_from_the_database(self, mock_db_client):
+        """NaTg.mod of the tiny circuit declares no unit for slopem."""
+
+        def search(*, entity_type, query, **_kwargs):
+            result = MagicMock()
+            result.all.return_value = (
+                [_entity({"gNaTgbar": "S/cm2", "slopem": "mV"})]
+                if entity_type is IonChannelModel and query == {"nmodl_suffix": "NaTg"}
+                else []
+            )
+            return result
+
+        mock_db_client.search_entity.side_effect = search
+        result = get_circuit_manipulation_properties(
+            db_client=mock_db_client, circuit_id=str(uuid4()), neuron_set=None
+        )
+        variables = result["MechanismVariablesByIonChannel"]["NaTg"].variables
+        assert variables["slopem_NaTg"].units == "mV"
+        assert not variables["slopeh_NaTg"].units
+
+
+class TestNoNeuronsWarning:
+    def test_names_population_and_node_set(self):
+        neuron_set = BiophysicalPopulationPredefinedNeuronSet(
+            population="hippocampus_neurons", node_set="SO_BS"
+        )
+
+        assert no_neurons_warning(neuron_set, "rCA1") == (
+            "The neuron set selects no neurons in circuit 'rCA1'"
+            " (population 'hippocampus_neurons'; node sets SO_BS),"
+            " so there are no mechanism variables to list."
+        )
+
+    def test_without_population_or_node_set(self):
+        assert no_neurons_warning(AllBiophysicalNeurons(), "rCA1") == (
+            "The neuron set selects no neurons in circuit 'rCA1',"
+            " so there are no mechanism variables to list."
+        )

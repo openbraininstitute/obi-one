@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     ACCOUNTING_DISABLED: bool = False
     VIRTUAL_LAB_API_URL: str  # Required: URL to virtual-lab-api service
     VIRTUAL_LAB_DISABLED: bool = False
+    # False: neuronal manipulation properties come from the emodel_circuit derivations only,
+    # as before they were read from the circuit's hoc and mod files. A switch for rollback.
+    NEURONAL_MANIPULATION_FROM_CIRCUIT_FILES: bool = True
 
     # Sentry is disabled when SENTRY_DSN is unset (sentry_sdk.init with dsn=None is a no-op).
     SENTRY_DSN: str | None = None

@@ -11,6 +11,7 @@ from entitysdk.types import CircuitScale
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
@@ -29,6 +30,7 @@ from obi_one.scientific.library.memodel_circuit import (
     get_memodel_mechanism_variables,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
+    CircuitListingError,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
@@ -347,7 +349,10 @@ def mapped_circuit_properties_endpoint(
 @router.post(
     "/circuit/{circuit_id}/neuron-set-node-ids",
     summary="Resolve neuron set to node IDs",
-    description="Returns the node IDs for a given neuron set selection in a circuit.",
+    description="Returns the node IDs for a given neuron set selection in a circuit. "
+    "Swept (list-valued) fields of the neuron set are expanded and the resulting "
+    "node IDs are unioned per population. Only top-level fields can be swept: a list "
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400.",
 )
 def neuron_set_node_ids(
     circuit_id: str,
@@ -381,6 +386,9 @@ def neuron_set_node_ids(
     summary="Circuit neuronal manipulation properties by neuron set",
     description="Returns intersection of mechanism variables for neuronal manipulation blocks "
     "for a Circuit entity, resolved by neuron set. "
+    "Swept (list-valued) fields of the neuron set are expanded and the resulting "
+    "node IDs are unioned per population. Only top-level fields can be swept: a list "
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400. "
     "MEModel entities should use /memodel-neuronal-manipulation-properties instead.",
 )
 def neuronal_manipulation_properties_endpoint_by_neuron_set(
@@ -392,9 +400,16 @@ def neuronal_manipulation_properties_endpoint_by_neuron_set(
             db_client=db_client,
             circuit_id=request.entity_id,
             neuron_set=request.neuron_set,
+            from_circuit_files=settings.NEURONAL_MANIPULATION_FROM_CIRCUIT_FILES,
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
+    except CircuitListingError as err:
+        # Transient: 503 tells the client a retry can succeed.
+        raise HTTPException(
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            detail={"code": ApiErrorCode.ENTITYSDK_API_FAILURE, "detail": str(err)},
+        ) from err
     except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
