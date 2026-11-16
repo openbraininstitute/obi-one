@@ -34,7 +34,9 @@ from obi_one.scientific.library.morphology_locations import (
 if TYPE_CHECKING:
     from entitysdk import Client
 
-    from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementSingleConfig
+    from obi_one.scientific.tasks.build_synaptome.config import (
+        MEModelSynapticModelPlacementSingleConfig,
+    )
 
 _SOURCE_ID = "pre_node_id"
 _TARGET_ID = "post_node_id"

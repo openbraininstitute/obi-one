@@ -13,7 +13,9 @@ from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
+from obi_one.scientific.tasks.build_synaptome.config import (
+    MEModelSynapticModelPlacementScanConfig,
+)
 from obi_one.scientific.tasks.circuit_extraction.config import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
