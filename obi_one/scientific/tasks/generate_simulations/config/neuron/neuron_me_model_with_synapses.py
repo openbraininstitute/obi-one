@@ -3,7 +3,9 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
+from obi_one.core.fill_none_references import BlockDefault
 from obi_one.core.schema import SchemaKey, UIElement
+from obi_one.scientific.blocks.neuron_sets.specific import AllVirtualNeurons
 from obi_one.scientific.from_id.circuit_from_id import (
     MEModelWithSynapsesCircuitFromID,
 )
@@ -24,6 +26,8 @@ from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
     SingleMorphologySamplingLocationUnion,
 )
+from obi_one.scientific.unions_and_references.neuron_sets import VirtualNeuronSetReference
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 
 L = logging.getLogger(__name__)
 
@@ -55,6 +59,18 @@ class MEModelWithSynapsesCircuitSimulationScanConfig(CircuitSimulationScanConfig
             ),
         },
     }
+
+    @staticmethod
+    def default_blocks() -> dict[str, BlockDefault]:
+        """An unset spike source replays from the synaptome's inputs, not its one neuron."""
+        return {
+            ReferenceTag.SPIKE_STIMULUS_SOURCE: BlockDefault(
+                VirtualNeuronSetReference,
+                "neuron_sets",
+                CircuitSimulationScanConfig.default_virtual_node_set_name,
+                AllVirtualNeurons,
+            ),
+        }
 
     class Initialize(CircuitSimulationScanConfig.Initialize):
         circuit: (

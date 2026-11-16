@@ -12,11 +12,14 @@ import pytest
 from obi_one.core.block import Block
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.schema import SchemaKey
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
+    MEModelWithSynapsesCircuitSimulationScanConfig,
+)
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,
 )
 
-OPTED_IN = "SynapseParameterizationScanConfig"
+OPTED_IN = (SynapseParameterizationScanConfig, MEModelWithSynapsesCircuitSimulationScanConfig)
 
 
 def _subclasses(cls):
@@ -30,7 +33,7 @@ def _config_classes():
 
 
 def _opted_in(config_class):
-    return issubclass(config_class, SynapseParameterizationScanConfig)
+    return issubclass(config_class, OPTED_IN)
 
 
 def test_there_are_configs_to_check():
@@ -38,11 +41,11 @@ def test_there_are_configs_to_check():
     assert len(_config_classes()) > 10
 
 
-def test_only_the_synapse_parameterization_config_declares_defaults():
-    declaring = [c.__name__ for c in _config_classes() if c.default_block_references()]
+def test_only_the_opted_in_configs_declare_defaults():
+    declaring = [c for c in _config_classes() if c.default_block_references()]
 
-    assert all(_opted_in(c) for c in _config_classes() if c.__name__ in declaring)
-    assert OPTED_IN in declaring
+    assert all(_opted_in(c) for c in declaring)
+    assert all(c in declaring for c in OPTED_IN)
 
 
 def test_every_other_config_declares_nothing():
@@ -54,9 +57,9 @@ def test_every_other_config_declares_nothing():
 
 
 def test_the_blocks_carrying_tags_are_the_expected_ones():
-    # The second gate is weaker than the first, because the combined neuron sets are shared
-    # with every config. It still holds: a tagged field is only filled when the config being
-    # filled answers that tag, and only the synapse parameterization config answers any.
+    # The second gate is weaker than the first, because the combined neuron sets and spike
+    # stimuli are shared with every config. It still holds: a tagged field is only filled when
+    # the config being filled answers that tag, and only the opted-in configs answer any.
     # Listed explicitly so that tagging something new is a deliberate change, not a surprise.
     tagged = {
         block_class.__name__
@@ -80,6 +83,13 @@ def test_the_blocks_carrying_tags_are_the_expected_ones():
         "PointCombinedNeuronSet",
         "VirtualCombinedNeuronSet",
         "NonVirtualCombinedNeuronSet",
+        # The spike source, answered by the synaptome simulation config.
+        "SpikeStimulus",
+        "PoissonSpikeStimulus",
+        "FullySynchronousSpikeStimulus",
+        "SinusoidalPoissonSpikeStimulus",
+        "InterSpikeIntervalDistributionSpikeStimulus",
+        "SpikeTimeDistributionSpikeStimulus",
     }
 
 

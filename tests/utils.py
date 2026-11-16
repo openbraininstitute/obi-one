@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "test_data"
@@ -41,3 +42,17 @@ def assert_request(client_method, *, expected_status_code=200, context=None, **k
     response = client_method(**kwargs)
     assert_response(response, expected_status_code=expected_status_code, context=context)
     return response
+
+
+def stage_circuit_without_edges(source_dir: Path, dest_dir: Path) -> Path:
+    """Copy a circuit's config, node sets and nodes files, but none of its edge files.
+
+    Mirrors how campaign generation stages full circuits. Returns the copied config path.
+    """
+    dest_dir.mkdir(parents=True)
+    shutil.copy(source_dir / "circuit_config.json", dest_dir)
+    shutil.copy(source_dir / "node_sets.json", dest_dir)
+    for nodes_file in source_dir.glob("*/nodes.h5"):
+        (dest_dir / nodes_file.parent.name).mkdir()
+        shutil.copy(nodes_file, dest_dir / nodes_file.parent.name)
+    return dest_dir / "circuit_config.json"

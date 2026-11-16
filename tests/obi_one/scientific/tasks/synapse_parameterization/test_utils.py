@@ -8,7 +8,7 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
-from obi_one.scientific.library.circuit import ensure_mechanisms_dir
+from obi_one.scientific.library.circuit import ensure_mechanisms_dir, ensure_node_sets_file
 from obi_one.scientific.tasks.synapse_parameterization.utils import (
     get_default_for,
     models_in_play,
@@ -296,3 +296,66 @@ def test_write_mod_files_copies_both_mechanisms_when_both_models_are_in_play(tmp
 
     assert (tmp_path / "ProbAMPANMDA_EMS.mod").exists()
     assert (tmp_path / "ProbGABAAB_EMS.mod").exists()
+
+
+def _node_sets_config(tmp_path, **entries):
+    """A minimal but real SONATA circuit config; libsonata reads `node_sets_path` from it."""
+    config_path = tmp_path / "circuit_config.json"
+    config_path.write_text(json.dumps({"networks": {"nodes": [], "edges": []}, **entries}))
+    return config_path
+
+
+def test_an_existing_node_sets_file_is_used_and_left_unchanged(tmp_path):
+    node_sets_file = tmp_path / "sets.json"
+    node_sets_file.write_text('{"All": {"population": "A"}}')
+    config_path = _node_sets_config(
+        tmp_path, manifest={"$BASE_DIR": "."}, node_sets_file="$BASE_DIR/sets.json"
+    )
+    config_before = config_path.read_text()
+
+    assert ensure_node_sets_file(config_path) == node_sets_file
+
+    assert config_path.read_text() == config_before
+    assert node_sets_file.read_text() == '{"All": {"population": "A"}}'
+
+
+def test_a_declared_node_sets_file_that_does_not_exist_is_created_empty(tmp_path):
+    config_path = _node_sets_config(
+        tmp_path, manifest={"$BASE_DIR": "."}, node_sets_file="$BASE_DIR/sets.json"
+    )
+
+    node_sets_file = ensure_node_sets_file(config_path)
+
+    assert node_sets_file == tmp_path / "sets.json"
+    assert json.loads(node_sets_file.read_text()) == {}
+
+
+def test_a_missing_node_sets_declaration_is_added_and_the_file_created(tmp_path):
+    config_path = _node_sets_config(tmp_path, manifest={"$BASE_DIR": "."})
+
+    node_sets_file = ensure_node_sets_file(config_path)
+
+    assert node_sets_file == tmp_path / "node_sets.json"
+    assert json.loads(node_sets_file.read_text()) == {}
+    assert json.loads(config_path.read_text())["node_sets_file"] == "$BASE_DIR/node_sets.json"
+
+
+def test_a_missing_manifest_is_added_with_the_node_sets_declaration(tmp_path):
+    config_path = _node_sets_config(tmp_path)
+
+    node_sets_file = ensure_node_sets_file(config_path)
+
+    cfg = json.loads(config_path.read_text())
+    assert cfg["manifest"] == {"$BASE_DIR": "./"}
+    assert cfg["node_sets_file"] == "$BASE_DIR/node_sets.json"
+    assert node_sets_file == tmp_path / "node_sets.json"
+
+
+def test_a_new_node_sets_file_goes_where_the_manifest_base_dir_points(tmp_path):
+    (tmp_path / "sub").mkdir()
+    config_path = _node_sets_config(tmp_path, manifest={"$BASE_DIR": "./sub"})
+
+    node_sets_file = ensure_node_sets_file(config_path)
+
+    assert node_sets_file == tmp_path / "sub" / "node_sets.json"
+    assert node_sets_file.is_file()

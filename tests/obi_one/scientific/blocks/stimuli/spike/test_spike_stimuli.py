@@ -29,7 +29,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 )
 from obi_one.scientific.unions_and_references.timestamps import TimestampsReference
 
-from tests.utils import CIRCUIT_DIR
+from tests.utils import CIRCUIT_DIR, stage_circuit_without_edges
 
 CIRCUIT_PATH = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
 CIRCUIT_NAME = "N_10__top_nodes_dim6"
@@ -315,7 +315,7 @@ class TestWriteSpikeFile:
     def test_writes_correct_hdf5_structure(self, tmp_path):
         spikes = {0: [10.0, 20.0], 1: [15.0], 2: [5.0, 25.0, 35.0]}
         spike_file = tmp_path / "test_spikes.h5"
-        SpikeStimulus.write_spike_file(spikes, spike_file, "NodeA")
+        SpikeStimulus.write_spike_file({"NodeA": spikes}, spike_file)
 
         node_ids, timestamps = _read_spike_file(spike_file, "NodeA")
         assert len(node_ids) == 6
@@ -327,7 +327,7 @@ class TestWriteSpikeFile:
 
     def test_empty_spikes(self, tmp_path):
         spike_file = tmp_path / "empty_spikes.h5"
-        SpikeStimulus.write_spike_file({}, spike_file, "NodeA")
+        SpikeStimulus.write_spike_file({"NodeA": {}}, spike_file)
 
         node_ids, timestamps = _read_spike_file(spike_file, "NodeA")
         assert len(node_ids) == 0
@@ -335,7 +335,7 @@ class TestWriteSpikeFile:
 
     def test_creates_parent_directories(self, tmp_path):
         spike_file = tmp_path / "nested" / "dir" / "spikes.h5"
-        SpikeStimulus.write_spike_file({0: [1.0]}, spike_file, "pop")
+        SpikeStimulus.write_spike_file({"pop": {0: [1.0]}}, spike_file)
         assert spike_file.exists()
 
 
@@ -877,3 +877,63 @@ def test_spike_source_with_edges_to_target_is_accepted():
         source_neuron_set=_StubNeuronSet(["external"]),
         target_neuron_set=_StubNeuronSet(["cell"]),
     )
+
+
+def test_spike_stimulus_generates_on_a_circuit_staged_without_edges(tmp_path):
+    """Campaign generation stages full circuits without their edges, so they cannot be checked."""
+    config = stage_circuit_without_edges(CIRCUIT_DIR / CIRCUIT_NAME, tmp_path / "staged")
+    circuit = Circuit(name="nodes_only", path=str(config))
+
+    sim_conf = CircuitSimulationScanConfig.empty_config()
+    sim_conf.set(Info(campaign_name="NodesOnly", campaign_description="x"), name="info")
+    timestamps = RegularTimestamps(start_time=0.0, number_of_repetitions=1, interval=500.0)
+    sim_conf.add(timestamps, name="Timestamps")
+    sim_conf.add(
+        PoissonSpikeStimulus(
+            duration=200.0, timestamps=timestamps.ref, frequency=10.0, random_seed=0
+        ),
+        name="Poisson",
+    )
+    sim_conf.set(
+        CircuitSimulationScanConfig.Initialize(circuit=circuit, simulation_length=500.0),
+        name="initialize",
+    )
+    scan = GridScanGenerationTask(
+        form=sim_conf.validated_config(),
+        output_root=tmp_path / "scan",
+        coordinate_directory_option="ZERO_INDEX",
+    )
+    scan.execute()
+    run_tasks_for_generated_scan(scan)
+
+    with h5py.File(tmp_path / "scan" / "0" / "Poisson_spikes.h5", "r") as f:
+        assert list(f["spikes"]) == ["S1nonbarrel_neurons"]
+
+
+def test_several_source_populations_get_independent_spikes():
+    stim = PoissonSpikeStimulus(
+        duration=500.0,
+        timestamps=_make_timestamps_ref(SingleTimestamp(start_time=0.0)),
+        frequency=20.0,
+        random_seed=0,
+    )
+
+    # Node IDs repeat across populations, as they do in real circuits.
+    spikes = stim._generate_spikes_by_population({"A": [0, 1], "B": [0, 1]})
+
+    assert set(spikes) == {"A", "B"}
+    assert set(spikes["A"]) == set(spikes["B"]) == {0, 1}
+    assert spikes["A"][0] != spikes["B"][0]
+
+
+def test_source_neuron_set_without_population_is_rejected(tmp_path):
+    stim = PoissonSpikeStimulus(
+        duration=500.0,
+        timestamps=_make_timestamps_ref(SingleTimestamp(start_time=0.0)),
+        frequency=20.0,
+    )
+
+    with pytest.raises(ConfigValidationError, match="has no population"):
+        stim.generate_spikes(
+            circuit=None, spike_file_directory=tmp_path, source_neuron_set=_StubNeuronSet([])
+        )
