@@ -14,19 +14,36 @@ from bluecellulab.analysis.analysis import BPAP, compute_plot_fi_curve, compute_
 from bluecellulab.analysis.inject_sequence import run_multirecordings_stimulus, run_stimulus
 from bluecellulab.cell.core import Cell
 from bluecellulab.simulation.neuron_globals import NeuronGlobals
-from bluecellulab.stimulus.factory import IDRestTimings, StimulusFactory
+from bluecellulab.stimulus.factory import IDRestTimings, IVTimings, StimulusFactory
 from bluecellulab.utils import efel_settings
 from bluecellulab.validation.base import TestResult, ValidationTest
 from bluecellulab.validation.plotting import plot_trace, plot_traces
-from bluecellulab.validation.protocol import Protocol
+from bluecellulab.validation.protocol import Protocol, StepProtocol
 
 from obi_one.scientific.validations.memodel.config import SimulatorConfig
+from obi_one.scientific.validations.memodel.descriptions import (
+    HOLDING_NOTE,
+    describe_protocol,
+    format_current,
+    format_rheobase_percentage,
+)
 from obi_one.scientific.validations.memodel.names import ValidationName
 
 _DEFAULT_BPAP_SPIKE_THRESHOLD_MV = -20.0
 _MIN_BPAP_TRACE_SAMPLES = 2
 _MAX_INPUT_RESISTANCE_MOHM = 1_000
 _MIN_CURVE_POINTS = 2
+
+SPIKE_THRESHOLD_MV = -40.0
+HYPERPOLARIZATION_THRESHOLD_PERCENTAGE = -40
+AIS_THRESHOLD_PERCENTAGE = 200
+# Step timings and sweep size of the IV and FI curves, passed explicitly so a change
+# to the bluecellulab defaults cannot change the protocol or its description.
+CURVE_STIM_START_MS = 100.0
+CURVE_DURATION_MS = 500.0
+CURVE_POST_DELAY_MS = 100.0
+CURVE_NB_BINS = 5
+FI_MAX_RHEOBASE_FACTOR = 3.0
 
 
 def _optional_finite_current(name: str, value: float | None) -> float | None:
@@ -81,12 +98,27 @@ class HyperpolarizationTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.HYPERPOLARIZATION
 
+    @property
+    def description(self) -> str:
+        """Describe the protocol and pass condition."""
+        amplitude = format_rheobase_percentage(HYPERPOLARIZATION_THRESHOLD_PERCENTAGE)
+        measured_until = IDRestTimings.PRE_DELAY.value + IDRestTimings.DURATION.value
+        return (
+            f"Injects a step of {amplitude} into the soma, {HOLDING_NOTE}, "
+            f"for {IVTimings.DURATION.value:g} ms, after {IVTimings.PRE_DELAY.value:g} ms. "
+            f"Passes if the steady-state voltage at {measured_until:g} ms is below the "
+            "resting potential before the step."
+        )
+
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
         stim_factory = StimulusFactory(dt=1.0)
-        step_stimulus = stim_factory.iv(threshold_current=rheobase, threshold_percentage=-40)
+        step_stimulus = stim_factory.iv(
+            threshold_current=rheobase,
+            threshold_percentage=HYPERPOLARIZATION_THRESHOLD_PERCENTAGE,
+        )
         recording = run_stimulus(
             template_params,
             step_stimulus,
@@ -151,6 +183,15 @@ class RinTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.INPUT_RESISTANCE
 
+    @property
+    def description(self) -> str:
+        """Describe where Rin comes from and the pass condition."""
+        return (
+            "Uses the input resistance of the model, taken from its calibration or "
+            "measured during setup. No extra simulation is run. Passes if it is below "
+            f"{_MAX_INPUT_RESISTANCE_MOHM} MOhm."
+        )
+
     @override
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         # Rin is measured during setup, so this test needs no simulation inputs.
@@ -188,6 +229,12 @@ class ThumbnailTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.THUMBNAIL
 
+    @property
+    def description(self) -> str:
+        """Describe the protocol shown in the preview."""
+        protocol = describe_protocol(self.protocol or StepProtocol())
+        return f"{protocol} Shows the soma voltage as the model's preview. Always passes."
+
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -223,6 +270,17 @@ class AISSpikingTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.AIS_SPIKING
 
+    @property
+    def description(self) -> str:
+        """Describe the protocol and pass condition."""
+        protocol = describe_protocol(StepProtocol(threshold_percentage=AIS_THRESHOLD_PERCENTAGE))
+        return (
+            f"{protocol} Records at axon[0] and soma[0]. Passes if the first axon spike "
+            "is not later than the first soma spike (eFEL peak_time, "
+            f"Threshold={SPIKE_THRESHOLD_MV:g} mV). Models without an axon pass without "
+            "being simulated."
+        )
+
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -240,7 +298,7 @@ class AISSpikingTest(ValidationTest):
         stim_factory = StimulusFactory(dt=1.0)
         step_stimulus = stim_factory.idrest(
             threshold_current=rheobase,
-            threshold_percentage=200,
+            threshold_percentage=AIS_THRESHOLD_PERCENTAGE,
         )
         recordings = run_multirecordings_stimulus(
             template_params,
@@ -282,7 +340,7 @@ class AISSpikingTest(ValidationTest):
                 "stim_end": [IDRestTimings.PRE_DELAY.value + IDRestTimings.DURATION.value],
             },
         ]
-        with efel_settings({"Threshold": -40.0}):
+        with efel_settings({"Threshold": SPIKE_THRESHOLD_MV}):
             features = efel.get_feature_values(
                 traces, ["peak_time"], parallel_map=None, return_list=True
             )
@@ -376,6 +434,33 @@ class BPAPTest(ValidationTest):
     @property
     def name(self) -> str:
         return ValidationName.BACK_PROPAGATING_AP
+
+    @property
+    def description(self) -> str:
+        """Describe the pulse, the recordings and the pass condition."""
+        amplitude = (
+            format_current(self.amplitude)
+            if self.amplitude is not None
+            else f"{self.amplitude_factor:g} times the rheobase"
+        )
+        holding = (
+            f"a holding current of {format_current(self.holding_current)}"
+            if self.holding_current is not None
+            else "the calibrated holding current"
+        )
+        text = (
+            f"Injects a {self.stim_duration:g} ms pulse of {amplitude} into the soma, on top "
+            f"of {holding}, in a {self.sim_duration:g} ms simulation, and records the voltage "
+            "in every section. Passes if the action potential is smaller at the furthest "
+            "basal and apical dendrites than at the soma"
+        )
+        if self.expected_spike_count is not None:
+            text += (
+                f", and the soma fires exactly {self.expected_spike_count} "
+                f"{'spike' if self.expected_spike_count == 1 else 'spikes'} over the "
+                f"whole simulation (threshold {self.spike_threshold:g} mV)"
+            )
+        return f"{text}."
 
     def run(  # ruff: ignore[complex-structure,too-many-branches,too-many-locals,too-many-statements]
         self, template_params: Any, rheobase: float, out_dir: Path
@@ -643,6 +728,17 @@ class IVCurveTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.IV_CURVE
 
+    @property
+    def description(self) -> str:
+        """Describe the current sweep and pass condition."""
+        return (
+            f"Injects {CURVE_NB_BINS} steps from {self.min_amp_factor:g} to "
+            f"{self.max_amp_factor:g} times the rheobase into the soma, {HOLDING_NOTE}, for "
+            f"{CURVE_DURATION_MS:g} ms, after {CURVE_STIM_START_MS:g} ms and followed by "
+            f"{CURVE_POST_DELAY_MS:g} ms. Passes if the steady-state voltage at the end of "
+            "the step increases with the injected current (positive linear-fit slope)."
+        )
+
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -655,8 +751,11 @@ class IVCurveTest(ValidationTest):
                 rheobase=rheobase,
                 min_amp=self.min_amp_factor * rheobase,
                 max_amp=self.max_amp_factor * rheobase,
-                threshold_voltage=-40.0,
-                nb_bins=5,
+                stim_start=CURVE_STIM_START_MS,
+                duration=CURVE_DURATION_MS,
+                post_delay=CURVE_POST_DELAY_MS,
+                threshold_voltage=SPIKE_THRESHOLD_MV,
+                nb_bins=CURVE_NB_BINS,
                 show_figure=False,
                 save_figure=True,
                 output_dir=out_dir,
@@ -711,6 +810,17 @@ class FICurveTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.FI_CURVE
 
+    @property
+    def description(self) -> str:
+        """Describe the current sweep and pass condition."""
+        return (
+            f"Injects {CURVE_NB_BINS} steps from 1 to {FI_MAX_RHEOBASE_FACTOR:g} times the "
+            f"rheobase into the soma, {HOLDING_NOTE}, for {CURVE_DURATION_MS:g} ms, after "
+            f"{CURVE_STIM_START_MS:g} ms and followed by {CURVE_POST_DELAY_MS:g} ms. Passes if "
+            "the spike count increases with the injected current (positive linear-fit slope, "
+            f"spike threshold {SPIKE_THRESHOLD_MV:g} mV)."
+        )
+
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -718,9 +828,12 @@ class FICurveTest(ValidationTest):
         amps, spike_counts = compute_plot_fi_curve(
             Cell.from_template_parameters(template_params),
             rheobase=rheobase,
-            max_current=3.0 * rheobase,
-            threshold_voltage=-40.0,
-            nb_bins=5,
+            max_current=FI_MAX_RHEOBASE_FACTOR * rheobase,
+            stim_start=CURVE_STIM_START_MS,
+            duration=CURVE_DURATION_MS,
+            post_delay=CURVE_POST_DELAY_MS,
+            threshold_voltage=SPIKE_THRESHOLD_MV,
+            nb_bins=CURVE_NB_BINS,
             show_figure=False,
             save_figure=True,
             output_dir=out_dir,

@@ -14,7 +14,7 @@ import logging
 import math
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from contextlib import chdir
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -35,6 +35,7 @@ from obi_one.scientific.validations.memodel.config import (
     SimulatorConfig,
     extract_simulator_config_from_hoc,
 )
+from obi_one.scientific.validations.memodel.descriptions import describe_test
 from obi_one.scientific.validations.memodel.profiles import (
     MEModelValidationProfile,
     get_validation_profile,
@@ -241,6 +242,8 @@ class MEModelWorkflowContext(WorkflowContext):
         rin: The input resistance in MOhm, when required by a profile.
         out_dir: Output directory for figures and artifacts.
         simulator_config: Global NEURON conditions applied for this run.
+        descriptions: Plain-text description of each test run, keyed by test name.
+            Filled by run() and registered with the results.
 
     Pre-held profiles apply the cell's calibrated holding current via
     ``add_hypamp`` (from ``template_params.emodel_properties.holding_current``),
@@ -252,6 +255,7 @@ class MEModelWorkflowContext(WorkflowContext):
     rin: float | None = None
     out_dir: Path | None = None
     simulator_config: SimulatorConfig | None = None
+    descriptions: dict[str, str] = field(default_factory=dict)
 
 
 class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
@@ -435,6 +439,7 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         tests = self.get_tests(context)
         if context.rheobase is None or context.out_dir is None:
             raise InvalidValidationContextError
+        context.descriptions = {test.name: describe_test(test) for test in tests}
 
         # Multiprocessing tests (IV/FI curves) spawn workers that reinitialize
         # NEURON and auto-load the compiled mechanisms from the current working
@@ -478,4 +483,5 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
             validated_entity_id=context.entity_id,
             out_dir=context.out_dir,
             overwrite_existing=overwrite_existing,
+            descriptions=context.descriptions,
         )

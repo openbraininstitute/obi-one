@@ -542,6 +542,7 @@ class TestMEModelValidationWorkflow:
         context = MEModelWorkflowContext(
             entity_id="ent-123",
             out_dir=tmp_path,
+            descriptions={"X": "Injects nothing."},
         )
         test_results = [TestResult(name="X", passed=True, details="y")]
         client = MagicMock()
@@ -554,7 +555,26 @@ class TestMEModelValidationWorkflow:
             validated_entity_id="ent-123",
             out_dir=tmp_path,
             overwrite_existing=False,
+            descriptions={"X": "Injects nothing."},
         )
+
+    def test_run_records_a_description_per_test(self, tmp_path):
+        described = MagicMock()
+        described.name = "Described"
+        described.description = "Injects a step."
+        described.run.return_value = TestResult(name="Described", passed=True, details="")
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path)
+        context = MEModelWorkflowContext(
+            entity_id="test-id",
+            template_params="tparams",
+            rheobase=0.5,
+            out_dir=tmp_path,
+        )
+
+        with patch.object(workflow, "get_tests", return_value=[described]):
+            workflow.run(context)
+
+        assert context.descriptions == {"Described": "Injects a step."}
 
 
 class TestSelectMorphologyPath:
