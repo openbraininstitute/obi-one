@@ -15,7 +15,9 @@ from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
-from obi_one.core.block_reference import resolve_block_references
+from obi_one.core.block_reference import BlockReference, resolve_block_references
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
@@ -35,8 +37,14 @@ from obi_one.scientific.library.neuronal_manipulation_properties import (
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
+from obi_one.scientific.tasks.generate_simulations.config.base import BaseSimulationScanConfig
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NEURONSimulationNeuronSetUnion,
+)
+from obi_one.scientific.unions_and_references.neuron_sets import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 
 L = logging.getLogger(__name__)
@@ -51,6 +59,63 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 NEURON_SETS_DICT_NAME = "neuron_sets"
 # A neuron set sent on its own has no name; a combined one needs a name to check for loops.
 UNNAMED_NEURON_SET_NAME = "neuron_set"
+
+# An unset operand of a combined neuron set (a row the user has not filled yet) means the default
+# set for the combined set's population type: the simulation fills it in
+# (``_ensure_combined_neuron_set_has_references``). The same names and types are used here, so
+# the variables listed are those of the neurons the simulation will target.
+SIMULATION_DEFAULTS = BaseSimulationScanConfig
+DEFAULT_OPERANDS: dict[
+    NeuronSetPopulationType, tuple[str, type[NeuronSet], type[BlockReference]]
+] = {
+    NeuronSetPopulationType.VIRTUAL: (
+        SIMULATION_DEFAULTS.default_virtual_node_set_name,
+        SIMULATION_DEFAULTS.default_virtual_neuron_set_type,
+        VirtualNeuronSetReference,
+    ),
+    NeuronSetPopulationType.POINT: (
+        SIMULATION_DEFAULTS.default_point_node_set_name,
+        SIMULATION_DEFAULTS.default_point_neuron_set_type,
+        PointNeuronSetReference,
+    ),
+}
+DEFAULT_BIOPHYSICAL_OPERAND = (
+    SIMULATION_DEFAULTS.default_node_set_name,
+    SIMULATION_DEFAULTS.default_neuron_set_type,
+    BiophysicalNeuronSetReference,
+)
+
+
+def fill_unset_operands(
+    neuron_set: CombinedBaseNeuronSet, neuron_sets: dict[str, NEURONSimulationNeuronSetUnion]
+) -> None:
+    """Point the unset base and rows of ``neuron_set`` at the default set, as the simulation does.
+
+    The default set is added to ``neuron_sets`` under the simulation's name for it.
+
+    Raises:
+        ValueError: ``neuron_sets`` already holds another kind of set under that name.
+    """
+    operands = [neuron_set.base_neuron_set, *(ref for ref, _ in neuron_set.combined_with)]
+    if all(operand is not None for operand in operands):
+        return
+    name, set_type, reference_type = DEFAULT_OPERANDS.get(
+        neuron_set.get_neuron_set_population_type(), DEFAULT_BIOPHYSICAL_OPERAND
+    )
+    # The default types are members of the union; the table's type[NeuronSet] hides that.
+    if not isinstance(neuron_sets.setdefault(name, set_type()), set_type):  # ty:ignore[no-matching-overload]
+        msg = f"Neuron set name '{name}' is kept for the default {set_type.__name__} set."
+        # ValueError: raised inside a model validator, only it becomes a 422 ValidationError.
+        raise ValueError(msg)  # ruff: ignore[type-check-without-type-error]
+
+    def default() -> BlockReference:
+        return reference_type(block_dict_name=NEURON_SETS_DICT_NAME, block_name=name)
+
+    if neuron_set.base_neuron_set is None:
+        neuron_set.base_neuron_set = default()
+    neuron_set.combined_with = tuple(
+        (default() if ref is None else ref, op) for ref, op in neuron_set.combined_with
+    )
 
 
 class NeuronSetRequest(BaseModel):
@@ -72,6 +137,8 @@ class NeuronSetRequest(BaseModel):
         if self.neuron_set is not None:
             if not self.neuron_set.has_block_name():
                 self.neuron_set.set_block_name(UNNAMED_NEURON_SET_NAME)
+            if isinstance(self.neuron_set, CombinedBaseNeuronSet):
+                fill_unset_operands(self.neuron_set, self.neuron_sets)
             resolve_block_references(self.neuron_set, self.neuron_sets, NEURON_SETS_DICT_NAME)
         return self
 

@@ -540,3 +540,36 @@ def test_combined_neuron_set_without_its_named_sets_is_a_validation_error():
         ValidationError, match="Block 'first' in 'neuron_sets' is referenced but was not sent"
     ):
         circuit_properties.NodeIdsRequest.model_validate(payload)
+
+
+def test_an_unset_combine_row_is_the_default_set_as_in_the_simulation():
+    """Was a 500: AttributeError 'NoneType' object has no attribute 'get_populations'."""
+    payload = {
+        "neuron_set": {
+            "type": "BiophysicalCombinedNeuronSet",
+            "base_neuron_set": None,
+            "combined_with": [[_reference("second"), "union"], [None, "intersect"]],
+        },
+        "neuron_sets": {"second": _id_set(2, 3)},
+    }
+    request = circuit_properties.NodeIdsRequest.model_validate(payload)
+    circuit = Circuit(name="N_10", path=N_10_CIRCUIT_CONFIG)
+
+    # All biophysical neurons, | (2, 3), & all biophysical neurons.
+    assert request.neuron_set.get_neuron_ids(circuit) == {"S1nonbarrel_neurons": list(range(10))}
+    default_name = circuit_properties.SIMULATION_DEFAULTS.default_node_set_name
+    assert request.neuron_set.base_neuron_set.block_name == default_name
+    assert request.neuron_set.combined_with[1][0].block_name == default_name
+
+
+def test_the_default_set_name_cannot_hold_another_set():
+    default_name = circuit_properties.SIMULATION_DEFAULTS.default_node_set_name
+    payload = {
+        "neuron_set": {
+            "type": "BiophysicalCombinedNeuronSet",
+            "base_neuron_set": None,
+        },
+        "neuron_sets": {default_name: _id_set(1)},
+    }
+    with pytest.raises(ValidationError, match="is kept for the default AllBiophysicalNeurons"):
+        circuit_properties.NodeIdsRequest.model_validate(payload)
