@@ -585,7 +585,7 @@ def run_circuit_folder_compression(
         COMPRESSED_CIRCUIT_FORMAT,
         COMPRESSED_CIRCUIT_NAME,
     )
-    from obi_one.scientific.tasks.folder_compression import (  # ruff: ignore[import-outside-top-level]
+    from obi_one.scientific.tasks.folder_compression.config import (  # ruff: ignore[import-outside-top-level]
         FolderCompressionScanConfig,
     )
 

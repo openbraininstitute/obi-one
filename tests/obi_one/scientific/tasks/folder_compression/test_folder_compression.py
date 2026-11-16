@@ -9,7 +9,7 @@ from obi_one.db_sdk.registration.circuit.assets import (
     COMPRESSED_CIRCUIT_FORMAT,
     COMPRESSED_CIRCUIT_NAME,
 )
-from obi_one.scientific.tasks.folder_compression import (
+from obi_one.scientific.tasks.folder_compression.config import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
 )

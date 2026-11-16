@@ -220,9 +220,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.folder_compression: TaskSpec(
-        task_ref=(f"{_TASKS}.folder_compression", "FolderCompressionTask"),
-        single_config_ref=(f"{_TASKS}.folder_compression", "FolderCompressionSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.folder_compression", "FolderCompressionScanConfig"),
+        task_ref=(f"{_TASKS}.folder_compression.task", "FolderCompressionTask"),
+        single_config_ref=(
+            f"{_TASKS}.folder_compression.config",
+            "FolderCompressionSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.folder_compression.config",
+            "FolderCompressionScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.ion_channel_fitting: TaskSpec(
