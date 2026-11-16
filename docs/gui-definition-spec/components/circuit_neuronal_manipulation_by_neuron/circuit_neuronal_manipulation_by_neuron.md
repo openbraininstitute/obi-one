@@ -34,6 +34,8 @@ The variable picker is populated from the neuronal manipulation properties endpo
 The endpoint requires the selected `neuron_set` as input to determine which
 variables are available (intersection across all emodels in the selection).
 
+A combined neuron set references other neuron sets by name (`{"block_name": ..., "block_dict_name": "neuron_sets"}`), so send the config's `neuron_sets` with it: `{"entity_id": ..., "neuron_set": <the combined set>, "neuron_sets": <the config's neuron_sets>}`. Without them the request is rejected (422) naming the first set that was not sent.
+
 ### Example Pydantic implementation
 
 ```py

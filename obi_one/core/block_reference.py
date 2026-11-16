@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Iterable, Iterator, Mapping
 from typing import Annotated, Any, ClassVar, get_args
 
 from pydantic import Discriminator, Field
@@ -69,3 +70,44 @@ class BlockReference(OBIBaseModel, abc.ABC):
         # ``ScanConfig._correct_reference_type`` (obi_one/core/scan_config.py), which heals both
         # new payloads and already-stored configs.
         self._block = value
+
+
+def _references_in(values: Iterable[object]) -> Iterator[BlockReference]:
+    """The block references in ``values``, including those inside tuples and lists."""
+    for value in values:
+        if isinstance(value, BlockReference):
+            yield value
+        elif isinstance(value, (tuple, list)):
+            yield from _references_in(value)
+
+
+def resolve_block_references(
+    block: Block, blocks: Mapping[str, Block], block_dict_name: str
+) -> None:
+    """Name ``blocks`` by their keys and point the references reached from ``block`` at them.
+
+    What a ScanConfig does for its own dictionaries, for a block used outside one: an
+    endpoint given a combined neuron set plus the named neuron sets it references. Only the
+    blocks reached from ``block`` are resolved, so an unrelated broken entry does not fail.
+
+    Raises:
+        ValueError: A reference names another dictionary or a block not in ``blocks``.
+    """
+    for name, named_block in blocks.items():
+        named_block.set_block_name(name)
+    pending, seen = [block], set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        for reference in _references_in(current.__dict__.values()):
+            target = blocks.get(reference.block_name)
+            if reference.block_dict_name != block_dict_name or target is None:
+                msg = (
+                    f"Block '{reference.block_name}' in '{reference.block_dict_name}' is "
+                    f"referenced but was not sent: add it to '{block_dict_name}'."
+                )
+                raise ValueError(msg)
+            reference.block = target
+            pending.append(target)

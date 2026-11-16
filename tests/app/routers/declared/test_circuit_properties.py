@@ -2,16 +2,21 @@ from types import SimpleNamespace
 
 import entitysdk
 import pytest
+from pydantic import ValidationError
 
 from app.endpoints import circuit_properties
 from obi_one.scientific.blocks.neuron_sets.predefined import (
     BiophysicalPopulationPredefinedNeuronSet,
 )
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     CircuitUsability,
 )
-from obi_one.scientific.library.neuronal_manipulation_properties import CircuitListingError
+from obi_one.scientific.library.neuronal_manipulation_properties import (
+    CircuitListingError,
+    get_expanded_neuron_ids,
+)
 
 
 def _circuit_metrics():
@@ -472,3 +477,66 @@ def test_manipulation_properties_endpoint_passes_the_circuit_files_setting(monke
         request=request, db_client=SimpleNamespace()
     )
     assert received["from_circuit_files"] is enabled
+
+
+N_10_CIRCUIT_CONFIG = "examples/data/tiny_circuits/N_10__top_nodes_dim6/circuit_config.json"
+
+
+def _id_set(*ids):
+    return {
+        "type": "BiophysicalPopulationIDNeuronSet",
+        "population": "S1nonbarrel_neurons",
+        "neuron_ids": {"elements": list(ids)},
+    }
+
+
+def _reference(name):
+    return {"block_name": name, "block_dict_name": "neuron_sets"}
+
+
+# What the UI sends: the combined set, plus the config's named sets it references.
+COMBINED_NEURON_SET_PAYLOAD = {
+    "neuron_set": {
+        "type": "BiophysicalCombinedNeuronSet",
+        "base_neuron_set": _reference("first"),
+        "combined_with": [
+            [_reference("second"), "union"],
+            [_reference("third"), "intersect"],
+        ],
+    },
+    "neuron_sets": {
+        "first": _id_set(0, 1, 2),
+        "second": _id_set(2, 3),
+        "third": _id_set(1, 2, 3, 4),
+        "unrelated": {
+            "type": "BiophysicalCombinedNeuronSet",
+            "base_neuron_set": _reference("not_sent"),
+        },
+    },
+}
+
+
+@pytest.mark.parametrize(
+    ("request_class", "extra"),
+    [
+        (circuit_properties.NodeIdsRequest, {}),
+        (circuit_properties.CircuitNeuronalManipulationPropertiesRequest, {"entity_id": "c"}),
+    ],
+)
+def test_combined_neuron_set_resolves_with_the_named_sets(request_class, extra):
+    """Was a 400 'Block name must be set before checking combined depth.'"""
+    request = request_class.model_validate(COMBINED_NEURON_SET_PAYLOAD | extra)
+    circuit = Circuit(name="N_10", path=N_10_CIRCUIT_CONFIG)
+
+    # (0, 1, 2) | (2, 3), then & (1, 2, 3, 4); through the endpoints' sweep expansion too.
+    expected = {"S1nonbarrel_neurons": [1, 2, 3]}
+    assert request.neuron_set.get_neuron_ids(circuit) == expected
+    assert get_expanded_neuron_ids(request.neuron_set, circuit) == expected
+
+
+def test_combined_neuron_set_without_its_named_sets_is_a_validation_error():
+    payload = {"neuron_set": COMBINED_NEURON_SET_PAYLOAD["neuron_set"]}
+    with pytest.raises(
+        ValidationError, match="Block 'first' in 'neuron_sets' is referenced but was not sent"
+    ):
+        circuit_properties.NodeIdsRequest.model_validate(payload)

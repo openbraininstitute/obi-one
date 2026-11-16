@@ -1,6 +1,6 @@
 import logging
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
 from entitysdk.client import Client
@@ -9,12 +9,13 @@ from entitysdk.models import MEModel
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import CircuitScale
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
+from obi_one.core.block_reference import resolve_block_references
 from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
@@ -47,7 +48,35 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 # --- Schemas for neuronal manipulation endpoints ---
 
 
-class NodeIdsRequest(BaseModel):
+NEURON_SETS_DICT_NAME = "neuron_sets"
+# A neuron set sent on its own has no name; a combined one needs a name to check for loops.
+UNNAMED_NEURON_SET_NAME = "neuron_set"
+
+
+class NeuronSetRequest(BaseModel):
+    """A neuron set, with the named neuron sets it references (for a combined neuron set)."""
+
+    neuron_set: NEURONSimulationNeuronSetUnion | None = None
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
+        default_factory=dict,
+        description=(
+            "Neuron sets that `neuron_set` references by name, as in a scan config's "
+            "`neuron_sets` (`block_dict_name` 'neuron_sets'). Needed for a combined neuron "
+            "set; other neuron sets do not reference any."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def resolve_neuron_set_references(self) -> Self:
+        """Point the references of ``neuron_set`` at ``neuron_sets``, as a scan config does."""
+        if self.neuron_set is not None:
+            if not self.neuron_set.has_block_name():
+                self.neuron_set.set_block_name(UNNAMED_NEURON_SET_NAME)
+            resolve_block_references(self.neuron_set, self.neuron_sets, NEURON_SETS_DICT_NAME)
+        return self
+
+
+class NodeIdsRequest(NeuronSetRequest):
     """Request body for resolving a neuron set to node IDs."""
 
     neuron_set: NEURONSimulationNeuronSetUnion
@@ -59,11 +88,10 @@ class NodeIdsResponse(BaseModel):
     node_ids_per_population: dict[str, list[int]]
 
 
-class CircuitNeuronalManipulationPropertiesRequest(BaseModel):
+class CircuitNeuronalManipulationPropertiesRequest(NeuronSetRequest):
     """Request body for Circuit neuronal manipulation properties."""
 
     entity_id: str
-    neuron_set: NEURONSimulationNeuronSetUnion | None = None
 
 
 class MemodelNeuronalManipulationPropertiesRequest(BaseModel):
@@ -352,7 +380,8 @@ def mapped_circuit_properties_endpoint(
     description="Returns the node IDs for a given neuron set selection in a circuit. "
     "Swept (list-valued) fields of the neuron set are expanded and the resulting "
     "node IDs are unioned per population. Only top-level fields can be swept: a list "
-    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400.",
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400. "
+    "A combined neuron set references other neuron sets by name: send them in `neuron_sets`.",
 )
 def neuron_set_node_ids(
     circuit_id: str,
@@ -389,6 +418,7 @@ def neuron_set_node_ids(
     "Swept (list-valued) fields of the neuron set are expanded and the resulting "
     "node IDs are unioned per population. Only top-level fields can be swept: a list "
     "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400. "
+    "A combined neuron set references other neuron sets by name: send them in `neuron_sets`. "
     "MEModel entities should use /memodel-neuronal-manipulation-properties instead.",
 )
 def neuronal_manipulation_properties_endpoint_by_neuron_set(
