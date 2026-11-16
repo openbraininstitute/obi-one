@@ -217,9 +217,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.ion_channel_fitting: TaskSpec(
-        task_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingTask"),
-        single_config_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingScanConfig"),
+        task_ref=(f"{_TASKS}.ion_channel_modeling.task", "IonChannelFittingTask"),
+        single_config_ref=(
+            f"{_TASKS}.ion_channel_modeling.config",
+            "IonChannelFittingSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.ion_channel_modeling.config",
+            "IonChannelFittingScanConfig",
+        ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.ion_channel_modeling__campaign,
         campaign_generation_task_activity_type=TaskActivityType.ion_channel_modeling__config_generation,

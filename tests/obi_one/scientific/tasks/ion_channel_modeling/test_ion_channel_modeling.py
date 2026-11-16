@@ -15,13 +15,16 @@ from obi_one.db_sdk import db_sdk
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_scan_config,
 )
-from obi_one.scientific.tasks import ion_channel_modeling
-from obi_one.scientific.tasks.ion_channel_modeling import (
+from obi_one.scientific.tasks.ion_channel_modeling import task as ion_channel_modeling
+from obi_one.scientific.tasks.ion_channel_modeling.config import (
     HodgkinHuxleyIonChannelModel,
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
-    IonChannelFittingTask,
+    ResolvedModelProperties,
     neuron_safe_name,
+)
+from obi_one.scientific.tasks.ion_channel_modeling.task import (
+    IonChannelFittingTask,
     plot_fitted_model,
     plot_in_fresh_process,
 )
@@ -356,7 +359,7 @@ def _region():
 
 def _save(tmp_path, db_client, *, subject, species):
     task = _task(tmp_path)
-    properties = ion_channel_modeling.ResolvedModelProperties(
+    properties = ResolvedModelProperties(
         ion_channel_name="Kv6_2",
         temperature=25.0,
         species=species,
