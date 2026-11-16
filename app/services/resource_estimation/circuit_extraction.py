@@ -72,6 +72,23 @@ def get_required_extra_storage_space(disk_space_gb_required: float) -> int | Non
     raise ValueError(msg)
 
 
+def estimate_extraction_resources(input_synapses: float) -> tuple[float, float]:
+    """Memory (GB) and time (h) to extract a sub-circuit from a parent with input_synapses."""
+    memory_gb = 1.2 * min(17, 2 + 0.04e-6 * input_synapses)
+    time_h = 2 * 0.4e-9 * input_synapses
+    return memory_gb, time_h
+
+
+def estimate_registration_resources(output_synapses: float) -> tuple[float, float]:
+    """Memory (GB) and time (h) to register a circuit with output_synapses.
+
+    Includes its validation and the generation of additional assets.
+    """
+    memory_gb = 1.2 * (2 + 0.044e-6 * output_synapses)
+    time_h = 2 * 10.5e-9 * output_synapses
+    return memory_gb, time_h
+
+
 def estimate_task_resources(  # ruff: ignore[too-many-locals]
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
@@ -147,8 +164,12 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
     output_size_synapses = input_size_synapses * output_fraction
 
-    # Estimate memory based on the number of input synapses (saturates for large circuits)
-    mem_gb_required = 1.2 * min(24, 2 + 0.04e-6 * input_size_synapses)
+    # Extraction and registration run one after the other
+    extraction_mem_gb, extraction_time_h = estimate_extraction_resources(input_size_synapses)
+    registration_mem_gb, registration_time_h = estimate_registration_resources(output_size_synapses)
+
+    # Estimate memory
+    mem_gb_required = max(extraction_mem_gb, registration_mem_gb)
     hint = (
         "Extract fewer neurons, or turn off including virtual and/or creating external populations."
         if do_virtual or create_external
@@ -167,10 +188,8 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
 
-    # Estimate time limit based on the number of input and output synapses
-    time_h = np.ceil(
-        1 + 2 * (0.4e-9 * input_size_synapses + 10.5e-9 * output_size_synapses)
-    ).astype(int)
+    # Estimate time limit
+    time_h = math.ceil(1 + extraction_time_h + registration_time_h)
     if time_h > MAX_TIME_LIMIT_H:
         msg = (
             f"Extracting {input_size_neurons:,} neurons needs about {time_h} hours, more than the"

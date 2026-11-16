@@ -208,8 +208,12 @@ def _run_estimate_task_resources(
 
 # Formulas in estimate_task_resources (synapses of the input, input_synapses, as counted below):
 #   input_synapses = sbio + (svirt if do_virtual) + (sext if create_external)
-#   mem_gb_required = 1.2 * min(24, 2 + 0.04e-6 * input_synapses)
-#   time_h = ceil(1 + 2 * (0.4e-9 * input_synapses + 10.5e-9 * output_synapses))
+#   extraction:   mem = 1.2 * min(17, 2 + 0.04e-6 * input_synapses)
+#                 time = 2 * 0.4e-9 * input_synapses
+#   registration: mem = 1.2 * (2 + 0.044e-6 * output_synapses)
+#                 time = 2 * 10.5e-9 * output_synapses
+#   mem_gb_required = max(extraction mem, registration mem)
+#   time_h = ceil(1 + extraction time + registration time)
 #   disk_gb = 1 + output_synapses * 3.9e-7
 @pytest.mark.parametrize(
     ("nbio", "nvirt", "sbio", "svirt", "do_virtual", "exp_cores", "exp_mem", "exp_time"),
@@ -220,16 +224,16 @@ def _run_estimate_task_resources(
         # Small circuit: 50k bio synapses, do_virtual=False (virtual synapses ignored)
         (1000, 500, 50_000, 20_000, False, 1, 4, "02:00"),
         # Medium circuit: 100M + 50M synapses, do_virtual=True
-        #   mem=9.6 -> (2,12), time=ceil(1 + 2 * (0.06 + 1.575))=5
+        #   mem=max(9.6, 10.3) -> (2,12), time=ceil(1 + 2 * (0.06 + 1.575))=5
         (100_000, 50_000, 100_000_000, 50_000_000, True, 2, 12, "05:00"),
         # Medium circuit: 100M bio synapses, do_virtual=False
-        #   mem=7.2 -> (1,8), time=ceil(1 + 2 * (0.04 + 1.05))=4
+        #   mem=max(7.2, 7.7) -> (1,8), time=ceil(1 + 2 * (0.04 + 1.05))=4
         (100_000, 50_000, 100_000_000, 50_000_000, False, 1, 8, "04:00"),
         # Large circuit: 300M + 100M synapses, do_virtual=True
-        #   mem=21.6 -> (4,24), time=ceil(1 + 2 * (0.16 + 4.2))=10
+        #   mem=max(20.4, 23.5) -> (4,24), time=ceil(1 + 2 * (0.16 + 4.2))=10
         (500_000, 200_000, 300_000_000, 100_000_000, True, 4, 24, "10:00"),
         # Large circuit: 300M bio synapses, do_virtual=False
-        #   mem=16.8 -> (4,24), time=ceil(1 + 2 * (0.12 + 3.15))=8
+        #   mem=max(16.8, 18.2) -> (4,24), time=ceil(1 + 2 * (0.12 + 3.15))=8
         (500_000, 200_000, 300_000_000, 100_000_000, False, 4, 24, "08:00"),
     ],
     ids=[
@@ -311,17 +315,14 @@ def test_estimate_task_resources_disk_space_limit(db_client, sbio, svirt, do_vir
 
 
 def test_estimate_task_resources_memory_limit(db_client):
-    """The memory saturates with the circuit size, so test the error with an unavailable machine."""
-    metrics = _make_circuit_metrics(1000, 0, 1_000_000_000, 0)
-    with (
-        patch.object(test_module, "get_required_cpu_memory_combo", side_effect=ValueError),
-        pytest.raises(ApiError) as exc_info,
-    ):
+    """Registering 2.5G output synapses needs 1.2 * (2 + 0.044e-6 * 2.5e9) = 134 GB > 120 GB."""
+    metrics = _make_circuit_metrics(1000, 0, 2_500_000_000, 0)
+    with pytest.raises(ApiError) as exc_info:
         _run_estimate_task_resources(db_client, metrics, do_virtual=False, create_external=False)
     assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert exc_info.value.message == (
-        "Extracting 1,000 neurons needs about 29 GB of memory, more than the largest"
+        "Extracting 1,000 neurons needs about 134 GB of memory, more than the largest"
         " machine has (120 GB). Extract fewer neurons."
     )
 
@@ -495,3 +496,14 @@ def test_estimate_task_resources_external_populations_only_count_with_create_ext
     )
     assert result.memory == exp_mem
     assert result.model_dump(mode="json")["ephemeral_storage"] == exp_storage
+
+
+def test_estimate_extraction_resources():
+    # Memory saturates at 1.2 * 17 GB for large parents
+    assert test_module.estimate_extraction_resources(100e6) == pytest.approx((1.2 * 6, 0.08))
+    assert test_module.estimate_extraction_resources(10e9) == pytest.approx((1.2 * 17, 8.0))
+
+
+def test_estimate_registration_resources():
+    assert test_module.estimate_registration_resources(0) == pytest.approx((1.2 * 2, 0))
+    assert test_module.estimate_registration_resources(500e6) == pytest.approx((1.2 * 24, 10.5))
