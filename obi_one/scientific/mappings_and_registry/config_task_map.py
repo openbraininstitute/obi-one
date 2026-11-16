@@ -208,9 +208,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.electrophysiology_metrics: TaskSpec(
-        task_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsTask"),
-        single_config_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsScanConfig"),
+        task_ref=(f"{_TASKS}.ephys_extraction.task", "ElectrophysiologyMetricsTask"),
+        single_config_ref=(
+            f"{_TASKS}.ephys_extraction.config",
+            "ElectrophysiologyMetricsSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.ephys_extraction.config",
+            "ElectrophysiologyMetricsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.folder_compression: TaskSpec(
