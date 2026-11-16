@@ -327,6 +327,48 @@ def add_normalized_section_offset(
     dataframe[_SEC_LOC] = sec_o / sec_l
 
 
+def generate_locations_in_path_distance_band(
+    m: morphio.Morphology,
+    n_locations: int,
+    min_path_distance: float,
+    max_path_distance: float,
+    lst_section_types: list | None = None,
+    seed: int | None = None,
+) -> pd.DataFrame:
+    """Uniformly samples locations whose soma path distance lies in a band, one group each."""
+    if seed is not None:
+        np.random.seed(seed)  # ruff: ignore[numpy-legacy-random]
+    path_distance_calculator = OptimizedMorphologyPathDistanceCalculator(m)
+    soma = pd.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0]})
+    locs = path_distance_all_segments_from(
+        soma, m, path_distance_calculator, 0.0, lst_sec_types=lst_section_types
+    ).loc[0]
+    # Soma path distance grows linearly along a segment from its start.
+    # float64 so the sampling weights sum to 1 within numpy's tolerance.
+    seg_start = locs[_SOM_PAD].astype(float)
+    seg_len = locs[_SEG_LEN].astype(float)
+    cands = pd.DataFrame(
+        {
+            _SEG_MIN: (min_path_distance - seg_start).clip(0, seg_len),
+            _SEG_MAX: (max_path_distance - seg_start).clip(0, seg_len),
+        }
+    )
+    cands = cands.loc[cands[_SEG_MAX] > cands[_SEG_MIN]]
+    if cands.empty:
+        msg = (
+            f"No neurite of the selected section types lies between {min_path_distance} and "
+            f"{max_path_distance} um soma path distance."
+        )
+        raise ValueError(msg)
+    cands = pd.concat([cands], keys=[0], names=[_CEN_IDX])
+    locations = select_places_from_candidate_list(n_locations, cands, locs).droplevel(0)
+    locations[_SOM_PAD] += locations[_SEG_OFF]
+    locations = locations[[_SEG_ID, _SEC_ID, _SEC_TYP, _SEG_OFF, _SOM_PAD]].reset_index(drop=True)
+    locations[_PRE_IDX] = np.arange(len(locations))
+    add_normalized_section_offset(locations, m, path_distance_calculator)
+    return locations
+
+
 def generate_neurite_locations_on(
     m: morphio.Morphology,
     n_centers: int,

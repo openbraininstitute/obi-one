@@ -7,6 +7,8 @@ structure against a real morphology, independent of the internal implementation,
 rewrite that changes the table is caught here.
 """
 
+from itertools import pairwise
+
 import morphio
 import numpy as np
 import pandas as pd
@@ -14,10 +16,13 @@ import pytest
 from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 
 from obi_one.scientific.library.morphology_locations import (
+    _PRE_IDX,
     _SEC_ID,
     _SEC_TYP,
     _SEG_ID,
     _SEG_LEN,
+    _SOM_PAD,
+    generate_locations_in_path_distance_band,
     path_distance_all_segments_from,
 )
 
@@ -90,3 +95,54 @@ def test_no_matching_section_types_raises(morphology):
             OptimizedMorphologyPathDistanceCalculator(morphology),
             lst_sec_types=[999],
         )
+
+
+def test_path_distance_band_locations_stay_in_band(morphology):
+    """Every location is inside the band and is its own group."""
+    result = generate_locations_in_path_distance_band(
+        morphology, 2000, 100.0, 200.0, lst_section_types=[3, 4], seed=0
+    )
+    assert len(result) == 2000
+    assert result[_SOM_PAD].between(100.0, 200.0).all()
+    assert set(result[_SEC_TYP].unique()) <= {3, 4}
+    assert result[_PRE_IDX].nunique() == 2000
+    calculator = OptimizedMorphologyPathDistanceCalculator(morphology)
+    expected = calculator.path_distances(
+        _soma_ref(),
+        result,
+        str_section_id=_SEC_ID,
+        str_segment_id=_SEG_ID,
+        str_offset="segment_offset",
+    )[0]
+    np.testing.assert_allclose(result[_SOM_PAD], expected, atol=1e-3)
+
+
+def test_path_distance_band_without_neurite_raises(morphology):
+    with pytest.raises(ValueError, match="No neurite of the selected section types"):
+        generate_locations_in_path_distance_band(
+            morphology, 5, 5000.0, 5100.0, lst_section_types=[3, 4], seed=0
+        )
+
+
+def test_path_distance_band_samples_proportional_to_neurite_length(morphology):
+    """Each part of the band gets a share of locations equal to its share of neurite length."""
+    edges = np.arange(100.0, 201.0, 25.0)
+    calculator = OptimizedMorphologyPathDistanceCalculator(morphology)
+    segments = path_distance_all_segments_from(
+        _soma_ref(), morphology, calculator, 0.0, lst_sec_types=[3, 4]
+    ).loc[0]
+    start = segments[_SOM_PAD].to_numpy(float)
+    end = start + segments[_SEG_LEN].to_numpy(float)
+    length_per_bin = np.array(
+        [
+            np.clip(np.minimum(end, hi) - np.maximum(start, lo), 0, None).sum()
+            for lo, hi in pairwise(edges)
+        ]
+    )
+    result = generate_locations_in_path_distance_band(
+        morphology, 50_000, edges[0], edges[-1], lst_section_types=[3, 4], seed=0
+    )
+    sampled_per_bin = np.histogram(result[_SOM_PAD], bins=edges)[0]
+    np.testing.assert_allclose(
+        sampled_per_bin / len(result), length_per_bin / length_per_bin.sum(), atol=0.01
+    )
