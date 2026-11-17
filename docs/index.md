@@ -107,6 +107,8 @@ make install-brian2
 make install-all
 ```
 
+Circuit extraction execution needs the optional `circuit-extraction` extra (`brainbuilder`); config generation and service submission do not. Launch-system jobs install it via `launch_scripts/launch_task_for_single_config_asset/dependencies/circuit_extraction.txt`.
+
 ## Technical Overview / Glossary
 
 The package is split into **core/** and **scientific/** code.
