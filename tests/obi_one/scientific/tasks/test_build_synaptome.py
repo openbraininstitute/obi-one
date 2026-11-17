@@ -44,11 +44,13 @@ from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
 )
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
 from obi_one.scientific.library.morphology_locations import _PRE_IDX
-from obi_one.scientific.tasks.build_synaptome import (
+from obi_one.scientific.tasks.build_synaptome.blocks import SynapticModelPlacer
+from obi_one.scientific.tasks.build_synaptome.config import (
     MEModelSynapticModelPlacementScanConfig,
     MEModelSynapticModelPlacementSingleConfig,
+)
+from obi_one.scientific.tasks.build_synaptome.task import (
     MEModelSynapticModelPlacementTask,
-    SynapticModelPlacer,
     build_synaptome,
 )
 from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
@@ -363,11 +365,11 @@ def test_build_synaptome_task_registers_circuit_and_updates_activity(tmp_path, m
     get_activity = Mock(return_value=execution_activity)
     update_activity = Mock()
     monkeypatch.setattr(
-        "obi_one.scientific.tasks.build_synaptome.build_synaptome_artifact",
+        "obi_one.scientific.tasks.build_synaptome.task.build_synaptome_artifact",
         build,
     )
     monkeypatch.setattr(
-        "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_circuit",
+        "obi_one.scientific.tasks.build_synaptome.task.circuit_registration.register_circuit",
         register,
     )
     monkeypatch.setattr(MEModelSynapticModelPlacementTask, "_get_execution_activity", get_activity)
@@ -820,7 +822,7 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
         Mock(return_value=SimpleNamespace(id="activity-id")),
     )
     monkeypatch.setattr(
-        "obi_one.scientific.tasks.build_synaptome.build_synaptome_artifact",
+        "obi_one.scientific.tasks.build_synaptome.task.build_synaptome_artifact",
         Mock(
             return_value=BuildSynaptomeResult(
                 circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
@@ -832,7 +834,7 @@ def test_build_synaptome_task_rejects_missing_registered_circuit(tmp_path, monke
     )
     register = Mock(return_value=None)
     monkeypatch.setattr(
-        "obi_one.scientific.tasks.build_synaptome.circuit_registration.register_circuit",
+        "obi_one.scientific.tasks.build_synaptome.task.circuit_registration.register_circuit",
         register,
     )
 

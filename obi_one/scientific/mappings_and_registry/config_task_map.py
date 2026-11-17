@@ -363,12 +363,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.circuit_single_build: TaskSpec(
-        task_ref=(f"{_TASKS}.build_synaptome", "MEModelSynapticModelPlacementTask"),
+        task_ref=(f"{_TASKS}.build_synaptome.task", "MEModelSynapticModelPlacementTask"),
         single_config_ref=(
-            f"{_TASKS}.build_synaptome",
+            f"{_TASKS}.build_synaptome.config",
             "MEModelSynapticModelPlacementSingleConfig",
         ),
-        scan_config_ref=(f"{_TASKS}.build_synaptome", "MEModelSynapticModelPlacementScanConfig"),
+        scan_config_ref=(
+            f"{_TASKS}.build_synaptome.config",
+            "MEModelSynapticModelPlacementScanConfig",
+        ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.circuit_single_build__campaign,
         campaign_generation_task_activity_type=(

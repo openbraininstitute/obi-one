@@ -5,10 +5,10 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
 )
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
-from obi_one.scientific.tasks.build_synaptome import (
+from obi_one.scientific.tasks.build_synaptome.blocks import SynapticModelPlacer
+from obi_one.scientific.tasks.build_synaptome.config import (
     MEModelSynapticModelPlacementScanConfig,
     MEModelSynapticModelPlacementSingleConfig,
-    SynapticModelPlacer,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import (
     MorphologyLocationsReference,
