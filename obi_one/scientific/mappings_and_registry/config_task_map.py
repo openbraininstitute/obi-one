@@ -193,13 +193,16 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.connectivity_matrix_extraction: TaskSpec(
-        task_ref=(f"{_TASKS}.connectivity_matrix_extraction", "ConnectivityMatrixExtractionTask"),
+        task_ref=(
+            f"{_TASKS}.connectivity_matrix_extraction.task",
+            "ConnectivityMatrixExtractionTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.connectivity_matrix_extraction",
+            f"{_TASKS}.connectivity_matrix_extraction.config",
             "ConnectivityMatrixExtractionSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.connectivity_matrix_extraction",
+            f"{_TASKS}.connectivity_matrix_extraction.config",
             "ConnectivityMatrixExtractionScanConfig",
         ),
         asset_label=None,
