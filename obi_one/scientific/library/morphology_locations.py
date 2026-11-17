@@ -193,6 +193,44 @@ def candidate_segments_all_morphology(locs: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+# Centers are processed in batches so that memory does not grow with the number of centers.
+_CENTER_BATCH_SIZE = 100
+
+
+def _candidate_segments_for_batch(
+    ids_center: list,
+    first_center: int,
+    locs: pd.DataFrame,
+    max_dist: float,
+    m: morphio.Morphology,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
+    lst_sec_types: list | None,
+) -> pd.DataFrame:
+    """Candidate segments of a batch of centers, numbered from ``first_center``."""
+    loc_center = locs.loc[ids_center]
+    res_seg_start = path_distance_all_segments_from(
+        loc_center, m, path_distance_calculator, 0.0, lst_sec_types=lst_sec_types
+    ).rename(columns={_SOM_PAD: _SOM_PAD + "_start"})
+    res_seg_end = path_distance_all_segments_from(
+        loc_center, m, path_distance_calculator, 1.0, lst_sec_types=lst_sec_types
+    ).rename(columns={_SOM_PAD: _SOM_PAD + "_end"})
+
+    res = pd.concat([res_seg_start, res_seg_end[[_SOM_PAD + "_end"]]], axis=1)
+
+    valid = (res[_SOM_PAD + "_start"] < max_dist) | (res[_SOM_PAD + "_end"] < max_dist)
+    valid[list(enumerate(ids_center))] = True
+    cands = res.loc[valid]
+
+    intervals = min_max_offsets_in_segments(cands, max_dist)
+    for tpl in enumerate(ids_center):
+        intervals.loc[tpl] = min_max_offset_for_center_segment(res.loc[tpl], max_dist)
+    intervals.index = pd.MultiIndex.from_arrays(
+        [intervals.index.get_level_values(0) + first_center, intervals.index.get_level_values(1)],
+        names=intervals.index.names,
+    )
+    return intervals
+
+
 def candidate_segments_for_center(
     ids_center: list,
     locs: pd.DataFrame,
@@ -222,24 +260,19 @@ def candidate_segments_for_center(
         lst_sec_types (list, default=None): List of section types allowed. If None, then all \
             types are allowed.
     """
-    loc_center = locs.loc[ids_center]
-    res_seg_start = path_distance_all_segments_from(
-        loc_center, m, path_distance_calculator, 0.0, lst_sec_types=lst_sec_types
-    ).rename(columns={_SOM_PAD: _SOM_PAD + "_start"})
-    res_seg_end = path_distance_all_segments_from(
-        loc_center, m, path_distance_calculator, 1.0, lst_sec_types=lst_sec_types
-    ).rename(columns={_SOM_PAD: _SOM_PAD + "_end"})
-
-    res = pd.concat([res_seg_start, res_seg_end[[_SOM_PAD + "_end"]]], axis=1)
-
-    valid = (res[_SOM_PAD + "_start"] < max_dist) | (res[_SOM_PAD + "_end"] < max_dist)
-    valid[list(enumerate(ids_center))] = True
-    cands = res.loc[valid]
-
-    intervals = min_max_offsets_in_segments(cands, max_dist)
-    for tpl in enumerate(ids_center):
-        intervals.loc[tpl] = min_max_offset_for_center_segment(res.loc[tpl], max_dist)
-    return intervals
+    batches = [
+        _candidate_segments_for_batch(
+            ids_center[start : start + _CENTER_BATCH_SIZE],
+            start,
+            locs,
+            max_dist,
+            m,
+            path_distance_calculator,
+            lst_sec_types,
+        )
+        for start in range(0, len(ids_center), _CENTER_BATCH_SIZE)
+    ]
+    return pd.concat(batches)
 
 
 def select_places_from_candidate_list(

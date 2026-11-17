@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 
+import obi_one.scientific.library.morphology_locations as morphology_locations_module
 from obi_one.scientific.library.morphology_locations import (
     _SEC_ID,
     _SEC_TYP,
@@ -21,6 +22,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_MAX,
     _SEG_MIN,
     _SOM_PAD,
+    candidate_segments_for_center,
     find_normalized_interval_below_zero,
     min_max_offsets_in_segments,
     path_distance_all_segments_from,
@@ -124,3 +126,15 @@ def test_min_max_offsets_in_segments_match_the_scalar_interval():
     ]
     assert len(result) > 1000
     np.testing.assert_allclose(result[[_SEG_MIN, _SEG_MAX]].to_numpy(), expected)
+
+
+def test_candidate_segments_do_not_depend_on_the_center_batch_size(morphology, monkeypatch):
+    """Processing centers in several batches gives the same candidates as in one."""
+    calculator = OptimizedMorphologyPathDistanceCalculator(morphology)
+    segments = path_distance_all_segments_from(
+        _soma_ref(), morphology, calculator, lst_sec_types=[3, 4]
+    ).loc[0]
+    args = (list(segments.index[::7][:8]), segments, 50.0, morphology, calculator, [3, 4])
+    expected = candidate_segments_for_center(*args)
+    monkeypatch.setattr(morphology_locations_module, "_CENTER_BATCH_SIZE", 3)
+    pd.testing.assert_frame_equal(candidate_segments_for_center(*args), expected)
