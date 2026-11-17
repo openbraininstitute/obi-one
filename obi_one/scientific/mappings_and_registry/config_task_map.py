@@ -340,9 +340,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.morphology_metrics: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsTask"),
-        single_config_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsScanConfig"),
+        task_ref=(f"{_TASKS}.morphology_metrics.task", "MorphologyMetricsTask"),
+        single_config_ref=(
+            f"{_TASKS}.morphology_metrics.config",
+            "MorphologyMetricsSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.morphology_metrics.config",
+            "MorphologyMetricsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.circuit_simplification: TaskSpec(
