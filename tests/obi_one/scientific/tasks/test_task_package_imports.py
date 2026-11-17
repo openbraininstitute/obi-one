@@ -79,3 +79,15 @@ assert "obi_one.scientific.tasks.build_synaptome.task" not in sys.modules
         [sys.executable, "-c", script],
         check=True,
     )
+
+
+def test_folder_compression_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.folder_compression.config
+assert "obi_one.scientific.tasks.folder_compression.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
