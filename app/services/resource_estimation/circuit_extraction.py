@@ -29,6 +29,8 @@ CPU_MEMORY_COMBINATIONS: dict[int, set[int]] = {
 MAX_MEMORY_GB = max(max(memory) for memory in CPU_MEMORY_COMBINATIONS.values())
 DEFAULT_DISK_SPACE_LIMIT_GB = 20
 EXTRA_DISK_SPACE_LIMIT_GB = 200
+MAX_TIME_LIMIT_H = 24
+EXTERNAL_POPULATION_PREFIX = "external_"
 
 
 def get_required_cpu_memory_combo(
@@ -68,6 +70,23 @@ def get_required_extra_storage_space(disk_space_gb_required: float) -> int | Non
         f" available: {EXTRA_DISK_SPACE_LIMIT_GB:.1f} GB)!"
     )
     raise ValueError(msg)
+
+
+def estimate_extraction_resources(input_synapses: float) -> tuple[float, float]:
+    """Memory (GB) and time (h) to extract a sub-circuit from a parent with input_synapses."""
+    memory_gb = 1.2 * min(17, 2 + 0.04e-6 * input_synapses)
+    time_h = 2 * 0.4e-9 * input_synapses
+    return memory_gb, time_h
+
+
+def estimate_registration_resources(output_synapses: float) -> tuple[float, float]:
+    """Memory (GB) and time (h) to register a circuit with output_synapses.
+
+    Includes its validation and the generation of additional assets.
+    """
+    memory_gb = 1.2 * (2 + 0.044e-6 * output_synapses)
+    time_h = 2 * 10.5e-9 * output_synapses
+    return memory_gb, time_h
 
 
 def estimate_task_resources(  # ruff: ignore[too-many-locals]
@@ -113,15 +132,47 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         level_of_detail_edges=level_of_detail_edges_dict,
     )
 
-    # Estimate memory based on the number of input neurons
+    # Get the size of the input and the output. Virtual populations count when included, where
+    # "external_*" ones (externalized by an earlier extraction) are only kept by create_external.
+    do_virtual = single_config.initialize.do_virtual  # ty:ignore[unresolved-attribute]
+    create_external = single_config.initialize.create_external  # ty:ignore[unresolved-attribute]
+    included_virtual_names = [
+        name
+        for name in circuit_metrics.names_of_virtual_node_populations
+        if (create_external if name.startswith(EXTERNAL_POPULATION_PREFIX) else do_virtual)
+    ]
     nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
-    nvirt = np.sum([npop.number_of_nodes for npop in circuit_metrics.virtual_node_populations])  # ty:ignore[unresolved-attribute]
-    input_size_neurons = (nbio + nvirt) if single_config.initialize.do_virtual else nbio  # ty:ignore[unresolved-attribute]
+    nvirt = sum(
+        npop.number_of_nodes  # ty:ignore[unresolved-attribute]
+        for npop in circuit_metrics.virtual_node_populations
+        if npop.name in included_virtual_names  # ty:ignore[unresolved-attribute]
+    )
+    input_size_neurons = nbio + nvirt
+    sbio = np.sum(
+        [
+            epop.number_of_edges  # ty:ignore[unresolved-attribute]
+            for epop in circuit_metrics.chemical_edge_populations
+            if epop.source_name in circuit_metrics.names_of_biophys_node_populations  # ty:ignore[unresolved-attribute]
+        ]
+    )
+    svirt = sum(
+        epop.number_of_edges  # ty:ignore[unresolved-attribute]
+        for epop in circuit_metrics.chemical_edge_populations
+        if epop.source_name in included_virtual_names  # ty:ignore[unresolved-attribute]
+    )
+    input_size_synapses = sbio + svirt
+    output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
+    output_size_synapses = input_size_synapses * output_fraction
 
-    mem_gb_required = 1 + 55e-6 * input_size_neurons
+    # Extraction and registration run one after the other
+    extraction_mem_gb, extraction_time_h = estimate_extraction_resources(input_size_synapses)
+    registration_mem_gb, registration_time_h = estimate_registration_resources(output_size_synapses)
+
+    # Estimate memory
+    mem_gb_required = max(extraction_mem_gb, registration_mem_gb)
     hint = (
-        "Extract fewer neurons, or turn off Include virtual populations."
-        if single_config.initialize.do_virtual and nvirt  # ty:ignore[unresolved-attribute]
+        "Extract fewer neurons, or turn off including virtual and/or creating external populations."
+        if do_virtual or create_external
         else "Extract fewer neurons."
     )
     try:
@@ -137,30 +188,29 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
             http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         ) from e
 
-    # Estimate time limit based on the number input neurons
-    time_h = np.ceil(input_size_neurons * 5e-6).astype(int)
+    # Estimate time limit
+    time_h = math.ceil(1 + extraction_time_h + registration_time_h)
+    if time_h > MAX_TIME_LIMIT_H:
+        msg = (
+            f"Extracting {input_size_neurons:,} neurons needs about {time_h} hours, more than the"
+            f" {MAX_TIME_LIMIT_H} hours a task can run. {hint}"
+        )
+        raise ApiError(
+            message=msg,
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+            http_status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
 
     # Estimate storage space based on the number of output synapses
-    sbio = np.sum(
-        [
-            epop.number_of_edges  # ty:ignore[unresolved-attribute]
-            for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_biophys_node_populations  # ty:ignore[unresolved-attribute]
-        ]
+    output_size_gb = 1 + output_size_synapses * 3.9e-7
+    # Extra storage is requested in steps of 50 GB
+    requested_gb = (
+        math.ceil(output_size_gb / 50) * 50
+        if output_size_gb > DEFAULT_DISK_SPACE_LIMIT_GB
+        else output_size_gb
     )
-    svirt = np.sum(
-        [
-            epop.number_of_edges  # ty:ignore[unresolved-attribute]
-            for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_virtual_node_populations  # ty:ignore[unresolved-attribute]
-        ]
-    )
-    input_size_synapses = (sbio + svirt) if single_config.initialize.do_virtual else sbio  # ty:ignore[unresolved-attribute]
-    output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
-    output_size_synapses = input_size_synapses * output_fraction
-    output_size_gb = 1 + output_size_synapses * 1.85e-7
     try:
-        storage_gb = get_required_extra_storage_space(output_size_gb)
+        storage_gb = get_required_extra_storage_space(requested_gb)
     except ValueError as e:
         msg = (
             f"The extracted circuit would hold about {output_size_synapses:,.0f} synapses, about"
