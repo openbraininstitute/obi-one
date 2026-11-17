@@ -75,6 +75,22 @@ def test_logged_storage_failure_has_no_signature(redacted_handler):
     assert "AKIAX" not in logged
 
 
+def test_traceback_cached_by_an_earlier_handler_is_redacted(redacted_handler):
+    """A root handler added before ours formats the record first and caches exc_text."""
+    logger, stream = redacted_handler
+    root = logging.getLogger()
+    earlier = logging.StreamHandler(io.StringIO())
+    root.handlers.insert(0, earlier)
+    try:
+        logger.warning("Could not read", exc_info=RuntimeError(SIGNED))
+    finally:
+        root.removeHandler(earlier)
+
+    logged = stream.getvalue()
+    assert REDACTED in logged
+    assert "secret" not in logged
+
+
 def test_httpx2_request_log_has_no_signature(redacted_handler):
     """httpx2 logs every request URL at INFO on its own logger, including range reads."""
     _logger, stream = redacted_handler

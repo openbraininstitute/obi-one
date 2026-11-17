@@ -48,9 +48,10 @@ class RedactPresignedCredentials(logging.Filter):
         else:
             record.msg = redact_presigned_credentials(message)
             record.args = None
-        if record.exc_info and not record.exc_text:
-            # Formatted once here; Formatter prints exc_text instead of exc_info.
+        if record.exc_info:
+            # Formatter prints exc_text instead of exc_info. It can already be cached, unredacted,
+            # by a handler without this filter that formatted the record first, so redact it too.
             record.exc_text = redact_presigned_credentials(
-                logging.Formatter().formatException(record.exc_info)
+                record.exc_text or logging.Formatter().formatException(record.exc_info)
             )
         return True
