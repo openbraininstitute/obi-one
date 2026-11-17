@@ -50,7 +50,7 @@ despite where they live. Hoisting them to a shared `registration/links.py` is pr
 better first step, and may leave little enough behind that this file can just stay put and
 call into `registration/morphology/`.
 
-### 2. `tasks/ion_channel_modeling.py` — extract, don't move
+### 2. `tasks/ion_channel_modeling/` — extract, don't move
 
 Campaign and config registration now goes through the generic `TaskConfig` path. What remains
 is the model registration: roughly 130 of 580 lines across `register_json` (:336),

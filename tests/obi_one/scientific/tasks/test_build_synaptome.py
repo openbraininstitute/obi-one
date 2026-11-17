@@ -38,6 +38,7 @@ from obi_one.scientific.library.build_synaptome import (
     _sample_physiology,
     _target_population,
 )
+from obi_one.scientific.library.compartment_sets import sample_morphology_locations
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     write_virtual_nodes,
 )
@@ -225,31 +226,94 @@ def test_location_edge_properties_rejects_soma_section_id():
         _location_edge_properties(Mock(), locations)
 
 
-def test_default_placement_seed_is_unique_per_synapse_group():
+def _group(model: str, placement: str) -> SynapticModelPlacer:
+    return SynapticModelPlacer(
+        synaptic_model=_reference(model), placement_strategy=_placement_reference(placement)
+    )
+
+
+_LOCATION_COLUMNS = ["afferent_section_id", "afferent_segment_id", "afferent_segment_offset"]
+
+
+def _locations(result, group: str) -> pd.DataFrame:
+    return _edge_frame(result, f"{group}_sources__target__chemical")[_LOCATION_COLUMNS]
+
+
+def test_groups_sharing_a_placement_strategy_get_identical_locations(tmp_path, stage_memodel):
+    stage_memodel()
+    result = build_synaptome(
+        _config(groups={"first": _group("exc", "basal"), "second": _group("inh", "basal")}),
+        tmp_path / "artifact",
+        db_client=Mock(),
+    )
+    pd.testing.assert_frame_equal(_locations(result, "first"), _locations(result, "second"))
+
+
+def test_independent_strategies_respect_their_configured_seeds(tmp_path, stage_memodel):
+    stage_memodel()
     morphology = morphio.Morphology(_SWC_MORPHOLOGY, "swc")
-    placement = RandomMorphologyLocations(number_of_locations=4, section_types=(3,))
+    morphology_locations: dict[str, MorphologyLocationsBlock] = {
+        "a": RandomMorphologyLocations(number_of_locations=4, section_types=(3,), random_seed=5),
+        "b": RandomMorphologyLocations(number_of_locations=4, section_types=(3,), random_seed=9),
+    }
+    result = build_synaptome(
+        _config(
+            groups={"first": _group("exc", "a"), "second": _group("inh", "b")},
+            morphology_locations=morphology_locations,
+        ),
+        tmp_path / "artifact",
+        db_client=Mock(),
+    )
+    for group, key in (("first", "a"), ("second", "b")):
+        expected = morphology_locations[key].points_on(morphology)
+        assert _locations(result, group)["afferent_segment_id"].tolist() == (
+            expected["segment_id"].tolist()
+        )
+    assert not _locations(result, "first").equals(_locations(result, "second"))
 
-    first_group = _generate_locations(
-        morphology,
-        placement,
-        group_name="excitatory",
-        group_index=0,
-    )
-    second_group = _generate_locations(
-        morphology,
-        placement,
-        group_name="inhibitory",
-        group_index=1,
-    )
-    repeated_second_group = _generate_locations(
-        morphology,
-        placement,
-        group_name="inhibitory",
-        group_index=1,
-    )
 
-    assert not first_group.equals(second_group)
-    pd.testing.assert_frame_equal(second_group, repeated_second_group)
+def test_built_locations_match_the_preview(tmp_path, stage_memodel):
+    stage_memodel()
+    morphology = morphio.Morphology(_SWC_MORPHOLOGY, "swc")
+    morphology_locations: dict[str, MorphologyLocationsBlock] = {
+        "a": RandomMorphologyLocations(number_of_locations=4, section_types=(3,), random_seed=5),
+        "b": RandomMorphologyLocations(number_of_locations=3, section_types=(3,), random_seed=9),
+    }
+    result = build_synaptome(
+        _config(
+            groups={"first": _group("exc", "a"), "second": _group("inh", "b")},
+            morphology_locations=morphology_locations,
+        ),
+        tmp_path / "artifact",
+        db_client=Mock(),
+    )
+    for group, key in (("first", "a"), ("second", "b")):
+        preview = sample_morphology_locations(
+            locations_block=morphology_locations[key], morphology=morphology
+        )
+        edges = _edge_frame(result, f"{group}_sources__target__chemical")
+        built = list(zip(edges["afferent_section_id"], edges["afferent_section_pos"], strict=True))
+        assert built == pytest.approx(preview)
+
+
+def test_reordering_synapse_groups_does_not_change_locations(tmp_path, stage_memodel):
+    stage_memodel()
+    morphology_locations: dict[str, MorphologyLocationsBlock] = {
+        "a": RandomMorphologyLocations(number_of_locations=4, section_types=(3,), random_seed=5),
+        "b": RandomMorphologyLocations(number_of_locations=4, section_types=(3,), random_seed=9),
+    }
+    forward = {"first": _group("exc", "a"), "second": _group("inh", "b")}
+    reverse = {"second": _group("inh", "b"), "first": _group("exc", "a")}
+    results = [
+        build_synaptome(
+            _config(groups=groups, morphology_locations=morphology_locations),
+            tmp_path / name,
+            db_client=Mock(),
+        )
+        for name, groups in (("forward", forward), ("reverse", reverse))
+    ]
+    for group in ("first", "second"):
+        pd.testing.assert_frame_equal(_locations(results[0], group), _locations(results[1], group))
 
 
 def test_build_synaptome_config_provenance(monkeypatch):

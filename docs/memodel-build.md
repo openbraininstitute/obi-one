@@ -20,12 +20,13 @@ Generation registers a `memodel_build__campaign` TaskConfig and one `memodel_bui
 
 The task:
 
-1. registers the `MEModel` with `validation_status=created` and writes it to the activity's `generated` straight away, so it can be linked while the rest runs, then registers its creator `Contribution` and its m-type and e-type classifications;
-2. downloads the ME-model's hoc, morphology and mechanisms and compiles the mechanisms;
-3. calibrates it (holding current, rheobase and input resistance, starting from a holding current of 0 nA and a threshold current of 0.1 nA) and registers an `MEModelCalibrationResult` straight away, so the ME-model can be simulated while it is validated;
-4. runs the bluecellulab validations with the calibrated currents, registers one `ValidationResult` per validation, then sets `validation_status=done`.
+1. fetches the morphology and e-model, downloads their hoc, one morphology format (asc, else swc, else h5) and mechanisms via the entitysdk downloaders, and compiles the mechanisms;
+2. calibrates holding current, rheobase and input resistance (starting from a holding current of 0 nA and a threshold current of 0.1 nA);
+3. registers the `MEModel` with those currents and `validation_status=created`;
+4. registers an `MEModelCalibrationResult`, then the m-type / e-type classifications and the creator `Contribution`, and writes the ME-model to the activity's `generated`;
+5. runs the bluecellulab validations with the calibrated currents, registers one `ValidationResult` per validation, then sets `validation_status=done`.
 
-`done` means the validations ran; each `ValidationResult` says whether its test passed. When a step after the registration fails, the ME-model stays with `validation_status=error` and the activity ends in error. A calibration registered before a failed validation stays.
+`done` means the validations ran; each `ValidationResult` says whether its test passed. Failures before the ME-model entity exists leave no ME-model. When any step after the ME-model entity exists fails, the ME-model stays with `validation_status=error` and the activity ends in error. A calibration registered before a later failure stays.
 
 ## Running
 

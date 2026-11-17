@@ -193,21 +193,30 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.connectivity_matrix_extraction: TaskSpec(
-        task_ref=(f"{_TASKS}.connectivity_matrix_extraction", "ConnectivityMatrixExtractionTask"),
+        task_ref=(
+            f"{_TASKS}.connectivity_matrix_extraction.task",
+            "ConnectivityMatrixExtractionTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.connectivity_matrix_extraction",
+            f"{_TASKS}.connectivity_matrix_extraction.config",
             "ConnectivityMatrixExtractionSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.connectivity_matrix_extraction",
+            f"{_TASKS}.connectivity_matrix_extraction.config",
             "ConnectivityMatrixExtractionScanConfig",
         ),
         asset_label=None,
     ),
     TaskType.electrophysiology_metrics: TaskSpec(
-        task_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsTask"),
-        single_config_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsScanConfig"),
+        task_ref=(f"{_TASKS}.ephys_extraction.task", "ElectrophysiologyMetricsTask"),
+        single_config_ref=(
+            f"{_TASKS}.ephys_extraction.config",
+            "ElectrophysiologyMetricsSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.ephys_extraction.config",
+            "ElectrophysiologyMetricsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.folder_compression: TaskSpec(
@@ -217,9 +226,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.ion_channel_fitting: TaskSpec(
-        task_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingTask"),
-        single_config_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingScanConfig"),
+        task_ref=(f"{_TASKS}.ion_channel_modeling.task", "IonChannelFittingTask"),
+        single_config_ref=(
+            f"{_TASKS}.ion_channel_modeling.config",
+            "IonChannelFittingSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.ion_channel_modeling.config",
+            "IonChannelFittingScanConfig",
+        ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.ion_channel_modeling__campaign,
         campaign_generation_task_activity_type=TaskActivityType.ion_channel_modeling__config_generation,
@@ -280,25 +295,31 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.morphology_containerization: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_containerization", "MorphologyContainerizationTask"),
+        task_ref=(
+            f"{_TASKS}.morphology_containerization.task",
+            "MorphologyContainerizationTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.morphology_containerization",
+            f"{_TASKS}.morphology_containerization.config",
             "MorphologyContainerizationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.morphology_containerization",
+            f"{_TASKS}.morphology_containerization.config",
             "MorphologyContainerizationScanConfig",
         ),
         asset_label=None,
     ),
     TaskType.morphology_decontainerization: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_decontainerization", "MorphologyDecontainerizationTask"),
+        task_ref=(
+            f"{_TASKS}.morphology_decontainerization.task",
+            "MorphologyDecontainerizationTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.morphology_decontainerization",
+            f"{_TASKS}.morphology_decontainerization.config",
             "MorphologyDecontainerizationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.morphology_decontainerization",
+            f"{_TASKS}.morphology_decontainerization.config",
             "MorphologyDecontainerizationScanConfig",
         ),
         asset_label=None,

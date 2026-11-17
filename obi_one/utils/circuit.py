@@ -638,7 +638,7 @@ def run_connectivity_matrix_extraction(
     from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
         GridScanGenerationTask,
     )
-    from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # ruff: ignore[import-outside-top-level]
+    from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (  # ruff: ignore[import-outside-top-level]
         ConnectivityMatrixExtractionScanConfig,
     )
 
