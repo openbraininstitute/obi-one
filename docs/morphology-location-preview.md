@@ -57,15 +57,13 @@ representative rather than exact for a multi-neuron target: applied to a neuron 
 samples every targeted morphology independently, and the same section id means a different branch on
 each one.
 
-## Build Synaptome
+### Build Synaptome
 
-Build Synaptome uses the configured `random_seed` of each placement strategy unchanged, so the locations built for a synapse group are the ones previewed for its strategy.
-Neither the position of a group in the config nor the number of groups affects its locations, so reordering synapse groups does not move them.
-Synapse groups that reference the same placement strategy get identical locations, each with its own presynaptic neurons.
-Two separate strategies with identical parameters and the same seed also generate identical locations.
-To get different random realizations, give the strategies different seeds.
+In Build Synaptome, each synapse group references a morphology-location placement strategy that determines where its synapses are placed.
 
-Builds made before this behavior changed placed every group after the first with a seed derived from its position, so rebuilding such a config can move the locations of those groups.
+Generated locations are reproducible using the strategy's configured `random_seed`. Multiple synapse groups referencing the same strategy use identical locations, allowing different synaptic physiologies to be assigned to the same positions.
+
+To generate independent spatial distributions, use separate placement strategies with different random seeds.
 
 ## Errors
 
