@@ -6,11 +6,11 @@ import pytest
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.tasks import basic_connectivity_plots
-from obi_one.scientific.tasks.basic_connectivity_plots import (
+from obi_one.scientific.tasks.basic_connectivity_plots import task as basic_connectivity_plots
+from obi_one.scientific.tasks.basic_connectivity_plots.config import (
     BasicConnectivityPlotsScanConfig,
-    BasicConnectivityPlotsTask,
 )
+from obi_one.scientific.tasks.basic_connectivity_plots.task import BasicConnectivityPlotsTask
 
 mpl.use("Agg")
 import matplotlib.pyplot as plt

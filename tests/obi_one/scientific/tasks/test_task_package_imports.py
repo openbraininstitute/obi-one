@@ -91,3 +91,15 @@ assert "obi_one.scientific.tasks.folder_compression.task" not in sys.modules
         [sys.executable, "-c", script],
         check=True,
     )
+
+
+def test_basic_connectivity_plots_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.basic_connectivity_plots.config
+assert "obi_one.scientific.tasks.basic_connectivity_plots.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )

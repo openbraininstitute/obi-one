@@ -1,5 +1,4 @@
-"""
-Generate basic connectivity plots for all connectomes
+"""Generate basic connectivity plots for all connectomes
 Last updated 03.2025
 Author: Daniela Egas Santander
 """
@@ -9,7 +8,9 @@ import pathlib
 
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
+from obi_one.scientific.tasks.basic_connectivity_plots.config import (
+    BasicConnectivityPlotsScanConfig,
+)
 
 # Path to store figures
 output_root = "/Users/danielaegas/OneDrive - Open Brain Institute/Shared Documents - OBI - Scientific staff/Data/Circuits hardcoded/Figures"

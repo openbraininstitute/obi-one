@@ -13,7 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
 from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks import basic_connectivity_plots
+from obi_one.scientific.tasks.basic_connectivity_plots import task as basic_connectivity_plots
 from obi_one.utils.circuit import (
     copy_mod_files,
     count_cells_in_simulation_node_set,

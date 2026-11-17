@@ -718,7 +718,7 @@ def run_basic_connectivity_plots(
     from obi_one.scientific.library.constants import (  # ruff: ignore[import-outside-top-level]
         MAX_SMALL_MICROCIRCUIT_SIZE,
     )
-    from obi_one.scientific.tasks.basic_connectivity_plots import (  # ruff: ignore[import-outside-top-level]
+    from obi_one.scientific.tasks.basic_connectivity_plots.config import (  # ruff: ignore[import-outside-top-level]
         BasicConnectivityPlotsScanConfig,
     )
 
