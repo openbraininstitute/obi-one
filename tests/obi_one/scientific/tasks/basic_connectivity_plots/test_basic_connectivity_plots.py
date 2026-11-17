@@ -2,6 +2,7 @@ from pathlib import Path
 
 import matplotlib as mpl
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.path import NamedPath
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
@@ -17,6 +18,53 @@ import matplotlib.pyplot as plt
 from conntility import ConnectivityMatrix
 
 from tests.utils import DATA_DIR, MATRIX_DIR
+
+_DUMMY_MATRIX = NamedPath(name="dummy", path="dummy.h5")
+
+
+def test_property_table_requires_rendering_colors():
+    with pytest.raises(ValidationError, match=r"discrete colormap|color map file"):
+        BasicConnectivityPlotsScanConfig.Initialize(
+            matrix_path=_DUMMY_MATRIX,
+            plot_types=("property_table",),
+        )
+
+
+def test_property_table_custom_cmap_requires_existing_color_file():
+    with pytest.raises(ValidationError, match="rendering_color_file is not an existing file"):
+        BasicConnectivityPlotsScanConfig.Initialize(
+            matrix_path=_DUMMY_MATRIX,
+            plot_types=("property_table",),
+            rendering_cmap="custom",
+            rendering_color_file="does_not_exist.csv",
+        )
+
+
+def test_property_table_rejects_non_discrete_colormap():
+    with pytest.raises(ValidationError, match="discrete color map"):
+        BasicConnectivityPlotsScanConfig.Initialize(
+            matrix_path=_DUMMY_MATRIX,
+            plot_types=("property_table",),
+            rendering_cmap="jet",
+        )
+
+
+def test_property_table_accepts_discrete_colormap():
+    init = BasicConnectivityPlotsScanConfig.Initialize(
+        matrix_path=_DUMMY_MATRIX,
+        plot_types=("property_table",),
+        rendering_cmap="tab10",
+    )
+    assert init.rendering_cmap == "tab10"
+
+
+def test_non_property_table_skips_rendering_color_checks():
+    init = BasicConnectivityPlotsScanConfig.Initialize(
+        matrix_path=_DUMMY_MATRIX,
+        plot_types=("nodes",),
+    )
+    assert init.rendering_cmap is None
+
 
 # Production FULL_WIDTH is 16; 4 is the smallest that keeps full_width // 3 > 0 in helpers.
 _TEST_FIGSIZE_SCALE = 4 / 16
