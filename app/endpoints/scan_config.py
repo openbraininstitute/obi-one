@@ -48,7 +48,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 )
 from obi_one.scientific.tasks.ion_channel_modeling.config import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
-from obi_one.scientific.tasks.morphology_metrics import (
+from obi_one.scientific.tasks.morphology_metrics.config import (
     MorphologyMetricsScanConfig,
 )
 from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig

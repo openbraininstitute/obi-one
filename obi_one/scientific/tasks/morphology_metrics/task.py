@@ -1,36 +1,17 @@
+"""Morphology metrics task."""
+
 import logging
-from typing import ClassVar
 
 import entitysdk
-from pydantic import Field
 
-from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.from_id.cell_morphology_from_id import CellMorphologyFromID
 from obi_one.scientific.library.morphology_metrics import (
     MorphologyMetricsOutput,
 )
+from obi_one.scientific.tasks.morphology_metrics.config import MorphologyMetricsSingleConfig
 
 L = logging.getLogger(__name__)
-
-
-class MorphologyMetricsScanConfig(ScanConfig):
-    name: ClassVar[str] = "Morphology Metrics"
-    description: ClassVar[str] = "Calculates morphology metrics for a given morphologies."
-
-    class Initialize(Block):
-        morphology: CellMorphologyFromID | list[CellMorphologyFromID] = Field(
-            description="3. Morphology description"
-        )
-
-    initialize: Initialize
-
-
-class MorphologyMetricsSingleConfig(MorphologyMetricsScanConfig, SingleConfigMixin):
-    """Calculates morphology metrics for a given morphology."""
 
 
 class MorphologyMetricsTask(Task):
