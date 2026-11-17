@@ -18,6 +18,11 @@ from obi_one.scientific.library.morphology_locations import (
     _SEC_TYP,
     _SEG_ID,
     _SEG_LEN,
+    _SEG_MAX,
+    _SEG_MIN,
+    _SOM_PAD,
+    find_normalized_interval_below_zero,
+    min_max_offsets_in_segments,
     path_distance_all_segments_from,
 )
 
@@ -90,3 +95,32 @@ def test_no_matching_section_types_raises(morphology):
             OptimizedMorphologyPathDistanceCalculator(morphology),
             lst_sec_types=[999],
         )
+
+
+def test_min_max_offsets_in_segments_match_the_scalar_interval():
+    """The vectorized offsets equal ``find_normalized_interval_below_zero`` row by row."""
+    rng = np.random.default_rng(0)
+    max_distance = 150.0
+    start = rng.uniform(0.0, 300.0, 2000)
+    end = start + rng.uniform(-40.0, 40.0, 2000)
+    end[:50] = start[:50]  # segments with equal start and end distance
+    in_range = np.minimum(start, end) < max_distance
+    cands = pd.DataFrame(
+        {
+            _SOM_PAD + "_start": start,
+            _SOM_PAD + "_end": end,
+            _SEG_LEN: rng.uniform(1.0, 40.0, 2000),
+        }
+    )[in_range]
+    result = min_max_offsets_in_segments(cands, max_distance)
+    expected = [
+        tuple(
+            bound * length
+            for bound in find_normalized_interval_below_zero(s - max_distance, e - max_distance)
+        )
+        for s, e, length in zip(
+            cands[_SOM_PAD + "_start"], cands[_SOM_PAD + "_end"], cands[_SEG_LEN], strict=True
+        )
+    ]
+    assert len(result) > 1000
+    np.testing.assert_allclose(result[[_SEG_MIN, _SEG_MAX]].to_numpy(), expected)
