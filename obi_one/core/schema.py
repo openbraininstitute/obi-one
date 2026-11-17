@@ -74,6 +74,7 @@ class SchemaKey(StrEnum):
 class UIElement(StrEnum):
     AXON_MODIFIER = "axon_modifier"
     BLOCK_DICTIONARY = "block_dictionary"
+    BLOCK_INFO = "block_info"
     BLOCK_SINGLE = "block_single"
     BLOCK_UNION = "block_union"
     BOOLEAN_INPUT = "boolean_input"

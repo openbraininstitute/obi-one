@@ -107,7 +107,7 @@ class CreateExtracellularRecordingArrayScanConfig(InfoScanConfig):
         title="Info",
         description="Information...",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_INFO,
             SchemaKey.GROUP: BlockGroup.SETUP,
             SchemaKey.GROUP_ORDER: 0,
         },

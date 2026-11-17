@@ -49,6 +49,7 @@ from .per_neuron_morphology_location_selection import (
 )
 from .reference import validate_reference
 from .root.block_dictionary import validate_block_dictionary
+from .root.block_info import validate_block_info
 from .root.block_single import validate_block_single
 from .root.block_union import validate_root_block_union
 from .root.emodel_optimisation_parameters import validate_emodel_optimisation_parameters
@@ -135,6 +136,7 @@ RootElementValidator = Callable[[dict, str, str, str, dict], None]
 ROOT_VALIDATOR_BY_UI_ELEMENT: dict[UIElement, RootElementValidator] = {
     UIElement.BLOCK_SINGLE: validate_block_single,
     UIElement.BLOCK_DICTIONARY: validate_block_dictionary,
+    UIElement.BLOCK_INFO: validate_block_info,
     UIElement.BLOCK_UNION: validate_root_block_union,
     UIElement.EMODEL_OPTIMISATION_PARAMETERS: validate_emodel_optimisation_parameters,
 }

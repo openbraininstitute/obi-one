@@ -1,0 +1,32 @@
+{
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "Info"
+    },
+    "campaign_name": {
+      "type": "string",
+      "minLength": 1,
+      "title": "Campaign name",
+      "description": "Name of the campaign.",
+      "ui_element": "string_input"
+    },
+    "campaign_description": {
+      "type": "string",
+      "minLength": 1,
+      "title": "Campaign description",
+      "description": "Description of the campaign.",
+      "ui_element": "string_input"
+    }
+
+    // Any other block elements defined here
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["campaign_name", "campaign_description"], // Not needed until the campaign is generated.
+  "title": "Title of the block",
+  "description": "description of the block",
+  "group": "Group 1", // Must be present in its parent config's `group_order` array.
+  "group_order": 0, // Unique within the group.
+  "ui_element": "block_info"
+}
