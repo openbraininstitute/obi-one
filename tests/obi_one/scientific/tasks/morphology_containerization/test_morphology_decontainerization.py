@@ -3,7 +3,7 @@ from pathlib import Path
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks.morphology_decontainerization import (
+from obi_one.scientific.tasks.morphology_decontainerization.config import (
     MorphologyDecontainerizationScanConfig,
 )
 

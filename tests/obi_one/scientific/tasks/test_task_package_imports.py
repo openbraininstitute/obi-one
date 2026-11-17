@@ -43,3 +43,15 @@ assert "obi_one.scientific.tasks.ephys_extraction.task" not in sys.modules
         [sys.executable, "-c", script],
         check=True,
     )
+
+
+def test_morphology_decontainerization_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.morphology_decontainerization.config
+assert "obi_one.scientific.tasks.morphology_decontainerization.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )

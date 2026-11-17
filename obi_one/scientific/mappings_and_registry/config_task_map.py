@@ -307,13 +307,16 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.morphology_decontainerization: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_decontainerization", "MorphologyDecontainerizationTask"),
+        task_ref=(
+            f"{_TASKS}.morphology_decontainerization.task",
+            "MorphologyDecontainerizationTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.morphology_decontainerization",
+            f"{_TASKS}.morphology_decontainerization.config",
             "MorphologyDecontainerizationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.morphology_decontainerization",
+            f"{_TASKS}.morphology_decontainerization.config",
             "MorphologyDecontainerizationScanConfig",
         ),
         asset_label=None,
