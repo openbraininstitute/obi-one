@@ -88,17 +88,11 @@ def _target_population(circuit: bluepysnap.Circuit) -> tuple[str, NodePopulation
     return populations[0], population
 
 
-def _derive_group_seed(random_seed: int, group_index: int) -> int:
-    """Derive a reproducible placement seed for a synapse group."""
-    return int(np.random.SeedSequence([random_seed, group_index]).generate_state(1)[0])
-
-
 def _generate_locations(
     morphology: morphio.Morphology,
     placement: MorphologyLocationsBlock,
     *,
     group_name: str,
-    group_index: int = 0,
 ) -> pd.DataFrame:
     count = placement.output_location_count()
     if not isinstance(count, int) or count <= 0:
@@ -106,16 +100,8 @@ def _generate_locations(
             f"Synapse group '{group_name}' has invalid location count {count!r}."
         )
     try:
-        placement_for_group = placement
-        random_seed = getattr(placement, "random_seed", None)
-        if group_index and isinstance(random_seed, int):
-            placement_for_group = placement.model_copy(
-                update={
-                    "random_seed": _derive_group_seed(random_seed, group_index),
-                }
-            )
         with _preserve_numpy_random_state():
-            locations = placement_for_group.points_on(morphology)
+            locations = placement.points_on(morphology)
     except Exception as exc:
         msg = (
             f"Synapse group '{group_name}' could not generate locations using "
@@ -391,7 +377,6 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
                 morphology,
                 placement_strategy,
                 group_name=group_key,
-                group_index=group_index,
             )
             count = len(locations)
             source_ids, source_labels = pd.factorize(locations[_PRE_IDX], sort=False)
