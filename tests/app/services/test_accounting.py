@@ -1,6 +1,6 @@
 import json
 from http import HTTPStatus
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID, uuid4
 
 import entitysdk
@@ -451,7 +451,7 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
 
     expected_subtype = {
         TaskType.circuit_extraction: ServiceSubtype.CIRCUIT_EXTRACTION,
-        TaskType.circuit_simplification: ServiceSubtype.CIRCUIT_SIMPLIFICATION,
+        TaskType.circuit_simplification: ServiceSubtype.CIRCUIT_SIMPLIFICATION_SMALL,
         TaskType.efeature_extraction: ServiceSubtype.EMODEL_FEATURES_EXTRACTION,
         TaskType.emodel_optimization: ServiceSubtype.EMODEL_OPTIMISATION,
         TaskType.emodel_validation: ServiceSubtype.EMODEL_VALIDATION,
@@ -511,8 +511,16 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
             return_value=expected_count[TaskType.circuit_extraction],
         ),
         patch(
-            "app.services.accounting.estimate_circuit_simplification_count",
+            "app.services.accounting.load_circuit_simplification_single_config",
+            return_value=MagicMock(algorithms={"lif": object()}),
+        ),
+        patch(
+            "app.services.accounting.estimate_circuit_simplification_count_from_config",
             return_value=expected_count[TaskType.circuit_simplification],
+        ),
+        patch(
+            "app.services.accounting.service_subtype_for_algorithms",
+            return_value=ServiceSubtype.CIRCUIT_SIMPLIFICATION_SMALL,
         ),
     ):
         res = test_module._evaluate_accounting_parameters(

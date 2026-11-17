@@ -21,8 +21,12 @@ from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
 from obi_one.db_sdk.db_sdk import select_json_asset_content
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
+from obi_one.scientific.tasks.circuit_simplification.accounting import (
+    service_subtype_for_algorithms,
+)
 from obi_one.scientific.tasks.circuit_simplification.estimate import (
-    estimate_circuit_simplification_count,
+    estimate_circuit_simplification_count_from_config,
+    load_circuit_simplification_single_config,
 )
 from obi_one.scientific.tasks.skeletonization.estimate import estimate_skeletonization_count
 
@@ -130,8 +134,13 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
             count = estimate_circuit_extraction_count(db_client=db_client, config_id=config_id)
             service_subtype = ServiceSubtype.CIRCUIT_EXTRACTION
         case TaskType.circuit_simplification:
-            count = estimate_circuit_simplification_count(db_client=db_client, config_id=config_id)
-            service_subtype = ServiceSubtype.CIRCUIT_SIMPLIFICATION
+            single_config = load_circuit_simplification_single_config(
+                db_client=db_client, config_id=config_id
+            )
+            count = estimate_circuit_simplification_count_from_config(
+                db_client=db_client, single_config=single_config
+            )
+            service_subtype = service_subtype_for_algorithms(single_config.algorithms)
         case (
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_machine

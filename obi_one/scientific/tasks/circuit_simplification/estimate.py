@@ -13,16 +13,21 @@ from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationSingleConfig
 
 
-def estimate_circuit_simplification_count(*, db_client: Client, config_id: UUID) -> int:
-    """Estimate accounting count for circuit simplification.
-
-    The estimate uses the number of neurons in the target neuron set.
-    """
+def load_circuit_simplification_single_config(
+    *, db_client: Client, config_id: UUID
+) -> CircuitSimplificationSingleConfig:
+    """Load and validate a circuit-simplification single config from EntitySDK."""
     task_config = db_client.get_entity(entity_id=config_id, entity_type=models.TaskConfig)
     config_dict = db_sdk.get_task_config_asset_content(client=db_client, config=task_config)
-    single_config = CircuitSimplificationSingleConfig.model_validate(
+    return CircuitSimplificationSingleConfig.model_validate(
         deserialize_obi_object_from_json_data(config_dict).model_dump()
     )
+
+
+def estimate_circuit_simplification_count_from_config(
+    *, db_client: Client, single_config: CircuitSimplificationSingleConfig
+) -> int:
+    """Estimate accounting count from an already-loaded simplification config."""
     parent_circuit = single_config.initialize.circuit
     target_neuron_set_ref = single_config.initialize.target_neuron_set
     if target_neuron_set_ref is None:
@@ -46,3 +51,16 @@ def estimate_circuit_simplification_count(*, db_client: Client, config_id: UUID)
         msg = "Circuit simplification target neuron set resolved to 0 neurons."
         raise ValueError(msg)
     return neuron_count
+
+
+def estimate_circuit_simplification_count(*, db_client: Client, config_id: UUID) -> int:
+    """Estimate accounting count for circuit simplification.
+
+    The estimate uses the number of neurons in the target neuron set.
+    """
+    single_config = load_circuit_simplification_single_config(
+        db_client=db_client, config_id=config_id
+    )
+    return estimate_circuit_simplification_count_from_config(
+        db_client=db_client, single_config=single_config
+    )
