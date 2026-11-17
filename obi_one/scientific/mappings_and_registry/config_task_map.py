@@ -295,13 +295,16 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.morphology_containerization: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_containerization", "MorphologyContainerizationTask"),
+        task_ref=(
+            f"{_TASKS}.morphology_containerization.task",
+            "MorphologyContainerizationTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.morphology_containerization",
+            f"{_TASKS}.morphology_containerization.config",
             "MorphologyContainerizationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.morphology_containerization",
+            f"{_TASKS}.morphology_containerization.config",
             "MorphologyContainerizationScanConfig",
         ),
         asset_label=None,
