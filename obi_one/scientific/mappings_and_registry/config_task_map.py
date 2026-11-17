@@ -172,12 +172,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_activity_type=TaskActivityType.skeletonization__execution,
     ),
     TaskType.basic_connectivity_plots: TaskSpec(
-        task_ref=(f"{_TASKS}.basic_connectivity_plots", "BasicConnectivityPlotsTask"),
+        task_ref=(f"{_TASKS}.basic_connectivity_plots.task", "BasicConnectivityPlotsTask"),
         single_config_ref=(
-            f"{_TASKS}.basic_connectivity_plots",
+            f"{_TASKS}.basic_connectivity_plots.config",
             "BasicConnectivityPlotsSingleConfig",
         ),
-        scan_config_ref=(f"{_TASKS}.basic_connectivity_plots", "BasicConnectivityPlotsScanConfig"),
+        scan_config_ref=(
+            f"{_TASKS}.basic_connectivity_plots.config",
+            "BasicConnectivityPlotsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.brian2_circuit_simulation: TaskSpec(
