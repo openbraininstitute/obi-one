@@ -61,9 +61,11 @@ There are two major types of such UI elements:
 
 1. `Root UI elements` appear in the left hand column of the configuration interface. 
     
-    - There are currently four supported types:
+    - There are currently five supported types:
 
         - [block_single](components/block_single/block_single.md)
+
+        - [block_info](components/block_info/block_info.md)
 
         - [block_union](components/block_union/block_union.md)
 

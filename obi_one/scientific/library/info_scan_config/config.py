@@ -16,7 +16,7 @@ class InfoScanConfig(ScanConfig):
         title="Info",
         description="Information about the campaign.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_INFO,
             SchemaKey.GROUP: BlockGroup.SETUP_BLOCK_GROUP,
             SchemaKey.GROUP_ORDER: 0,
         },

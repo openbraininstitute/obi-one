@@ -132,7 +132,7 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
         title="Info",
         description="Information about the synapse placement.",
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_INFO,
             SchemaKey.GROUP: BlockGroup.INFO,
             SchemaKey.GROUP_ORDER: 0,
         },
