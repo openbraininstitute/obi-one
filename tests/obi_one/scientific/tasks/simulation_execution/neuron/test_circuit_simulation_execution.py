@@ -18,6 +18,7 @@ from obi_one.scientific.tasks.simulation_execution.neuron.task import (
 from obi_one.types import SimulationBackend
 
 _TASK = "obi_one.scientific.tasks.simulation_execution.neuron.task"
+_BASE = "obi_one.scientific.tasks.simulation_execution.task"
 
 
 @pytest.fixture
@@ -65,10 +66,10 @@ def _mechanism_build(tmp_path):
 @patch(f"{_TASK}.run_simulation")
 @patch(f"{_TASK}.get_simulation_parameters")
 @patch(f"{_TASK}.compile_mechanisms")
-@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_BASE}.stage_simulation")
 @patch(f"{_TASK}.stage_circuit")
 @patch(f"{_TASK}.db_sdk.get_identifiable")
-@patch(f"{_TASK}.create_dir")
+@patch(f"{_BASE}.create_dir")
 def test_execute_local_skips_registration(
     mock_create_dir,
     mock_get_identifiable,
@@ -121,14 +122,14 @@ def test_execute_local_skips_registration(
     db_client.update_entity.assert_not_called()
 
 
-@patch(f"{_TASK}.register_simulation_results")
+@patch(f"{_BASE}.register_simulation_results")
 @patch(f"{_TASK}.run_simulation")
 @patch(f"{_TASK}.get_simulation_parameters")
 @patch(f"{_TASK}.compile_mechanisms")
-@patch(f"{_TASK}.stage_simulation")
+@patch(f"{_BASE}.stage_simulation")
 @patch(f"{_TASK}.stage_circuit")
 @patch(f"{_TASK}.db_sdk.get_identifiable")
-@patch(f"{_TASK}.create_dir")
+@patch(f"{_BASE}.create_dir")
 def test_execute_tracked_registers_results(
     mock_create_dir,
     mock_get_identifiable,

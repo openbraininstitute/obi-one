@@ -70,7 +70,7 @@ jupyter-client==8.10.0
 jupyter-core==5.9.1
 kiwisolver==1.5.1
 lazy==2.0
-libsonata==0.2.2
+libsonata==0.2.3
 locket==1.0.0
 markdown-it-py==4.2.0
 markupsafe==3.0.3
