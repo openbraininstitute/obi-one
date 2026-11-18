@@ -4,10 +4,10 @@ import math
 from pathlib import Path
 from types import SimpleNamespace
 
-import nest
 import pytest
 
 from obi_one.scientific.library.simulation.nest import nestml_build, simulate_nest
+from obi_one.scientific.library.simulation.nest.nest_import import nest
 from obi_one.scientific.library.simulation.nest.simulate_nest import NestSonataNetwork
 
 from tests.obi_one.scientific.library.simulation.nest._circuits import (

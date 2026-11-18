@@ -1,10 +1,10 @@
 """End-to-end tests: build -> simulate (real NEST)."""
 
 import h5py
-import nest
 import numpy as np
 import pytest
 
+from obi_one.scientific.library.simulation.nest.nest_import import nest
 from obi_one.scientific.library.simulation.nest.simulate_nest import (
     NestSonataNetwork,
     run_simulation,
