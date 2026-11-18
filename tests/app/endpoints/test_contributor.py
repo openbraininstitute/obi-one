@@ -260,7 +260,7 @@ def test_register_organization_without_alternative_name(client, mock_db_client):
 
     assert resp.status_code == 201
     registered_entity = mock_db_client.register_entity.call_args.kwargs["entity"]
-    assert registered_entity.alternative_name is None
+    assert registered_entity.alternative_name == ""  # ruff: ignore[compare-to-empty-string]
 
 
 def test_register_existing_org_returns_409(client, mock_db_client):
