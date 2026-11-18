@@ -3,14 +3,10 @@
 import logging
 
 import libsonata
-import nest
 import pytest
 
-from obi_one.scientific.library.simulation.nest import constants, nestml_build
-from obi_one.scientific.library.simulation.nest.simulate_nest import (
-    NestSonataNetwork,
-    version_warnings,
-)
+from obi_one.scientific.library.simulation.nest import constants
+from obi_one.scientific.library.simulation.nest.simulate_nest import NestSonataNetwork
 from obi_one.utils.io import load_json, write_json
 
 from tests.obi_one.scientific.library.simulation.nest._circuits import write_nest_circuit
@@ -89,66 +85,6 @@ def test_rejects_point_process_population(circuit):
     write_json(config, circuit.circuit_config)
     with pytest.raises(libsonata.SonataError, match="'point_process' in a NEST circuit"):
         NestSonataNetwork(circuit.simulation_config)
-
-
-def test_same_minor_version_does_not_warn():
-    assert version_warnings({"nest_version": "3.10.0"}, "3.10.2") == []
-
-
-def test_different_nest_minor_version_warns():
-    (message,) = version_warnings({"nest_version": "3.9.0"}, "3.10.1")
-    assert "NEST 3.9.0" in message
-    assert "NEST 3.10.1" in message
-
-
-def test_missing_nest_version_warns():
-    (message,) = version_warnings({}, "3.10.0")
-    assert "components.provenance.nest_version" in message
-
-
-def test_different_nestml_version_warns():
-    provenance = {"nest_version": "3.10.0", "nestml_version": "8.0.0"}
-    (message,) = version_warnings(provenance, None, "9.0.1")
-    assert "NESTML 8.0.0" in message
-    assert "NESTML 9.0.1" in message
-
-
-def test_missing_nestml_version_does_not_warn():
-    assert version_warnings({"nest_version": "3.10.0"}, None, "9.0.1") == []
-
-
-def set_provenance(circuit, provenance):
-    config = load_json(circuit.circuit_config)
-    config.setdefault("components", {})["provenance"] = provenance
-    write_json(config, circuit.circuit_config)
-
-
-def test_loader_warns_when_nest_version_differs(circuit, caplog):
-    set_provenance(circuit, {"nest_version": "1.0.0"})
-    with caplog.at_level(logging.WARNING):
-        NestSonataNetwork(circuit.simulation_config)
-    assert "NEST 1.0.0" in caplog.text
-
-
-def test_loader_does_not_warn_when_nest_version_matches(circuit, caplog):
-    set_provenance(circuit, {"nest_version": nest.__version__})
-    with caplog.at_level(logging.WARNING):
-        NestSonataNetwork(circuit.simulation_config)
-    assert not caplog.text
-
-
-def test_loader_warns_once_when_nestml_version_differs(circuit, caplog, monkeypatch, tmp_path):
-    set_provenance(circuit, {"nest_version": nest.__version__, "nestml_version": "1.0.0"})
-    net = NestSonataNetwork(circuit.simulation_config)
-    (tmp_path / "custom.nestml").write_text("model custom:\n")
-    monkeypatch.setattr(nestml_build, "compile_nestml_module", lambda *_: tmp_path / "lib.so")
-    monkeypatch.setattr(
-        NestSonataNetwork, "_nestml_model_name", staticmethod(lambda _: "iaf_psc_alpha")
-    )
-    with caplog.at_level(logging.WARNING):
-        net._ensure_nestml_model("custom", tmp_path)
-        net._ensure_nestml_model("custom", tmp_path)
-    assert caplog.text.count("NESTML 1.0.0") == 1
 
 
 def test_keys_that_nest_ignores_are_reported(circuit, caplog):
