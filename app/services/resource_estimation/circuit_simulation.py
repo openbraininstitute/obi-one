@@ -10,7 +10,8 @@ from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLau
 # https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a
 # The lowest `Mem(GB) / cell` was ~ 0.025, so a bit of margin was chosen
 # to allow for the variations in connectivity.
-MEM_GB_PER_CELL = 0.03
+# TODO: Temporary 2x (0.03 -> 0.06) until a better CA3-projections heuristic exists.
+MEM_GB_PER_CELL = 0.06
 
 
 def estimate_task_resources(

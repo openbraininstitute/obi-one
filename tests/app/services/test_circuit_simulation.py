@@ -1,3 +1,4 @@
+import math
 from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 from uuid import uuid4
@@ -49,6 +50,40 @@ def test_estimate_task_resources_success():
             call(entity_id=json_model.config_id, entity_type=models.Simulation),
         ]
     )
+
+
+def test_estimate_task_resources_scales_instances_with_mem_per_cell():
+    """Mem estimate should request enough nodes for MEM_GB_PER_CELL * neurons."""
+    number_neurons = 5_000
+    memory_per_instance_gb = 100
+    json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4())
+    task_definition = TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster]
+    db_client = _make_db_client(number_neurons=number_neurons)
+    mocked_instances = {
+        "cell_a": [
+            ClusterInstanceInfo(
+                name="big",
+                max_neurons=number_neurons,
+                memory_per_instance_gb=memory_per_instance_gb,
+            ),
+        ]
+    }
+    expected_instances = math.ceil(
+        test_module.MEM_GB_PER_CELL * number_neurons / memory_per_instance_gb
+    )
+
+    with patch.object(test_module, "CLUSTER_INSTANCES_INFO", mocked_instances):
+        result = test_module.estimate_task_resources(
+            json_model=json_model,
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell="cell_a",
+        )
+
+    # 5000 * 0.06 GB/cell / 100 GB/node => 3 nodes (temporary CA3 Mem(GB)/cell bump).
+    assert expected_instances == 3
+    assert result.instances == expected_instances
+    assert result.instance_type == "big"
 
 
 def test_estimate_task_resources_unknown_compute_cell():
