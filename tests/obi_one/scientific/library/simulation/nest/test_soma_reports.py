@@ -212,6 +212,21 @@ def test_frames_matrix_orders_rows_by_the_requested_nodes():
     assert matrix.tolist() == [[-2.0, -1.0], [-3.0, -4.0]]
 
 
+def test_frames_matrix_needs_the_initial_potentials_of_an_initial_frame():
+    frames = soma_reports.Frames.of("r", start=0.0, end=3.0, dt=1.0, run_dt=1.0)
+    assert frames.has_initial_frame
+    events = {"senders": [5, 5], "times": [1.0, 2.0], "V_m": [-2.0, -3.0]}
+    with pytest.raises(ValueError, match="no initial potentials"):
+        soma_reports.frames_matrix(events, np.array([5]), None, frames)
+
+
+def test_frames_matrix_puts_the_initial_potentials_in_the_first_column():
+    frames = soma_reports.Frames.of("r", start=0.0, end=3.0, dt=1.0, run_dt=1.0)
+    events = {"senders": [5, 5], "times": [1.0, 2.0], "V_m": [-2.0, -3.0]}
+    matrix = soma_reports.frames_matrix(events, np.array([5]), np.array([-1.0]), frames)
+    assert matrix.tolist() == [[-1.0, -2.0, -3.0]]
+
+
 def test_frames_matrix_rejects_missing_samples():
     frames = soma_reports.Frames.of("r", start=1.0, end=3.0, dt=1.0, run_dt=1.0)
     events = {"senders": [5, 7, 5], "times": [1.0, 1.0, 2.0], "V_m": [0.0, 0.0, 0.0]}
