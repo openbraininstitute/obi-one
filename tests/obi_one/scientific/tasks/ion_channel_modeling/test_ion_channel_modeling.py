@@ -381,7 +381,9 @@ def test_the_registered_model_takes_the_resolved_properties(tmp_path):
     db_client = _db_client()
     db_client.register_entity.side_effect = lambda entity: entity
     mouse = _species("Mus musculus", "NCBITaxon:10090")
-    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+    subject = models.Subject(
+        id=uuid4(), name="Mouse 1", description="", sex=Sex.male, species=mouse
+    )
 
     (model,) = _save(tmp_path, db_client, subject=subject, species=mouse)
 
@@ -398,10 +400,20 @@ def test_a_model_of_several_subjects_gets_the_generic_subject_of_its_species(tmp
     mouse = _species("Mus musculus", "NCBITaxon:10090")
     rat = _species("Rattus norvegicus", "NCBITaxon:10116")
     generic_mouse = models.Subject(
-        id=uuid4(), name="Generic Mus musculus", sex=Sex.unknown, species=mouse
+        id=uuid4(),
+        name="Generic Mus musculus",
+        description="",
+        sex=Sex.unknown,
+        species=mouse,
     )
     db_client.search_entity.return_value = [
-        models.Subject(id=uuid4(), name="Generic Mus musculus", sex=Sex.unknown, species=rat),
+        models.Subject(
+            id=uuid4(),
+            name="Generic Mus musculus",
+            description="",
+            sex=Sex.unknown,
+            species=rat,
+        ),
         generic_mouse,
     ]
 
