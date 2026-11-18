@@ -236,7 +236,8 @@ def register_morphology(
     name = new_item.get("name")
     description = new_item.get("description")
     if name is None or description is None:
-        raise ValueError("Morphology name and description are required and must not be None")
+        msg = "Morphology name and description are required and must not be None"
+        raise ValueError(msg)
     authorized_public: bool = new_item.get("authorized_public", False)
     morphology = CellMorphology(
         cell_morphology_protocol=cast("CellMorphologyProtocolUnion", morphology_protocol),
