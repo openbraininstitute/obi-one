@@ -1,6 +1,6 @@
 import logging
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
 from entitysdk.client import Client
@@ -9,11 +9,15 @@ from entitysdk.models import MEModel
 from entitysdk.models.circuit import Circuit
 from entitysdk.types import CircuitScale
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
+from app.config import settings
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.errors import ApiErrorCode
+from obi_one.core.block_reference import BlockReference, resolve_block_references
+from obi_one.scientific.blocks.neuron_sets.base import NeuronSet, NeuronSetPopulationType
+from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.library.circuit_constants import CircuitStatsLevelOfDetail
 from obi_one.scientific.library.circuit_metrics import (
     CircuitMetricsOutput,
@@ -29,11 +33,18 @@ from obi_one.scientific.library.memodel_circuit import (
     get_memodel_mechanism_variables,
 )
 from obi_one.scientific.library.neuronal_manipulation_properties import (
+    CircuitListingError,
     get_circuit_manipulation_properties,
     get_circuit_node_ids,
 )
+from obi_one.scientific.tasks.generate_simulations.config.base import BaseSimulationScanConfig
 from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NEURONSimulationNeuronSetUnion,
+)
+from obi_one.scientific.unions_and_references.neuron_sets import (
+    BiophysicalNeuronSetReference,
+    PointNeuronSetReference,
+    VirtualNeuronSetReference,
 )
 
 L = logging.getLogger(__name__)
@@ -45,7 +56,94 @@ router = APIRouter(prefix="/declared", tags=["declared"], dependencies=[Depends(
 # --- Schemas for neuronal manipulation endpoints ---
 
 
-class NodeIdsRequest(BaseModel):
+NEURON_SETS_DICT_NAME = "neuron_sets"
+# A neuron set sent on its own has no name; a combined one needs a name to check for loops.
+UNNAMED_NEURON_SET_NAME = "neuron_set"
+
+# An unset operand of a combined neuron set (a row the user has not filled yet) means the default
+# set for the combined set's population type: the simulation fills it in
+# (``_ensure_combined_neuron_set_has_references``). The same names and types are used here, so
+# the variables listed are those of the neurons the simulation will target.
+SIMULATION_DEFAULTS = BaseSimulationScanConfig
+DEFAULT_OPERANDS: dict[
+    NeuronSetPopulationType, tuple[str, type[NeuronSet], type[BlockReference]]
+] = {
+    NeuronSetPopulationType.VIRTUAL: (
+        SIMULATION_DEFAULTS.default_virtual_node_set_name,
+        SIMULATION_DEFAULTS.default_virtual_neuron_set_type,
+        VirtualNeuronSetReference,
+    ),
+    NeuronSetPopulationType.POINT: (
+        SIMULATION_DEFAULTS.default_point_node_set_name,
+        SIMULATION_DEFAULTS.default_point_neuron_set_type,
+        PointNeuronSetReference,
+    ),
+}
+DEFAULT_BIOPHYSICAL_OPERAND = (
+    SIMULATION_DEFAULTS.default_node_set_name,
+    SIMULATION_DEFAULTS.default_neuron_set_type,
+    BiophysicalNeuronSetReference,
+)
+
+
+def fill_unset_operands(
+    neuron_set: CombinedBaseNeuronSet, neuron_sets: dict[str, NEURONSimulationNeuronSetUnion]
+) -> None:
+    """Point the unset base and rows of ``neuron_set`` at the default set, as the simulation does.
+
+    The default set is added to ``neuron_sets`` under the simulation's name for it.
+
+    Raises:
+        ValueError: ``neuron_sets`` already holds another kind of set under that name.
+    """
+    operands = [neuron_set.base_neuron_set, *(ref for ref, _ in neuron_set.combined_with)]
+    if all(operand is not None for operand in operands):
+        return
+    name, set_type, reference_type = DEFAULT_OPERANDS.get(
+        neuron_set.get_neuron_set_population_type(), DEFAULT_BIOPHYSICAL_OPERAND
+    )
+    # The default types are members of the union; the table's type[NeuronSet] hides that.
+    if not isinstance(neuron_sets.setdefault(name, set_type()), set_type):  # ty:ignore[no-matching-overload]
+        msg = f"Neuron set name '{name}' is kept for the default {set_type.__name__} set."
+        # ValueError: raised inside a model validator, only it becomes a 422 ValidationError.
+        raise ValueError(msg)  # ruff: ignore[type-check-without-type-error]
+
+    def default() -> BlockReference:
+        return reference_type(block_dict_name=NEURON_SETS_DICT_NAME, block_name=name)
+
+    if neuron_set.base_neuron_set is None:
+        neuron_set.base_neuron_set = default()
+    neuron_set.combined_with = tuple(
+        (default() if ref is None else ref, op) for ref, op in neuron_set.combined_with
+    )
+
+
+class NeuronSetRequest(BaseModel):
+    """A neuron set, with the named neuron sets it references (for a combined neuron set)."""
+
+    neuron_set: NEURONSimulationNeuronSetUnion | None = None
+    neuron_sets: dict[str, NEURONSimulationNeuronSetUnion] = Field(
+        default_factory=dict,
+        description=(
+            "Neuron sets that `neuron_set` references by name, as in a scan config's "
+            "`neuron_sets` (`block_dict_name` 'neuron_sets'). Needed for a combined neuron "
+            "set; other neuron sets do not reference any."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def resolve_neuron_set_references(self) -> Self:
+        """Point the references of ``neuron_set`` at ``neuron_sets``, as a scan config does."""
+        if self.neuron_set is not None:
+            if not self.neuron_set.has_block_name():
+                self.neuron_set.set_block_name(UNNAMED_NEURON_SET_NAME)
+            if isinstance(self.neuron_set, CombinedBaseNeuronSet):
+                fill_unset_operands(self.neuron_set, self.neuron_sets)
+            resolve_block_references(self.neuron_set, self.neuron_sets, NEURON_SETS_DICT_NAME)
+        return self
+
+
+class NodeIdsRequest(NeuronSetRequest):
     """Request body for resolving a neuron set to node IDs."""
 
     neuron_set: NEURONSimulationNeuronSetUnion
@@ -57,11 +155,10 @@ class NodeIdsResponse(BaseModel):
     node_ids_per_population: dict[str, list[int]]
 
 
-class CircuitNeuronalManipulationPropertiesRequest(BaseModel):
+class CircuitNeuronalManipulationPropertiesRequest(NeuronSetRequest):
     """Request body for Circuit neuronal manipulation properties."""
 
     entity_id: str
-    neuron_set: NEURONSimulationNeuronSetUnion | None = None
 
 
 class MemodelNeuronalManipulationPropertiesRequest(BaseModel):
@@ -347,7 +444,11 @@ def mapped_circuit_properties_endpoint(
 @router.post(
     "/circuit/{circuit_id}/neuron-set-node-ids",
     summary="Resolve neuron set to node IDs",
-    description="Returns the node IDs for a given neuron set selection in a circuit.",
+    description="Returns the node IDs for a given neuron set selection in a circuit. "
+    "Swept (list-valued) fields of the neuron set are expanded and the resulting "
+    "node IDs are unioned per population. Only top-level fields can be swept: a list "
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400. "
+    "A combined neuron set references other neuron sets by name: send them in `neuron_sets`.",
 )
 def neuron_set_node_ids(
     circuit_id: str,
@@ -381,6 +482,10 @@ def neuron_set_node_ids(
     summary="Circuit neuronal manipulation properties by neuron set",
     description="Returns intersection of mechanism variables for neuronal manipulation blocks "
     "for a Circuit entity, resolved by neuron set. "
+    "Swept (list-valued) fields of the neuron set are expanded and the resulting "
+    "node IDs are unioned per population. Only top-level fields can be swept: a list "
+    "nested inside a sub-block, or a sweep with too many combinations, is rejected with 400. "
+    "A combined neuron set references other neuron sets by name: send them in `neuron_sets`. "
     "MEModel entities should use /memodel-neuronal-manipulation-properties instead.",
 )
 def neuronal_manipulation_properties_endpoint_by_neuron_set(
@@ -392,9 +497,16 @@ def neuronal_manipulation_properties_endpoint_by_neuron_set(
             db_client=db_client,
             circuit_id=request.entity_id,
             neuron_set=request.neuron_set,
+            from_circuit_files=settings.NEURONAL_MANIPULATION_FROM_CIRCUIT_FILES,
         )
     except ValueError as err:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(err)) from err
+    except CircuitListingError as err:
+        # Transient: 503 tells the client a retry can succeed.
+        raise HTTPException(
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            detail={"code": ApiErrorCode.ENTITYSDK_API_FAILURE, "detail": str(err)},
+        ) from err
     except EntitySDKError as err:
         raise HTTPException(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,

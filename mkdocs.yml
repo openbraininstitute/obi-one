@@ -20,6 +20,7 @@ nav:
   - Ion Channel Model Fitting: ion-channel-fitting.md
   - Circuit Simplification: circuit-simplification.md
   - ME-model Build: memodel-build.md
+  - Neuronal Manipulation Properties: neuronal-manipulation-properties.md
 
 # Plugins
 plugins:
