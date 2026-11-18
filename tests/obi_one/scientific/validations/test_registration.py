@@ -373,22 +373,23 @@ class TestDescription:
         attrs = mock_client.update_entity.call_args.kwargs["attrs_or_entity"]
         assert attrs["description"] == "Injects a step."
 
-    def test_update_without_description_keeps_the_existing_one(
+    def test_new_result_without_description_never_sends_null(
         self, mock_client, sample_test_result, tmp_path
     ):
-        self._search_returns(mock_client, [MagicMock(id="existing-id")])
-        mock_client.get_entity_assets.return_value.all.return_value = []
+        # entitycore rejects a null description.
+        self._search_returns(mock_client, [])
+        mock_client.register_entity.return_value = MagicMock(id="new-id")
 
         register_outcome(
             client=mock_client,
             test_result=sample_test_result,
             validated_entity_id=self.validated_entity_id,
             out_dir=tmp_path,
-            overwrite_existing=True,
         )
 
-        attrs = mock_client.update_entity.call_args.kwargs["attrs_or_entity"]
-        assert "description" not in attrs
+        entity = mock_client.register_entity.call_args.kwargs["entity"]
+        assert isinstance(entity.description, str)
+        assert not entity.description
 
     def test_descriptions_are_matched_by_result_name(self, mock_client, tmp_path):
         self._search_returns(mock_client, [])
@@ -407,4 +408,4 @@ class TestDescription:
         )
 
         entities = [call.kwargs["entity"] for call in mock_client.register_entity.call_args_list]
-        assert [entity.description for entity in entities] == ["Describes A.", None]
+        assert [entity.description for entity in entities] == ["Describes A.", ""]

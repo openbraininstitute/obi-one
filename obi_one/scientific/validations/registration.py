@@ -180,7 +180,7 @@ def _update_existing(
     test_result: TestResult,
     validated_entity_id: UUID,
     out_dir: Path | None,
-    description: str | None,
+    description: str,
 ) -> UUID:
     """Update a result in place and replace its validation artifacts.
 
@@ -195,9 +195,8 @@ def _update_existing(
         "name": test_result.name,
         "passed": test_result.passed,
         "validated_entity_id": validated_entity_id,
+        "description": description,
     }
-    if description is not None:
-        attrs["description"] = description
     try:
         client.update_entity(
             entity_id=entity_id,
@@ -231,7 +230,7 @@ def register_outcome(
     *,
     out_dir: Path | None = None,
     overwrite_existing: bool = False,
-    description: str | None = None,
+    description: str = "",
 ) -> RegisteredResult:
     """Register or optionally update a single TestResult.
 
@@ -242,8 +241,8 @@ def register_outcome(
         out_dir: Directory for writing temporary detail files.
         overwrite_existing: If False, skip a matching result. If True, update the
             matching result in place while preserving its platform ID.
-        description: Plain-text description of what the test ran. When None, it is
-            not sent, so an existing description is kept on update.
+        description: Plain-text description of what the test ran. Empty when the
+            test cannot be described.
 
     Returns:
         A RegisteredResult indicating whether the result was created, updated, or skipped.
@@ -333,7 +332,7 @@ def register_outcomes(
         overwrite_existing: If False, skip matching results. If True, update matching
             results in place while preserving their platform IDs.
         descriptions: Plain-text descriptions keyed by test result name. Results
-            without an entry are registered without a description.
+            without an entry get an empty description.
 
     Returns:
         List of RegisteredResult objects.
@@ -350,7 +349,7 @@ def register_outcomes(
                 validated_entity_id,
                 out_dir=out_dir,
                 overwrite_existing=overwrite_existing,
-                description=(descriptions or {}).get(test_result.name),
+                description=(descriptions or {}).get(test_result.name, ""),
             )
             results.append(result)
         except ValidationResultAlreadyExistsError:
