@@ -81,7 +81,7 @@ class MorphologyContainerizationTask(Task):
                 morph_folder is not None
                 and len(
                     MorphologyContainerizationTask._filter_ext(
-                        Path(morph_folder).iterdir(),  # ty:ignore[invalid-argument-type]
+                        Path(morph_folder).rglob("*"),  # Includes nested subfolders
                         morph_ext,
                     )
                 )
@@ -116,6 +116,8 @@ class MorphologyContainerizationTask(Task):
                 src_file = Path(inp_folder) / (m + f".{morph_ext}")
                 dest_file = Path(h5_folder) / (m + ".h5")
                 if not Path(dest_file).exists():
+                    # Morphology names may contain subfolders
+                    Path(dest_file).parent.mkdir(parents=True, exist_ok=True)
                     convert(src_file, dest_file)
         return h5_folder
 
@@ -132,6 +134,10 @@ class MorphologyContainerizationTask(Task):
                     if m in f_container:
                         skip_counter += 1
                     else:
+                        # Preserve subfolders of nested morphology names as groups
+                        parent = Path(m).parent.as_posix()
+                        if parent != ".":
+                            f_container.require_group(parent)
                         f_h5.copy(f_h5, f_container, name=m)
         L.info(
             f"Merged {len(morph_names) - skip_counter} morphologies into container \
@@ -409,7 +415,10 @@ class MorphologyContainerizationTask(Task):
         # Clean up morphology folders with individual morphologies
         L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
         for folder in morph_folders_to_delete:
-            shutil.rmtree(folder)
+            try:
+                shutil.rmtree(folder)
+            except OSError as e:
+                L.warning(f"Could not delete morphology folder '{folder}': {e}")
 
         # Reload and check morphologies in modified circuit
         if not self._check_morphologies(circuit_config):
