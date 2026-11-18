@@ -1,3 +1,5 @@
+"""Schema example ScanConfig for UI schema testing (no task execution)."""
+
 from enum import StrEnum
 from typing import ClassVar, Literal
 
