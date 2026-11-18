@@ -81,7 +81,7 @@ class MorphologyContainerizationTask(Task):
                 morph_folder is not None
                 and len(
                     MorphologyContainerizationTask._filter_ext(
-                        Path(morph_folder).rglob("*"),  # Includes nested subfolders
+                        list(Path(morph_folder).rglob("*")),  # Includes nested subfolders
                         morph_ext,
                     )
                 )
