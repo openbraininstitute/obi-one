@@ -9,7 +9,9 @@ from pydantic import BaseModel
 from app.dependencies.auth import user_verified
 from app.dependencies.entitysdk import get_client
 from app.services.validator import run_grid_scan_validation
-from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
+from obi_one.scientific.tasks.build_synaptome.config import (
+    MEModelSynapticModelPlacementScanConfig,
+)
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
     CreateExtracellularRecordingArrayScanConfig,
 )
@@ -29,7 +31,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
-from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.ion_channel_modeling.config import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config import (

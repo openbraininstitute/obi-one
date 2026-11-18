@@ -1,5 +1,4 @@
-"""
-Generate basic connectivity plots for all small connectomes
+"""Generate basic connectivity plots for all small connectomes
 Last updated 06.2025
 Author: Daniela Egas Santander
 """
@@ -8,7 +7,9 @@ import numpy as np
 
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.tasks.basic_connectivity_plots import BasicConnectivityPlotsScanConfig
+from obi_one.scientific.tasks.basic_connectivity_plots.config import (
+    BasicConnectivityPlotsScanConfig,
+)
 
 # List of all small circuits
 h = 0

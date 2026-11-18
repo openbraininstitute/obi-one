@@ -8,10 +8,10 @@ from obi_one.core.base import OBIBaseModel
 from obi_one.core.task import Task
 from obi_one.scientific.mappings_and_registry import config_task_map as test_module
 from obi_one.scientific.mappings_and_registry.config_task_map import TASK_SPECS
-from obi_one.scientific.tasks.build_synaptome import (
+from obi_one.scientific.tasks.build_synaptome.config import (
     MEModelSynapticModelPlacementSingleConfig,
-    MEModelSynapticModelPlacementTask,
 )
+from obi_one.scientific.tasks.build_synaptome.task import MEModelSynapticModelPlacementTask
 from obi_one.scientific.tasks.circuit_extraction.config import (
     CircuitExtractionScanConfig,
     CircuitExtractionSingleConfig,

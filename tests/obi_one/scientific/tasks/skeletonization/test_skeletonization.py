@@ -94,7 +94,7 @@ def species():
 
 @pytest.fixture
 def subject(species):
-    return Subject(sex=Sex.male, species=species)
+    return Subject(name="subject", description="", sex=Sex.male, species=species)
 
 
 @pytest.fixture
@@ -134,6 +134,7 @@ def em_dataset_no_slicing():
     return EMDenseReconstructionDataset(
         id=uuid4(),
         name="test-dataset",
+        description="",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
         volume_resolution_z_nm=0.1,
@@ -149,6 +150,7 @@ def em_dataset_with_slicing():
     return EMDenseReconstructionDataset(
         id=uuid4(),
         name="test-dataset",
+        description="",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
         volume_resolution_z_nm=0.1,

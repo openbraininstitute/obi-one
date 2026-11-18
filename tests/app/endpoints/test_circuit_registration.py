@@ -206,6 +206,33 @@ class TestValidateCircuitEndpoint:
             app.dependency_overrides.pop(get_compute_cell, None)
 
     @patch("app.endpoints.circuit_registration.trigger_validation_task")
+    def test_generate_assets_forwarded(self, mock_trigger, client):
+        mock_trigger.return_value = uuid4()
+        mock_circuit = MagicMock()
+        mock_circuit.lifecycle_status = "draft"
+
+        from app.application import app  # ruff: ignore[import-outside-top-level]
+        from app.dependencies.compute_cell import (  # ruff: ignore[import-outside-top-level]
+            get_compute_cell,
+        )
+        from app.dependencies.entitysdk import get_client  # ruff: ignore[import-outside-top-level]
+
+        mock_db = MagicMock()
+        mock_db.get_entity.return_value = mock_circuit
+        mock_db.project_context.project_id = uuid4()
+        mock_db.project_context.virtual_lab_id = uuid4()
+        app.dependency_overrides[get_client] = lambda: mock_db
+        app.dependency_overrides[get_compute_cell] = lambda: "cell_a"
+
+        try:
+            resp = client.post(f"/declared/circuit/{uuid4()}/validate?generate_assets=true")
+            assert resp.status_code == 200
+            assert mock_trigger.call_args.kwargs["generate_assets_on_success"] is True
+        finally:
+            app.dependency_overrides.pop(get_client, None)
+            app.dependency_overrides.pop(get_compute_cell, None)
+
+    @patch("app.endpoints.circuit_registration.trigger_validation_task")
     def test_draft_triggers_without_force(self, mock_trigger, client):
         circuit_id = uuid4()
         job_id = uuid4()

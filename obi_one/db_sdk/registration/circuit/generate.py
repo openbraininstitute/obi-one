@@ -201,7 +201,53 @@ def _entity_has_asset(circuit_entity: models.Circuit | None, asset_label: AssetL
     return asset_label.value in existing
 
 
-def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-many-branches, too-many-statements]
+def _generate_overview_images(
+    *,
+    plot_dir: Path,
+    viz_dir: Path,
+    overview_image_path: Path | None,
+    sim_designer_image_path: Path | None,
+    client: Client | None,
+    circuit_entity: models.Circuit | None,
+    force: bool,
+) -> None:
+    """Generate and register the overview and sim-designer images, skipping present ones."""
+    if force or not _entity_has_asset(circuit_entity, AssetLabel.circuit_visualization):
+        try:
+            generate_overview_image_asset(
+                plot_dir=plot_dir,
+                output_dir=viz_dir,
+                image_path=overview_image_path,
+                client=client,
+                circuit_entity=circuit_entity,
+            )
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.warning(f"Overview image asset generation/registration failed: {e}")
+    else:
+        L.info(
+            "circuit_visualization already present on circuit %s — skipping overview image",
+            getattr(circuit_entity, "id", None),
+        )
+
+    if force or not _entity_has_asset(circuit_entity, AssetLabel.simulation_designer_image):
+        try:
+            generate_sim_designer_image_asset(
+                plot_dir=plot_dir,
+                output_dir=viz_dir,
+                image_path=sim_designer_image_path,
+                client=client,
+                circuit_entity=circuit_entity,
+            )
+        except Exception as e:  # ruff: ignore[blind-except]
+            L.warning(f"Sim designer image asset generation/registration failed: {e}")
+    else:
+        L.info(
+            "simulation_designer_image already present on circuit %s — skipping sim-designer image",
+            getattr(circuit_entity, "id", None),
+        )
+
+
+def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-many-branches]
     circuit_path: Path,
     circuit_path_compressed: Path | None = None,
     edge_population: str | None = None,
@@ -271,28 +317,8 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
         if d.exists():
             shutil.rmtree(d)
 
-    # Run additional asset generation
-    if not include_compressed:
-        L.info(
-            "Compression not requested for circuit %s — skipping compressed_sonata_circuit",
-            getattr(circuit_entity, "id", None),
-        )
-    elif not force and _entity_has_asset(circuit_entity, AssetLabel.compressed_sonata_circuit):
-        L.info(
-            "compressed_sonata_circuit already present on circuit %s — skipping compression",
-            getattr(circuit_entity, "id", None),
-        )
-    else:
-        try:
-            generate_compressed_circuit_asset(
-                circuit_path=circuit_path_compressed or circuit_path,
-                output_dir=compressed_dir,
-                client=client,
-                circuit_entity=circuit_entity,
-            )
-        except Exception as e:  # ruff: ignore[blind-except]
-            L.warning(f"Compressed circuit asset generation/registration failed: {e}")
-
+    # Run additional asset generation. The compressed circuit is generated last: it can take
+    # long and use a lot of disk space, so the cheaper assets are registered first.
     skip_matrices = not force and _entity_has_asset(
         circuit_entity, AssetLabel.circuit_connectivity_matrices
     )
@@ -333,39 +359,34 @@ def generate_additional_circuit_assets(  # ruff: ignore[complex-structure, too-m
     # Only the auto-generated overview / sim-designer images are gated by this flag. They are
     # skipped when already present (e.g. a user-uploaded image attached at registration time),
     # so the async job never overwrites an image the user supplied.
-    if not include_overview_images:
-        return
+    if include_overview_images:
+        _generate_overview_images(
+            plot_dir=plot_dir,
+            viz_dir=viz_dir,
+            overview_image_path=overview_image_path,
+            sim_designer_image_path=sim_designer_image_path,
+            client=client,
+            circuit_entity=circuit_entity,
+            force=force,
+        )
 
-    if force or not _entity_has_asset(circuit_entity, AssetLabel.circuit_visualization):
+    if not include_compressed:
+        L.info(
+            "Compression not requested for circuit %s — skipping compressed_sonata_circuit",
+            getattr(circuit_entity, "id", None),
+        )
+    elif not force and _entity_has_asset(circuit_entity, AssetLabel.compressed_sonata_circuit):
+        L.info(
+            "compressed_sonata_circuit already present on circuit %s — skipping compression",
+            getattr(circuit_entity, "id", None),
+        )
+    else:
         try:
-            generate_overview_image_asset(
-                plot_dir=plot_dir,
-                output_dir=viz_dir,
-                image_path=overview_image_path,
+            generate_compressed_circuit_asset(
+                circuit_path=circuit_path_compressed or circuit_path,
+                output_dir=compressed_dir,
                 client=client,
                 circuit_entity=circuit_entity,
             )
         except Exception as e:  # ruff: ignore[blind-except]
-            L.warning(f"Overview image asset generation/registration failed: {e}")
-    else:
-        L.info(
-            "circuit_visualization already present on circuit %s — skipping overview image",
-            getattr(circuit_entity, "id", None),
-        )
-
-    if force or not _entity_has_asset(circuit_entity, AssetLabel.simulation_designer_image):
-        try:
-            generate_sim_designer_image_asset(
-                plot_dir=plot_dir,
-                output_dir=viz_dir,
-                image_path=sim_designer_image_path,
-                client=client,
-                circuit_entity=circuit_entity,
-            )
-        except Exception as e:  # ruff: ignore[blind-except]
-            L.warning(f"Sim designer image asset generation/registration failed: {e}")
-    else:
-        L.info(
-            "simulation_designer_image already present on circuit %s — skipping sim-designer image",
-            getattr(circuit_entity, "id", None),
-        )
+            L.warning(f"Compressed circuit asset generation/registration failed: {e}")

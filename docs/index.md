@@ -107,6 +107,8 @@ make install-brian2
 make install-all
 ```
 
+Circuit extraction execution needs the optional `circuit-extraction` extra (`brainbuilder`); config generation and service submission do not. Launch-system jobs install it via `launch_scripts/launch_task_for_single_config_asset/dependencies/circuit_extraction.txt`.
+
 ## Technical Overview / Glossary
 
 The package is split into **core/** and **scientific/** code.
@@ -143,3 +145,4 @@ make install-notebooks
 - [Single Cell Simulations](scs.md) - Learn about single cell simulation workflows
 - [Small Circuit Simulations](scircuit.md) - Learn about small circuit simulation workflows
 - [Morphology Registration](morphology-registration.md) - Uploading morphologies, including ones that fail validation
+- [Neuronal Manipulation Properties](neuronal-manipulation-properties.md) - How the variables of the neuronal manipulation block are read from a circuit's hoc and mod files

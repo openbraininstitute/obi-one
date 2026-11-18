@@ -1050,7 +1050,7 @@ class GlobalParameterSelection(Block):
 
 # block_dictionary additionalProperties must expose a discriminated ``oneOf`` even when
 # there is currently only one concrete block type (see docs/gui-definition-spec), matching
-# the pattern used elsewhere in the codebase (e.g. build_synaptome.SynapticModelPlacerUnion).
+# the pattern used elsewhere in the codebase (e.g. build_synaptome.blocks.SynapticModelPlacerUnion).
 ParameterSelectionUnion = Annotated[ParameterSelection, Discriminator("type")]
 GlobalParameterSelectionUnion = Annotated[GlobalParameterSelection, Discriminator("type")]
 OptimizationValueUnion = Annotated[OptimizationValue, Discriminator("type")]

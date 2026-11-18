@@ -209,3 +209,10 @@ Full circuit validation after merge:
 3. **Single container name**: The local executor reuses container name `obi_one` — only one validation job can run at a time. Production (ECS) doesn't have this limitation.
 4. **Test circuit data**: The tiny N=10 test circuit has datatype warnings (float64 vs float32, int16 vs uint) from bluepysnap. These are tolerated as warnings, not fatal errors.
 5. **Morphology SWC files**: The test circuit uses H5 morphologies (`alternate_morphologies.h5v1`) — individual SWC files are referenced in node properties but not physically present. This is expected for the compact test archive.
+6. **2 GB per-file upload limit**: The infrastructure layer in front of the service rejects any single uploaded file larger than 2 GB.
+The limit applies per file, not to the total request size.
+This affects every endpoint that receives files as multipart form data, namely `POST /declared/circuit/register` (`circuit_archive`) and `POST /declared/circuit/customize` (edges, nodes, e-model, mechanism, node sets and circuit config files).
+The limit is enforced before the request reaches the application, so the endpoints cannot return a descriptive error for it.
+Circuits or override files with a single file above 2 GB cannot be registered or customized through these endpoints.
+For registration, the SDK path is not affected: `register_circuit` uploads directly through entitysdk, and `obi_one.db_sdk.registration.circuit.remote.register_circuit_with_remote_validation` does the same but runs validation and asset generation as remote jobs, like the endpoint (see `circuit-deferred-validation.md`).
+For customization there is no workaround yet.

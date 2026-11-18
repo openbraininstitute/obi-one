@@ -4,7 +4,7 @@ import pytest
 from pydantic import Discriminator
 
 from obi_one.core.block import Block
-from obi_one.core.block_reference import BlockReference
+from obi_one.core.block_reference import BlockReference, resolve_block_references
 
 
 class BlockA(Block):
@@ -116,3 +116,37 @@ class TestBlockReferenceErrorMessages:
         ref = TestReference(block_dict_name="ns", block_name="x")
         with pytest.raises(ValueError, match="block_dict_name"):
             _ = ref.block
+
+
+class Holder(Block):
+    """A block whose references sit in a field and inside a tuple, like a combined set."""
+
+    first: TestReference
+    rest: tuple[tuple[TestReference, str], ...] = ()
+
+
+class TestResolveBlockReferences:
+    def test_references_point_at_the_named_blocks(self):
+        a, b = BlockA(val=1), BlockB(val="b")
+        holder = Holder(
+            first=TestReference(block_dict_name="sets", block_name="a"),
+            rest=((TestReference(block_dict_name="sets", block_name="b"), "union"),),
+        )
+        resolve_block_references(holder, {"a": a, "b": b}, "sets")
+        assert holder.first.block is a
+        assert holder.rest[0][0].block is b
+        assert (a.block_name, b.block_name) == ("a", "b")
+
+    @pytest.mark.parametrize(
+        ("dict_name", "name"), [("sets", "missing"), ("other", "a"), ("", "a")]
+    )
+    def test_a_reference_outside_the_given_blocks_raises(self, dict_name, name):
+        holder = Holder(first=TestReference(block_dict_name=dict_name, block_name=name))
+        with pytest.raises(ValueError, match=f"Block '{name}' in '{dict_name}' is referenced"):
+            resolve_block_references(holder, {"a": BlockA()}, "sets")
+
+    def test_blocks_not_reached_are_not_resolved(self):
+        broken = Holder(first=TestReference(block_dict_name="sets", block_name="missing"))
+        holder = Holder(first=TestReference(block_dict_name="sets", block_name="a"))
+        resolve_block_references(holder, {"a": BlockA(), "broken": broken}, "sets")
+        assert not broken.first.has_block()

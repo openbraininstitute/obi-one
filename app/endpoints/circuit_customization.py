@@ -651,6 +651,8 @@ def _parse_population_manifest(manifest_json: str | None) -> dict[str, str]:
         " circuit_config override, that config is authoritative and must reference the upload."
         "\n\nTo place HOC files into a population-specific model directory, supply"
         " emodel_population_manifest as a JSON object mapping filename → population name."
+        "\n\nLimitation: the infrastructure layer rejects any single uploaded file larger than"
+        " 2 GB, so each uploaded file must stay below that size."
     ),
 )
 def customize_circuit_endpoint(  # ruff: ignore[too-many-arguments, too-many-positional-arguments]

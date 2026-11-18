@@ -7,7 +7,7 @@ import pytest
 from obi_one.core.param import SingleValueScanParam
 from obi_one.core.path import NamedPath
 from obi_one.core.single import SingleCoordinateScanParams
-from obi_one.scientific.tasks.folder_compression import (
+from obi_one.scientific.tasks.folder_compression.config import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
 )

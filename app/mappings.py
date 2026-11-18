@@ -223,7 +223,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             timelimit="00:30",
             compute_cell="local",
             placement_type_map={
-                "cell_a": MachinePlacementType.fargate,
+                "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
         ),

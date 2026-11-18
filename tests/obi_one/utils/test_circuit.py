@@ -13,7 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
 from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks import basic_connectivity_plots
+from obi_one.scientific.tasks.basic_connectivity_plots import task as basic_connectivity_plots
 from obi_one.utils.circuit import (
     copy_mod_files,
     count_cells_in_simulation_node_set,
@@ -165,6 +165,36 @@ def test_get_circuit_size_small_circuit():
     assert num_syn > 0
     assert num_conn > 0
     assert num_conn <= num_syn  # connections <= synapses
+
+
+def test_get_circuit_size_connection_count_matches_materialized_connections():
+    """The streamed connection count equals the number of materialized connections."""
+    circuit_path = str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json")
+    c = Circuit(name="test_small", path=circuit_path)
+    c_sonata = c.sonata_circuit
+    npop_names = Circuit.get_node_population_names(c_sonata, incl_virtual=False, incl_point=False)
+    edge_pops = [
+        e
+        for e in Circuit.get_edge_population_names(c_sonata, incl_virtual=False)
+        if c_sonata.edges[e].source.name in npop_names
+        and c_sonata.edges[e].target.name in npop_names
+    ]
+    expected = sum(
+        len(
+            list(
+                c_sonata.edges[e].iter_connections(
+                    target={"population": c_sonata.edges[e].target.name}
+                )
+            )
+        )
+        for e in edge_pops
+    )
+
+    _, _, _, num_conn = get_circuit_size(c)
+
+    assert expected > 0
+    assert num_conn == expected
+    assert isinstance(num_conn, int)
 
 
 def test_get_circuit_size_pair_circuit():

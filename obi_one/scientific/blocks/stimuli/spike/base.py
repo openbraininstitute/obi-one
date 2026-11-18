@@ -22,6 +22,7 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_neuron_set,
 )
+from obi_one.scientific.unions_and_references.reference_tags import ReferenceTag
 from obi_one.scientific.unions_and_references.timestamps import (
     TimestampsReference,
 )
@@ -35,6 +36,7 @@ class SpikeStimulus(StimulusWithTimestamps):
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.REFERENCE,
             SchemaKey.REFERENCE_TYPES: ALL_NEURON_SETS_REFERENCE_TYPES,
+            SchemaKey.REFERENCE_TAG: ReferenceTag.SPIKE_STIMULUS_SOURCE,
             SchemaKey.PARAMETER_ORDER_PRIORITY: 100,
         },
     )
@@ -84,6 +86,13 @@ class SpikeStimulus(StimulusWithTimestamps):
             msg = "Target Neuron Set of Spike Stimulus must be biophysical or point."
             raise ConfigValidationError(msg)
 
+        # Connectivity is only stored in the edge files, which may not have been staged.
+        if circuit.has_staged_edges:
+            self._validate_source_connects_to_target(
+                circuit=circuit,
+                source_neuron_set=source_neuron_set,  # ty:ignore[invalid-argument-type]
+                target_neuron_set=target_neuron_set,  # ty:ignore[invalid-argument-type]
+            )
         spike_file_relative_path = self.generate_spikes(
             circuit=circuit,
             spike_file_directory=sonata_simulation_config_directory,
@@ -99,6 +108,34 @@ class SpikeStimulus(StimulusWithTimestamps):
 
         return sonata_config
 
+    @staticmethod
+    def _validate_source_connects_to_target(
+        circuit: Circuit,
+        source_neuron_set: NeuronSet,
+        target_neuron_set: NeuronSet,
+    ) -> None:
+        """Check that the source population(s) have edges to the target population(s).
+
+        Spikes are replayed through those edges, so a source without any has nothing to drive.
+        """
+        source_populations = source_neuron_set.get_populations(circuit)
+        target_populations = set(target_neuron_set.get_populations(circuit))
+        edges = circuit.sonata_circuit.edges
+        connected = {
+            edges[name].source.name
+            for name in edges.population_names
+            if edges[name].target.name in target_populations
+        }
+        unconnected = [pop for pop in source_populations if pop not in connected]
+        if unconnected:
+            msg = (
+                f"Spike stimulus source population(s) {unconnected} have no edges to the "
+                f"target population(s) {sorted(target_populations)}, so the spikes cannot be "
+                "replayed. Choose a source neuron set whose population is connected to the "
+                f"target (populations with edges to the target: {sorted(connected)})."
+            )
+            raise ConfigValidationError(msg)
+
     def generate_spikes(
         self,
         circuit: Circuit,
@@ -106,25 +143,43 @@ class SpikeStimulus(StimulusWithTimestamps):
         source_neuron_set: NeuronSet,
     ) -> Path:
         populations = source_neuron_set.get_populations(circuit)
-        if len(populations) != 1:
-            msg = (
-                "Spike stimulus only supports source neuron sets with one population. "
-                f"Got {len(populations)} populations: {populations}"
-            )
-            raise NotImplementedError(msg)
-        source_node_population = populations[0]
-        source_gids = source_neuron_set.get_neuron_ids(circuit)[source_node_population]
+        if not populations:
+            msg = "Spike stimulus source neuron set has no population."
+            raise ConfigValidationError(msg)
+        neuron_ids = source_neuron_set.get_neuron_ids(circuit)
 
         # Generate spikes
-        spikes_by_gid = self.generate_spikes_by_gid(source_gids=source_gids)
+        if len(populations) == 1:
+            (population,) = populations
+            spikes_by_population = {
+                population: self.generate_spikes_by_gid(source_gids=neuron_ids[population])
+            }
+        else:
+            spikes_by_population = self._generate_spikes_by_population(
+                {population: neuron_ids[population] for population in populations}
+            )
 
         # Write spikes to file
         spike_file = f"{self.block_name}_spikes.h5"
         spike_file_relative_path = Path(spike_file)
         spike_file_absolute_path = spike_file_directory / spike_file
-        self.write_spike_file(spikes_by_gid, spike_file_absolute_path, source_node_population)
+        self.write_spike_file(spikes_by_population, spike_file_absolute_path)
 
         return spike_file_relative_path
+
+    def _generate_spikes_by_population(
+        self, gids_by_population: dict[str, list[int]]
+    ) -> dict[str, dict[int, list[float]]]:
+        """Spikes in one pass, so populations get independent spikes despite shared node IDs."""
+        neurons = [(pop, gid) for pop, gids in gids_by_population.items() for gid in gids]
+        spikes_by_index = self.generate_spikes_by_gid(source_gids=list(range(len(neurons))))
+        spikes_by_population: dict[str, dict[int, list[float]]] = {
+            pop: {} for pop in gids_by_population
+        }
+        for index, spike_times in spikes_by_index.items():
+            pop, gid = neurons[index]
+            spikes_by_population[pop][gid] = spike_times
+        return spikes_by_population
 
     def _generate_config(
         self,
@@ -158,9 +213,8 @@ class SpikeStimulus(StimulusWithTimestamps):
 
     @staticmethod
     def write_spike_file(
-        spikes_by_gid: dict[int, list[float]],
+        spikes_by_population: dict[str, dict[int, list[float]]],
         spike_file: Path,
-        source_node_population: str | None = None,
     ) -> None:
         """Writes SONATA output spike trains to file.
 
@@ -170,18 +224,19 @@ class SpikeStimulus(StimulusWithTimestamps):
         if not out_path.exists():
             out_path.mkdir(parents=True)
 
-        times = []
-        gids = []
-        for gid, spike_times in spikes_by_gid.items():
-            times.extend(spike_times)
-            gids.extend([gid] * len(spike_times))
-
-        sort_idx = np.argsort(times, kind="stable")
-        sorted_times = np.array(times, dtype=np.float64)[sort_idx]
-        sorted_gids = np.array(gids, dtype=np.uint64)[sort_idx]
-
         with h5py.File(spike_file, "w") as f:
-            pop = f.create_group(f"/spikes/{source_node_population}")
-            ts = pop.create_dataset("timestamps", data=sorted_times)
-            pop.create_dataset("node_ids", data=sorted_gids)
-            ts.attrs["units"] = "ms"
+            for population, spikes_by_gid in spikes_by_population.items():
+                times = []
+                gids = []
+                for gid, spike_times in spikes_by_gid.items():
+                    times.extend(spike_times)
+                    gids.extend([gid] * len(spike_times))
+
+                sort_idx = np.argsort(times, kind="stable")
+                sorted_times = np.array(times, dtype=np.float64)[sort_idx]
+                sorted_gids = np.array(gids, dtype=np.uint64)[sort_idx]
+
+                pop = f.create_group(f"/spikes/{population}")
+                ts = pop.create_dataset("timestamps", data=sorted_times)
+                pop.create_dataset("node_ids", data=sorted_gids)
+                ts.attrs["units"] = "ms"

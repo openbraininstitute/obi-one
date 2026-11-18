@@ -4,11 +4,11 @@ from obi_one.core.block import Block
 from obi_one.core.exception import OBIONEError
 from obi_one.core.path import NamedPath
 from obi_one.core.scan_config import ScanConfig, get_all_annotations
-from obi_one.scientific.tasks.folder_compression import (
+from obi_one.scientific.tasks.folder_compression.config import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
 )
-from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
+from obi_one.scientific.tasks.schema_example.config import SchemaExampleScanConfig
 
 
 class TestGetAllAnnotations:

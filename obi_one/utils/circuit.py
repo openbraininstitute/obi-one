@@ -227,18 +227,19 @@ def get_circuit_size(
         ]
 
     num_syn = np.sum([c_sonata.edges[e].size for e in edge_pops]).astype(int)
-    num_conn = np.sum(
-        [
-            len(
-                list(
-                    c_sonata.edges[e].iter_connections(
-                        target={"population": c_sonata.edges[e].target.name}
-                    )
+    # Count connections without materializing them, which would need memory proportional to
+    # the number of connections and can exhaust it for large circuits.
+    num_conn = int(
+        sum(
+            sum(
+                1
+                for _ in c_sonata.edges[e].iter_connections(
+                    target={"population": c_sonata.edges[e].target.name}
                 )
             )
             for e in edge_pops
-        ]
-    ).astype(int)
+        )
+    )
 
     return scale, num_nrn, num_syn, num_conn
 
@@ -584,7 +585,7 @@ def run_circuit_folder_compression(
         COMPRESSED_CIRCUIT_FORMAT,
         COMPRESSED_CIRCUIT_NAME,
     )
-    from obi_one.scientific.tasks.folder_compression import (  # ruff: ignore[import-outside-top-level]
+    from obi_one.scientific.tasks.folder_compression.config import (  # ruff: ignore[import-outside-top-level]
         FolderCompressionScanConfig,
     )
 
@@ -637,7 +638,7 @@ def run_connectivity_matrix_extraction(
     from obi_one.core.scan_generation import (  # ruff: ignore[import-outside-top-level]
         GridScanGenerationTask,
     )
-    from obi_one.scientific.tasks.connectivity_matrix_extraction import (  # ruff: ignore[import-outside-top-level]
+    from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (  # ruff: ignore[import-outside-top-level]
         ConnectivityMatrixExtractionScanConfig,
     )
 
@@ -717,7 +718,7 @@ def run_basic_connectivity_plots(
     from obi_one.scientific.library.constants import (  # ruff: ignore[import-outside-top-level]
         MAX_SMALL_MICROCIRCUIT_SIZE,
     )
-    from obi_one.scientific.tasks.basic_connectivity_plots import (  # ruff: ignore[import-outside-top-level]
+    from obi_one.scientific.tasks.basic_connectivity_plots.config import (  # ruff: ignore[import-outside-top-level]
         BasicConnectivityPlotsScanConfig,
     )
 

@@ -6,7 +6,7 @@ from pydantic import Field
 from obi_one.core.block import Block
 from obi_one.core.block_subunit.complex_variable_holder import ComplexVariableHolder
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.library.emodel_parameters import _expand_section_list
+from obi_one.scientific.library.emodel_parameters import expand_section_list
 from obi_one.scientific.library.entity_property_types import (
     CircuitMappedProperties,
     MappedPropertiesGroup,
@@ -153,7 +153,7 @@ class BySectionListMechanismVariableNeuronalManipulation(Block):
                         f"{expanded_section_list}.{self.modification.variable_name} = {value}"
                     ),
                 }
-                for expanded_section_list in _expand_section_list(section_list)
+                for expanded_section_list in expand_section_list(section_list)
             )
 
         return modifications

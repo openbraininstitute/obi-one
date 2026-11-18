@@ -10,7 +10,7 @@ from obi_one.core.scan_generation import (
     GridScanGenerationTask,
 )
 from obi_one.core.single import SingleCoordinateScanParams
-from obi_one.scientific.tasks.folder_compression import (
+from obi_one.scientific.tasks.folder_compression.config import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
 )
