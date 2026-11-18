@@ -9,10 +9,8 @@ Requires the ``nest`` extra; import this module lazily.
 """
 
 import hashlib
-import importlib.metadata
 import json
 import logging
-import re
 from pathlib import Path
 from typing import Any
 
@@ -46,42 +44,6 @@ CONNECTION_ID = ("source", "target", "target_thread", "synapse_id", "port")
 
 MODULE = libsonata.SimulationConfig.InputBase.Module
 CLAMP_MODULES = (MODULE.linear, MODULE.pulse, MODULE.sinusoidal)
-
-VERSION_PATTERN = re.compile(r"\d+\.\d+")
-
-
-def minor_version(version: str) -> str:
-    match = VERSION_PATTERN.match(str(version))
-    return match.group(0) if match else str(version)
-
-
-def version_warnings(
-    provenance: dict, nest_version: str | None = None, nestml_version: str | None = None
-) -> list[str]:
-    """Warnings for the NEST and NESTML in use that differ from the circuit's ``provenance``.
-
-    Versions are compared by major and minor number. A version that is ``None`` is not checked.
-    A missing ``nest_version`` is reported; a missing ``nestml_version`` is not, as it is optional.
-    """
-    warnings = []
-    if nest_version is not None and "nest_version" not in provenance:
-        warnings.append(
-            f"The circuit config has no components.provenance.nest_version; NEST {nest_version} "
-            "is in use."
-        )
-    for key, name, running in (
-        ("nest_version", "NEST", nest_version),
-        ("nestml_version", "NESTML", nestml_version),
-    ):
-        recorded = provenance.get(key)
-        if recorded is None or running is None:
-            continue
-        if minor_version(recorded) != minor_version(running):
-            warnings.append(
-                f"The circuit was built for {name} {recorded}, but {name} {running} is in use; "
-                "parameter names and defaults may differ."
-            )
-    return warnings
 
 
 def _runs(values: list[str]) -> list[tuple[str, int, int]]:
@@ -158,10 +120,6 @@ class NestSonataNetwork:
         self._are_nodes_created = False
         self._is_network_built = False
         self._nestml_cache_dir = self._base_dir / ".nestml_cache"
-        self._provenance = (
-            json.loads(circuit.expanded_json).get("components", {}).get("provenance", {})
-        )
-        self._nestml_version_checked = False
         self._node_sets: libsonata.NodeSets | None = None
         self._replay_collections: dict = {}
         self._replay_nodes: dict = {}
@@ -174,8 +132,6 @@ class NestSonataNetwork:
             raw.get("connection_overrides", []), self.dt
         )
         self._reports = self._check_reports()
-        for message in version_warnings(self._provenance, nest.__version__):
-            L.warning(message)
 
     @staticmethod
     def _warn_ignored(raw: dict) -> None:
@@ -574,11 +530,6 @@ class NestSonataNetwork:
 
     def _ensure_nestml_model(self, model_name: str, models_dir: Path | None) -> str:
         source = self._nestml_source_path(model_name, models_dir)
-        if not self._nestml_version_checked:
-            self._nestml_version_checked = True
-            nestml_version = importlib.metadata.version("nestml")
-            for message in version_warnings(self._provenance, None, nestml_version):
-                L.warning(message)
         digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
         library = nestml_build.compile_nestml_module(
             source, self._nestml_cache_dir / digest, f"nestml_{digest}module"
