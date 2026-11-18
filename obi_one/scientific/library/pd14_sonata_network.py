@@ -11,8 +11,12 @@ pathways and global parameters are read directly from it, so the network
 description is not constrained by the layout of ``net_dict`` and ``stim_dict``.
 Given the same configuration, the written SONATA network is identical to the
 one written by ``SonataNetwork`` for the equivalent ``net_dict`` / ``stim_dict``
-(same files, same random numbers). The output layout is documented in
-``microcircuit.sonata_network``.
+(same files, same random numbers). The output follows the NEST SONATA format
+(https://sonata-extension.readthedocs.io/en/latest/sonata_nest.html): neuron
+populations of type ``nest_point`` and edge populations of type
+``nest_chemical``, each with a model template under
+``model_templates/<population>/``, and the edge weights stored as ``syn_weight``.
+The output files are otherwise as described in ``microcircuit.sonata_network``.
 
 Configuration format
 ~~~~~~~~~~~~~~~~~~~~
@@ -103,6 +107,28 @@ _ENUMERATED_NODE_PROPERTIES = (
 
 # Parameters that are not part of the configuration.
 _NEURON_MODEL = "iaf_psc_exp"
+_SYNAPSE_MODEL = "static_synapse"
+
+# Population types and model directory layout of the NEST SONATA format, see
+# https://sonata-extension.readthedocs.io/en/latest/sonata_nest.html
+_NEURON_POPULATION_TYPE = "nest_point"
+_EDGE_POPULATION_TYPE = "nest_chemical"
+_MODEL_TEMPLATES_DIR = "model_templates"
+
+# Per-node parameters of the neuron model (NEST names) and their units. They are written to
+# ``/0/dynamics_params`` of the neuron nodes and listed in the neuron model template.
+_NEURON_DYNAMICS_PARAMS_UNITS = {
+    "C_m": "pF",
+    "tau_m": "ms",
+    "E_L": "mV",
+    "V_th": "mV",
+    "V_reset": "mV",
+    "t_ref": "ms",
+    "tau_syn_ex": "ms",
+    "tau_syn_in": "ms",
+    "I_e": "pA",
+    "V_m": "mV",
+}
 # Neuron parameters that are optional in the configuration; the default is used if an entry is
 # missing (e.g. in configurations written before the entry existed).
 _POPULATION_NEURON_DEFAULTS = {
@@ -570,8 +596,8 @@ class SonataNetworkFromConfig:
         # per-node values here; they are stored as enumerations (@library) on saving.
         # Properties prefixed with SONATA_DYNAMIC_PROPERTY end up in dynamics_params.
         properties = {
-            "model_type": np.full(num_total, "point_neuron", dtype=object),
-            "model_template": np.full(num_total, f"nest:{_NEURON_MODEL}", dtype=object),
+            "model_type": np.full(num_total, _NEURON_POPULATION_TYPE, dtype=object),
+            "model_template": np.full(num_total, _NEURON_MODEL, dtype=object),
             "mtype": np.repeat(np.array(self.population_names, dtype=object), self.num_neurons),
             "etype": np.full(num_total, "N/A", dtype=object),
             "layer": np.array(layers, dtype=object)[pop_index],
@@ -587,7 +613,15 @@ class SonataNetworkFromConfig:
             np.float32
         )
         cells.properties = pd.DataFrame(properties)
-        self.__save_node_population(cells, "point_neuron")
+        self.__save_node_population(cells, _NEURON_POPULATION_TYPE)
+        self.__write_model_template(
+            self.population_name,
+            _NEURON_MODEL,
+            {
+                "model": f"nest:{_NEURON_MODEL}",
+                "dynamics_params": _NEURON_DYNAMICS_PARAMS_UNITS,
+            },
+        )
 
     def __background_population_names(self) -> list[str]:
         """Names of the background node populations, one per neuronal
@@ -760,7 +794,7 @@ class SonataNetworkFromConfig:
         for parent, ds_name, dtype in (
             (pop_grp, "source_node_id", np.uint64),
             (pop_grp, "target_node_id", np.uint64),
-            (grp, "weight", np.float32),
+            (grp, "syn_weight", np.float32),
             (grp, "delay", np.float32),
         ):
             datasets.append(
@@ -784,7 +818,25 @@ class SonataNetworkFromConfig:
 
         pop_grp.create_dataset("edge_type_id", shape=(num_edges,), dtype=np.int64, fillvalue=-1)
 
+        # model template of all edges, stored as an enumeration (@library)
+        grp.create_dataset("model_template", data=np.zeros(num_edges, dtype=np.uint32))
+        grp.create_group("@library").create_dataset(
+            "model_template", data=[_SYNAPSE_MODEL], dtype=h5py.string_dtype()
+        )
+        self.__write_model_template(name, _SYNAPSE_MODEL, {"model": f"nest:{_SYNAPSE_MODEL}"})
+
         self.edge_populations[name] = (source_name, target_name)
+
+    def __write_model_template(self, population: str, template: str, content: dict) -> None:
+        """Writes the model template ``<template>.json`` of a population.
+
+        The template is stored in ``model_templates/<population>/``, the
+        ``point_neuron_models_dir`` of the population in the circuit config.
+        """
+        directory = self.sonata_path / _MODEL_TEMPLATES_DIR / population
+        directory.mkdir(parents=True, exist_ok=True)
+        with (directory / f"{template}.json").open("w", encoding="utf-8") as f:
+            json.dump(content, f, indent=4)
 
     def __write_edge_indices(self) -> None:
         """Writes the SONATA source->target and target->source edge indices."""
@@ -821,17 +873,31 @@ class SonataNetworkFromConfig:
         with self.node_sets_file.open("w", encoding="utf-8") as f:
             json.dump(node_sets, f, indent=4)
 
+    @staticmethod
+    def __models_dir(population: str) -> str:
+        """Model template directory of a population, as written in the circuit config."""
+        return f"$BASE_DIR/{_MODEL_TEMPLATES_DIR}/{population}"
+
+    def __node_population_config(self, name: str) -> dict:
+        """Circuit config entry of a node population."""
+        population_type = self.node_populations[name][0]
+        entry = {"type": population_type}
+        if population_type == _NEURON_POPULATION_TYPE:
+            entry["point_neuron_models_dir"] = self.__models_dir(name)
+        return entry
+
     def __write_circuit_config(self) -> None:
         """Writes the SONATA circuit configuration file."""
         config = {
-            "version": 2.4,
+            "version": 2,
+            "target_simulator": "NEST",
             "manifest": {"$BASE_DIR": "."},
             "node_sets_file": "$BASE_DIR/node_sets.json",
             "networks": {
                 "nodes": [
                     {
                         "nodes_file": f"$BASE_DIR/{path.name}",
-                        "populations": {name: {"type": self.node_populations[name][0]}},
+                        "populations": {name: self.__node_population_config(name)},
                     }
                     for name, path in self.nodes_files.items()
                 ],
@@ -839,7 +905,11 @@ class SonataNetworkFromConfig:
                     {
                         "edges_file": "$BASE_DIR/edges.h5",
                         "populations": {
-                            name: {"type": "chemical"} for name in self.edge_populations
+                            name: {
+                                "type": _EDGE_POPULATION_TYPE,
+                                "point_neuron_models_dir": self.__models_dir(name),
+                            }
+                            for name in self.edge_populations
                         },
                     }
                 ],
@@ -852,7 +922,7 @@ class SonataNetworkFromConfig:
                 "synapse_model": "static_synapse",
                 "bg_input_type": _BG_INPUT_TYPE,
                 "rng_seed": self.rng_seed,
-                "units": {"weight": "pA", "delay": "ms"},
+                "units": {"syn_weight": "pA", "delay": "ms"},
             },
         }
         with self.circuit_config_file.open("w", encoding="utf-8") as f:
