@@ -128,10 +128,11 @@ def register_contributor(
                     error_code=ApiErrorCode.INVALID_REQUEST,
                     http_status_code=HTTPStatus.CONFLICT,
                 )
+            # entitycore requires alternative_name: str (empty string when ROR has none).
             entity = models.Organization(
                 pref_label=metadata.name,
                 alternative_name=(
-                    metadata.alternative_names[0] if metadata.alternative_names else None
+                    metadata.alternative_names[0] if metadata.alternative_names else ""
                 ),
                 ror_id=identifier.url,
             )
