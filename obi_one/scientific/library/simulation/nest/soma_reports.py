@@ -94,6 +94,9 @@ def frames_matrix(
             raise ValueError(msg)
         sampled = values.reshape(frames.sampled, nodes).T[np.argsort(np.argsort(node_ids))]
     if frames.has_initial_frame:
+        if initial is None:
+            msg = "The report has an initial frame, but no initial potentials were given."
+            raise ValueError(msg)
         return np.column_stack([initial, sampled])
     return sampled
 
