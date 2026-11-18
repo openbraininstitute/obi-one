@@ -80,7 +80,7 @@ def test_estimate_task_resources_scales_instances_with_mem_per_cell():
             compute_cell="cell_a",
         )
 
-    assert test_module.MEM_GB_PER_CELL == 0.06
+    # 5000 * 0.06 GB/cell / 100 GB/node => 3 nodes (temporary CA3 Mem(GB)/cell bump).
     assert expected_instances == 3
     assert result.instances == expected_instances
     assert result.instance_type == "big"
