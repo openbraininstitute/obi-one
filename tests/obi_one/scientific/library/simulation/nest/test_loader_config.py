@@ -75,6 +75,15 @@ def test_rejects_unknown_population_type(circuit):
     config = load_json(circuit.circuit_config)
     config["networks"]["nodes"][0]["populations"]["exc"]["type"] = "single_compartment"
     write_json(config, circuit.circuit_config)
+    with pytest.raises(libsonata.SonataError, match="use 'nest_point' or 'virtual'"):
+        NestSonataNetwork(circuit.simulation_config)
+
+
+def test_rejects_unknown_population_type_of_a_partial_config(circuit):
+    config = load_json(circuit.circuit_config)
+    config["metadata"] = {"status": "partial"}
+    config["networks"]["nodes"][0]["populations"]["exc"]["type"] = "single_compartment"
+    write_json(config, circuit.circuit_config)
     with pytest.raises(ValueError, match="Unsupported node population type"):
         NestSonataNetwork(circuit.simulation_config)
 
