@@ -1788,17 +1788,17 @@ wheels = [
 
 [[package]]
 name = "libsonata"
-version = "0.2.2"
+version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/04/fd336ee02b5518cb401b063bf4a051c28cb2c8a6a2608d3b9ea9bcb6d858/libsonata-0.2.2.tar.gz", hash = "sha256:5d808574a1818c3d44ce164c722e5849822804bf0a90d5ea061d2432505803d2", size = 2453558, upload-time = "2026-09-23T09:41:47.631Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/8f/6142af4a59c860252149ea417ab92fb32a0fa45a12ae106848dd627c4b22/libsonata-0.2.3.tar.gz", hash = "sha256:bb2ca70d058daa941beebebbe91163a2303d24ec2ac22b1b513bbb893c6718cf", size = 2456345, upload-time = "2026-11-18T09:04:26.455Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/d5/de5b66a0fef04a53b1a13b13480eccfa22f13d4ff488c327d06865dc6a1d/libsonata-0.2.2-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:22b1994ac6c5f83126796b55c9a25bbbebea89eb117e94ad28ea0f5140f5a4b8", size = 2130364, upload-time = "2026-09-23T09:41:16.595Z" },
-    { url = "https://files.pythonhosted.org/packages/42/57/5fda07853716ad858f786ef489d3453766929816a3ae8f84575aedc1622a/libsonata-0.2.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:718c1faa28ade57e174e9df901665e40185217add8eacd6f28847c3ad874d1ee", size = 1842341, upload-time = "2026-09-23T09:41:18.291Z" },
-    { url = "https://files.pythonhosted.org/packages/5f/18/74b0585046572b2036fa42874028a7834f99f04e93bb5b7eaa2e8cdd0ce0/libsonata-0.2.2-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:ac4370d80a97105fe10e186e8b9923039334d15474e0cc0e7214802344e72814", size = 2371082, upload-time = "2026-09-23T09:41:19.872Z" },
-    { url = "https://files.pythonhosted.org/packages/a8/07/f88d1ef92c8b4a10624d2e4ad7067405338e3f757cc1ec9e320aae139520/libsonata-0.2.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:57577aa4395a4cfa77798345a72642ea05291cd4b24f5eef9127ca6c7c57759a", size = 2625854, upload-time = "2026-09-23T09:41:21.323Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/29/5aa16000d982067431f7d9c2a6916e6965bec681392a9913d71aab144273/libsonata-0.2.3-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:6f96ee11a21ff437726ccc4b2a2bdf59b1442af80871762053eed704d8414849", size = 2132066, upload-time = "2026-11-18T09:03:57.832Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/d7/cb3172f57562a3a9a86938cf06e9733bc35b4974dadee545f9d3fcd27985/libsonata-0.2.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:01410c500363a9b30a55d1e54d50f6d5d28cc859d121e955424abd6301adf391", size = 1822841, upload-time = "2026-11-18T09:03:59.867Z" },
+    { url = "https://files.pythonhosted.org/packages/46/49/47e4ee13827332c44df226c428ea34a93c26a5bd2b073f9c5d0c9f488503/libsonata-0.2.3-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:8a700fd7f6ebb33f6949a1959983d9ca40ef03821ca1ed238705a9008769551d", size = 2372472, upload-time = "2026-11-18T09:04:01.453Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/37/4c5a2ad3f14018603e6910934fe653ac85a1ce46e12a9c561a2abd657d0e/libsonata-0.2.3-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:6b36d4ddc7a5fa47413c10c8e0f3d8d533201c3ca8c66ca32a43afc88a18fcc3", size = 2626685, upload-time = "2026-11-18T09:04:03.128Z" },
 ]
 
 [[package]]
@@ -2614,7 +2614,7 @@ requires-dist = [
     { name = "ipykernel", marker = "extra == 'notebooks'" },
     { name = "jupyter", marker = "extra == 'notebooks'" },
     { name = "jupyterlab", marker = "extra == 'notebooks'", specifier = ">=4.4.8" },
-    { name = "libsonata", specifier = ">=0.2.0" },
+    { name = "libsonata", specifier = ">=0.2.3" },
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "nest-simulator", marker = "extra == 'nest'", specifier = ">=3.8" },
