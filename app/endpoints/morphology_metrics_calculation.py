@@ -139,7 +139,8 @@ NEW_ENTITY_DEFAULTS = {
     "authorized_public": False,
     "license_id": None,
     "name": "test",
-    "description": None,
+    # entitycore / entitysdk NameDescriptionMixin requires non-null str.
+    "description": "",
     "location": None,
     "legacy_id": None,
     "brain_region_id": None,
@@ -231,8 +232,12 @@ def register_morphology(
     repair_pipeline_state = new_item.get("repair_pipeline_state")
 
     license = _get_entity("license", License)
+    # Callers (via _prepare_entity_payload) must supply non-null str; entitycore requires both.
     name = new_item.get("name")
     description = new_item.get("description")
+    if name is None or description is None:
+        msg = "Morphology name and description are required and must not be None"
+        raise ValueError(msg)
     authorized_public: bool = new_item.get("authorized_public", False)
     morphology = CellMorphology(
         cell_morphology_protocol=cast("CellMorphologyProtocolUnion", morphology_protocol),

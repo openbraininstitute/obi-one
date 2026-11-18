@@ -143,6 +143,8 @@ def test_asset_dict():
 def test_circuit_dict():
     return {
         "id": uuid4(),
+        "name": "test-circuit",
+        "description": "",
         "number_neurons": 10,
         "number_synapses": 100,
         "number_connections": 100,

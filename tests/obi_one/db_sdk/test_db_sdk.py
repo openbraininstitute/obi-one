@@ -501,7 +501,6 @@ def test_select_json_asset_content(client, httpx_mock):
 
     entity = Entity(
         id=entity_id,
-        name="foo",
         assets=[
             Asset(
                 id=asset_1_id,
