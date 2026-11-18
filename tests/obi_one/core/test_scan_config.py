@@ -8,7 +8,7 @@ from obi_one.scientific.tasks.folder_compression.config import (
     FolderCompressionScanConfig,
     FolderCompressionSingleConfig,
 )
-from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
+from obi_one.scientific.tasks.schema_example.config import SchemaExampleScanConfig
 
 
 class TestGetAllAnnotations:

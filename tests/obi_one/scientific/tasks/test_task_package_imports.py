@@ -115,3 +115,16 @@ assert "obi_one.scientific.tasks.morphology_metrics.task" not in sys.modules
         [sys.executable, "-c", script],
         check=True,
     )
+
+
+def test_schema_example_package_init_does_not_reexport_config():
+    """schema_example is config-only (no task); package __init__ must stay empty."""
+    script = """
+import obi_one.scientific.tasks.schema_example as pkg
+assert not hasattr(pkg, "SchemaExampleScanConfig")
+import obi_one.scientific.tasks.schema_example.config  # noqa: F401
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )

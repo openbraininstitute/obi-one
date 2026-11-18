@@ -51,7 +51,7 @@ from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
 from obi_one.scientific.tasks.morphology_metrics.config import (
     MorphologyMetricsScanConfig,
 )
-from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
+from obi_one.scientific.tasks.schema_example.config import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,
