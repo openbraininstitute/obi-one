@@ -130,10 +130,10 @@ jobs:
             echo "::error::lib (obi_one/launch_scripts) tests must not import app"
             exit 1
           fi
-      - name: Install the Boost and GSL headers that NESTML models compile against
+      - name: Install the Boost, GSL and ltdl headers that NESTML models compile against
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libboost-dev libgsl-dev
+          sudo apt-get install -y --no-install-recommends libboost-dev libgsl-dev libltdl-dev
       - name: Install all extras (lib suite)
         run: make install-all
       - name: Lint lib
