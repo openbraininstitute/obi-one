@@ -16,7 +16,6 @@ from typing import Any
 
 import h5py
 import libsonata
-import nest
 import numpy as np
 
 from obi_one.scientific.library.simulation.nest import (
@@ -32,6 +31,7 @@ from obi_one.scientific.library.simulation.nest.constants import (
     TYPE_VIRTUAL,
     split_model_template,
 )
+from obi_one.scientific.library.simulation.nest.nest_import import nest
 from obi_one.scientific.library.simulation.neuron.schemas import SimulationResults
 from obi_one.utils.io import load_json
 

@@ -28,8 +28,9 @@ import shlex
 import sys
 from pathlib import Path
 
-import nest
 from pynestml.frontend.pynestml_frontend import generate_nest_target
+
+from obi_one.scientific.library.simulation.nest.nest_import import nest
 
 
 class NestmlBuildError(RuntimeError):

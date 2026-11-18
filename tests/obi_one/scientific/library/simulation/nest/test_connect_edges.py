@@ -1,9 +1,9 @@
 """Integration tests for NestSonataNetwork.Connect / BuildNetwork (real NEST)."""
 
-import nest
 import numpy as np
 import pytest
 
+from obi_one.scientific.library.simulation.nest.nest_import import nest
 from obi_one.scientific.library.simulation.nest.simulate_nest import NestSonataNetwork
 from obi_one.utils.io import write_json
 
