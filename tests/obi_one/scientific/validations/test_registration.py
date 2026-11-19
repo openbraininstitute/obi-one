@@ -61,6 +61,9 @@ class TestRegisterOutcome:
         assert result.test_result == sample_test_result
         assert result.skipped is False
         mock_client.register_entity.assert_called_once()
+        registered = mock_client.register_entity.call_args.kwargs["entity"]
+        assert registered.name == sample_test_result.name
+        assert registered.description == f"Validation result for '{sample_test_result.name}'."
         mock_client.upload_file.assert_called()  # figure + details
 
     def test_skips_if_already_exists(self, mock_client, sample_test_result, tmp_path):
