@@ -37,6 +37,11 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
         deserialize_obi_object_from_json_data(config_dict).model_dump()
     )
 
+    # No neuron set means the default one, as applied by the task at execution time
+    neuron_set_ref = single_config.initialize.neuron_set
+    if neuron_set_ref is None:
+        neuron_set_ref = single_config.default_neuron_set_reference
+
     parent_circuit = single_config.initialize.circuit
     if isinstance(parent_circuit, CircuitFromID):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -51,11 +56,9 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
                 entity_cache=False,
                 nodes_only=True,
             )
-            neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
-                circuit=staged_circuit
-            )
+            neuron_ids = neuron_set_ref.block.get_neuron_ids(circuit=staged_circuit)
     else:
-        neuron_ids = single_config.initialize.neuron_set.block.get_neuron_ids(  # ty:ignore[unresolved-attribute]
+        neuron_ids = neuron_set_ref.block.get_neuron_ids(
             circuit=parent_circuit  # ty:ignore[invalid-argument-type]
         )
 
