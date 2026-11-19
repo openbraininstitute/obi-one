@@ -97,6 +97,9 @@ This installs everything needed for development: all optional dependencies + dev
 # Service deployment
 make install-service
 
+# Connectivity analysis & plots (connectome-analysis / networkx)
+make install-connectivity
+
 # Notebook development
 make install-notebooks
 
@@ -108,6 +111,8 @@ make install-all
 ```
 
 Circuit extraction execution needs the optional `circuit-extraction` extra (`brainbuilder`); config generation and service submission do not. Launch-system jobs install it via `launch_scripts/launch_task_for_single_config_asset/dependencies/circuit_extraction.txt`.
+
+Connectivity plots and topology helpers need the optional `connectivity` extra (`connectome-analysis`, `networkx`). Workers that run those tasks pin it in their launch-script dependency files.
 
 ## Technical Overview / Glossary
 
