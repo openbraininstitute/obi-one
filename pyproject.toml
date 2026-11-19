@@ -88,10 +88,11 @@ notebooks = [
 ]
 
 # SERVICE - optional, needed to run obi-one as a service.
-# Includes connectivity and emodel (needed by the production image and service tests).
+# Includes emodel (needed by the production image and service tests).
+# Connectivity analysis/plots stay behind the connectivity extra (workers / make install-connectivity).
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
 service = [
-    "obi-one[connectivity,emodel]",
+    "obi-one[emodel]",
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
@@ -106,7 +107,7 @@ service = [
 ]
 
 # ALL - convenience alias to install all optional dependencies.
-# connectivity and emodel are listed explicitly (also pulled by service) so all stays complete if they leave service later.
+# emodel is listed explicitly (also pulled by service) so all stays complete if it leaves service later.
 all = ["obi-one[bluecellulab,brian2,circuit-extraction,connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.
