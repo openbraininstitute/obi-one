@@ -77,13 +77,20 @@ class RegisteredOptimizationOutputs:
     generated_ids: list[str]
 
 
-def parse_final_json(final_path: Path, emodel_name: str) -> dict:
-    """Parse final.json (written by store_best_model) for score, calibration, iteration.
+def _feature_value(features: dict, efel_name: str) -> float | None:
+    """Value of the ``final.json`` feature ``<protocol>.<location>.<efel_name>``, if any."""
+    return next((v for k, v in features.items() if k.endswith(f".{efel_name}")), None)
 
-    BluePyEModel's ``store_best_model`` writes ``final.json`` at the
-    coordinate output root. Its structure is::
 
-        {emodel_name: [{fitness, holding_current, threshold_current, ...}]}
+def parse_final_json(final_path: Path, emodel_name: str, seed: int) -> dict:
+    """Parse final.json (written by store_best_model) for score, currents and iteration.
+
+    BluePyEModel's LocalAccessPoint stores one entry per optimised model, keyed by
+    ``<emodel>__<seed>`` (see :func:`find_emodel_data`), with the total ``score`` and
+    the model's ``features``. A threshold-based (relative-amplitude) model has the
+    holding and threshold currents its current searches found among the features
+    (``bpo_holding_current``, ``bpo_threshold_current``); an absolute-amplitude
+    model has neither, and they are returned as None.
 
     Returns a dict with keys: name, total_score, holding_current,
     threshold_current, iteration.
@@ -100,37 +107,34 @@ def parse_final_json(final_path: Path, emodel_name: str) -> dict:
         return defaults
 
     data = json.loads(final_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
+    best = find_emodel_data(data, emodel_name, seed) if isinstance(data, dict) else None
+    if best is None:
+        L.warning(
+            "No entry for emodel=%s, seed=%s in %s; using defaults for registration.",
+            emodel_name,
+            seed,
+            final_path,
+        )
         return defaults
 
-    models = data.get(emodel_name, [])
-    if not models:
-        # Try the placeholder key "emodel" that extraction stage writes
-        models = data.get("emodel", [])
-    if not models:
-        return defaults
-
-    best = models[0] if isinstance(models, list) else models
-    total_score = float(best.get("fitness", best.get("score", 0.0)))
-    holding_current = best.get("holding_current")
-    threshold_current = best.get("threshold_current")
-
-    # Iteration from the model dict or filename convention
-    iteration = str(best.get("iteration", "0"))
-
+    features = best.get("features") or {}
     return {
         "name": emodel_name,
-        "total_score": total_score,
-        "holding_current": holding_current,
-        "threshold_current": threshold_current,
-        "iteration": iteration,
+        "total_score": float(best.get("score") or 0.0),
+        "holding_current": _feature_value(features, "bpo_holding_current"),
+        "threshold_current": _feature_value(features, "bpo_threshold_current"),
+        "iteration": str(best.get("iteration") or "0"),
     }
 
 
 def find_emodel_data(data: dict, emodel_name: str, seed: int) -> dict | None:
     """Return the ``final.json`` entry matching ``emodel_name`` and ``seed``, if any."""
     for entry in data.values():
-        if entry.get("emodel") == emodel_name and entry.get("seed") == seed:
+        if (
+            isinstance(entry, dict)
+            and entry.get("emodel") == emodel_name
+            and entry.get("seed") == seed
+        ):
             return entry
     return None
 

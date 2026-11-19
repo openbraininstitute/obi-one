@@ -36,61 +36,6 @@ def _default_protocols() -> tuple[ProtocolUnion, ...]:
     )
 
 
-# Future: relative (% of rheobase) amplitude extraction. Reintroduce this strategy
-# (and a threshold-based amplitude mode) on ``SelectEFeaturesByProtocol`` later.
-_RELATIVE_AMPLITUDE_STRATEGY_TODO = """
-class RelativeAmplitudeExtractionStrategy(BaseModel):
-    # Per-protocol role flags (Rin, RMP, Rheobase)
-    rin_protocol: bool = Field(
-        default=False,
-        title="Use as R_in protocol",
-        description=(
-            "If True, this protocol is used to compute input resistance."
-            " Automatically adds ``ohmic_input_resistance_vb_ssse`` to features."
-            " Only relevant when ``threshold_based`` is enabled."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    rin_amplitude: float = Field(
-        default=-20.0,
-        title="R_in amplitude (%)",
-        description=(
-            "Amplitude (% of rheobase) for the R_in measurement."
-            " Only used when ``rin_protocol`` is True. Default: -20%."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    rmp_protocol: bool = Field(
-        default=False,
-        title="Use as RMP protocol",
-        description=(
-            "If True, this protocol is used to compute resting membrane potential."
-            " Automatically adds ``voltage_base`` to features."
-            " Only relevant when ``threshold_based`` is enabled."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-    rmp_amplitude: float = Field(
-        default=0.0,
-        title="RMP amplitude (%)",
-        description=(
-            "Amplitude (% of rheobase) for the RMP measurement."
-            " Only used when ``rmp_protocol`` is True. Default: 0%."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP},
-    )
-    rheobase_protocol: bool = Field(
-        default=False,
-        title="Use for rheobase",
-        description=(
-            "If True, this protocol is used to estimate rheobase (lowest amplitude"
-            " inducing at least 1 spike). Typically IDthresh or IDThreshold."
-        ),
-        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-    )
-"""
-
-
 class SelectEFeaturesByProtocol(OBIBaseModel):
     """Protocol list and per-protocol feature selection.
 
@@ -104,6 +49,9 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
     of the eFEL features to extract. ``protocols`` is a tuple — not a list — so the
     obi-one scan framework leaves it alone instead of expanding it as a scan
     dimension.
+
+    Whether ``extraction_amplitudes`` are in nA or in % of rheobase is set by the
+    settings' ``amplitude_mode``.
     """
 
     # declares the universal EFeatureUnion once for the whole schema. The UI dereferences the
@@ -129,6 +77,10 @@ class SelectEFeaturesByProtocol(OBIBaseModel):
             " discovered for the chosen recordings."
         ),
     )
+
+    def protocol_of_type(self, type_name: str) -> Protocol | None:
+        """The selected protocol whose type (``Protocol`` subclass name) is ``type_name``."""
+        return next((p for p in self.protocols if type(p).__name__ == type_name), None)
 
     def features_for(self, protocol: Protocol) -> tuple[EFeature, ...]:
         """Return ``protocol``'s own features followed by its extras.

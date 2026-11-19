@@ -36,6 +36,10 @@ class ElectricalCellRecordingMappedProperties(StrEnum):
     PROTOCOLS = "Protocols"
     PROTOCOLS_BY_RECORDING = "ProtocolsByRecording"
     AMPLITUDES_BY_PROTOCOL = "AmplitudesByProtocol"
+    RELATIVE_AMPLITUDES_BY_PROTOCOL = "RelativeAmplitudesByProtocol"
+    RHEOBASE_BY_RECORDING = "RheobaseByRecording"
+    RHEOBASE_PROTOCOLS = "RheobaseProtocols"
+    TIMING_BY_PROTOCOL = "TimingByProtocol"
 
 
 class MorphologySourceMappedProperties(StrEnum):

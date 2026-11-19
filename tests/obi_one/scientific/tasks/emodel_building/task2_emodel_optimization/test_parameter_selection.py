@@ -1692,56 +1692,71 @@ def test_execute_uses_morphology_metadata_for_local_access_point(tmp_path, monke
     artifacts.write.assert_called_once_with(tmp_path.resolve())
 
 
-def test_parse_final_json_handles_defaults_placeholder_and_direct_model(tmp_path):
-    final_path = tmp_path / "final.json"
-    defaults = {
-        "name": "test",
-        "total_score": 0.0,
-        "holding_current": None,
-        "threshold_current": None,
-        "iteration": "0",
+_PARSE_DEFAULTS = {
+    "name": "L5PC",
+    "total_score": 0.0,
+    "holding_current": None,
+    "threshold_current": None,
+    "iteration": "0",
+}
+
+
+def _final_entry(seed: int, features: dict) -> dict:
+    """A ``final.json`` entry as BluePyEModel's LocalAccessPoint stores it."""
+    return {
+        "emodel": "L5PC",
+        "seed": seed,
+        "iteration": None,
+        "score": 6654.35,
+        "fitness": {"IDrest_150.0.soma.v.mean_frequency": 1.5},
+        "features": features,
     }
-    assert registration.parse_final_json(final_path, "test") == defaults
+
+
+def test_parse_final_json_defaults(tmp_path):
+    final_path = tmp_path / "final.json"
+    assert registration.parse_final_json(final_path, "L5PC", 1) == _PARSE_DEFAULTS
 
     final_path.write_text("[]", encoding="utf-8")
-    assert registration.parse_final_json(final_path, "test") == defaults
+    assert registration.parse_final_json(final_path, "L5PC", 1) == _PARSE_DEFAULTS
 
-    final_path.write_text(json.dumps({"other": []}), encoding="utf-8")
-    assert registration.parse_final_json(final_path, "test") == defaults
+    final_path.write_text(json.dumps({"L5PC__2": _final_entry(2, {})}), encoding="utf-8")
+    assert registration.parse_final_json(final_path, "L5PC", 1) == _PARSE_DEFAULTS
 
+
+def test_parse_final_json_threshold_based_model(tmp_path):
+    """The model is keyed ``<emodel>__<seed>``; its currents are among its features."""
+    final_path = tmp_path / "final.json"
+    features = {
+        "SearchHoldingCurrent.soma.v.bpo_holding_current": -0.00625,
+        "SearchThresholdCurrent.soma.v.bpo_threshold_current": 0.267,
+        "IDrest_150.0.soma.v.mean_frequency": 12.0,
+    }
     final_path.write_text(
-        json.dumps(
-            {
-                "emodel": [
-                    {
-                        "score": 2.5,
-                        "holding_current": 0.1,
-                        "threshold_current": 0.2,
-                    }
-                ]
-            }
-        ),
+        json.dumps({"L5PC__1": _final_entry(1, features), "L5PC__2": _final_entry(2, {})}),
         encoding="utf-8",
     )
-    assert registration.parse_final_json(final_path, "test") == {
-        "name": "test",
-        "total_score": 2.5,
-        "holding_current": 0.1,
-        "threshold_current": 0.2,
+
+    assert registration.parse_final_json(final_path, "L5PC", 1) == {
+        "name": "L5PC",
+        "total_score": 6654.35,
+        "holding_current": -0.00625,
+        "threshold_current": 0.267,
         "iteration": "0",
     }
 
-    final_path.write_text(
-        json.dumps({"test": {"fitness": 3.5, "iteration": 7}}),
-        encoding="utf-8",
-    )
-    assert registration.parse_final_json(final_path, "test") == {
-        "name": "test",
-        "total_score": 3.5,
-        "holding_current": None,
-        "threshold_current": None,
-        "iteration": "7",
-    }
+
+def test_parse_final_json_absolute_model_has_no_currents(tmp_path):
+    final_path = tmp_path / "final.json"
+    entry = _final_entry(1, {"IDrest_0.3.soma.v.mean_frequency": 12.0}) | {"iteration": "abc12"}
+    final_path.write_text(json.dumps({"L5PC__1": entry}), encoding="utf-8")
+
+    metrics = registration.parse_final_json(final_path, "L5PC", 1)
+
+    assert metrics["total_score"] == pytest.approx(6654.35)
+    assert metrics["holding_current"] is None
+    assert metrics["threshold_current"] is None
+    assert metrics["iteration"] == "abc12"
 
 
 def test_upload_optimization_assets_is_a_no_op_regardless_of_present_files(tmp_path, caplog):

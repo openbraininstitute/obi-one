@@ -478,6 +478,17 @@ def _install_registration_helpers(monkeypatch, calls):
     monkeypatch.setattr(registration, "register_memodel", register_memodel)
 
 
+def _final_json(*, score, holding=None, threshold=None, iteration=None):
+    """``final.json`` as BluePyEModel's LocalAccessPoint writes it, for emodel ``test``, seed 7."""
+    features = {}
+    if holding is not None:
+        features["SearchHoldingCurrent.soma.v.bpo_holding_current"] = holding
+    if threshold is not None:
+        features["SearchThresholdCurrent.soma.v.bpo_threshold_current"] = threshold
+    entry = {"emodel": "test", "seed": 7, "score": score, "iteration": iteration}
+    return {"test__7": entry | {"features": features}}
+
+
 def _registration_fixture(tmp_path, *, complete=True):
     species = SimpleNamespace(name="Mus musculus")
     brain_region = SimpleNamespace(name="Somatosensory cortex")
@@ -532,18 +543,7 @@ def _registration_fixture(tmp_path, *, complete=True):
             "h5", encoding="utf-8"
         )
         (tmp_path / "final.json").write_text(
-            json.dumps(
-                {
-                    "test": [
-                        {
-                            "fitness": 2.5,
-                            "holding_current": 0.1,
-                            "threshold_current": 0.2,
-                            "iteration": 4,
-                        }
-                    ]
-                }
-            ),
+            json.dumps(_final_json(score=2.5, holding=0.1, threshold=0.2, iteration=4)),
             encoding="utf-8",
         )
 
@@ -705,7 +705,7 @@ def test_register_output_entities_collects_nested_figure_paths(tmp_path, monkeyp
     (tmp_path / "figures" / "nested" / "validation.pdf").write_text("pdf", encoding="utf-8")
     traces = tmp_path / "figures" / "nested" / "emodel=test__seed=7__traces.pdf"
     traces.write_text("pdf", encoding="utf-8")
-    (tmp_path / "final.json").write_text(json.dumps({"test": [{"fitness": 1.0}]}), encoding="utf-8")
+    (tmp_path / "final.json").write_text(json.dumps(_final_json(score=1.0)), encoding="utf-8")
 
     registration.register_output_entities(
         config, tmp_path, db_client, pipeline_results=_pipeline_results()
@@ -961,18 +961,7 @@ def test_execute_covers_local_access_point_hooks_and_registration_path(tmp_path,
     )
     monkeypatch.setattr(calibration_validation, "compute_calibration_and_validation", compute_cv)
     (tmp_path / "final.json").write_text(
-        json.dumps(
-            {
-                "test": [
-                    {
-                        "fitness": 1.5,
-                        "holding_current": -0.05,
-                        "threshold_current": 0.15,
-                        "iteration": 2,
-                    }
-                ]
-            }
-        ),
+        json.dumps(_final_json(score=1.5, holding=-0.05, threshold=0.15, iteration=2)),
         encoding="utf-8",
     )
 

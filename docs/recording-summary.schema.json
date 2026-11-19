@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ElectricalCellRecording recording_summary asset",
+  "type": "object",
+  "required": ["version", "units", "protocols"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "units": {
+      "type": "object",
+      "required": ["current", "time"],
+      "additionalProperties": false,
+      "properties": {
+        "current": { "const": "nA", "description": "Unit of every amp, amp2, long_amp and rheobase value." },
+        "time": { "const": "ms", "description": "Unit of every ton, tmid, tmid2 and toff value." }
+      }
+    },
+    "protocols": {
+      "type": "object",
+      "description": "Keyed by protocol (eCode) name as written in the NWB file, e.g. \"IDrest\", \"sAHP\", \"GenericStep\". Current-clamp protocols only; voltage-clamp, conductance-clamp and extracellular stimuli are not included.",
+      "additionalProperties": { "$ref": "#/$defs/Protocol" }
+    },
+    "rheobase": {
+      "type": "object",
+      "description": "Keyed by step protocol name as in protocols: the smallest amp whose sweep fires at least one spike, from that protocol's sweeps alone (bluepyefe 'absolute' strategy, read with the stored timing). null if no sweep fires; 0 or below if a sweep fires without current injected.",
+      "additionalProperties": { "type": ["number", "null"] }
+    }
+  },
+  "$defs": {
+    "Amplitudes": {
+      "type": "array",
+      "items": { "type": "number" },
+      "uniqueItems": true,
+      "description": "Distinct values relative to the holding current, across all sweeps and repetitions; sorted, rounded to 0.001 nA. Lists are not paired sweep by sweep."
+    },
+    "Times": {
+      "type": "array",
+      "items": { "type": "number", "minimum": 0 },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Distinct times from the start of the sweep, detected per sweep; sorted, rounded to 0.01 ms, values within 2 ms counted once. Several values mean the protocol's sweeps differ."
+    },
+    "Protocol": {
+      "type": "object",
+      "required": ["amp"],
+      "additionalProperties": false,
+      "properties": {
+        "amp": { "$ref": "#/$defs/Amplitudes", "minItems": 1 },
+        "amp2": { "$ref": "#/$defs/Amplitudes" },
+        "long_amp": { "$ref": "#/$defs/Amplitudes" },
+        "ton": { "$ref": "#/$defs/Times" },
+        "tmid": { "$ref": "#/$defs/Times" },
+        "tmid2": { "$ref": "#/$defs/Times" },
+        "toff": { "$ref": "#/$defs/Times" }
+      }
+    }
+  }
+}
