@@ -285,6 +285,7 @@ def register_outcome(
     # Details are persisted as an asset via _upload_details, not as an entity field.
     validation_result = ValidationResult(
         name=test_result.name,
+        description=f"Validation result for '{test_result.name}'.",
         passed=test_result.passed,
         validated_entity_id=validated_entity_uuid,
     )
