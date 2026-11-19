@@ -886,7 +886,9 @@ class TestStoreInvalidMorphology:
         client = MagicMock()
         client.register_entity.side_effect = lambda entity: entity
         client.search_entity.return_value.one.return_value = PlaceholderCellMorphologyProtocol(
-            generation_type="placeholder"
+            name="placeholder-protocol",
+            description="",
+            generation_type="placeholder",
         )
 
         payload = _prepare_entity_payload(
