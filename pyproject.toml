@@ -88,8 +88,6 @@ notebooks = [
 ]
 
 # SERVICE - optional, needed to run obi-one as a service.
-# Includes emodel (needed by the production image and service tests).
-# Connectivity analysis/plots stay behind the connectivity extra (workers / make install-connectivity).
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
 service = [
     "obi-one[emodel]",
