@@ -1,3 +1,4 @@
+import logging
 import shutil
 from pathlib import Path
 
@@ -71,21 +72,16 @@ def _make_nested_morphology_circuit(target_dir: Path, subfolders: list[str]) -> 
     return target_dir / "circuit_config.json"
 
 
-def test_morphology_containerization_nested_folders(tmp_path: Path):
-    """Morphologies in (multi-level) subfolders are merged into matching container groups."""
-    subfolders = ["sub_a", "sub_a/sub_b"]
-    circuit_name = "nested_morphologies"
-    config_path = _make_nested_morphology_circuit(tmp_path / "input" / circuit_name, subfolders)
-
+def _run_containerization(source: Circuit, output_root: Path) -> Circuit:
+    """Run morphology containerization on a circuit and return the containerized circuit."""
     hoc_path = Path(library.__file__).parent
     scan_config = MorphologyContainerizationScanConfig(
         initialize=MorphologyContainerizationScanConfig.Initialize(
-            circuit=[Circuit(name=circuit_name, path=str(config_path))],
+            circuit=[source],
             hoc_template_old=str(hoc_path / "cell_template_neurodamus.jinja2"),
             hoc_template_new=str(hoc_path / "cell_template_neurodamus_obi.jinja2"),
         )
     )
-    output_root = tmp_path / "output"
     grid_scan = GridScanGenerationTask(
         form=scan_config,
         output_root=output_root,
@@ -93,10 +89,16 @@ def test_morphology_containerization_nested_folders(tmp_path: Path):
     )
     grid_scan.execute()
     run_tasks_for_generated_scan(grid_scan)
+    return Circuit(name=source.name, path=str(output_root / source.name / "circuit_config.json"))
 
-    circuit = Circuit(
-        name=circuit_name, path=str(output_root / circuit_name / "circuit_config.json")
-    )
+
+def test_morphology_containerization_nested_folders(tmp_path: Path):
+    """Morphologies in (multi-level) subfolders are merged into matching container groups."""
+    subfolders = ["sub_a", "sub_a/sub_b"]
+    circuit_name = "nested_morphologies"
+    config_path = _make_nested_morphology_circuit(tmp_path / "input" / circuit_name, subfolders)
+    output_root = tmp_path / "output"
+    circuit = _run_containerization(Circuit(name=circuit_name, path=str(config_path)), output_root)
     nodes = circuit.sonata_circuit.nodes[circuit.default_population_name]
 
     # Original (nested) morphology folder removed
@@ -114,5 +116,37 @@ def test_morphology_containerization_nested_folders(tmp_path: Path):
             assert name in f
 
     # Morphologies accessible through the container
+    for nid in nodes.ids():
+        _ = nodes.morph.get(nid, transform=True, extension="h5")
+
+
+def test_morphology_containerization_cleanup_failure_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    """A morphology folder that cannot be deleted is logged as a warning, not raised."""
+
+    def failing_rmtree(path, *_args, **_kwargs):
+        msg = f"[Errno 66] Directory not empty: '{path}'"
+        raise OSError(msg)
+
+    monkeypatch.setattr(shutil, "rmtree", failing_rmtree)
+    source = Circuit(
+        name=CONTAINERIZATION_CIRCUIT_NAME,
+        path=str(CIRCUIT_DIR / CONTAINERIZATION_CIRCUIT_NAME / "circuit_config.json"),
+    )
+    output_root = tmp_path / "output"
+    with caplog.at_level(logging.WARNING):
+        circuit = _run_containerization(source, output_root)
+
+    # Folder kept and failure reported
+    morph_folder = output_root / CONTAINERIZATION_CIRCUIT_NAME / "morphologies" / "swc"
+    assert morph_folder.is_dir()
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any(
+        "Could not delete morphology folder" in w and "Directory not empty" in w for w in warnings
+    )
+
+    # Containerization still completed
+    nodes = circuit.sonata_circuit.nodes[circuit.default_population_name]
     for nid in nodes.ids():
         _ = nodes.morph.get(nid, transform=True, extension="h5")
