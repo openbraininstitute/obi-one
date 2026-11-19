@@ -938,16 +938,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.37"
+version = "0.19.38"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/db/48cee9da4aa2f14d455c9e337c176b66ef76815603b8fab8b7318c76bdee/entitysdk-0.19.37.tar.gz", hash = "sha256:2dd511f38808a8ebbf5913ce2d00ebb063c3e43c1e8327dfe65bf98ee8d8aa3f", size = 83203, upload-time = "2026-11-04T15:34:13.752Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/73/1ee631d4663a66a23b5bc892e13d320c4fe70e5e7e7a3cf80adf24c561c4/entitysdk-0.19.38.tar.gz", hash = "sha256:637787c33a8d484ca1e30b896de21d9241cf79c839b368c24f2154631c690d18", size = 84262, upload-time = "2026-11-19T14:57:46.176Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/1d/665acd6adf6dfd5c90faff4a4696a040bdd7897c668c10e8e659a7644ef2/entitysdk-0.19.37-py3-none-any.whl", hash = "sha256:e6b945d037ff01716f8f3445a312580249216a0076995fa891156b71dc62afd1", size = 117952, upload-time = "2026-11-04T15:34:12.042Z" },
+    { url = "https://files.pythonhosted.org/packages/94/be/7ebc8b28c12e880e51f181ba1930dc14b8cd51bb12a5cb56c6bdc525e45b/entitysdk-0.19.38-py3-none-any.whl", hash = "sha256:660ef8ed0892a440dd0dcc12b14baa97f072b04df983cec842beef47c8e45f43", size = 118820, upload-time = "2026-11-19T14:57:44.873Z" },
 ]
 
 [[package]]
