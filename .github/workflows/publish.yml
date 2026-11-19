@@ -11,7 +11,7 @@ on:
 
 jobs:
   publish-to-aws-ecr:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     env:
       ENVIRONMENT: prod
 
@@ -57,6 +57,7 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/arm64
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG_ALIAS }}
@@ -65,7 +66,7 @@ jobs:
             APP_NAME=${{ env.APP_NAME }}
             APP_VERSION=${{ env.APP_VERSION }}
             COMMIT_SHA=${{ env.COMMIT_SHA }}
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:cache
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:cache,mode=max,image-manifest=true,oci-mediatypes=true
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:cache-arm64
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:cache-arm64,mode=max,image-manifest=true,oci-mediatypes=true
           provenance: false
           sbom: false

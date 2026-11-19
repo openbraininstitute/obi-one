@@ -162,6 +162,8 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 
 ## CI/CD
 
-- PR checks (`Tests` workflow): quality (deps + pip-audit); parallel `lib` / `app` jobs each run package lint then tests (host `install-all` vs Docker image); Codecov flags `lib` / `app`
+- PR checks (`Tests` workflow): quality (deps + pip-audit) on `ubuntu-latest`; `lib` on `ubuntu-latest` (host `install-all`); `app` on `ubuntu-24.04-arm` (lint host + Docker image tests); Codecov flags `lib` / `app`
 - Docs check: PRs must update `docs/` files (skip with `skip docs` label)
-- Docker: `make build` / `make publish`
+- Docker: service image is `linux/arm64` (`make build` / `make publish`; publish workflow uses `ubuntu-24.04-arm`)
+
+
