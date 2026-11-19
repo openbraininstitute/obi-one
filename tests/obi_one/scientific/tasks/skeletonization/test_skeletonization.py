@@ -727,12 +727,16 @@ def test_create_campaign_generation_entity(
     config_payloads = [
         {
             "id": str(config_id_1),
+            "name": "skel-config-1",
+            "description": "Test skeletonization config.",
             "skeletonization_campaign_id": str(campaign_id),
             "em_cell_mesh_id": single_cell_mesh_id,
             "scan_parameters": {},
         },
         {
             "id": str(config_id_2),
+            "name": "skel-config-2",
+            "description": "Test skeletonization config.",
             "skeletonization_campaign_id": str(campaign_id),
             "em_cell_mesh_id": single_cell_mesh_id,
             "scan_parameters": {},

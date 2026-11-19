@@ -130,6 +130,8 @@ def callbacks(activity_id):
             TaskType.circuit_extraction,
             "task-config",
             {
+                "name": "task-config",
+                "description": "Test task config.",
                 "circuit_id": str(uuid4()),
                 "scan_parameters": {},
                 "task_config_type": TaskConfigType.circuit_extraction__config,
@@ -255,6 +257,8 @@ def test_submit_task_job__success(
             TaskType.circuit_extraction,
             "task-config",
             {
+                "name": "task-config",
+                "description": "Test task config.",
                 "circuit_id": str(uuid4()),
                 "scan_parameters": {},
                 "assets": [

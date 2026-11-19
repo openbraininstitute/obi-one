@@ -1,140 +1,140 @@
 {
-    "contributions": [
-        {
-            "id": "393f86f7-647d-4766-9120-5566f965e773",
-            "agent": {
-                "id": "cf4fbeb8-fd17-40fd-ae6d-43f2e53f82d5",
-                "given_name": "John",
-                "family_name": "John Doe",
-                "pref_label": "John Doe",
-                "type": "person",
-            },
-            "role": {
-                "id": "a48b7ff5-1284-4e47-9680-6cfb1f5c88de",
-                "creation_date": "2025-06-27T11:10:53.209515Z",
-                "update_date": "2025-06-27T11:10:53.209515Z",
-                "name": "unspecified",
-                "role_id": "unspecified",
-            },
-        },
-        {
-            "id": "bb07d774-216d-47d7-9fd8-549f9c5375a3",
-            "agent": {
-                "id": "36b621f5-5d56-45a2-9b49-f36261142cc4",
-                "pref_label": "\u00c9cole Polytechnique F\u00e9d\u00e9rale de Lausanne",
-                "alternative_name": "",
-                "type": "organization",
-            },
-            "role": {
-                "id": "a48b7ff5-1284-4e47-9680-6cfb1f5c88de",
-                "creation_date": "2025-06-27T11:10:53.209515Z",
-                "update_date": "2025-06-27T11:10:53.209515Z",
-                "name": "unspecified",
-                "role_id": "unspecified",
-            },
-        },
-    ],
-    "assets": [
-        {
-            "size": 561221,
-            "sha256_digest": "8b850eface3e7b881db62c361dc5da62be008ca81501c406a59646bf7075c95b",
-            "path": "mpg150211_A_idA.swc",
-            "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/reconstruction_morphology/3d150e36-2980-48ba-b654-0e057d33b8df/mpg150211_A_idA.swc",
-            "is_directory": false,
-            "content_type": "application/swc",
-            "meta": {},
-            "label": "morphology",
-            "id": "8c73ebe9-fe8a-4621-bc83-1f4dfc9bf5df",
-            "storage_type": "aws_s3_internal",
-            "status": "created",
-        },
-        {
-            "size": 525332,
-            "sha256_digest": "bf00878444539ead825f2d451cdf6f87072526f9a82c87de35fca5563ae5596b",
-            "path": "mpg150211_A_idA.ASC",
-            "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/reconstruction_morphology/3d150e36-2980-48ba-b654-0e057d33b8df/mpg150211_A_idA.ASC",
-            "is_directory": false,
-            "content_type": "application/asc",
-            "meta": {},
-            "label": "morphology",
-            "id": "4f63feb5-ee64-489b-9af3-59f3654c769c",
-            "storage_type": "aws_s3_internal",
-            "status": "created",
-        },
-    ],
-    "license": null,
-    "creation_date": "2024-09-10T14:25:03.707956Z",
-    "update_date": "2024-10-29T13:36:30.827776Z",
-    "created_by": {
-        "id": "bd143fa9-b714-410c-a65d-7435c1066932",
-        "pref_label": "Jane Doe",
-        "creation_date": "2024-01-01T00:00:00Z",
-        "update_date": "2024-01-01T00:00:00Z",
+  "contributions": [
+    {
+      "id": "393f86f7-647d-4766-9120-5566f965e773",
+      "agent": {
+        "id": "cf4fbeb8-fd17-40fd-ae6d-43f2e53f82d5",
+        "given_name": "John",
+        "family_name": "John Doe",
+        "pref_label": "John Doe",
+        "type": "person"
+      },
+      "role": {
+        "id": "a48b7ff5-1284-4e47-9680-6cfb1f5c88de",
+        "creation_date": "2025-06-27T11:10:53.209515Z",
+        "update_date": "2025-06-27T11:10:53.209515Z",
+        "name": "unspecified",
+        "role_id": "unspecified"
+      }
     },
-    "updated_by": {
-        "id": "7f81375e-ecc1-4b63-8773-3e847d718d73",
-        "pref_label": "service-account-bbp-dke-data-pipelines-sa service-account-bbp-dke-data-pipelines-sa",
-        "creation_date": "2024-01-01T00:00:00Z",
-        "update_date": "2024-01-01T00:00:00Z",
+    {
+      "id": "bb07d774-216d-47d7-9fd8-549f9c5375a3",
+      "agent": {
+        "id": "36b621f5-5d56-45a2-9b49-f36261142cc4",
+        "pref_label": "École Polytechnique Fédérale de Lausanne",
+        "alternative_name": "",
+        "type": "organization"
+      },
+      "role": {
+        "id": "a48b7ff5-1284-4e47-9680-6cfb1f5c88de",
+        "creation_date": "2025-06-27T11:10:53.209515Z",
+        "update_date": "2025-06-27T11:10:53.209515Z",
+        "name": "unspecified",
+        "role_id": "unspecified"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "size": 561221,
+      "sha256_digest": "8b850eface3e7b881db62c361dc5da62be008ca81501c406a59646bf7075c95b",
+      "path": "mpg150211_A_idA.swc",
+      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/reconstruction_morphology/3d150e36-2980-48ba-b654-0e057d33b8df/mpg150211_A_idA.swc",
+      "is_directory": false,
+      "content_type": "application/swc",
+      "meta": {},
+      "label": "morphology",
+      "id": "8c73ebe9-fe8a-4621-bc83-1f4dfc9bf5df",
+      "storage_type": "aws_s3_internal",
+      "status": "created"
     },
-    "brain_region": {
-        "creation_date": "2025-06-27T11:10:27.186088Z",
-        "update_date": "2025-06-27T11:10:27.186088Z",
-        "id": "37b2c03e-0498-4bde-adf3-308efc3c8c87",
-        "annotation_value": 407,
-        "name": "Field CA1, pyramidal layer",
-        "acronym": "CA1sp",
-        "color_hex_triplet": "66A83D",
-        "parent_structure_id": "b0ffdc9a-933b-4d5e-aa3d-9f0d57a92bdf",
-        "hierarchy_id": "e3e70682-c209-4cac-a29f-6fbed82c07cd",
+    {
+      "size": 525332,
+      "sha256_digest": "bf00878444539ead825f2d451cdf6f87072526f9a82c87de35fca5563ae5596b",
+      "path": "mpg150211_A_idA.ASC",
+      "full_path": "public/a98b7abc-fc46-4700-9e3d-37137812c730/0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6/assets/reconstruction_morphology/3d150e36-2980-48ba-b654-0e057d33b8df/mpg150211_A_idA.ASC",
+      "is_directory": false,
+      "content_type": "application/asc",
+      "meta": {},
+      "label": "morphology",
+      "id": "4f63feb5-ee64-489b-9af3-59f3654c769c",
+      "storage_type": "aws_s3_internal",
+      "status": "created"
+    }
+  ],
+  "license": null,
+  "creation_date": "2024-09-10T14:25:03.707956Z",
+  "update_date": "2024-10-29T13:36:30.827776Z",
+  "created_by": {
+    "id": "bd143fa9-b714-410c-a65d-7435c1066932",
+    "pref_label": "Jane Doe",
+    "creation_date": "2024-01-01T00:00:00Z",
+    "update_date": "2024-01-01T00:00:00Z"
+  },
+  "updated_by": {
+    "id": "7f81375e-ecc1-4b63-8773-3e847d718d73",
+    "pref_label": "service-account-bbp-dke-data-pipelines-sa service-account-bbp-dke-data-pipelines-sa",
+    "creation_date": "2024-01-01T00:00:00Z",
+    "update_date": "2024-01-01T00:00:00Z"
+  },
+  "brain_region": {
+    "creation_date": "2025-06-27T11:10:27.186088Z",
+    "update_date": "2025-06-27T11:10:27.186088Z",
+    "id": "37b2c03e-0498-4bde-adf3-308efc3c8c87",
+    "annotation_value": 407,
+    "name": "Field CA1, pyramidal layer",
+    "acronym": "CA1sp",
+    "color_hex_triplet": "66A83D",
+    "parent_structure_id": "b0ffdc9a-933b-4d5e-aa3d-9f0d57a92bdf",
+    "hierarchy_id": "e3e70682-c209-4cac-a29f-6fbed82c07cd"
+  },
+  "subject": {
+    "id": "9edb44c6-33b5-403b-8ab6-0890cfb12d07",
+    "name": "Generic Mus musculus",
+    "description": "",
+    "sex": "unknown",
+    "weight": null,
+    "age_value": null,
+    "age_min": null,
+    "age_max": null,
+    "age_period": null,
+    "species": {
+      "id": "b7ad4cca-4ac2-4095-9781-37fb68fe9ca1",
+      "name": "Mus musculus",
+      "taxonomy_id": "NCBITaxon:10090"
     },
-    "subject": {
-        "id": "9edb44c6-33b5-403b-8ab6-0890cfb12d07",
-        "name": "Generic Mus musculus",
-        "description": "",
-        "sex": "unknown",
-        "weight": null,
-        "age_value": null,
-        "age_min": null,
-        "age_max": null,
-        "age_period": null,
-        "species": {
-            "id": "b7ad4cca-4ac2-4095-9781-37fb68fe9ca1",
-            "name": "Mus musculus",
-            "taxonomy_id": "NCBITaxon:10090",
-        },
-        "strain": null,
-    },
-    "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
-    "authorized_public": true,
-    "type": "cell_morphology",
-    "id": "3d150e36-2980-48ba-b654-0e057d33b8df",
-    "experiment_date": null,
-    "contact_email": null,
-    "published_in": null,
-    "name": "mpg150211_A_idA",
-    "description": "Neuronal morphology of excitatory neuron cell 'mpg150211_A_idA' in Field CA1, pyramidal layer of cell type SR_PC. A neuron that releases excitatory neurotransmitters. This neuron doesn't have axon, has a basal dendrite and apical dendrite.",
-    "location": null,
-    "legacy_id": [
-        "https://bbp.epfl.ch/data/public/morphologies/bc745a33-343b-4c7d-a4a1-d66779e1dd72"
-    ],
-    "mtypes": [
-        {
-            "id": "0cae0d41-56c7-4a1a-a88e-be82eb901890",
-            "creation_date": "2020-03-16T10:34:59.651000Z",
-            "update_date": "2024-11-22T11:10:32.032504Z",
-            "pref_label": "SR_PC",
-            "alt_label": "",
-            "definition": "",
-        }
-    ],
-    "cell_morphology_protocol": {
-        "id": "77a4e533-823f-46cd-bc86-1a5290dca27b",
-        "type": "cell_morphology_protocol",
-        "name": "computationally synthesized morphology protocol",
-        "description": "Protocol for a computationally synthesized morphology.",
-        "generation_type": "computationally_synthesized",
-        "protocol_design": "electron_microscopy",
-        "method_type": "free-text",
-    },
+    "strain": null
+  },
+  "authorized_project_id": "0dbced5f-cc3d-488a-8c7f-cfb8ea039dc6",
+  "authorized_public": true,
+  "type": "cell_morphology",
+  "id": "3d150e36-2980-48ba-b654-0e057d33b8df",
+  "experiment_date": null,
+  "contact_email": null,
+  "published_in": null,
+  "name": "mpg150211_A_idA",
+  "description": "Neuronal morphology of excitatory neuron cell 'mpg150211_A_idA' in Field CA1, pyramidal layer of cell type SR_PC. A neuron that releases excitatory neurotransmitters. This neuron doesn't have axon, has a basal dendrite and apical dendrite.",
+  "location": null,
+  "legacy_id": [
+    "https://bbp.epfl.ch/data/public/morphologies/bc745a33-343b-4c7d-a4a1-d66779e1dd72"
+  ],
+  "mtypes": [
+    {
+      "id": "0cae0d41-56c7-4a1a-a88e-be82eb901890",
+      "creation_date": "2020-03-16T10:34:59.651000Z",
+      "update_date": "2024-11-22T11:10:32.032504Z",
+      "pref_label": "SR_PC",
+      "alt_label": "",
+      "definition": ""
+    }
+  ],
+  "cell_morphology_protocol": {
+    "id": "77a4e533-823f-46cd-bc86-1a5290dca27b",
+    "type": "cell_morphology_protocol",
+    "generation_type": "computationally_synthesized",
+    "protocol_design": "electron_microscopy",
+    "method_type": "free-text",
+    "name": "computationally synthesized morphology protocol",
+    "description": "Protocol for a computationally synthesized morphology."
+  }
 }
