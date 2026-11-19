@@ -628,6 +628,7 @@ def _em_cell_mesh_json(mesh_id: str):
     return {
         "id": mesh_id,
         "name": "test-mesh",
+        "description": "Test EM cell mesh.",
         "release_version": 1,
         "dense_reconstruction_cell_id": 123,
         "generation_method": "marching_cubes",
