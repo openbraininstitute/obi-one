@@ -363,6 +363,8 @@ def mapped_circuit_properties_endpoint(
                     CircuitScale.system,
                     CircuitScale.whole_brain,
                 },
+                # Off for now: a per-neuron report holds a trace per neuron and electrode.
+                CircuitUsability.SHOW_PER_CELL_EXTRACELLULAR_RECORDINGS: False,
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
                 and circuit.scale
                 in {
@@ -409,6 +411,7 @@ def mapped_circuit_properties_endpoint(
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
                 CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: False,
+                CircuitUsability.SHOW_PER_CELL_EXTRACELLULAR_RECORDINGS: False,
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
@@ -424,6 +427,7 @@ def mapped_circuit_properties_endpoint(
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
             CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: False,
+            CircuitUsability.SHOW_PER_CELL_EXTRACELLULAR_RECORDINGS: False,
             CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
