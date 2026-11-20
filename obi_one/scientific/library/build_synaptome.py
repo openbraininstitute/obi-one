@@ -5,6 +5,8 @@
 import json
 import re
 import shutil
+import stat
+import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -19,6 +21,7 @@ from bluepysnap.nodes import NodePopulation
 
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
 from obi_one.scientific.blocks.synaptic_models.base import SynapticModelBase
+from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.library.circuit import ensure_mechanisms_dir
 from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import write_edges
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import write_virtual_nodes
@@ -30,6 +33,7 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
 )
+from obi_one.utils.filesystem import copy_tree
 
 if TYPE_CHECKING:
     from entitysdk import Client
@@ -200,13 +204,13 @@ def _append_population_config(
     edges_file: Path,
     edge_population: str,
 ) -> None:
-    circuit_config["networks"]["nodes"].append(
+    circuit_config["networks"].setdefault("nodes", []).append(
         {
             "nodes_file": f"$BASE_DIR/{nodes_file.as_posix()}",
             "populations": {node_population: {"type": "virtual"}},
         }
     )
-    circuit_config["networks"]["edges"].append(
+    circuit_config["networks"].setdefault("edges", []).append(
         {
             "edges_file": f"$BASE_DIR/{edges_file.as_posix()}",
             "populations": {edge_population: {"type": "chemical"}},
@@ -303,22 +307,42 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
     *,
     db_client: "Client",
 ) -> BuildSynaptomeResult:
-    """Stage an ME-model circuit and add generated virtual afferent populations."""
+    """Stage the input and add generated virtual afferent populations to it.
+
+    The input is either an ME-model, which has no synapses, or an existing synaptome. The existing
+    populations and their files are carried over unchanged.
+    """
     output_directory = Path(output_directory).resolve()
     if output_directory.exists():
         msg = f"Build Synaptome output directory already exists: '{output_directory}'."
         raise FileExistsError(msg)
+    input_reference = config.initialize.me_model
+    from_synaptome = isinstance(input_reference, MEModelWithSynapsesCircuitFromID)
+    kind = "synaptome" if from_synaptome else "ME-model"
+    if from_synaptome and not config.synapse_groups:
+        raise BuildSynaptomeError("Add at least one synapse group to build on a synaptome.")
     if db_client is None:
-        raise BuildSynaptomeError("Build Synaptome requires a db_client to resolve the ME-model.")
-    try:
-        staged = config.initialize.me_model.stage_circuit(
-            db_client=db_client,
-            dest_dir=output_directory,
-            entity_cache=False,
-        )
-    except Exception as exc:
-        msg = f"Unable to resolve or stage ME-model '{config.initialize.me_model.id_str}': {exc}"
-        raise BuildSynaptomeError(msg) from exc
+        raise BuildSynaptomeError(f"Build Synaptome requires a db_client to resolve the {kind}.")
+
+    # The staged data is left as fetched: it is copied into the output, and only the copy is edited.
+    output_directory.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=output_directory.parent) as staging_root:
+        staging_directory = Path(staging_root) / "input"
+        try:
+            staged = input_reference.stage_circuit(
+                db_client=db_client,
+                dest_dir=staging_directory,
+                entity_cache=False,
+            )
+        except Exception as exc:
+            msg = f"Unable to resolve or stage {kind} '{input_reference.id_str}': {exc}"
+            raise BuildSynaptomeError(msg) from exc
+        copy_tree(staging_directory, output_directory)
+        config_path = output_directory / Path(staged.path).relative_to(staging_directory)
+    # A copy keeps the permissions of its source, which may be a read-only store.
+    for path in [output_directory, *output_directory.rglob("*")]:
+        path.chmod(path.stat().st_mode | stat.S_IWUSR)
+    staged = type(staged)(name=staged.name, path=str(config_path))
 
     circuit_config_path = Path(staged.path).resolve()
     try:
@@ -331,38 +355,31 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
     except BuildSynaptomeError:
         raise
     except Exception as exc:
-        msg = f"Unable to load staged ME-model '{config.initialize.me_model.id_str}': {exc}"
+        msg = f"Unable to load staged {kind} '{input_reference.id_str}': {exc}"
         raise BuildSynaptomeError(msg) from exc
 
     try:
         morphology = staged.load_morphology(0, population=target_name)
     except Exception as exc:
-        msg = (
-            f"Unable to load morphology from staged ME-model "
-            f"'{config.initialize.me_model.id_str}': {exc}"
-        )
+        msg = f"Unable to load morphology from staged {kind} '{input_reference.id_str}': {exc}"
         raise BuildSynaptomeError(msg) from exc
 
     try:
         circuit_config = json.loads(circuit_config_path.read_text())
-        if circuit.edges.population_names:
-            raise BuildSynaptomeError(
-                "The staged ME-model circuit already contains edges; Build Synaptome requires "
-                "an unconnected single-cell ME-model."
-            )
+        existing_edge_populations = list(circuit.edges.population_names)
 
         expected_groups: dict[str, tuple[int, int]] = {}
         models_by_edge_population: dict[str, SynapticModelBase] = {}
-        used_names: set[str] = set(circuit.nodes.population_names)
+        used_names: set[str] = {*circuit.nodes.population_names, *existing_edge_populations}
         for group_index, (group_key, group) in enumerate(config.synapse_groups.items()):
             base = _safe_name(group_key)
             source_population = f"{base}_sources"
             edge_population = f"{source_population}__{_safe_name(target_name)}__chemical"
-            if source_population in used_names or edge_population in expected_groups:
+            if source_population in used_names or edge_population in used_names:
                 raise BuildSynaptomeError(
                     f"Synapse group '{group_key}' produces a duplicate SONATA population name."
                 )
-            used_names.add(source_population)
+            used_names.update((source_population, edge_population))
 
             try:
                 placement_strategy = group.placement_strategy.block
@@ -440,11 +457,13 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
         # also stages the intrinsic mini mechanisms. Done after the config is written, since it
         # resolves the directory through libsonata and needs the edge population declared in the
         # config. Resolved per population, since the directory can be set per edge population,
-        # not only at the circuit level.
+        # not only at the circuit level. A synaptome already keeps its mechanisms in its declared
+        # directory, so there is nothing to fold.
         mechanisms_dir = None
         for edge_population, synaptic_model in models_by_edge_population.items():
             mechanisms_dir = ensure_mechanisms_dir(circuit_config_path, edge_population)
-            _fold_staged_mechanisms_into(mechanisms_dir, output_directory)
+            if not from_synaptome:
+                _fold_staged_mechanisms_into(mechanisms_dir, output_directory)
             type(synaptic_model).copy_mod_files(mechanisms_dir)
 
         # With no synapse groups there is no edge population to resolve against, so fall back to
