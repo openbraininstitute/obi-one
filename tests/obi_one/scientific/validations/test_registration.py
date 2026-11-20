@@ -63,7 +63,7 @@ class TestRegisterOutcome:
         mock_client.register_entity.assert_called_once()
         registered = mock_client.register_entity.call_args.kwargs["entity"]
         assert registered.name == sample_test_result.name
-        assert registered.description == ""
+        assert not registered.description
         mock_client.upload_file.assert_called()  # figure + details
 
     def test_skips_if_already_exists(self, mock_client, sample_test_result, tmp_path):
