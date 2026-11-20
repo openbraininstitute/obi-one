@@ -2,7 +2,7 @@ services:
   app:
     profiles: [run]
     image: "${IMAGE_NAME}:${IMAGE_TAG}"
-#    platform: linux/amd64  # for pyflagser
+    platform: linux/arm64
     build:
       dockerfile: Dockerfile
       args:
