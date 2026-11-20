@@ -938,16 +938,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.38"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/73/1ee631d4663a66a23b5bc892e13d320c4fe70e5e7e7a3cf80adf24c561c4/entitysdk-0.19.38.tar.gz", hash = "sha256:637787c33a8d484ca1e30b896de21d9241cf79c839b368c24f2154631c690d18", size = 84262, upload-time = "2026-11-19T14:57:46.176Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/5f/97a5e034bafae823e2010076a9c41906162915cf91901c7ad32792679144/entitysdk-0.20.0.tar.gz", hash = "sha256:944a61b13f1eb417697919490ed33515bf63cd39547ea887630db4423b5b16cf", size = 84032, upload-time = "2026-11-19T16:36:21.981Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/be/7ebc8b28c12e880e51f181ba1930dc14b8cd51bb12a5cb56c6bdc525e45b/entitysdk-0.19.38-py3-none-any.whl", hash = "sha256:660ef8ed0892a440dd0dcc12b14baa97f072b04df983cec842beef47c8e45f43", size = 118820, upload-time = "2026-11-19T14:57:44.873Z" },
+    { url = "https://files.pythonhosted.org/packages/71/75/8dccf17675134db25c30f0aa84f009597bb9336220e63fec62925df3883f/entitysdk-0.20.0-py3-none-any.whl", hash = "sha256:cef01c0745b103812a128e957a8610f1a8c50b346184fce0f163b5e4e0fcd892", size = 119198, upload-time = "2026-11-19T16:36:20.322Z" },
 ]
 
 [[package]]
@@ -2523,7 +2523,7 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.18" },
-    { name = "entitysdk", specifier = ">=0.19.33" },
+    { name = "entitysdk", specifier = ">=0.20" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },

@@ -235,6 +235,7 @@ def _simulation_metadata(*, simulation_id, circuit_id, config_id):
     return {
         "id": str(simulation_id),
         "name": "sim",
+        "description": "Test simulation.",
         "simulation_campaign_id": str(uuid4()),
         "entity_id": str(circuit_id),
         "scan_parameters": {},
@@ -289,6 +290,7 @@ def _circuit_metadata(*, circuit_id: UUID, target_simulator: str, circuit_scale:
     return {
         "id": str(circuit_id),
         "name": "circuit",
+        "description": "Test circuit.",
         "number_neurons": 1000,
         "number_synapses": 1_000_000_000,
         "number_connections": 100_000_000,
