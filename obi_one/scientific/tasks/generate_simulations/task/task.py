@@ -18,7 +18,7 @@ from obi_one.scientific.blocks.morphology_locations.base import (
 from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
 from obi_one.scientific.blocks.neuron_sets.combined import CombinedBaseNeuronSet
 from obi_one.scientific.blocks.recordings.extracellular import (
-    ExtracellularElectrodeArrayRecordingBlock,
+    ExtracellularElectrodeArrayRecording,
 )
 from obi_one.scientific.blocks.stimuli.brian2_poisson import Brian2DirectPoissonStimulus
 from obi_one.scientific.blocks.stimuli.electric_field import SpatiallyUniformElectricFieldStimulus
@@ -560,11 +560,11 @@ class GenerateSimulationTask(Task):
                 attrs_or_entity={"number_neurons": number_neurons},
             )
 
-    def _extracellular_recordings(self) -> list[ExtracellularElectrodeArrayRecordingBlock]:
+    def _extracellular_recordings(self) -> list[ExtracellularElectrodeArrayRecording]:
         return [
             recording
             for recording in getattr(self.config, "recordings", {}).values()
-            if isinstance(recording, ExtracellularElectrodeArrayRecordingBlock)
+            if isinstance(recording, ExtracellularElectrodeArrayRecording)
         ]
 
     def _recording_array_ids(self) -> list[str]:

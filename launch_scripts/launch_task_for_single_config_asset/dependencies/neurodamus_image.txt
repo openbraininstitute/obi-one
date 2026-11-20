@@ -4,10 +4,10 @@
 # and kept by compiling.
 obi-one[bluerecording]==2026.11.8
 # Pinned by neurodamus_image.override, not resolved:
-neuron==9.0.0+g2ac5cc7191e44805cdf40abf0ad6d3fac1481d49
-neurodamus==4.2.11
+neuron==9.1.0.dev0+g1a6d545679d19d5223e3f0158186f41a315e5f6f
+neurodamus==4.3.0
 h5py==3.16.0
-libsonata==0.2.2
+libsonata==0.2.4
 mpi4py==4.1.2
 annotated-types==0.8.0
 anyio==4.15.1

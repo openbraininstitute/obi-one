@@ -185,7 +185,8 @@ Recordings capture network activity:
 
 - **SomaVoltageRecording**: Voltage traces from soma
 - **TimeWindowSomaVoltageRecording**: Voltage within specific time windows
-- **ExtracellularElectrodeArrayRecordingBlock**: Extracellular signal (LFP) per electrode
+- **SummedExtracellularElectrodeArrayRecordingBlock** / **TimeWindowSummedExtracellularElectrodeArrayRecordingBlock**: Extracellular signal (LFP) per electrode, summed over the recorded neurons (SONATA `"method": "sum"`), for the full experiment or a time window
+- **ExtracellularElectrodeArrayRecordingBlock** / **TimeWindowExtracellularElectrodeArrayRecordingBlock**: Each recorded neuron's contribution to the extracellular signal (LFP) per electrode, for the full experiment or a time window. Not offered by circuit simulations for now (left out of their recordings union), as its output grows with the number of neurons
 - **Spike detection**: Automatic spike detection and recording
 
 #### ExtracellularElectrodeArrayRecordingBlock

@@ -20,6 +20,32 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     resolve_neuron_set_ref_to_node_set,
 )
 
+WindowStartTime = Annotated[
+    NonNegativeFloat | list[NonNegativeFloat],
+    Field(
+        default=0.0,
+        title="Start time",
+        description="Recording start time in milliseconds (ms).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    ),
+]
+
+WindowEndTime = Annotated[
+    NonNegativeFloat | list[NonNegativeFloat],
+    Field(
+        default=100.0,
+        title="End time",
+        description="Recording end time in milliseconds (ms).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    ),
+]
+
 
 class BaseRecording(Block, ABC):
     """What every recording has in common, whatever decides how often it samples.
@@ -130,3 +156,27 @@ class SimulationDtRecording(BaseRecording, ABC):
     def recording_timestep(self) -> PositiveFloat:
         """Interval between recorded samples in milliseconds (ms)."""
         return self._simulation_timestep
+
+
+def check_time_window(
+    recording: BaseRecording,
+    start_time: NonNegativeFloat | list[NonNegativeFloat],
+    end_time: NonNegativeFloat | list[NonNegativeFloat],
+) -> None:
+    """Check that a recording's window ends later than it starts."""
+    if end_time > start_time:  # ty:ignore[unsupported-operator]
+        return
+
+    recording_name = f" '{recording.block_name}'" if recording.has_block_name() else ""
+
+    neuron_set = recording.neuron_set
+    if neuron_set is not None and neuron_set.has_block() and neuron_set.block.has_block_name():
+        neuron_set_name = f" '{neuron_set.block.block_name}'"
+    else:
+        neuron_set_name = ""
+
+    msg = (
+        f"Recording{recording_name} for Neuron Set{neuron_set_name}: "
+        "End time must be later than start time!"
+    )
+    raise OBIONEError(msg)
