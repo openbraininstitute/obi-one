@@ -38,9 +38,9 @@ def estimate_circuit_extraction_count(*, db_client: Client, config_id: UUID) -> 
     )
 
     # No neuron set means the default one, as applied by the task at execution time
-    neuron_set_ref = single_config.initialize.neuron_set
-    if neuron_set_ref is None:
-        neuron_set_ref = single_config.default_neuron_set_reference
+    neuron_set_ref = (
+        single_config.initialize.neuron_set or single_config.default_neuron_set_reference
+    )
 
     parent_circuit = single_config.initialize.circuit
     if isinstance(parent_circuit, CircuitFromID):
