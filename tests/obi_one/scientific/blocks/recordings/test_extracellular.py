@@ -242,21 +242,33 @@ class TestCircuitUsability:
         assert usability[SchemaKey.FALSE_MESSAGE]
 
 
-BLOCKS = [
+SUMMED_BLOCKS = [
     SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+]
+PER_NEURON_BLOCKS = [
     ExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
 ]
 
 
 class TestCircuitRecordingUnion:
-    @pytest.mark.parametrize("block", BLOCKS)
-    def test_extracellular_recording_offered_by_circuit_simulations(self, block):
+    @pytest.mark.parametrize("block", SUMMED_BLOCKS)
+    def test_summed_recording_offered_by_circuit_simulations(self, block):
         scan_config = CircuitSimulationScanConfig.empty_config()
         scan_config.add(_recording(block=block), name="LFPRecording")
 
         assert isinstance(scan_config.recordings["LFPRecording"], block)
 
-    @pytest.mark.parametrize("block", BLOCKS)
+    @pytest.mark.parametrize("block", PER_NEURON_BLOCKS)
+    def test_per_neuron_recording_not_offered_by_circuit_simulations(self, block):
+        """Left out of the recordings union, so neither the UI nor a config can use it."""
+        scan_config = CircuitSimulationScanConfig.empty_config()
+
+        with pytest.raises(KeyError, match=block.__name__):
+            scan_config.add(_recording(block=block), name="LFPRecording")
+
+    @pytest.mark.parametrize("block", SUMMED_BLOCKS + PER_NEURON_BLOCKS)
     def test_extracellular_recording_rejected_by_single_cell_simulations(self, block):
         """MEModel simulations have no circuit-wide weight matrix, so cannot record LFP."""
         scan_config = MEModelSimulationScanConfig.empty_config()

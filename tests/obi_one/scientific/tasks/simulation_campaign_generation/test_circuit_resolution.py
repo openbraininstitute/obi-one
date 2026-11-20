@@ -16,7 +16,7 @@ import pytest
 from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.scientific.blocks.morphology_locations.random import RandomMorphologyLocations
 from obi_one.scientific.blocks.recordings.extracellular import (
-    ExtracellularElectrodeArrayRecordingBlock,
+    SummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.stimuli.stimulus import ConstantCurrentClampSomaticStimulus
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
@@ -215,7 +215,7 @@ class TestRecordingArrayCircuit:
             CircuitSimulationSingleConfig,
             circuit=CircuitFromID(id_str=CIRCUIT_ID),
             blocks={
-                "LFP": ExtracellularElectrodeArrayRecordingBlock(
+                "LFP": SummedExtracellularElectrodeArrayRecordingBlock(
                     electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
                 )
             },

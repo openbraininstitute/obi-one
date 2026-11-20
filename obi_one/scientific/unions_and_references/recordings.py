@@ -4,9 +4,7 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.recordings.extracellular import (
-    ExtracellularElectrodeArrayRecordingBlock,
     SummedExtracellularElectrodeArrayRecordingBlock,
-    TimeWindowExtracellularElectrodeArrayRecordingBlock,
     TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
@@ -35,8 +33,6 @@ _CIRCUIT_RECORDINGS = (
     _VOLTAGE_RECORDINGS
     | SummedExtracellularElectrodeArrayRecordingBlock
     | TimeWindowSummedExtracellularElectrodeArrayRecordingBlock
-    | ExtracellularElectrodeArrayRecordingBlock
-    | TimeWindowExtracellularElectrodeArrayRecordingBlock
 )
 
 _RECORDINGS = IonChannelVariableRecording | _CIRCUIT_RECORDINGS
