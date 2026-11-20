@@ -31,3 +31,100 @@ assert "obi_one.scientific.tasks.simulation_execution.neuron.task" not in sys.mo
         [sys.executable, "-c", script],
         check=True,
     )
+
+
+def test_ephys_extraction_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.ephys_extraction.config
+assert "obi_one.scientific.tasks.ephys_extraction.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_morphology_decontainerization_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.morphology_decontainerization.config
+assert "obi_one.scientific.tasks.morphology_decontainerization.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_morphology_containerization_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.morphology_containerization.config
+assert "obi_one.scientific.tasks.morphology_containerization.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_build_synaptome_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.build_synaptome.config
+assert "obi_one.scientific.tasks.build_synaptome.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_folder_compression_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.folder_compression.config
+assert "obi_one.scientific.tasks.folder_compression.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_basic_connectivity_plots_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.basic_connectivity_plots.config
+assert "obi_one.scientific.tasks.basic_connectivity_plots.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_morphology_metrics_config_import_does_not_load_task_module():
+    script = """
+import sys
+import obi_one.scientific.tasks.morphology_metrics.config
+assert "obi_one.scientific.tasks.morphology_metrics.task" not in sys.modules
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )
+
+
+def test_schema_example_package_init_does_not_reexport_config():
+    """schema_example is config-only (no task); package __init__ must stay empty."""
+    script = """
+import obi_one.scientific.tasks.schema_example as pkg
+assert not hasattr(pkg, "SchemaExampleScanConfig")
+import obi_one.scientific.tasks.schema_example.config  # noqa: F401
+"""
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [sys.executable, "-c", script],
+        check=True,
+    )

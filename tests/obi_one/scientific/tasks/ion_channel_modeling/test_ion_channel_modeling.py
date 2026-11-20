@@ -15,13 +15,16 @@ from obi_one.db_sdk import db_sdk
 from obi_one.scientific.mappings_and_registry.config_task_map import (
     get_task_spec_for_scan_config,
 )
-from obi_one.scientific.tasks import ion_channel_modeling
-from obi_one.scientific.tasks.ion_channel_modeling import (
+from obi_one.scientific.tasks.ion_channel_modeling import task as ion_channel_modeling
+from obi_one.scientific.tasks.ion_channel_modeling.config import (
     HodgkinHuxleyIonChannelModel,
     IonChannelFittingScanConfig,
     IonChannelFittingSingleConfig,
-    IonChannelFittingTask,
+    ResolvedModelProperties,
     neuron_safe_name,
+)
+from obi_one.scientific.tasks.ion_channel_modeling.task import (
+    IonChannelFittingTask,
     plot_fitted_model,
     plot_in_fresh_process,
 )
@@ -356,7 +359,7 @@ def _region():
 
 def _save(tmp_path, db_client, *, subject, species):
     task = _task(tmp_path)
-    properties = ion_channel_modeling.ResolvedModelProperties(
+    properties = ResolvedModelProperties(
         ion_channel_name="Kv6_2",
         temperature=25.0,
         species=species,
@@ -378,7 +381,9 @@ def test_the_registered_model_takes_the_resolved_properties(tmp_path):
     db_client = _db_client()
     db_client.register_entity.side_effect = lambda entity: entity
     mouse = _species("Mus musculus", "NCBITaxon:10090")
-    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+    subject = models.Subject(
+        id=uuid4(), name="Mouse 1", description="", sex=Sex.male, species=mouse
+    )
 
     (model,) = _save(tmp_path, db_client, subject=subject, species=mouse)
 
@@ -395,10 +400,20 @@ def test_a_model_of_several_subjects_gets_the_generic_subject_of_its_species(tmp
     mouse = _species("Mus musculus", "NCBITaxon:10090")
     rat = _species("Rattus norvegicus", "NCBITaxon:10116")
     generic_mouse = models.Subject(
-        id=uuid4(), name="Generic Mus musculus", sex=Sex.unknown, species=mouse
+        id=uuid4(),
+        name="Generic Mus musculus",
+        description="",
+        sex=Sex.unknown,
+        species=mouse,
     )
     db_client.search_entity.return_value = [
-        models.Subject(id=uuid4(), name="Generic Mus musculus", sex=Sex.unknown, species=rat),
+        models.Subject(
+            id=uuid4(),
+            name="Generic Mus musculus",
+            description="",
+            sex=Sex.unknown,
+            species=rat,
+        ),
         generic_mouse,
     ]
 

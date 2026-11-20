@@ -368,6 +368,7 @@ def test_register_morphology_logic_variants(monkeypatch):
         "brain_location": [1.0],
         "cell_morphology_protocol_id": str(uuid.uuid4()),
         "name": "test",
+        "description": "",
     }
     result = register_morphology(client, payload)
     assert result is not None
@@ -391,6 +392,7 @@ def test_register_morphology_with_valid_brain_location(monkeypatch):
         "brain_location": [1.0, 2.0, 3.0],
         "cell_morphology_protocol_id": str(uuid.uuid4()),
         "name": "test",
+        "description": "",
         "authorized_public": False,
     }
     result = register_morphology(client, payload)
@@ -415,6 +417,7 @@ def test_register_morphology_request_exception_in_get_entity(monkeypatch):
         "subject_id": "some-id",
         "cell_morphology_protocol_id": str(uuid.uuid4()),
         "name": "test",
+        "description": "",
         "authorized_public": False,
     }
     result = register_morphology(client, payload)
@@ -527,6 +530,7 @@ def test_register_morphology_entity_sdk_error_in_get_entity(monkeypatch):
         "subject_id": str(uuid.uuid4()),
         "brain_region_id": str(uuid.uuid4()),
         "name": "test",
+        "description": "",
         "authorized_public": False,
     }
     result = register_morphology(client, payload)
@@ -542,6 +546,7 @@ def test_register_morphology_invalid_brain_location_values(monkeypatch):
     payload = {
         "brain_location": ["not", "a", "float"],
         "name": "test",
+        "description": "",
         "authorized_public": False,
     }
     result = register_morphology(client, payload)
@@ -556,15 +561,28 @@ def test_register_morphology_entity_sdk_error_on_register(monkeypatch):
     client = MagicMock()
     client.search_entity.side_effect = EntitySDKError("not found")
     client.register_entity.side_effect = EntitySDKError("register failed")
-    payload = {"name": "test", "authorized_public": False}
+    payload = {"name": "test", "description": "", "authorized_public": False}
     with pytest.raises(EntitySDKError):
         register_morphology(client, payload)
+
+
+def test_register_morphology_rejects_missing_name_or_description(monkeypatch):
+    monkeypatch.setattr(
+        "app.endpoints.morphology_metrics_calculation.CellMorphology",
+        MagicMock(return_value=MagicMock()),
+    )
+    client = MagicMock()
+    with pytest.raises(ValueError, match="name and description are required"):
+        register_morphology(client, {"name": "test", "authorized_public": False})
+    with pytest.raises(ValueError, match="name and description are required"):
+        register_morphology(client, {"description": "", "authorized_public": False})
 
 
 def test_prepare_entity_payload_none_name():
     metadata = MorphologyMetadata(name=None)
     payload = _prepare_entity_payload(metadata, "neuron.asc")
     assert payload["name"] == "Morphology: neuron"
+    assert payload["description"] == ""  # ruff: ignore[compare-to-empty-string]
 
 
 def test_asc_upload_success(client, monkeypatch):
@@ -868,7 +886,9 @@ class TestStoreInvalidMorphology:
         client = MagicMock()
         client.register_entity.side_effect = lambda entity: entity
         client.search_entity.return_value.one.return_value = PlaceholderCellMorphologyProtocol(
-            generation_type="placeholder"
+            name="placeholder-protocol",
+            description="",
+            generation_type="placeholder",
         )
 
         payload = _prepare_entity_payload(

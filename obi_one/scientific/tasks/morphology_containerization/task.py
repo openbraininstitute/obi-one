@@ -1,3 +1,5 @@
+"""Morphology containerization task."""
+
 import datetime
 import json
 import logging
@@ -16,46 +18,12 @@ from entitysdk.client import Client
 from morph_tool import convert
 from morphio import MorphioError
 
-from obi_one.core.block import Block
-from obi_one.core.scan_config import ScanConfig
-from obi_one.core.single import SingleConfigMixin
 from obi_one.core.task import Task
-from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.morphology_containerization.config import (
+    MorphologyContainerizationSingleConfig,
+)
 
 L = logging.getLogger(__name__)
-
-
-class MorphologyContainerizationScanConfig(ScanConfig):
-    """Creates a circuit with containerized morphologies instead of individual morphology files,
-    which involves the following steps:
-    (1) Copy circuit to output location
-    (2) Convert morphologies to .h5, if not yet existing (from .swc or .asc)
-    (3) Merge individual .h5 morphologies into an .h5 container
-    (4) Update the circuit config, pointing to the .h5 container
-    (5) Update .hoc files so that they will work with .h5 containers
-    (6) Delete all individual morphologies
-    (7) Check containerized morphologies
-    Important: The original circuit won't be modified! The circuit will be copied
-               to the output location where all operations take place.
-    """
-
-    name: ClassVar[str] = "Morphology Containerization"
-    description: ClassVar[str] = (
-        "Creates a circuit with containerized morphologies instead of individual morphology files"
-    )
-
-    class Initialize(Block):
-        circuit: Circuit | list[Circuit]
-        hoc_template_old: str
-        hoc_template_new: str
-
-    initialize: Initialize
-
-
-class MorphologyContainerizationSingleConfig(
-    MorphologyContainerizationScanConfig, SingleConfigMixin
-):
-    pass
 
 
 class MorphologyContainerizationTask(Task):
@@ -113,7 +81,7 @@ class MorphologyContainerizationTask(Task):
                 morph_folder is not None
                 and len(
                     MorphologyContainerizationTask._filter_ext(
-                        Path(morph_folder).iterdir(),  # ty:ignore[invalid-argument-type]
+                        list(Path(morph_folder).rglob("*")),  # Includes nested subfolders
                         morph_ext,
                     )
                 )
@@ -148,6 +116,8 @@ class MorphologyContainerizationTask(Task):
                 src_file = Path(inp_folder) / (m + f".{morph_ext}")
                 dest_file = Path(h5_folder) / (m + ".h5")
                 if not Path(dest_file).exists():
+                    # Morphology names may contain subfolders
+                    Path(dest_file).parent.mkdir(parents=True, exist_ok=True)
                     convert(src_file, dest_file)
         return h5_folder
 
@@ -164,6 +134,10 @@ class MorphologyContainerizationTask(Task):
                     if m in f_container:
                         skip_counter += 1
                     else:
+                        # Preserve subfolders of nested morphology names as groups
+                        parent = Path(m).parent.as_posix()
+                        if parent != ".":
+                            f_container.require_group(parent)
                         f_h5.copy(f_h5, f_container, name=m)
         L.info(
             f"Merged {len(morph_names) - skip_counter} morphologies into container \
@@ -441,7 +415,10 @@ class MorphologyContainerizationTask(Task):
         # Clean up morphology folders with individual morphologies
         L.info(f"Cleaning morphology folders: {morph_folders_to_delete}")
         for folder in morph_folders_to_delete:
-            shutil.rmtree(folder)
+            try:
+                shutil.rmtree(folder)
+            except OSError as e:
+                L.warning(f"Could not delete morphology folder '{folder}': {e}")
 
         # Reload and check morphologies in modified circuit
         if not self._check_morphologies(circuit_config):

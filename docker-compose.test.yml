@@ -2,8 +2,9 @@ services:
   test:
     profiles: [test]
     image: "${IMAGE_NAME}:${IMAGE_TAG}"
-#    platform: linux/amd64  # for pyflagser
+    platform: linux/arm64
     user: root  # only for tests, needed to write in the coverage directory
+
     environment:
       COVERAGE_FILE: ${COVERAGE_FILE:-.coverage/coverage.db}
       PYTEST_ARGS: ${PYTEST_ARGS:-}

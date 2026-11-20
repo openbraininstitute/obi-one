@@ -2,7 +2,7 @@ import pytest
 
 from app.endpoints import scan_config
 from app.errors import ApiError
-from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
+from obi_one.scientific.tasks.schema_example.config import SchemaExampleScanConfig
 
 _SCHEMA_EXAMPLE_PATH = "/generated/schema-example-scan-config-generate-grid"
 _BUILD_SYNAPTOME_PATH = "/generated/me-model-synaptic-model-placement-scan-config-generate-grid"

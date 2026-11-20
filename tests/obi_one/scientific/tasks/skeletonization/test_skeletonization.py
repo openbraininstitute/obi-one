@@ -94,7 +94,7 @@ def species():
 
 @pytest.fixture
 def subject(species):
-    return Subject(sex=Sex.male, species=species)
+    return Subject(name="subject", description="", sex=Sex.male, species=species)
 
 
 @pytest.fixture
@@ -134,6 +134,7 @@ def em_dataset_no_slicing():
     return EMDenseReconstructionDataset(
         id=uuid4(),
         name="test-dataset",
+        description="",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
         volume_resolution_z_nm=0.1,
@@ -149,6 +150,7 @@ def em_dataset_with_slicing():
     return EMDenseReconstructionDataset(
         id=uuid4(),
         name="test-dataset",
+        description="",
         volume_resolution_x_nm=0.1,
         volume_resolution_y_nm=0.1,
         volume_resolution_z_nm=0.1,
@@ -626,6 +628,7 @@ def _em_cell_mesh_json(mesh_id: str):
     return {
         "id": mesh_id,
         "name": "test-mesh",
+        "description": "Test EM cell mesh.",
         "release_version": 1,
         "dense_reconstruction_cell_id": 123,
         "generation_method": "marching_cubes",
@@ -724,12 +727,16 @@ def test_create_campaign_generation_entity(
     config_payloads = [
         {
             "id": str(config_id_1),
+            "name": "skel-config-1",
+            "description": "Test skeletonization config.",
             "skeletonization_campaign_id": str(campaign_id),
             "em_cell_mesh_id": single_cell_mesh_id,
             "scan_parameters": {},
         },
         {
             "id": str(config_id_2),
+            "name": "skel-config-2",
+            "description": "Test skeletonization config.",
             "skeletonization_campaign_id": str(campaign_id),
             "em_cell_mesh_id": single_cell_mesh_id,
             "scan_parameters": {},

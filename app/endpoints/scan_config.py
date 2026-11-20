@@ -13,7 +13,9 @@ from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_config import ScanConfig
 from obi_one.core.scan_generation import GridScanGenerationTask
-from obi_one.scientific.tasks.build_synaptome import MEModelSynapticModelPlacementScanConfig
+from obi_one.scientific.tasks.build_synaptome.config import (
+    MEModelSynapticModelPlacementScanConfig,
+)
 from obi_one.scientific.tasks.circuit_extraction.config import CircuitExtractionScanConfig
 from obi_one.scientific.tasks.circuit_simplification.config import CircuitSimplificationScanConfig
 from obi_one.scientific.tasks.create_recording_array.create_recording_array import (
@@ -44,12 +46,12 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model_with_synapses import (  # ruff: ignore[line-too-long]
     MEModelWithSynapsesCircuitSimulationScanConfig,
 )
-from obi_one.scientific.tasks.ion_channel_modeling import IonChannelFittingScanConfig
+from obi_one.scientific.tasks.ion_channel_modeling.config import IonChannelFittingScanConfig
 from obi_one.scientific.tasks.memodel_build.config import MEModelBuildScanConfig
-from obi_one.scientific.tasks.morphology_metrics import (
+from obi_one.scientific.tasks.morphology_metrics.config import (
     MorphologyMetricsScanConfig,
 )
-from obi_one.scientific.tasks.schema_example import SchemaExampleScanConfig
+from obi_one.scientific.tasks.schema_example.config import SchemaExampleScanConfig
 from obi_one.scientific.tasks.skeletonization import SkeletonizationScanConfig
 from obi_one.scientific.tasks.synapse_parameterization.config import (
     SynapseParameterizationScanConfig,

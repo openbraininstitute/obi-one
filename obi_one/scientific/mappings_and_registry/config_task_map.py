@@ -172,12 +172,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_activity_type=TaskActivityType.skeletonization__execution,
     ),
     TaskType.basic_connectivity_plots: TaskSpec(
-        task_ref=(f"{_TASKS}.basic_connectivity_plots", "BasicConnectivityPlotsTask"),
+        task_ref=(f"{_TASKS}.basic_connectivity_plots.task", "BasicConnectivityPlotsTask"),
         single_config_ref=(
-            f"{_TASKS}.basic_connectivity_plots",
+            f"{_TASKS}.basic_connectivity_plots.config",
             "BasicConnectivityPlotsSingleConfig",
         ),
-        scan_config_ref=(f"{_TASKS}.basic_connectivity_plots", "BasicConnectivityPlotsScanConfig"),
+        scan_config_ref=(
+            f"{_TASKS}.basic_connectivity_plots.config",
+            "BasicConnectivityPlotsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.brian2_circuit_simulation: TaskSpec(
@@ -208,21 +211,39 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.electrophysiology_metrics: TaskSpec(
-        task_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsTask"),
-        single_config_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.ephys_extraction", "ElectrophysiologyMetricsScanConfig"),
+        task_ref=(f"{_TASKS}.ephys_extraction.task", "ElectrophysiologyMetricsTask"),
+        single_config_ref=(
+            f"{_TASKS}.ephys_extraction.config",
+            "ElectrophysiologyMetricsSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.ephys_extraction.config",
+            "ElectrophysiologyMetricsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.folder_compression: TaskSpec(
-        task_ref=(f"{_TASKS}.folder_compression", "FolderCompressionTask"),
-        single_config_ref=(f"{_TASKS}.folder_compression", "FolderCompressionSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.folder_compression", "FolderCompressionScanConfig"),
+        task_ref=(f"{_TASKS}.folder_compression.task", "FolderCompressionTask"),
+        single_config_ref=(
+            f"{_TASKS}.folder_compression.config",
+            "FolderCompressionSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.folder_compression.config",
+            "FolderCompressionScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.ion_channel_fitting: TaskSpec(
-        task_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingTask"),
-        single_config_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.ion_channel_modeling", "IonChannelFittingScanConfig"),
+        task_ref=(f"{_TASKS}.ion_channel_modeling.task", "IonChannelFittingTask"),
+        single_config_ref=(
+            f"{_TASKS}.ion_channel_modeling.config",
+            "IonChannelFittingSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.ion_channel_modeling.config",
+            "IonChannelFittingScanConfig",
+        ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.ion_channel_modeling__campaign,
         campaign_generation_task_activity_type=TaskActivityType.ion_channel_modeling__config_generation,
@@ -283,25 +304,31 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.morphology_containerization: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_containerization", "MorphologyContainerizationTask"),
+        task_ref=(
+            f"{_TASKS}.morphology_containerization.task",
+            "MorphologyContainerizationTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.morphology_containerization",
+            f"{_TASKS}.morphology_containerization.config",
             "MorphologyContainerizationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.morphology_containerization",
+            f"{_TASKS}.morphology_containerization.config",
             "MorphologyContainerizationScanConfig",
         ),
         asset_label=None,
     ),
     TaskType.morphology_decontainerization: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_decontainerization", "MorphologyDecontainerizationTask"),
+        task_ref=(
+            f"{_TASKS}.morphology_decontainerization.task",
+            "MorphologyDecontainerizationTask",
+        ),
         single_config_ref=(
-            f"{_TASKS}.morphology_decontainerization",
+            f"{_TASKS}.morphology_decontainerization.config",
             "MorphologyDecontainerizationSingleConfig",
         ),
         scan_config_ref=(
-            f"{_TASKS}.morphology_decontainerization",
+            f"{_TASKS}.morphology_decontainerization.config",
             "MorphologyDecontainerizationScanConfig",
         ),
         asset_label=None,
@@ -313,9 +340,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.morphology_metrics: TaskSpec(
-        task_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsTask"),
-        single_config_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsSingleConfig"),
-        scan_config_ref=(f"{_TASKS}.morphology_metrics", "MorphologyMetricsScanConfig"),
+        task_ref=(f"{_TASKS}.morphology_metrics.task", "MorphologyMetricsTask"),
+        single_config_ref=(
+            f"{_TASKS}.morphology_metrics.config",
+            "MorphologyMetricsSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.morphology_metrics.config",
+            "MorphologyMetricsScanConfig",
+        ),
         asset_label=None,
     ),
     TaskType.circuit_simplification: TaskSpec(
@@ -345,12 +378,15 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         asset_label=None,
     ),
     TaskType.circuit_single_build: TaskSpec(
-        task_ref=(f"{_TASKS}.build_synaptome", "MEModelSynapticModelPlacementTask"),
+        task_ref=(f"{_TASKS}.build_synaptome.task", "MEModelSynapticModelPlacementTask"),
         single_config_ref=(
-            f"{_TASKS}.build_synaptome",
+            f"{_TASKS}.build_synaptome.config",
             "MEModelSynapticModelPlacementSingleConfig",
         ),
-        scan_config_ref=(f"{_TASKS}.build_synaptome", "MEModelSynapticModelPlacementScanConfig"),
+        scan_config_ref=(
+            f"{_TASKS}.build_synaptome.config",
+            "MEModelSynapticModelPlacementScanConfig",
+        ),
         asset_label=AssetLabel.task_config,
         campaign_task_config_type=TaskConfigType.circuit_single_build__campaign,
         campaign_generation_task_activity_type=(
