@@ -18,6 +18,7 @@ from bluecellulab.stimulus.factory import IDRestTimings, StimulusFactory
 from bluecellulab.utils import efel_settings
 from bluecellulab.validation.base import TestResult, ValidationTest
 from bluecellulab.validation.plotting import plot_trace, plot_traces
+from bluecellulab.validation.protocol import Protocol
 
 from obi_one.scientific.validations.memodel.config import SimulatorConfig
 from obi_one.scientific.validations.memodel.names import ValidationName
@@ -167,6 +168,52 @@ class RinTest(ValidationTest):
             )
 
         return TestResult(name=self.name, passed=passed, details=details, figures=[])
+
+
+class ThumbnailTest(ValidationTest):
+    """Thumbnail: soma trace of the model's spiking protocol, used as its preview.
+
+    This is not a check, so it always passes. By default it reproduces the legacy
+    BlueCelluLab ``thumbnail_test`` (step at 130% of rheobase, PNG, no current
+    trace) so the platform finds the same ValidationResult. A profile whose spiking
+    test uses a different protocol passes that protocol, so the preview shows the
+    same firing regime as the profile's spiking test.
+    """
+
+    def __init__(self, protocol: Protocol | None = None) -> None:
+        """Initialize the thumbnail, optionally with the profile's spiking protocol."""
+        self.protocol = protocol
+
+    @property
+    def name(self) -> str:
+        return ValidationName.THUMBNAIL
+
+    def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        if self.protocol is None:
+            stim_factory = StimulusFactory(dt=1.0)
+            step_stimulus = stim_factory.idrest(
+                threshold_current=rheobase, threshold_percentage=130
+            )
+            recording = run_stimulus(
+                template_params,
+                step_stimulus,
+                "soma[0]",
+                0.5,
+                add_hypamp=True,
+            )
+        else:
+            recording = self.protocol.execute(template_params, rheobase)
+        fig_path = plot_trace(
+            recording,
+            out_dir,
+            fname="thumbnail.png",
+            title="",
+            plot_current=False,
+        )
+        return TestResult(name=self.name, passed=True, details="", figures=[fig_path])
 
 
 class AISSpikingTest(ValidationTest):

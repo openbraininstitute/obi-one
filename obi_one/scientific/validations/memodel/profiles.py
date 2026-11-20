@@ -31,6 +31,7 @@ from obi_one.scientific.validations.memodel.tests import (
     HyperpolarizationTest,
     IVCurveTest,
     RinTest,
+    ThumbnailTest,
 )
 
 if TYPE_CHECKING:
@@ -130,11 +131,12 @@ class DefaultMEModelValidationProfile(MEModelValidationProfile):
 
     @staticmethod
     def build_tests(context: MEModelWorkflowContext) -> list[ValidationTest]:
-        """Build the standard spiking and depolarization-block validations."""
+        """Build the standard spiking and depolarization-block validations, plus the thumbnail."""
         _ = context
         return [
             spiking_preset(),
             depolarization_block_preset(),
+            ThumbnailTest(),
         ]
 
 
@@ -232,7 +234,7 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
         return True
 
     def build_tests(self, context: MEModelWorkflowContext) -> list[ValidationTest]:
-        """Build the complete nine-test thalamic validation policy."""
+        """Build the complete nine-test thalamic validation policy, plus the thumbnail."""
         self.validate_context(context)
         rin = context.rin
         if rin is None:
@@ -260,25 +262,25 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
                 f"{calibrated_hold!r}. Populate MEModelCalibrationResult.holding_current."
             )
             raise InvalidValidationContextError(message)
+        # Tonic firing uses a depolarized hold to inactivate T-type Ca, then a
+        # depolarizing step. The step is per-e-type (0.4 nA for Ecel1 per the
+        # source protocol; ~0.8 nA for the higher-Rin Spp cells to show sustained
+        # tonic firing without a rebound burst).
+        tonic_firing = tonic_firing_preset(step_current=self.tonic_step_current)
+        rebound_burst = rebound_burst_preset(
+            holding_current=self.rebound_holding_current,
+            hyperpolarization_amplitude=self.rebound_hyperpolarization_amplitude,
+            hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
+            expect_spikes=True,
+        )
         return [
-            # Tonic firing uses a depolarized hold to inactivate T-type Ca,
-            # then a depolarizing step. The step is per-e-type (0.4 nA for
-            # Ecel1 per the source protocol; ~0.8 nA for the higher-Rin Spp
-            # cells to show sustained tonic firing without a rebound burst).
-            tonic_firing_preset(
-                step_current=self.tonic_step_current,
-            ),
+            tonic_firing,
             # Depolarization block uses the same calibrated hold so the step
             # produces tonic firing rather than a rebound burst.
             thalamic_depolarization_block_preset(
                 rheobase=rheobase,
             ),
-            rebound_burst_preset(
-                holding_current=self.rebound_holding_current,
-                hyperpolarization_amplitude=self.rebound_hyperpolarization_amplitude,
-                hyperpolarization_duration_ms=(self.rebound_hyperpolarization_duration_ms),
-                expect_spikes=True,
-            ),
+            rebound_burst,
             # BlueCelluLab validation equivalents.
             # The full-trace guard prevents a late rebound burst from being
             # hidden by BlueCelluLab's pulse-centered recording plot.
@@ -296,6 +298,9 @@ class ThalamicMEModelValidationProfile(MEModelValidationProfile):
             RinTest(rin=rin),
             IVCurveTest(n_processes=None, simulator_config=simulator_config),
             FICurveTest(n_processes=None, simulator_config=simulator_config),
+            # The preview shows the rebound burst, the defining behaviour of these
+            # cells, using the same per-model protocol as the rebound validation.
+            ThumbnailTest(protocol=rebound_burst.protocol),
         ]
 
 
