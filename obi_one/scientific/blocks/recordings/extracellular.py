@@ -1,12 +1,17 @@
 from abc import ABC
-from typing import ClassVar
+from typing import ClassVar, Self
 
 import entitysdk
 from entitysdk.types import EntityType
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from obi_one.core.schema import SchemaKey, UIElement
-from obi_one.scientific.blocks.recordings.base import Recording
+from obi_one.scientific.blocks.recordings.base import (
+    Recording,
+    WindowEndTime,
+    WindowStartTime,
+    check_time_window,
+)
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
@@ -75,7 +80,7 @@ class ExtracellularElectrodeArrayRecording(Recording, ABC):
 
 class SummedExtracellularElectrodeArrayRecordingBlock(ExtracellularElectrodeArrayRecording):
     """Records the extracellular signal (LFP) seen by each electrode of a recording array, summed
-    over the recorded neurons.
+    over the recorded neurons, for the full length of the experiment.
 
     The array's weight matrix maps the membrane current of every segment of the recorded neurons
     onto every electrode, so the recorded neuron set must be part of the circuit the array was
@@ -95,14 +100,14 @@ class SummedExtracellularElectrodeArrayRecordingBlock(ExtracellularElectrodeArra
         },
     }
 
-    title: ClassVar[str] = "Summed extracellular electrode array recording"
+    title: ClassVar[str] = "Summed extracellular electrode array recording (full experiment)"
 
     method: ClassVar[str | None] = "sum"
 
 
 class ExtracellularElectrodeArrayRecordingBlock(ExtracellularElectrodeArrayRecording):
     """Records each recorded neuron's contribution to the extracellular signal (LFP) seen by each
-    electrode of a recording array.
+    electrode of a recording array, for the full length of the experiment.
 
     The array's weight matrix maps the membrane current of every segment of the recorded neurons
     onto every electrode, so the recorded neuron set must be part of the circuit the array was
@@ -122,6 +127,66 @@ class ExtracellularElectrodeArrayRecordingBlock(ExtracellularElectrodeArrayRecor
         },
     }
 
-    title: ClassVar[str] = "Per-neuron extracellular electrode array recording"
+    title: ClassVar[str] = "Per-neuron extracellular electrode array recording (full experiment)"
 
     method: ClassVar[str | None] = None
+
+
+class TimeWindowSummedExtracellularElectrodeArrayRecordingBlock(
+    SummedExtracellularElectrodeArrayRecordingBlock
+):
+    """Records the extracellular signal (LFP) seen by each electrode of a recording array, summed
+    over the recorded neurons, over a specified time window.
+
+    The array's weight matrix maps the membrane current of every segment of the recorded neurons
+    onto every electrode, so the recorded neuron set must be part of the circuit the array was
+    built for. The output holds one trace per electrode for each population of the neuron set.
+
+    LFP recordings need CoreNEURON as the simulator, which cannot apply electric field stimuli.
+    """
+
+    title: ClassVar[str] = "Summed extracellular electrode array recording (time window)"
+
+    start_time: WindowStartTime
+    end_time: WindowEndTime
+
+    @model_validator(mode="after")
+    def check_start_end_time(self) -> Self:
+        """Check that end time is later than start time."""
+        check_time_window(self, self.start_time, self.end_time)
+        return self
+
+    def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
+        self._start_time = self.start_time  # ty:ignore[invalid-assignment]
+        self._end_time = self.end_time  # ty:ignore[invalid-assignment]
+        return super()._generate_config(db_client=db_client)
+
+
+class TimeWindowExtracellularElectrodeArrayRecordingBlock(
+    ExtracellularElectrodeArrayRecordingBlock
+):
+    """Records each recorded neuron's contribution to the extracellular signal (LFP) seen by each
+    electrode of a recording array, over a specified time window.
+
+    The array's weight matrix maps the membrane current of every segment of the recorded neurons
+    onto every electrode, so the recorded neuron set must be part of the circuit the array was
+    built for. The output holds a trace per neuron and electrode.
+
+    LFP recordings need CoreNEURON as the simulator, which cannot apply electric field stimuli.
+    """
+
+    title: ClassVar[str] = "Per-neuron extracellular electrode array recording (time window)"
+
+    start_time: WindowStartTime
+    end_time: WindowEndTime
+
+    @model_validator(mode="after")
+    def check_start_end_time(self) -> Self:
+        """Check that end time is later than start time."""
+        check_time_window(self, self.start_time, self.end_time)
+        return self
+
+    def _generate_config(self, db_client: entitysdk.client.Client | None = None) -> dict:
+        self._start_time = self.start_time  # ty:ignore[invalid-assignment]
+        self._end_time = self.end_time  # ty:ignore[invalid-assignment]
+        return super()._generate_config(db_client=db_client)

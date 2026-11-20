@@ -11,6 +11,8 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
     SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.recordings.soma import SomaVoltageRecording
 from obi_one.scientific.blocks.stimuli.electric_field import (
@@ -40,7 +42,9 @@ ELECTRIC_FIELDS = [
 
 LFP_BLOCKS = [
     SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
     ExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
 ]
 
 

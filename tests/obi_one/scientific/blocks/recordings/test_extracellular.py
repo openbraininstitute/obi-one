@@ -5,10 +5,13 @@ from uuid import UUID
 import libsonata
 import pytest
 
+from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecordingBlock,
     SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
@@ -36,10 +39,13 @@ class _ClientThatMustNotBeUsed:
         raise AssertionError(msg)
 
 
-def _recording(name="LFPRecording", dt=0.1, block=ExtracellularElectrodeArrayRecordingBlock):
+def _recording(
+    name="LFPRecording", dt=0.1, block=ExtracellularElectrodeArrayRecordingBlock, **window
+):
     recording = block(
         electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
         dt=dt,
+        **window,
     )
     recording.set_block_name(name)
     return recording
@@ -157,6 +163,61 @@ class TestSummedExtracellularElectrodeArrayRecordingBlock:
         parsed = libsonata.SimulationConfig(json.dumps(sonata_config), str(tmp_path))
 
         assert parsed.report("LFPRecording").method.name == method
+
+
+class TestTimeWindow:
+    @pytest.mark.parametrize(
+        ("block", "method"),
+        [
+            (TimeWindowSummedExtracellularElectrodeArrayRecordingBlock, {"method": "sum"}),
+            (TimeWindowExtracellularElectrodeArrayRecordingBlock, {}),
+        ],
+    )
+    def test_records_only_the_window(self, block, method):
+        reports = _recording(block=block, start_time=20.0, end_time=60.0).config(
+            SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, default_node_set="AllBiophysical"
+        )
+
+        assert reports == {
+            "LFPRecording": {
+                "cells": "AllBiophysical",
+                "type": "lfp",
+                "sections": "all",
+                "unit": "V",
+                "dt": 0.1,
+                "start_time": 20.0,
+                "end_time": 60.0,
+                "electrodes_file": f"{ARRAY_ID}.h5",
+                **method,
+            }
+        }
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+            TimeWindowExtracellularElectrodeArrayRecordingBlock,
+        ],
+    )
+    def test_the_window_must_end_after_it_starts(self, block):
+        with pytest.raises(OBIONEError, match="End time must be later than start time"):
+            _recording(block=block, start_time=60.0, end_time=20.0)
+
+    def test_is_greyed_out_like_its_full_experiment_block(self):
+        for window, full in [
+            (
+                TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+                SummedExtracellularElectrodeArrayRecordingBlock,
+            ),
+            (
+                TimeWindowExtracellularElectrodeArrayRecordingBlock,
+                ExtracellularElectrodeArrayRecordingBlock,
+            ),
+        ]:
+            assert (
+                window.model_json_schema()[SchemaKey.BLOCK_USABILITY_DICTIONARY]
+                == full.model_json_schema()[SchemaKey.BLOCK_USABILITY_DICTIONARY]
+            )
 
 
 class TestCircuitUsability:
