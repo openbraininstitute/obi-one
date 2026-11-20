@@ -44,6 +44,17 @@ L = logging.getLogger(__name__)
 PROVENANCE_PACKAGES = ("obi-one", "sonata-simplify", "bluecellulab")
 PROVENANCE_FILE_NAME = "simplification_provenance.json"
 
+NEST_EXPORTER_PREFIX = "nest:"
+# Output format of the "nest:<model>" exporters; the sonata-simplify default is stock NEST SONATA.
+NEST_EXTENSION_FORMAT = "sonata-extension"
+
+
+def exporter_kwargs(exporter_name: str | None) -> dict[str, str]:
+    """Extra ``Recipe.from_mode`` arguments for an exporter: the NEST output format."""
+    if exporter_name is not None and exporter_name.startswith(NEST_EXPORTER_PREFIX):
+        return {"nest_format": NEST_EXTENSION_FORMAT}
+    return {}
+
 
 def simplification_worker_count() -> int:
     """Workers for the pipeline: the CPUs the launch system allocated (JOB_CPUS), else 1."""
@@ -117,6 +128,8 @@ class CircuitSimplificationTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=DerivationType.circuit_simplification,
+            # bluepysnap has no schema for the SONATA-extension NEST population types
+            skip_validation=target_simulator == types.TargetSimulator.NEST,
         )
 
     @staticmethod
@@ -363,7 +376,9 @@ class CircuitSimplificationTask(Task):
                 )
 
                 # Run the pipeline with a recipe that includes the exporter
-                recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
+                recipe = Recipe.from_mode(
+                    base_algorithm, exporter=exporter_name, **exporter_kwargs(exporter_name)
+                )
                 pipeline.run_recipe(recipe)
 
                 # The simplified SONATA circuit is in output_dir / "output"

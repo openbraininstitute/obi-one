@@ -44,7 +44,7 @@ dependencies = [
     "morph_spines>=1.1.0",
     "morph-tool",
     "neurom",
-    "libsonata>=0.2.0",
+    "libsonata>=0.2.3",  # first release that reads NEST SONATA-extension circuits
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
