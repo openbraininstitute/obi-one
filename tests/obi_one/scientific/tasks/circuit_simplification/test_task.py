@@ -6,6 +6,7 @@ heavy NEURON dependencies and verify the task's orchestration logic.
 
 import inspect
 import json
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -26,7 +27,10 @@ from obi_one.scientific.tasks.circuit_simplification.config import (
     CircuitSimplificationScanConfig,
     CircuitSimplificationSingleConfig,
 )
-from obi_one.scientific.tasks.circuit_simplification.task import CircuitSimplificationTask
+from obi_one.scientific.tasks.circuit_simplification.task import (
+    CircuitSimplificationTask,
+    exporter_kwargs,
+)
 from obi_one.types import SimulationBackend
 
 
@@ -98,6 +102,14 @@ class TestApiCompatibility:
         sig = inspect.signature(pipeline_mod.SimplificationPipeline.__init__)
         assert "simulation_config" in sig.parameters
         assert "simplification_mode" in sig.parameters
+
+    def test_recipe_accepts_nest_format(self):
+        """Recipe.from_mode should accept the NEST output format the task requests."""
+        recipe_mod = pytest.importorskip("sonata_simplify.recipe")
+        recipe = recipe_mod.Recipe.from_mode(
+            "lif", exporter="nest:iaf_psc_alpha", **exporter_kwargs("nest:iaf_psc_alpha")
+        )
+        assert recipe.targets[0].nest_format == "sonata-extension"
 
     def test_build_simulation_config_exists(self):
         """CircuitSimplificationTask should have _build_simulation_config."""
@@ -834,6 +846,93 @@ class TestTaskInternals:
         assert kwargs["target_simulator"].name == "Brian2"
         assert kwargs["parent"] is parent
         assert kwargs["derivation_type"] == DerivationType.circuit_simplification
+        assert kwargs["skip_validation"] is False
+
+    def test_register_output_skips_validation_for_nest(self, tmp_path: Path):
+        """NEST extension circuits skip bluepysnap validation, which cannot read them."""
+        task = self._make_task(tmp_path)
+        task.config.info = Info(campaign_name="test", campaign_description="test description")
+        task._circuit_entity = MagicMock()
+
+        circuit_path = tmp_path / "circuit_config.json"
+        circuit_path.write_text(json.dumps({"target_simulator": "NEST"}))
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_registration.register_circuit",
+            ) as register_circuit,
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.simplification_package_versions",
+                return_value={"obi-one": "0.0.0", "sonata-simplify": "0.0.0"},
+            ),
+        ):
+            task._register_output(
+                db_client=MagicMock(),
+                circuit_path=circuit_path,
+                algorithm_name="lif_nest",
+                export_suffix="_nest_iaf_psc_alpha",
+            )
+
+        kwargs = register_circuit.call_args.kwargs
+        assert kwargs["target_simulator"].name == "NEST"
+        assert kwargs["skip_validation"] is True
+
+
+class TestExporterKwargs:
+    """The NEST exporters are asked for the SONATA-extension format."""
+
+    @pytest.mark.parametrize(
+        ("exporter_name", "expected"),
+        [
+            ("nest:iaf_psc_alpha", {"nest_format": "sonata-extension"}),
+            ("nest:aeif_cond_alpha", {"nest_format": "sonata-extension"}),
+            ("brian2:adex", {}),
+            (None, {}),
+        ],
+    )
+    def test_exporter_kwargs(self, exporter_name, expected):
+        assert exporter_kwargs(exporter_name) == expected
+
+    def test_every_nest_algorithm_requests_the_extension_format(self):
+        for name, (_, exporter_name) in ALGORITHM_EXPORT_MAP.items():
+            is_nest = name.endswith("_nest")
+            assert (exporter_kwargs(exporter_name) != {}) == is_nest, name
+
+    @pytest.mark.parametrize(
+        ("algorithm", "expected_kwargs"),
+        [
+            ("lif_nest", {"exporter": "nest:iaf_psc_alpha", "nest_format": "sonata-extension"}),
+            ("adex_brian2", {"exporter": "brian2:adex"}),
+        ],
+    )
+    def test_execute_builds_the_recipe_with_the_nest_format(
+        self,
+        algorithm,
+        expected_kwargs,
+        fake_simplified_circuit: Path,
+        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        tmp_path: Path,
+    ):
+        task = CircuitSimplificationTask(
+            config=TestTaskExecution._make_config(tmp_path, algorithm=algorithm)
+        )
+        mock_circuit = MagicMock()
+        mock_circuit.path = str(fake_simplified_circuit / "circuit_config.json")
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
+                return_value=(mock_circuit, MagicMock()),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._get_execution_activity",
+                return_value=None,
+            ),
+        ):
+            task.execute(db_client=None)
+
+        from_mode = sys.modules["sonata_simplify.recipe"].Recipe.from_mode
+        from_mode.assert_called_once_with(ALGORITHM_EXPORT_MAP[algorithm][0], **expected_kwargs)
 
 
 class TestMechanismBackendSelection:
