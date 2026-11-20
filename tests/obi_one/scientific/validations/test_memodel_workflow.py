@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from bluecellulab.simulation.neuron_globals import NeuronGlobals
-from bluecellulab.validation.base import TestResult
+from bluecellulab.validation.base import TestResult, ValidationTest
 from bluecellulab.validation.criterion import GreaterThan, IsFalse
 from bluecellulab.validation.measurement import EfelMeasurement
 from bluecellulab.validation.protocol import SequenceProtocol, StepProtocol
@@ -23,7 +23,10 @@ from obi_one.scientific.validations.memodel.config import (
     extract_simulator_config_from_hoc,
     load_simulator_config_from_hoc,
 )
-from obi_one.scientific.validations.memodel.descriptions import UndescribedValidationTestError
+from obi_one.scientific.validations.memodel.descriptions import (
+    DescribedValidationTest,
+    UndescribedValidationTestError,
+)
 from obi_one.scientific.validations.memodel.names import ValidationName
 from obi_one.scientific.validations.memodel.presets import (
     spiking_preset,
@@ -55,6 +58,12 @@ from obi_one.scientific.validations.memodel.workflow import (
     MEModelWorkflowContext,
     _select_morphology_path,
 )
+
+
+def _template_params(holding_current: float = 0.05) -> MagicMock:
+    template_params = MagicMock()
+    template_params.emodel_properties.holding_current = holding_current
+    return template_params
 
 
 def _make_mock_bpap() -> MagicMock:
@@ -519,13 +528,14 @@ class TestMEModelValidationWorkflow:
         assert tests[3] == custom
 
     def test_run_executes_all_tests(self, tmp_path):
+        template_params = _template_params()
         mock_test = MagicMock()
         mock_test.description = "Injects a step."
         mock_test.run.return_value = TestResult(name="Mock Test", passed=True, details="ok")
         workflow = MEModelValidationWorkflow(output_dir=tmp_path, custom_tests=[mock_test])
         context = MEModelWorkflowContext(
             entity_id="test-id",
-            template_params="tparams",
+            template_params=template_params,
             rheobase=0.5,
             out_dir=tmp_path,
         )
@@ -536,16 +546,17 @@ class TestMEModelValidationWorkflow:
 
         assert len(test_results) == 1
         assert test_results[0].passed is True
-        mock_test.run.assert_called_once_with("tparams", 0.5, tmp_path)
+        mock_test.run.assert_called_once_with(template_params, 0.5, tmp_path)
 
     def test_run_rejects_an_undescribed_test_before_running_anything(self, tmp_path):
+        template_params = _template_params()
         undescribed = MagicMock()
         undescribed.name = "Undescribed"
         undescribed.description = ""
         workflow = MEModelValidationWorkflow(output_dir=tmp_path)
         context = MEModelWorkflowContext(
             entity_id="test-id",
-            template_params="tparams",
+            template_params=template_params,
             rheobase=0.5,
             out_dir=tmp_path,
         )
@@ -580,7 +591,37 @@ class TestMEModelValidationWorkflow:
             descriptions={"X": "Injects nothing."},
         )
 
+    def test_run_describes_the_holding_current_applied_now(self, tmp_path):
+        class HoldReporter(DescribedValidationTest, ValidationTest):
+            @property
+            def name(self):
+                return "Hold"
+
+            def describe(self, holding_current):
+                return f"hold {holding_current}"
+
+            def run(self, template_params, rheobase, out_dir):
+                _ = (template_params, rheobase, out_dir)
+                return TestResult(name=self.name, passed=True, details="")
+
+        template_params = _template_params(holding_current=0.04)
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path)
+        context = MEModelWorkflowContext(
+            entity_id="test-id",
+            template_params=template_params,
+            rheobase=0.5,
+            out_dir=tmp_path,
+        )
+        # A caller may override the hold after setup, as the thalamic notebook does.
+        template_params.emodel_properties.holding_current = 0.06
+
+        with patch.object(workflow, "get_tests", return_value=[HoldReporter()]):
+            workflow.run(context)
+
+        assert context.descriptions == {"Hold": "hold 0.06"}
+
     def test_run_records_a_description_per_test(self, tmp_path):
+        template_params = _template_params()
         described = MagicMock()
         described.name = "Described"
         described.description = "Injects a step."
@@ -588,7 +629,7 @@ class TestMEModelValidationWorkflow:
         workflow = MEModelValidationWorkflow(output_dir=tmp_path)
         context = MEModelWorkflowContext(
             entity_id="test-id",
-            template_params="tparams",
+            template_params=template_params,
             rheobase=0.5,
             out_dir=tmp_path,
         )

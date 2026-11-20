@@ -439,7 +439,10 @@ class MEModelValidationWorkflow(ValidationWorkflow[MEModelWorkflowContext]):
         tests = self.get_tests(context)
         if context.rheobase is None or context.out_dir is None:
             raise InvalidValidationContextError
-        context.descriptions = {test.name: describe_test(test) for test in tests}
+        # Tests that add the hold (add_hypamp) read it from the cell's emodel properties,
+        # which a caller may have changed after setup, so describe what is applied now.
+        holding_current = context.template_params.emodel_properties.holding_current
+        context.descriptions = {test.name: describe_test(test, holding_current) for test in tests}
 
         # Multiprocessing tests (IV/FI curves) spawn workers that reinitialize
         # NEURON and auto-load the compiled mechanisms from the current working

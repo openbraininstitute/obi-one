@@ -22,10 +22,11 @@ from bluecellulab.validation.protocol import Protocol, StepProtocol
 
 from obi_one.scientific.validations.memodel.config import SimulatorConfig
 from obi_one.scientific.validations.memodel.descriptions import (
-    HOLDING_NOTE,
+    DescribedValidationTest,
     describe_protocol,
     format_current,
     format_rheobase_percentage,
+    holding_note,
 )
 from obi_one.scientific.validations.memodel.names import ValidationName
 
@@ -91,20 +92,20 @@ def _count_bpap_spikes(
     return int(spike_count)
 
 
-class HyperpolarizationTest(ValidationTest):
+class HyperpolarizationTest(DescribedValidationTest, ValidationTest):
     """Hyperpolarization: steady-state voltage during -40% step should be below RMP."""
 
     @property
     def name(self) -> str:
         return ValidationName.HYPERPOLARIZATION
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe the protocol and pass condition."""
         amplitude = format_rheobase_percentage(HYPERPOLARIZATION_THRESHOLD_PERCENTAGE)
         measured_until = IDRestTimings.PRE_DELAY.value + IDRestTimings.DURATION.value
         return (
-            f"Injects a step of {amplitude} into the soma, {HOLDING_NOTE}, "
+            f"Injects a step of {amplitude} into the soma, {holding_note(holding_current)}, "
             f"for {IVTimings.DURATION.value:g} ms, after {IVTimings.PRE_DELAY.value:g} ms. "
             f"Passes if the steady-state voltage at {measured_until:g} ms is below the "
             "resting potential before the step."
@@ -172,7 +173,7 @@ class HyperpolarizationTest(ValidationTest):
         return TestResult(name=self.name, passed=passed, details=details, figures=[fig_path])
 
 
-class RinTest(ValidationTest):
+class RinTest(DescribedValidationTest, ValidationTest):
     """Input resistance should be within a biologically realistic range (< 1000 MOhm)."""
 
     def __init__(self, rin: float) -> None:
@@ -183,9 +184,10 @@ class RinTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.INPUT_RESISTANCE
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe where Rin comes from and the pass condition."""
+        _ = holding_current  # No current is injected for this test.
         return (
             "Uses the input resistance of the model, taken from its calibration or "
             "measured during setup. No extra simulation is run. Passes if it is below "
@@ -211,7 +213,7 @@ class RinTest(ValidationTest):
         return TestResult(name=self.name, passed=passed, details=details, figures=[])
 
 
-class ThumbnailTest(ValidationTest):
+class ThumbnailTest(DescribedValidationTest, ValidationTest):
     """Thumbnail: soma trace of the model's spiking protocol, used as its preview.
 
     This is not a check, so it always passes. By default it reproduces the legacy
@@ -229,10 +231,12 @@ class ThumbnailTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.THUMBNAIL
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe the protocol shown in the preview."""
-        protocol = describe_protocol(self.protocol or StepProtocol())
+        protocol = describe_protocol(
+            self.protocol or StepProtocol(), holding_current, mark_measured=False
+        )
         return f"{protocol} Shows the soma voltage as the model's preview. Always passes."
 
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
@@ -263,17 +267,19 @@ class ThumbnailTest(ValidationTest):
         return TestResult(name=self.name, passed=True, details="", figures=[fig_path])
 
 
-class AISSpikingTest(ValidationTest):
+class AISSpikingTest(DescribedValidationTest, ValidationTest):
     """AIS spiking: axon should spike before soma at 200% rheobase."""
 
     @property
     def name(self) -> str:
         return ValidationName.AIS_SPIKING
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe the protocol and pass condition."""
-        protocol = describe_protocol(StepProtocol(threshold_percentage=AIS_THRESHOLD_PERCENTAGE))
+        protocol = describe_protocol(
+            StepProtocol(threshold_percentage=AIS_THRESHOLD_PERCENTAGE), holding_current
+        )
         return (
             f"{protocol} Records at axon[0] and soma[0]. Passes if the first axon spike "
             "is not later than the first soma spike (eFEL peak_time, "
@@ -366,7 +372,7 @@ class AISSpikingTest(ValidationTest):
         return TestResult(name=self.name, passed=passed, details=details, figures=[fig1, fig2])
 
 
-class BPAPTest(ValidationTest):
+class BPAPTest(DescribedValidationTest, ValidationTest):
     """Back-propagating action potential with optional full-trace spike guard."""
 
     def __init__(
@@ -435,22 +441,21 @@ class BPAPTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.BACK_PROPAGATING_AP
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe the pulse, the recordings and the pass condition."""
         amplitude = (
             format_current(self.amplitude)
             if self.amplitude is not None
             else f"{self.amplitude_factor:g} times the rheobase"
         )
-        holding = (
-            f"a holding current of {format_current(self.holding_current)}"
-            if self.holding_current is not None
-            else "the calibrated holding current"
+        # The cell's holding current, unless this test replays its own.
+        holding = holding_note(
+            self.holding_current if self.holding_current is not None else holding_current
         )
         text = (
-            f"Injects a {self.stim_duration:g} ms pulse of {amplitude} into the soma, on top "
-            f"of {holding}, in a {self.sim_duration:g} ms simulation, and records the voltage "
+            f"Injects a {self.stim_duration:g} ms pulse of {amplitude} into the soma, "
+            f"{holding}, in a {self.sim_duration:g} ms simulation, and records the voltage "
             "in every section. Passes if the action potential is smaller at the furthest "
             "basal and apical dendrites than at the soma"
         )
@@ -705,7 +710,7 @@ class BPAPTest(ValidationTest):
             neuron_globals.load_params(saved_params)
 
 
-class IVCurveTest(ValidationTest):
+class IVCurveTest(DescribedValidationTest, ValidationTest):
     """IV curve should have a positive slope."""
 
     # Validation sweep policy, as factors of the cell's rheobase. Pinned here so a
@@ -728,15 +733,16 @@ class IVCurveTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.IV_CURVE
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe the current sweep and pass condition."""
         return (
             f"Injects {CURVE_NB_BINS} steps from {self.min_amp_factor:g} to "
-            f"{self.max_amp_factor:g} times the rheobase into the soma, {HOLDING_NOTE}, for "
-            f"{CURVE_DURATION_MS:g} ms, after {CURVE_STIM_START_MS:g} ms and followed by "
-            f"{CURVE_POST_DELAY_MS:g} ms. Passes if the steady-state voltage at the end of "
-            "the step increases with the injected current (positive linear-fit slope)."
+            f"{self.max_amp_factor:g} times the rheobase into the soma, "
+            f"{holding_note(holding_current)}, for {CURVE_DURATION_MS:g} ms, after "
+            f"{CURVE_STIM_START_MS:g} ms and followed by {CURVE_POST_DELAY_MS:g} ms. Passes "
+            "if the steady-state voltage at the end of the step increases with the injected "
+            "current (positive linear-fit slope)."
         )
 
     def run(self, template_params: Any, rheobase: float, out_dir: Path) -> TestResult:
@@ -793,7 +799,7 @@ class IVCurveTest(ValidationTest):
         return TestResult(name=self.name, passed=passed, details=details, figures=[fig_path])
 
 
-class FICurveTest(ValidationTest):
+class FICurveTest(DescribedValidationTest, ValidationTest):
     """FI curve should have a positive slope."""
 
     def __init__(
@@ -810,13 +816,14 @@ class FICurveTest(ValidationTest):
     def name(self) -> str:
         return ValidationName.FI_CURVE
 
-    @property
-    def description(self) -> str:
+    @override
+    def describe(self, holding_current: float) -> str:
         """Describe the current sweep and pass condition."""
         return (
             f"Injects {CURVE_NB_BINS} steps from 1 to {FI_MAX_RHEOBASE_FACTOR:g} times the "
-            f"rheobase into the soma, {HOLDING_NOTE}, for {CURVE_DURATION_MS:g} ms, after "
-            f"{CURVE_STIM_START_MS:g} ms and followed by {CURVE_POST_DELAY_MS:g} ms. Passes if "
+            f"rheobase into the soma, {holding_note(holding_current)}, for "
+            f"{CURVE_DURATION_MS:g} ms, after {CURVE_STIM_START_MS:g} ms and followed by "
+            f"{CURVE_POST_DELAY_MS:g} ms. Passes if "
             "the spike count increases with the injected current (positive linear-fit slope, "
             f"spike threshold {SPIKE_THRESHOLD_MV:g} mV)."
         )
