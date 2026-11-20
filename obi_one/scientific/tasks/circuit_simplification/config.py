@@ -19,10 +19,7 @@ from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import 
 )
 from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     SimplificationAlgorithmUnion,
-    default_simplification_algorithms,
-)
-from obi_one.scientific.tasks.circuit_simplification.references import (
-    SIMPLIFICATION_ALGORITHM_REFERENCE_TYPES,
+    default_simplification_algorithm,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitDiscriminator,
@@ -47,14 +44,14 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
     """ScanConfig for simplifying SONATA circuits.
 
     Transforms detailed biophysical circuits into simplified representations
-    while preserving network connectivity. Multiple target models can be selected,
-    each producing a separate simplified output circuit.
+    while preserving network connectivity. One target model is selected per campaign and
+    produces one simplified output circuit.
     """
 
     name: ClassVar[str] = "Circuit Simplification"
     description: ClassVar[str] = (
         "Simplifies a SONATA circuit by reducing biophysical complexity while preserving"
-        " network connectivity. Supports multiple target models (single-compartment,"
+        " network connectivity. Supports one target model per campaign (single-compartment,"
         " LIF, AdEx, Izhikevich, GLIF, GIF, Neuron_Reduce, NEAT). Point-neuron models are"
         " exported to NEST (or Brian2 for AdEx); single-compartment, Neuron_Reduce and"
         " NEAT produce NEURON circuits."
@@ -90,18 +87,13 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
 
     @model_validator(mode="after")
     def check_neuron_set_supported(self) -> Self:
-        """A target neuron set is only accepted when every selected algorithm supports it."""
+        """A target neuron set is only accepted when the selected algorithm supports it."""
         if self.initialize.target_neuron_set is None:
             return self
-        unsupported = sorted(
-            block.algorithm_name
-            for block in self.algorithms.values()
-            if not algorithm_supports_node_selection(block.algorithm_name)
-        )
-        if unsupported:
+        if not algorithm_supports_node_selection(self.algorithm.algorithm_name):
             msg = (
                 "A target neuron set is only supported by algorithms that allow partial"
-                f" simplification; not supported by: {', '.join(unsupported)}."
+                f" simplification; not supported by: {self.algorithm.algorithm_name}."
                 " Remove the target neuron set to simplify all biophysical neurons."
             )
             raise ValueError(msg)
@@ -140,17 +132,15 @@ class CircuitSimplificationScanConfig(InfoScanConfig):
             },
         )
 
-    algorithms: dict[str, SimplificationAlgorithmUnion] = Field(  # ty:ignore[no-matching-overload]
-        default_factory=default_simplification_algorithms,
-        title="Algorithms",
+    algorithm: SimplificationAlgorithmUnion = Field(
+        default_factory=default_simplification_algorithm,
+        title="Algorithm",
         description=(
-            "Add one or more target models for simplification."
-            " Each selected model produces a separate simplified output circuit."
+            "Target model for simplification. The selected model produces one simplified"
+            " output circuit."
         ),
         json_schema_extra={
-            SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
-            SchemaKey.SINGULAR_NAME: "Algorithm",
-            SchemaKey.REFERENCE_TYPES: SIMPLIFICATION_ALGORITHM_REFERENCE_TYPES,
+            SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
             SchemaKey.GROUP: BlockGroup.SIMPLIFICATION,
             SchemaKey.GROUP_ORDER: 0,
         },

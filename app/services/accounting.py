@@ -22,7 +22,7 @@ from app.utils.http import make_http_request
 from obi_one.db_sdk.db_sdk import select_json_asset_content
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
 from obi_one.scientific.tasks.circuit_simplification.accounting import (
-    service_subtype_for_algorithms,
+    service_subtype_for_algorithm_block,
 )
 from obi_one.scientific.tasks.circuit_simplification.estimate import (
     estimate_circuit_simplification_count_from_config,
@@ -140,7 +140,7 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
             count = estimate_circuit_simplification_count_from_config(
                 db_client=db_client, single_config=single_config
             )
-            service_subtype = service_subtype_for_algorithms(single_config.algorithms)
+            service_subtype = service_subtype_for_algorithm_block(single_config.algorithm)
         case (
             TaskType.circuit_simulation_neuron
             | TaskType.circuit_simulation_neurodamus_machine

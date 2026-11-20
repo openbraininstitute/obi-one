@@ -5,7 +5,7 @@ from obp_accounting_sdk.constants import ServiceSubtype
 
 from obi_one.scientific.tasks.circuit_simplification.accounting import (
     service_subtype_for_algorithm,
-    service_subtype_for_algorithms,
+    service_subtype_for_algorithm_block,
 )
 from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
     LifNestAlgorithm,
@@ -53,35 +53,37 @@ class TestServiceSubtypeForAlgorithm:
         with pytest.raises(ValueError, match="Unknown circuit simplification algorithm"):
             service_subtype_for_algorithm("not_an_algorithm")
 
+    def test_unknown_filter_method_raises(self):
+        with pytest.raises(ValueError, match="Unknown filter_method 'bogus'"):
+            service_subtype_for_algorithm("single_compartment", filter_method="bogus")
 
-class TestServiceSubtypeForAlgorithms:
-    def test_single_block(self):
+
+class TestServiceSubtypeForAlgorithmBlock:
+    def test_fixed_algorithm(self):
         assert (
-            service_subtype_for_algorithms({"lif": LifNestAlgorithm()})
+            service_subtype_for_algorithm_block(LifNestAlgorithm())
             == ServiceSubtype.CIRCUIT_SIMPLIFICATION_SMALL
         )
 
-    def test_max_across_mixed_algorithms(self):
-        algorithms = {
-            "lif": LifNestAlgorithm(),
-            "sc": SingleCompartmentAlgorithm(filter_method="impedance"),
-            "neat": NeatReductionAlgorithm(),
-        }
+    def test_neuron_reduce_is_medium(self):
         assert (
-            service_subtype_for_algorithms(algorithms)
-            == ServiceSubtype.CIRCUIT_SIMPLIFICATION_LARGE
-        )
-
-    def test_medium_when_highest(self):
-        algorithms = {
-            "lif": LifNestAlgorithm(),
-            "nr": NeuronReduceAlgorithm(),
-        }
-        assert (
-            service_subtype_for_algorithms(algorithms)
+            service_subtype_for_algorithm_block(NeuronReduceAlgorithm())
             == ServiceSubtype.CIRCUIT_SIMPLIFICATION_MEDIUM
         )
 
-    def test_empty_raises(self):
-        with pytest.raises(ValueError, match="no algorithms"):
-            service_subtype_for_algorithms({})
+    def test_neat_reduction_is_large(self):
+        assert (
+            service_subtype_for_algorithm_block(NeatReductionAlgorithm())
+            == ServiceSubtype.CIRCUIT_SIMPLIFICATION_LARGE
+        )
+
+    @pytest.mark.parametrize(
+        ("filter_method", "expected"),
+        [
+            ("impedance", ServiceSubtype.CIRCUIT_SIMPLIFICATION_MEDIUM),
+            ("timedomain", ServiceSubtype.CIRCUIT_SIMPLIFICATION_LARGE),
+        ],
+    )
+    def test_single_compartment_follows_filter_method(self, filter_method, expected):
+        block = SingleCompartmentAlgorithm(filter_method=filter_method)
+        assert service_subtype_for_algorithm_block(block) == expected

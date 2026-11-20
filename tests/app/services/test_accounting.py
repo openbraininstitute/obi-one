@@ -512,14 +512,14 @@ def test_evaluate_accounting_parameters(db_client, task_type, accounting_paramet
         ),
         patch(
             "app.services.accounting.load_circuit_simplification_single_config",
-            return_value=MagicMock(algorithms={"lif": object()}),
+            return_value=MagicMock(algorithm=object()),
         ),
         patch(
             "app.services.accounting.estimate_circuit_simplification_count_from_config",
             return_value=expected_count[TaskType.circuit_simplification],
         ),
         patch(
-            "app.services.accounting.service_subtype_for_algorithms",
+            "app.services.accounting.service_subtype_for_algorithm_block",
             return_value=ServiceSubtype.CIRCUIT_SIMPLIFICATION_SMALL,
         ),
     ):

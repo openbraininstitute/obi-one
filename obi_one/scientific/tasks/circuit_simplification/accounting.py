@@ -1,7 +1,5 @@
 """Map circuit-simplification algorithms to accounting service subtypes."""
 
-from collections.abc import Iterable, Mapping
-
 from obp_accounting_sdk.constants import ServiceSubtype
 
 from obi_one.scientific.tasks.circuit_simplification.algorithms.base import SimplificationAlgorithm
@@ -9,12 +7,6 @@ from obi_one.scientific.tasks.circuit_simplification.algorithms.base import Simp
 _SMALL = ServiceSubtype.CIRCUIT_SIMPLIFICATION_SMALL
 _MEDIUM = ServiceSubtype.CIRCUIT_SIMPLIFICATION_MEDIUM
 _LARGE = ServiceSubtype.CIRCUIT_SIMPLIFICATION_LARGE
-
-_SUBTYPE_RANK = {
-    _SMALL: 0,
-    _MEDIUM: 1,
-    _LARGE: 2,
-}
 
 # Algorithms billed by name alone (no filter_method).
 _FIXED_ALGORITHM_SUBTYPE: dict[str, ServiceSubtype] = {
@@ -47,7 +39,7 @@ _FILTER_METHOD_SUBTYPE: dict[tuple[str, str], ServiceSubtype] = {
 def service_subtype_for_algorithm(
     algorithm_name: str, *, filter_method: str | None = None
 ) -> ServiceSubtype:
-    """Return the accounting subtype for one simplification algorithm selection."""
+    """Return the accounting subtype for a simplification algorithm and its filter_method."""
     if algorithm_name in _FIXED_ALGORITHM_SUBTYPE:
         return _FIXED_ALGORITHM_SUBTYPE[algorithm_name]
 
@@ -70,23 +62,8 @@ def service_subtype_for_algorithm(
     raise ValueError(msg)
 
 
-def service_subtype_for_algorithms(
-    algorithms: Mapping[str, SimplificationAlgorithm] | Iterable[SimplificationAlgorithm],
-) -> ServiceSubtype:
-    """Return the max accounting subtype across selected algorithms.
-
-    One job may run several algorithms sequentially; billing uses the most expensive
-    selected subtype (SMALL < MEDIUM < LARGE).
-    """
-    blocks = algorithms.values() if isinstance(algorithms, Mapping) else algorithms
-    subtypes = [
-        service_subtype_for_algorithm(
-            block.algorithm_name,
-            filter_method=getattr(block, "filter_method", None),
-        )
-        for block in blocks
-    ]
-    if not subtypes:
-        msg = "Circuit simplification config has no algorithms for accounting."
-        raise ValueError(msg)
-    return max(subtypes, key=lambda subtype: _SUBTYPE_RANK[subtype])
+def service_subtype_for_algorithm_block(block: SimplificationAlgorithm) -> ServiceSubtype:
+    """Return the accounting subtype of the algorithm block selected in a config."""
+    return service_subtype_for_algorithm(
+        block.algorithm_name, filter_method=getattr(block, "filter_method", None)
+    )
