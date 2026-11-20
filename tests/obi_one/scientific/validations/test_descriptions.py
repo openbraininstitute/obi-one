@@ -4,10 +4,17 @@ from unittest.mock import MagicMock
 
 import pytest
 from bluecellulab.validation.base import TestResult, ValidationTest
+from bluecellulab.validation.criterion import GreaterThan
+from bluecellulab.validation.measurement import EfelMeasurement
+from bluecellulab.validation.parametric_validation import ParametricValidation
 from bluecellulab.validation.protocol import SequenceProtocol, StepProtocol
 
 from obi_one.scientific.validations.memodel.config import SimulatorConfig
-from obi_one.scientific.validations.memodel.descriptions import describe_protocol, describe_test
+from obi_one.scientific.validations.memodel.descriptions import (
+    UndescribedValidationTestError,
+    describe_protocol,
+    describe_test,
+)
 from obi_one.scientific.validations.memodel.presets import (
     depolarization_block_preset,
     spiking_preset,
@@ -123,7 +130,7 @@ class TestCustomTestDescriptions:
         test = FICurveTest(simulator_config=SimulatorConfig(celsius=34.0, v_init=-70.0))
         assert "5 steps from 1 to 3 times the rheobase" in describe_test(test)
 
-    def test_test_without_description_is_not_described(self):
+    def test_test_without_description_raises(self):
         class Undescribed(ValidationTest):
             @property
             def name(self):
@@ -133,7 +140,34 @@ class TestCustomTestDescriptions:
                 _ = (template_params, rheobase, out_dir)
                 return TestResult(name=self.name, passed=True, details="")
 
-        assert not describe_test(Undescribed())
+        with pytest.raises(UndescribedValidationTestError, match="Undescribed"):
+            describe_test(Undescribed())
+
+    def test_parametric_validation_with_unknown_criterion_raises(self):
+        test = ParametricValidation(
+            validation_name="Custom",
+            protocol=StepProtocol(threshold_percentage=150),
+            measurement=EfelMeasurement(feature_name="Spikecount"),
+            criterion=MagicMock(),
+        )
+
+        with pytest.raises(UndescribedValidationTestError):
+            describe_test(test)
+
+    def test_description_property_overrides_the_generated_text(self):
+        class Described(ParametricValidation):
+            @property
+            def description(self):
+                return "Hand-written."
+
+        test = Described(
+            validation_name="Custom",
+            protocol=StepProtocol(threshold_percentage=150),
+            measurement=EfelMeasurement(feature_name="Spikecount"),
+            criterion=GreaterThan(threshold=0),
+        )
+
+        assert describe_test(test) == "Hand-written."
 
 
 class TestProfileDescriptions:

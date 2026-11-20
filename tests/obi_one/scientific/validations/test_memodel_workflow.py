@@ -23,6 +23,7 @@ from obi_one.scientific.validations.memodel.config import (
     extract_simulator_config_from_hoc,
     load_simulator_config_from_hoc,
 )
+from obi_one.scientific.validations.memodel.descriptions import UndescribedValidationTestError
 from obi_one.scientific.validations.memodel.names import ValidationName
 from obi_one.scientific.validations.memodel.presets import (
     spiking_preset,
@@ -519,6 +520,7 @@ class TestMEModelValidationWorkflow:
 
     def test_run_executes_all_tests(self, tmp_path):
         mock_test = MagicMock()
+        mock_test.description = "Injects a step."
         mock_test.run.return_value = TestResult(name="Mock Test", passed=True, details="ok")
         workflow = MEModelValidationWorkflow(output_dir=tmp_path, custom_tests=[mock_test])
         context = MEModelWorkflowContext(
@@ -535,6 +537,26 @@ class TestMEModelValidationWorkflow:
         assert len(test_results) == 1
         assert test_results[0].passed is True
         mock_test.run.assert_called_once_with("tparams", 0.5, tmp_path)
+
+    def test_run_rejects_an_undescribed_test_before_running_anything(self, tmp_path):
+        undescribed = MagicMock()
+        undescribed.name = "Undescribed"
+        undescribed.description = ""
+        workflow = MEModelValidationWorkflow(output_dir=tmp_path)
+        context = MEModelWorkflowContext(
+            entity_id="test-id",
+            template_params="tparams",
+            rheobase=0.5,
+            out_dir=tmp_path,
+        )
+
+        with (
+            patch.object(workflow, "get_tests", return_value=[undescribed]),
+            pytest.raises(UndescribedValidationTestError),
+        ):
+            workflow.run(context)
+
+        undescribed.run.assert_not_called()
 
     @patch("obi_one.scientific.validations.memodel.workflow.register_outcomes")
     def test_register_delegates(self, mock_reg, tmp_path):

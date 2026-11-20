@@ -110,19 +110,35 @@ def describe_criterion(measurement: Measurement, criterion: Criterion) -> str:
     return ""
 
 
-def describe_test(test: ValidationTest) -> str:
-    """Describe a validation test, or return "" when it cannot be described.
+class UndescribedValidationTestError(ValueError):
+    """Raised when a validation test cannot be described.
 
-    Parametric validations are described from their protocol and criterion. The
-    custom OBI-One tests describe themselves through a ``description`` property.
-    Other tests, e.g. user-written ones, may have neither, so they get no description
-    and the platform falls back to its default text.
+    An empty description makes the platform show its default text for the
+    validation name, which may describe a different protocol than the one run.
     """
-    if isinstance(test, ParametricValidation):
-        parts = [
-            describe_protocol(test.protocol),
-            describe_criterion(test.measurement, test.criterion),
-        ]
-        return " ".join(part for part in parts if part)
+
+
+def describe_test(test: ValidationTest) -> str:
+    """Describe a validation test.
+
+    A non-empty ``description`` property is used as is; the custom OBI-One tests
+    describe themselves this way. Otherwise parametric validations are described
+    from their protocol and criterion.
+
+    Raises:
+        UndescribedValidationTestError: If the test has no ``description`` and is not
+            a parametric validation whose protocol and criterion can both be described.
+    """
     description = getattr(test, "description", None)
-    return description if isinstance(description, str) else ""
+    if isinstance(description, str) and description:
+        return description
+    if isinstance(test, ParametricValidation):
+        protocol = describe_protocol(test.protocol)
+        criterion = describe_criterion(test.measurement, test.criterion)
+        if protocol and criterion:
+            return f"{protocol} {criterion}"
+    message = (
+        f"Validation test {test.name!r} has no description. Give it a `description` "
+        "property that says which protocol it runs and when it passes."
+    )
+    raise UndescribedValidationTestError(message)

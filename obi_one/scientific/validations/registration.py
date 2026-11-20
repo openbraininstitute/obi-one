@@ -242,7 +242,7 @@ def register_outcome(
         overwrite_existing: If False, skip a matching result. If True, update the
             matching result in place while preserving its platform ID.
         description: Plain-text description of what the test ran. Empty when the
-            test cannot be described.
+            caller has none.
 
     Returns:
         A RegisteredResult indicating whether the result was created, updated, or skipped.
