@@ -4,6 +4,7 @@
 
 # Maps compound name -> (base_algorithm, exporter_name or None).
 # Brian2 currently supports AdEx; other point-neuron algorithms use NEST.
+# "nest:<model>" exporters write the SONATA-extension NEST format (see exporter_kwargs in task.py).
 ALGORITHM_EXPORT_MAP: dict[str, tuple[str, str | None]] = {
     "single_compartment": ("single_compartment", None),
     "lif_nest": ("lif", "nest:iaf_psc_alpha"),

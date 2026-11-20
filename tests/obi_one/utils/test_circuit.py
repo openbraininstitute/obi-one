@@ -13,6 +13,7 @@ from obi_one.core.exception import OBIONEError
 from obi_one.db_sdk.registration.circuit import register_circuit, register_circuit_from_metadata
 from obi_one.db_sdk.registration.circuit.assets import COMPRESSED_CIRCUIT_FILENAME
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_constants import TYPES_OF_CHEMICAL_SYNS
 from obi_one.scientific.tasks.basic_connectivity_plots import task as basic_connectivity_plots
 from obi_one.utils.circuit import (
     copy_mod_files,
@@ -416,6 +417,24 @@ def test_get_circuit_properties_pair_circuit():
     assert has_point_neurons is False
     assert has_electrical_cell_models is True
     assert has_spines is False
+
+
+def test_get_circuit_properties_nest_point_circuit():
+    """SONATA-extension NEST populations count as point neurons and chemical synapses."""
+    node_pop = MagicMock(size=3, type="nest_point", property_names=[])
+    edge_pop = MagicMock(size=5, type="nest_chemical", property_names=[])
+    circuit = MagicMock()
+    nodes, edges = circuit.sonata_circuit.nodes, circuit.sonata_circuit.edges
+    nodes.population_names = ["nodes"]
+    nodes.__getitem__.side_effect = lambda _: node_pop
+    edges.population_names = ["edges"]
+    edges.__getitem__.side_effect = lambda _: edge_pop
+
+    has_morphologies, has_point_neurons, _, _ = get_circuit_properties(circuit)
+
+    assert has_morphologies is False
+    assert has_point_neurons is True
+    assert "nest_chemical" in TYPES_OF_CHEMICAL_SYNS
 
 
 def test_get_circuit_properties_single_neuron_circuit():
