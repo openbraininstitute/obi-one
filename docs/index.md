@@ -136,6 +136,8 @@ make install-service
 make run-local
 ```
 
+The production service Docker image is built for **`linux/arm64`** (CI app tests and the publish workflow run on GitHub’s `ubuntu-24.04-arm`). Local `make build` / `docker compose` also target `linux/arm64`; on an amd64 host that uses emulation unless Buildx/QEMU is set up.
+
 ## Examples
 
 Notebooks are available in the [examples/](../examples/) directory.

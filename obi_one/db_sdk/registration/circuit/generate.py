@@ -42,7 +42,7 @@ def generate_compressed_circuit_asset(
 
         compressed_circuit = circuit_utils.run_circuit_folder_compression(
             circuit_path=circuit_path,
-            circuit_name=circuit_entity.name if circuit_entity else "circuit",  # ty:ignore[invalid-argument-type]
+            circuit_name=circuit_entity.name if circuit_entity else "circuit",
             output_root=output_dir,
         )
 

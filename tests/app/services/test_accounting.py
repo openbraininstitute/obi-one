@@ -132,6 +132,8 @@ def test_evaluate_circuit_simulation_parameters(db_client, httpx_mock):
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -143,6 +145,8 @@ def test_evaluate_circuit_simulation_parameters(db_client, httpx_mock):
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": 3,
             "number_synapses": 10,
@@ -170,6 +174,8 @@ def test_evaluate_circuit_simulation_parameters__with_duration(db_client, httpx_
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -181,6 +187,8 @@ def test_evaluate_circuit_simulation_parameters__with_duration(db_client, httpx_
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": 100,
             "number_synapses": 10,
@@ -216,6 +224,8 @@ def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -227,6 +237,8 @@ def test_evaluate_circuit_simulation_parameters__small_scale_ignores_duration(
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": 10,
             "number_synapses": 10,
@@ -255,6 +267,8 @@ def test_evaluate_circuit_simulation_parameters__fallback_to_scan_parameters(db_
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -266,6 +280,8 @@ def test_evaluate_circuit_simulation_parameters__fallback_to_scan_parameters(db_
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": 200,
             "number_synapses": 10,
@@ -299,6 +315,8 @@ def test_evaluate_circuit_simulation_parameters__default_duration(db_client, htt
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -310,6 +328,8 @@ def test_evaluate_circuit_simulation_parameters__default_duration(db_client, htt
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": 419,
             "number_synapses": 10,
@@ -352,6 +372,8 @@ def test_evaluate_circuit_simulation_parameters__single_pair_scale_ignores_durat
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -363,6 +385,8 @@ def test_evaluate_circuit_simulation_parameters__single_pair_scale_ignores_durat
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": number_neurons,
             "number_synapses": 10,
@@ -390,6 +414,8 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, mo
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "simulation_campaign_id": str(simulation_campaign_id),
             "entity_id": str(entity_id),
@@ -401,6 +427,8 @@ def test_evaluate_circuit_simulation_parameters__error(db_client, httpx_mock, mo
         url=f"http://my-url/circuit/{entity_id}",
         method="GET",
         json={
+            "name": "circuit",
+            "description": "Test circuit.",
             "id": str(entity_id),
             "number_neurons": 3,
             "number_synapses": 10,

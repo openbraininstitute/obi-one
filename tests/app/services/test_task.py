@@ -130,6 +130,8 @@ def callbacks(activity_id):
             TaskType.circuit_extraction,
             "task-config",
             {
+                "name": "task-config",
+                "description": "Test task config.",
                 "circuit_id": str(uuid4()),
                 "scan_parameters": {},
                 "task_config_type": TaskConfigType.circuit_extraction__config,
@@ -156,6 +158,8 @@ def callbacks(activity_id):
             TaskType.circuit_simulation_neurodamus_cluster,
             "simulation",
             {
+                "name": "sim",
+                "description": "Test simulation.",
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
                 "number_neurons": 1000,
@@ -168,6 +172,8 @@ def callbacks(activity_id):
             TaskType.circuit_simulation_brian2_machine,
             "simulation",
             {
+                "name": "sim",
+                "description": "Test simulation.",
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
                 "number_neurons": 1000,
@@ -251,6 +257,8 @@ def test_submit_task_job__success(
             TaskType.circuit_extraction,
             "task-config",
             {
+                "name": "task-config",
+                "description": "Test task config.",
                 "circuit_id": str(uuid4()),
                 "scan_parameters": {},
                 "assets": [
@@ -277,6 +285,8 @@ def test_submit_task_job__success(
             TaskType.circuit_simulation_neurodamus_cluster,
             "simulation",
             {
+                "name": "sim",
+                "description": "Test simulation.",
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
                 "number_neurons": 1000,
@@ -289,6 +299,8 @@ def test_submit_task_job__success(
             TaskType.circuit_simulation_brian2_machine,
             "simulation",
             {
+                "name": "sim",
+                "description": "Test simulation.",
                 "entity_id": str(uuid4()),
                 "simulation_campaign_id": str(uuid4()),
                 "number_neurons": 1000,
@@ -979,6 +991,8 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
         url=f"http://my-url/simulation/{config_id}",
         method="GET",
         json={
+            "name": "sim",
+            "description": "Test simulation.",
             "id": str(config_id),
             "entity_id": str(circuit_id),
             "simulation_campaign_id": str(uuid4()),
