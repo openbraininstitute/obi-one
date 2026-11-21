@@ -131,24 +131,26 @@ def find_normalized_interval_below_zero(a: float, b: float) -> tuple[float, floa
     return min_norm_path_distances, max_norm_path_distances
 
 
-def min_max_offset_in_segment(row: pd.Series, max_distance: float) -> pd.Series:
-    """Determines offsets from segment starting point closer than max_distance. \
+def min_max_offsets_in_segments(cands: pd.DataFrame, max_distance: float) -> pd.DataFrame:
+    """Determines, for every segment, the offsets from its start closer than max_distance.
 
-    Determines which offsets from the starting point of a segment are closer in path distance \
-        than a specified maximum value.
+    Vectorized form of ``find_normalized_interval_below_zero`` applied to each segment.
 
     Args:
-        row (pd.Series): Must specify path distance at the start and end of the segment,
-        plus the length of the segment. For the names of the corresponding entries check the code.
+        cands (pd.DataFrame): One row per segment, with the path distance at the start and end of
+        the segment and the segment length. For the names of the columns check the code.
         max_distance (float): Maximum path distance allowed.
     """
-    a = row[_SOM_PAD + "_start"] - max_distance
-    b = row[_SOM_PAD + "_end"] - max_distance
-    seg_len = row[_SEG_LEN]
-    min_norm_path_distances, max_norm_path_distances = find_normalized_interval_below_zero(a, b)
-
-    return pd.Series(
-        {_SEG_MIN: min_norm_path_distances * seg_len, _SEG_MAX: max_norm_path_distances * seg_len}
+    a = cands[_SOM_PAD + "_start"].to_numpy(float) - max_distance
+    b = cands[_SOM_PAD + "_end"].to_numpy(float) - max_distance
+    seg_len = cands[_SEG_LEN].to_numpy(float)
+    slope = b - a
+    with np.errstate(divide="ignore", invalid="ignore"):
+        root = -a / slope
+    min_norm = np.where(slope < 0, np.maximum(root, 0.0), 0.0)
+    max_norm = np.where(slope > 0, np.minimum(root, 1.0), np.where(slope == 0, 0.0, 1.0))
+    return pd.DataFrame(
+        {_SEG_MIN: min_norm * seg_len, _SEG_MAX: max_norm * seg_len}, index=cands.index
     )
 
 
@@ -191,6 +193,44 @@ def candidate_segments_all_morphology(locs: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+# Centers are processed in batches so that memory does not grow with the number of centers.
+_CENTER_BATCH_SIZE = 100
+
+
+def _candidate_segments_for_batch(
+    ids_center: list,
+    first_center: int,
+    locs: pd.DataFrame,
+    max_dist: float,
+    m: morphio.Morphology,
+    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
+    lst_sec_types: list | None,
+) -> pd.DataFrame:
+    """Candidate segments of a batch of centers, numbered from ``first_center``."""
+    loc_center = locs.loc[ids_center]
+    res_seg_start = path_distance_all_segments_from(
+        loc_center, m, path_distance_calculator, 0.0, lst_sec_types=lst_sec_types
+    ).rename(columns={_SOM_PAD: _SOM_PAD + "_start"})
+    res_seg_end = path_distance_all_segments_from(
+        loc_center, m, path_distance_calculator, 1.0, lst_sec_types=lst_sec_types
+    ).rename(columns={_SOM_PAD: _SOM_PAD + "_end"})
+
+    res = pd.concat([res_seg_start, res_seg_end[[_SOM_PAD + "_end"]]], axis=1)
+
+    valid = (res[_SOM_PAD + "_start"] < max_dist) | (res[_SOM_PAD + "_end"] < max_dist)
+    valid[list(enumerate(ids_center))] = True
+    cands = res.loc[valid]
+
+    intervals = min_max_offsets_in_segments(cands, max_dist)
+    for tpl in enumerate(ids_center):
+        intervals.loc[tpl] = min_max_offset_for_center_segment(res.loc[tpl], max_dist)
+    intervals.index = pd.MultiIndex.from_arrays(
+        [intervals.index.get_level_values(0) + first_center, intervals.index.get_level_values(1)],
+        names=intervals.index.names,
+    )
+    return intervals
+
+
 def candidate_segments_for_center(
     ids_center: list,
     locs: pd.DataFrame,
@@ -220,24 +260,19 @@ def candidate_segments_for_center(
         lst_sec_types (list, default=None): List of section types allowed. If None, then all \
             types are allowed.
     """
-    loc_center = locs.loc[ids_center]
-    res_seg_start = path_distance_all_segments_from(
-        loc_center, m, path_distance_calculator, 0.0, lst_sec_types=lst_sec_types
-    ).rename(columns={_SOM_PAD: _SOM_PAD + "_start"})
-    res_seg_end = path_distance_all_segments_from(
-        loc_center, m, path_distance_calculator, 1.0, lst_sec_types=lst_sec_types
-    ).rename(columns={_SOM_PAD: _SOM_PAD + "_end"})
-
-    res = pd.concat([res_seg_start, res_seg_end[[_SOM_PAD + "_end"]]], axis=1)
-
-    valid = (res[_SOM_PAD + "_start"] < max_dist) | (res[_SOM_PAD + "_end"] < max_dist)
-    valid[list(enumerate(ids_center))] = True
-    cands = res.loc[valid]
-
-    intervals = cands.apply(min_max_offset_in_segment, args=(max_dist,), axis=1)
-    for tpl in enumerate(ids_center):
-        intervals.loc[tpl] = min_max_offset_for_center_segment(res.loc[tpl], max_dist)
-    return intervals
+    batches = [
+        _candidate_segments_for_batch(
+            ids_center[start : start + _CENTER_BATCH_SIZE],
+            start,
+            locs,
+            max_dist,
+            m,
+            path_distance_calculator,
+            lst_sec_types,
+        )
+        for start in range(0, len(ids_center), _CENTER_BATCH_SIZE)
+    ]
+    return pd.concat(batches)
 
 
 def select_places_from_candidate_list(
