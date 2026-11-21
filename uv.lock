@@ -2541,7 +2541,7 @@ requires-dist = [
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["bluecellulab", "brian2", "circuit-extraction", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
     { name = "obi-one", extras = ["emodel"], marker = "extra == 'service'" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.7.0" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2578,14 +2578,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.8"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/4b/5c2839462cee59097a00830f471a11f225a2a138c236c9d145bc26043a1c/obp_accounting_sdk-0.6.8.tar.gz", hash = "sha256:dd895d3250a1767274550b714620e193196dfc52c834c8357234b6cd57697cf4", size = 37055, upload-time = "2026-10-14T10:24:18.303Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/7d/88d516105f3ed68136d094ab27e3efe0d0fe51a3a76b24d6bac881893598/obp_accounting_sdk-0.7.0.tar.gz", hash = "sha256:8107d31221a73aa1d8e6c9ff52ecb4558fd54d41be1942128f174dac10efe92a", size = 37396, upload-time = "2026-11-17T12:45:57.376Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/d0/8d16eff282e7730131e61fffc2c2c68cde56b473bf8331bf71ed637f7265/obp_accounting_sdk-0.6.8-py3-none-any.whl", hash = "sha256:ec746ff2d30d598722fe87d0d665c3be81ea2f221881e112383b473618c8013a", size = 27877, upload-time = "2026-10-14T10:24:16.684Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/fd/c656e6e14964d34fd906f0258c91cd1471a55d42de1930c5660a5401992c/obp_accounting_sdk-0.7.0-py3-none-any.whl", hash = "sha256:8ad209938b0f8837ff6849bb069ba9585e6cb8b9500bb5734006a02306446e62", size = 28096, upload-time = "2026-11-17T12:45:56.101Z" },
 ]
 
 [[package]]

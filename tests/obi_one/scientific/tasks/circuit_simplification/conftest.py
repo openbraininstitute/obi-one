@@ -14,6 +14,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from obi_one.scientific.tasks.circuit_simplification.algorithms.metadata import (
+    ALGORITHM_EXPORT_MAP,
+)
+
 
 @pytest.fixture
 def fake_simplified_circuit(tmp_path: Path) -> Path:
@@ -84,3 +88,29 @@ def mock_mechanism_compilation():
         ),
     ):
         yield
+
+
+@pytest.fixture
+def simplified_output(mock_pipeline):
+    """Make the mocked pipeline write the outputs that ``execute()`` registers.
+
+    A missing output fails the task, so tests that only check what reaches the pipeline need the
+    run to write the simplified circuit, and the export for exporter algorithms.
+    """
+
+    def write_outputs(_recipe):
+        sim_config = Path(mock_pipeline.call_args.kwargs["simulation_config"])
+        output = Path(json.loads(sim_config.read_text(encoding="utf-8"))["output"]["output_dir"])
+        directories = [output]
+        _, exporter_name = ALGORITHM_EXPORT_MAP[output.parent.name]
+        if exporter_name:
+            directories.append(output.parent / f"{output.name}_{exporter_name.replace(':', '_')}")
+        for directory in directories:
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "circuit_config.json").write_text("{}")
+
+    mock_pipeline.return_value.run_recipe.side_effect = write_outputs
+    with patch(
+        "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
+    ):
+        yield mock_pipeline
