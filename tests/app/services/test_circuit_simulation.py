@@ -124,3 +124,56 @@ def test_estimate_task_resources_no_available_instances():
         )
 
     assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
+
+
+# The failed job 01a1cb34: 9,587 cells and 219.1M synapses under CoreNEURON, on nodes of 788 GB.
+FAILED_JOB = {"number_neurons": 9_587, "number_synapses": 219_100_000}
+LARGE = {
+    "cell_b": [ClusterInstanceInfo(name="large", max_neurons=10**6, memory_per_instance_gb=788)]
+}
+
+
+def _estimate_counted(simulation, *, simulator="CORENEURON"):
+    db_client = Mock()
+    db_client.get_entity.return_value = SimpleNamespace(**simulation)
+    with (
+        patch.object(test_module, "CLUSTER_INSTANCES_INFO", LARGE),
+        patch.object(
+            test_module.db_sdk,
+            "select_json_asset_content",
+            return_value={"target_simulator": simulator},
+        ) as config_asset,
+    ):
+        result = test_module.estimate_task_resources(
+            json_model=TaskLaunchSubmit(task_type=TaskType.circuit_simulation, config_id=uuid4()),
+            db_client=db_client,
+            task_definition=TASK_DEFINITIONS[TaskType.circuit_simulation_neurodamus_cluster],
+            compute_cell="cell_b",
+        )
+    return result.instances, config_asset
+
+
+def test_the_synapses_of_the_failed_job_need_more_than_a_node():
+    # 1.25 * 2.5 * (0.0055 * 9,587 + 3e-6 * 219.1M) = 2,219 GB, over 670 GB usable per node.
+    assert _estimate_counted(FAILED_JOB)[0] == 4
+
+
+def test_neuron_needs_less_memory_than_coreneuron():
+    nodes, config_asset = _estimate_counted(FAILED_JOB, simulator="NEURON")
+
+    assert nodes == 2  # 1.25 * 710 GB over 670 GB
+    assert config_asset.call_args.kwargs["selection"] == {"label": "sonata_simulation_config"}
+
+
+def test_the_estimate_is_never_below_the_per_cell_rule():
+    few_synapses = {"number_neurons": 1_000_000, "number_synapses": 10}
+
+    per_cell_rule = math.ceil(test_module.MEM_GB_PER_CELL * 1_000_000 / 788)
+    assert _estimate_counted(few_synapses)[0] == per_cell_rule
+
+
+def test_a_simulation_without_synapses_keeps_the_per_cell_rule():
+    nodes, config_asset = _estimate_counted({"number_neurons": 9_587})
+
+    assert nodes == math.ceil(test_module.MEM_GB_PER_CELL * 9_587 / 788)
+    config_asset.assert_not_called()
