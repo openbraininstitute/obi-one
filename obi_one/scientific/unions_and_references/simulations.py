@@ -1,6 +1,9 @@
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_neuromechfly import (
+    Brian2NeuroMechFlySimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
     LearningEngineCircuitSimulationSingleConfig,
 )
@@ -23,5 +26,6 @@ SIMULATION_GENERATION_SINGLE_CONFIGS = (
     | MEModelWithSynapsesCircuitSimulationSingleConfig
     | IonChannelModelSimulationSingleConfig
     | Brian2CircuitSimulationSingleConfig
+    | Brian2NeuroMechFlySimulationSingleConfig
     | LearningEngineCircuitSimulationSingleConfig
 )

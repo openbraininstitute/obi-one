@@ -142,7 +142,10 @@ def _evaluate_accounting_parameters(  # ruff: ignore[complex-structure, too-many
                 db_client=db_client,
                 simulation_id=config_id,
             )
-        case TaskType.circuit_simulation_brian2_machine:
+        case (
+            TaskType.circuit_simulation_brian2_machine
+            | TaskType.circuit_simulation_neuromechfly_machine
+        ):
             return AccountingParameters(
                 count=1,
                 service_subtype=ServiceSubtype.BRIAN2_CIRCUIT_SIMULATION,
