@@ -17,13 +17,13 @@ from app.schemas.accounting import AccountingParameters
 from app.schemas.auth import UserContext
 from app.schemas.callback import CallBack, HttpRequestCallBackConfig
 from app.schemas.task import LaunchableTaskDefinition, TaskAccountingInfo
+from app.services.resource_estimation.circuit_simplification_accounting import (
+    service_subtype_for_algorithm_block,
+)
 from app.types import CallBackAction, CallBackEvent, TaskType
 from app.utils.http import make_http_request
 from obi_one.db_sdk.db_sdk import select_json_asset_content
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
-from obi_one.scientific.tasks.circuit_simplification.accounting import (
-    service_subtype_for_algorithm_block,
-)
 from obi_one.scientific.tasks.circuit_simplification.estimate import (
     estimate_circuit_simplification_count_from_config,
     load_circuit_simplification_single_config,

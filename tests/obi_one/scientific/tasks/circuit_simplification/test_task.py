@@ -289,7 +289,7 @@ class TestTaskExecution:
     def test_execute_uses_allocated_cpus_as_workers(
         self,
         fake_simplified_circuit: Path,
-        mock_pipeline,
+        simplified_output,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
         monkeypatch,
@@ -319,8 +319,8 @@ class TestTaskExecution:
         ):
             task.execute(db_client=None)
 
-        mock_pipeline.assert_called_once()
-        assert mock_pipeline.call_args.kwargs["n_processes"] == 4
+        simplified_output.assert_called_once()
+        assert simplified_output.call_args.kwargs["n_processes"] == 4
 
     def test_execute_registers_only_exported_circuit(
         self,
@@ -467,13 +467,13 @@ class TestTaskExecution:
         register_output.assert_not_called()
         assert "Expected brian2:adex export" in caplog.text
 
-    def test_execute_skips_missing_output(
+    def test_execute_fails_on_missing_output(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
-        """execute() should return None when the output circuit_config.json is missing."""
+        """execute() should fail when the pipeline wrote no circuit_config.json."""
 
         config = self._make_config(tmp_path)
 
@@ -497,18 +497,14 @@ class TestTaskExecution:
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
+            pytest.raises(RuntimeError, match="not found"),
         ):
-            # Don't create the output circuit_config.json — pipeline ran but
-            # produced no output (simulated failure)
-            result = task.execute(db_client=MagicMock())
-
-        # Should return None since no output was found
-        assert result is None
+            task.execute(db_client=MagicMock())
 
     def test_execute_passes_algorithm_to_pipeline(
         self,
         fake_simplified_circuit: Path,
-        mock_pipeline,
+        simplified_output,
         tmp_path: Path,
     ):
         """execute() should pass the base algorithm as simplification_mode to the pipeline."""
@@ -540,7 +536,7 @@ class TestTaskExecution:
 
         # Check that the BASE algorithm was passed as simplification_mode
         # (compound name "lif_nest" → base "lif")
-        call_kwargs = mock_pipeline.call_args
+        call_kwargs = simplified_output.call_args
         assert call_kwargs.kwargs.get("simplification_mode") == "lif"
 
         # The implicit all-biophysical selection must not be passed to point-
@@ -553,7 +549,7 @@ class TestTaskExecution:
     def test_execute_omits_target_set_for_single_compartment(
         self,
         fake_simplified_circuit: Path,
-        mock_pipeline,
+        simplified_output,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
@@ -583,7 +579,9 @@ class TestTaskExecution:
             task.execute(db_client=None)
 
         sim_config = json.loads(
-            Path(mock_pipeline.call_args.kwargs["simulation_config"]).read_text(encoding="utf-8")
+            Path(simplified_output.call_args.kwargs["simulation_config"]).read_text(
+                encoding="utf-8"
+            )
         )
         assert "node_set" not in sim_config
         assert "node_sets_file" not in sim_config
@@ -645,7 +643,7 @@ class TestTaskExecution:
 
     def test_execute_cleans_up_temp_dir(
         self,
-        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        simplified_output,  # ruff: ignore[unused-method-argument]
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):

@@ -3,11 +3,12 @@
 import pytest
 from obp_accounting_sdk.constants import ServiceSubtype
 
-from obi_one.scientific.tasks.circuit_simplification.accounting import (
+from app.services.resource_estimation.circuit_simplification_accounting import (
     service_subtype_for_algorithm,
     service_subtype_for_algorithm_block,
 )
 from obi_one.scientific.tasks.circuit_simplification.algorithms.models import (
+    ALGORITHM_BLOCK_CLASSES,
     LifNestAlgorithm,
     NeatReductionAlgorithm,
     NeuronReduceAlgorithm,
@@ -59,6 +60,10 @@ class TestServiceSubtypeForAlgorithm:
 
 
 class TestServiceSubtypeForAlgorithmBlock:
+    @pytest.mark.parametrize("algorithm_class", ALGORITHM_BLOCK_CLASSES.values())
+    def test_every_ui_algorithm_has_an_accounting_subtype(self, algorithm_class):
+        assert isinstance(service_subtype_for_algorithm_block(algorithm_class()), ServiceSubtype)
+
     def test_fixed_algorithm(self):
         assert (
             service_subtype_for_algorithm_block(LifNestAlgorithm())

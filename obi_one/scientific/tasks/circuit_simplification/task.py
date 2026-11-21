@@ -364,11 +364,12 @@ class CircuitSimplificationTask(Task):
             simplified_circuit_path = output_dir / "output" / "circuit_config.json"
 
             if not simplified_circuit_path.exists():
-                L.warning(
+                message = (
                     f"Simplified circuit config not found at {simplified_circuit_path}"
                     f" for algorithm '{algorithm_name}'"
                 )
-                return None
+                L.error(message)
+                raise RuntimeError(message)
 
             # Register only the circuit in the simulator-specific format
             # selected by the algorithm. Exporter algorithms use their
