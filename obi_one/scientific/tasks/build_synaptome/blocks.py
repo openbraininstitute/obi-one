@@ -16,10 +16,10 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
 
 
 class BlockGroup(StrEnum):
-    """Block groups for the ME-model Synapse Placement form."""
+    """Block groups for the Synapse Placement form."""
 
     INFO = "Info"
-    ME_MODEL = "ME-model"
+    POSTSYNAPTIC_NEURON = "Postsynaptic neuron"
     SYNAPTIC_PHYSIOLOGY = "Synaptic physiology"
     SYNAPSE_GROUPS = "Synapse groups"
 

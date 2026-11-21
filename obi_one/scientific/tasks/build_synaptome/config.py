@@ -9,7 +9,6 @@ from obi_one.core.block import Block
 from obi_one.core.info import Info
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.single import SingleConfigMixin
-from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.entity_property_types import MappedPropertiesGroup
 from obi_one.scientific.library.info_scan_config.config import InfoScanConfig
 from obi_one.scientific.tasks.build_synaptome.blocks import (
@@ -28,19 +27,25 @@ from obi_one.scientific.unions_and_references.synaptic_models import (
     SynapticModelReference,
     SynapticModelUnion,
 )
+from obi_one.scientific.unions_and_references.synaptome_input import (
+    SynaptomeInput,
+)
 
 
 class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
-    """Form for placing synaptic models on a single ME-model."""
+    """Form for placing synaptic models on a single ME-model or a synaptome."""
 
-    name: ClassVar[str] = "ME-model Synapse Placement"
-    description: ClassVar[str] = "Place synaptic models on a single ME-model."
+    name: ClassVar[str] = "Synapse Placement"
+    description: ClassVar[str] = (
+        "Place synaptic models on a single ME-model, or add them to a synaptome that already "
+        "has synapses."
+    )
 
     json_schema_extra_additions: ClassVar[dict] = {
         SchemaKey.UI_ENABLED: True,
         SchemaKey.GROUP_ORDER: [
             BlockGroup.INFO,
-            BlockGroup.ME_MODEL,
+            BlockGroup.POSTSYNAPTIC_NEURON,
             BlockGroup.SYNAPTIC_PHYSIOLOGY,
             BlockGroup.SYNAPSE_GROUPS,
         ],
@@ -58,15 +63,17 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     }
 
     class Initialize(Block):
-        """Configuration for the single-cell ME-model that receives incoming synapses."""
+        """Configuration for the single cell that receives incoming synapses."""
 
-        title: ClassVar[str] = "Postsynaptic ME-model Initialization"
+        title: ClassVar[str] = "Postsynaptic Neuron Initialization"
 
-        me_model: MEModelFromID = Field(
-            title="Postsynaptic ME-model",
+        me_model: SynaptomeInput = Field(
+            title="Postsynaptic ME-model or synaptome",
             description=(
-                "Existing single-cell ME-model providing the morphology and "
-                "electrophysiological properties of the postsynaptic neuron."
+                "Existing single-cell ME-model, or synaptome that already has "
+                "synapses, providing the morphology and electrophysiological properties of the "
+                "postsynaptic neuron. New synapse groups are added to it. With a synaptome, "
+                "its existing synapses are kept unchanged."
             ),
             json_schema_extra={
                 SchemaKey.UI_ELEMENT: UIElement.MODEL_IDENTIFIER,
@@ -75,7 +82,7 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
         )
 
     def input_entities(self, db_client: Client) -> list[models.Entity]:
-        """Return the ME-model used to build the synaptome."""
+        """Return the ME-model or synaptome the synaptome is built on."""
         return [self.initialize.me_model.entity(db_client=db_client)]
 
     info: Info = Field(
@@ -88,15 +95,15 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
         },
     )
     initialize: Initialize = Field(
-        title="Postsynaptic ME-model",
+        title="Postsynaptic ME-model or synaptome",
         description=(
-            "Existing single-cell ME-model providing the morphology and "
-            "electrophysiological properties of the postsynaptic neuron receiving "
-            "the incoming synapses."
+            "Existing single-cell ME-model, or synaptome that already has synapses, "
+            "providing the morphology and electrophysiological properties of the postsynaptic "
+            "neuron receiving the incoming synapses."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_SINGLE,
-            SchemaKey.GROUP: BlockGroup.ME_MODEL,
+            SchemaKey.GROUP: BlockGroup.POSTSYNAPTIC_NEURON,
             SchemaKey.GROUP_ORDER: 0,
         },
     )
@@ -141,7 +148,7 @@ class MEModelSynapticModelPlacementScanConfig(InfoScanConfig):
     synapse_groups: dict[str, SynapticModelPlacerUnion] = Field(
         default_factory=dict,
         title="Synapse groups",
-        description="Incoming synapse groups to attach to the ME-model.",
+        description="Incoming synapse groups to add to the postsynaptic neuron.",
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_DICTIONARY,
             SchemaKey.REFERENCE_TYPES: [],

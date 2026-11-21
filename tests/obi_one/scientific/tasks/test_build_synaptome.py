@@ -1,7 +1,9 @@
+import hashlib
 import json
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, create_autospec
 
 import bluepysnap
 import h5py
@@ -11,12 +13,14 @@ import pandas as pd
 import pytest
 from entitysdk.types import (
     CircuitBuildCategory,
+    DerivationType,
     TargetSimulator,
     TaskActivityType,
     TaskConfigType,
 )
 
 from obi_one.core.info import Info
+from obi_one.db_sdk.registration import circuit as circuit_registration
 from obi_one.scientific.blocks.distributions.constant import FloatConstantDistribution
 from obi_one.scientific.blocks.distributions.normal import NormalDistribution
 from obi_one.scientific.blocks.morphology_locations.base import MorphologyLocationsBlock
@@ -28,6 +32,7 @@ from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
     InhibitoryTsodyksMarkramSynapticModel,
 )
+from obi_one.scientific.from_id.circuit_from_id import MEModelWithSynapsesCircuitFromID
 from obi_one.scientific.from_id.memodel_from_id import MEModelFromID
 from obi_one.scientific.library.build_synaptome import (
     BuildSynaptomeError,
@@ -39,10 +44,11 @@ from obi_one.scientific.library.build_synaptome import (
     _target_population,
 )
 from obi_one.scientific.library.compartment_sets import sample_morphology_locations
+from obi_one.scientific.library.map_em_synapses.write_sonata_edge_file import write_edges
 from obi_one.scientific.library.map_em_synapses.write_sonata_nodes_file import (
     write_virtual_nodes,
 )
-from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.library.memodel_circuit import MEModelCircuit, MEModelWithSynapsesCircuit
 from obi_one.scientific.library.morphology_locations import _PRE_IDX
 from obi_one.scientific.tasks.build_synaptome.blocks import SynapticModelPlacer
 from obi_one.scientific.tasks.build_synaptome.config import (
@@ -157,6 +163,7 @@ def _config(
     groups: dict[str, SynapticModelPlacer] | None = None,
     morphology_locations: dict[str, MorphologyLocationsBlock] | None = None,
     distributed: bool = False,
+    source: MEModelFromID | MEModelWithSynapsesCircuitFromID | None = None,
 ) -> MEModelSynapticModelPlacementSingleConfig:
     distributions = {
         "exc_conductance": FloatConstantDistribution(value=0.4),
@@ -203,7 +210,7 @@ def _config(
     return MEModelSynapticModelPlacementSingleConfig(
         info=Info(campaign_name="test", campaign_description="test synaptome"),
         initialize=MEModelSynapticModelPlacementScanConfig.Initialize(
-            me_model=MEModelFromID(id_str="test-me-model")
+            me_model=source or MEModelFromID(id_str="test-me-model")
         ),
         distributions=distributions,
         synaptic_models=models,
@@ -909,3 +916,392 @@ def test_fold_staged_mechanisms_leaves_a_non_empty_staged_folder_in_place(tmp_pa
     assert (mechanisms_dir / "Ca_HVA.mod").read_text() == "biophysical"
     assert (staged / "README.txt").read_text() == "not a mod file"
     assert not (staged / "Ca_HVA.mod").exists()
+
+
+# ---------------------------------------------------------------------------------------------
+# Building on an existing synaptome
+# ---------------------------------------------------------------------------------------------
+
+_EXISTING_EDGES = "synaptome_afferents"
+_EXISTING_SOURCES = "synaptome_afferent_neurons"
+_EXISTING_SYNAPSE_COUNT = 5
+_EXISTING_SOURCE_COUNT = 3
+
+
+def _write_staged_synaptome(
+    path: Path,
+    *,
+    edge_population: str = _EXISTING_EDGES,
+    source_population: str = _EXISTING_SOURCES,
+    mechanisms_dir: str | None = None,
+    model_template: bool = True,
+) -> Path:
+    """Write a single-cell circuit that has synapses and was not made by Build Synaptome.
+
+    Its edges carry anatomical columns only (no conductance or delay) and its mechanisms are not
+    in the ME-model stager's folder, as for a cell extracted from a circuit.
+    """
+    config_path = _write_staged_memodel(path, staged_mechanisms=())
+    shutil.rmtree(path / "mechanisms")
+    if not model_template:
+        with h5py.File(path / "target" / "nodes.h5", "a") as h5:
+            del h5["nodes/target/0/model_template"]
+
+    pre_post = pd.DataFrame(
+        {
+            "pre_node_id": np.arange(_EXISTING_SYNAPSE_COUNT) % _EXISTING_SOURCE_COUNT,
+            "post_node_id": np.zeros(_EXISTING_SYNAPSE_COUNT, dtype=np.int64),
+        }
+    )
+    columns = pd.DataFrame(
+        {
+            "afferent_section_id": np.ones(_EXISTING_SYNAPSE_COUNT, dtype=np.int64),
+            "afferent_segment_id": np.zeros(_EXISTING_SYNAPSE_COUNT, dtype=np.int64),
+            "afferent_segment_offset": np.linspace(0.5, 2.5, _EXISTING_SYNAPSE_COUNT),
+            "spine_id": np.arange(_EXISTING_SYNAPSE_COUNT, dtype=np.int64) * 7,
+        }
+    )
+    write_virtual_nodes(path / source_population / "nodes.h5", source_population, 3)
+    edges_path = path / edge_population / "edges.h5"
+    edges_path.parent.mkdir(parents=True, exist_ok=True)
+    write_edges(
+        edges_path,
+        edge_population,
+        pre_post,
+        columns,
+        source_population,
+        "target",
+        n_src=_EXISTING_SOURCE_COUNT,
+        n_tgt=1,
+    )
+
+    config = json.loads(config_path.read_text())
+    config["networks"]["nodes"].append(
+        {
+            "nodes_file": f"$BASE_DIR/{source_population}/nodes.h5",
+            "populations": {source_population: {"type": "virtual"}},
+        }
+    )
+    config["networks"]["edges"].append(
+        {
+            "edges_file": f"$BASE_DIR/{edge_population}/edges.h5",
+            "populations": {edge_population: {"type": "chemical"}},
+        }
+    )
+    if mechanisms_dir is not None:
+        config["components"] = {"mechanisms_dir": f"$BASE_DIR/{mechanisms_dir}"}
+        (path / mechanisms_dir).mkdir()
+        (path / mechanisms_dir / "Existing.mod").write_text("NEURON { SUFFIX Existing }\n")
+    config_path.write_text(json.dumps(config))
+    return config_path
+
+
+def _digests(root: Path) -> dict[str, str]:
+    return {
+        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+@pytest.fixture
+def stage_synaptome_input(monkeypatch, tmp_path):
+    """Make the synaptome input stage a circuit, and return the circuit it was staged from.
+
+    With `link`, every staged file is a symbolic link into that circuit, as when a circuit is
+    staged from mounted storage.
+    """
+
+    def configure(*, link: bool = False, failure: Exception | None = None, **options) -> Path:
+        original = tmp_path / "original_circuit"
+        _write_staged_synaptome(original, **options)
+
+        def stage(_self, *, dest_dir, db_client, entity_cache=False):  # ruff: ignore[unused-function-argument]
+            if failure is not None:
+                raise failure
+            if link:
+                for source in original.rglob("*"):
+                    target = dest_dir / source.relative_to(original)
+                    if source.is_dir():
+                        target.mkdir(parents=True, exist_ok=True)
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.symlink_to(source)
+            else:
+                shutil.copytree(original, dest_dir)
+            return MEModelWithSynapsesCircuit(
+                name="circuit", path=str(dest_dir / "circuit_config.json")
+            )
+
+        monkeypatch.setattr(MEModelWithSynapsesCircuitFromID, "stage_circuit", stage)
+        return original
+
+    return configure
+
+
+def _synaptome_source() -> MEModelWithSynapsesCircuitFromID:
+    return MEModelWithSynapsesCircuitFromID(id_str="test-circuit")
+
+
+class TestBuildOnASynaptome:
+    def test_a_new_group_is_added_and_the_existing_synapses_are_carried_over_unchanged(
+        self, tmp_path, stage_synaptome_input
+    ):
+        original = stage_synaptome_input()
+        before = _digests(original)
+
+        result = build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        after = _digests(result.output_directory)
+        unchanged = {name for name in before if name != "circuit_config.json"}
+        assert unchanged, "the original circuit should have files other than its config"
+        for name in unchanged:
+            assert after[name] == before[name], f"{name} was changed"
+        circuit = bluepysnap.Circuit(result.circuit_config_path)
+        assert set(circuit.edges.population_names) == {
+            _EXISTING_EDGES,
+            "basal_sources__target__chemical",
+        }
+        assert set(circuit.nodes.population_names) == {
+            "target",
+            _EXISTING_SOURCES,
+            "basal_sources",
+        }
+        assert circuit.edges[_EXISTING_EDGES].size == _EXISTING_SYNAPSE_COUNT
+        assert circuit.edges["basal_sources__target__chemical"].size == 4
+
+    def test_the_new_group_is_fully_described_while_the_existing_ones_keep_their_own_columns(
+        self, tmp_path, stage_synaptome_input
+    ):
+        stage_synaptome_input()
+
+        result = build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        circuit = bluepysnap.Circuit(result.circuit_config_path)
+        existing = circuit.edges[_EXISTING_EDGES].property_names
+        new = circuit.edges["basal_sources__target__chemical"].property_names
+        assert "spine_id" in existing
+        assert "conductance" not in existing
+        assert {"conductance", "delay", "syn_type_id"}.issubset(new)
+
+    def test_nothing_in_the_original_changes_when_its_files_are_staged_as_links(
+        self, tmp_path, stage_synaptome_input
+    ):
+        original = stage_synaptome_input(link=True)
+        before = _digests(original)
+
+        result = build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        assert _digests(original) == before
+        assert not any(path.is_symlink() for path in result.output_directory.rglob("*"))
+        declared = json.loads(result.circuit_config_path.read_text())["networks"]["edges"]
+        assert len(declared) == 2
+
+    def test_a_read_only_original_can_still_be_built_on(self, tmp_path, stage_synaptome_input):
+        original = stage_synaptome_input(link=True, mechanisms_dir="custom_mod")
+        paths = [original, *original.rglob("*")]
+        for path in paths:
+            path.chmod(0o555 if path.is_dir() else 0o444)
+        try:
+            result = build_synaptome(
+                _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+            )
+        finally:
+            for path in paths:
+                path.chmod(0o755 if path.is_dir() else 0o644)
+
+        assert (result.output_directory / "custom_mod" / "ProbAMPANMDA_EMS.mod").is_file()
+
+    def test_no_staged_data_is_left_beside_the_output(self, tmp_path, stage_synaptome_input):
+        stage_synaptome_input()
+
+        build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        assert sorted(path.name for path in tmp_path.iterdir()) == ["artifact", "original_circuit"]
+
+    def test_the_neurons_model_template_is_reported(self, tmp_path, stage_synaptome_input):
+        stage_synaptome_input()
+
+        result = build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        assert result.model_template == "hoc:Cell"
+
+    def test_a_synaptome_whose_neuron_has_no_model_template_is_rejected(
+        self, tmp_path, stage_synaptome_input
+    ):
+        stage_synaptome_input(model_template=False)
+
+        with pytest.raises(BuildSynaptomeError, match="Unable to load staged synaptome"):
+            build_synaptome(
+                _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+            )
+
+    def test_a_synaptome_needs_at_least_one_new_group(self, tmp_path, stage_synaptome_input):
+        stage_synaptome_input()
+
+        with pytest.raises(BuildSynaptomeError, match="at least one synapse group"):
+            build_synaptome(
+                _config(groups={}, morphology_locations={}, source=_synaptome_source()),
+                tmp_path / "artifact",
+                db_client=object(),
+            )
+
+    @pytest.mark.parametrize(
+        "options",
+        [
+            {"source_population": "basal_sources"},
+            {"edge_population": "basal_sources__target__chemical"},
+        ],
+        ids=["node population", "edge population"],
+    )
+    def test_a_group_may_not_reuse_the_name_of_an_existing_population(
+        self, tmp_path, stage_synaptome_input, options
+    ):
+        stage_synaptome_input(**options)
+
+        with pytest.raises(BuildSynaptomeError, match="duplicate SONATA population name"):
+            build_synaptome(
+                _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+            )
+
+    def test_a_declared_mechanisms_directory_is_kept_and_used(
+        self, tmp_path, stage_synaptome_input
+    ):
+        stage_synaptome_input(mechanisms_dir="custom_mod")
+
+        result = build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        directory = result.output_directory
+        assert (directory / "custom_mod" / "Existing.mod").is_file()
+        assert (directory / "custom_mod" / "ProbAMPANMDA_EMS.mod").is_file()
+        assert not (directory / "mod").exists()
+        config = json.loads(result.circuit_config_path.read_text())
+        assert config["components"]["mechanisms_dir"] == "$BASE_DIR/custom_mod"
+
+    def test_a_synaptome_without_a_mechanisms_directory_gets_the_default_one(
+        self, tmp_path, stage_synaptome_input
+    ):
+        stage_synaptome_input()
+
+        result = build_synaptome(
+            _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+        )
+
+        assert (result.output_directory / "mod" / "ProbAMPANMDA_EMS.mod").is_file()
+        config = json.loads(result.circuit_config_path.read_text())
+        assert config["components"]["mechanisms_dir"] == "$BASE_DIR/mod"
+
+    def test_a_failure_to_stage_the_synaptome_names_it(self, tmp_path, stage_synaptome_input):
+        stage_synaptome_input(failure=RuntimeError("asset not found"))
+
+        with pytest.raises(
+            BuildSynaptomeError,
+            match=r"Unable to resolve or stage synaptome 'test-circuit'.*asset",
+        ):
+            build_synaptome(
+                _config(source=_synaptome_source()), tmp_path / "artifact", db_client=object()
+            )
+
+
+def _synaptome_entity(**overrides):
+    values = {
+        "id": "parent-id",
+        "subject": Mock(),
+        "brain_region": Mock(),
+        "build_category": CircuitBuildCategory.em_reconstruction,
+        "experiment_date": "2026-01-02",
+        "license": Mock(),
+    }
+    return SimpleNamespace(**{**values, **overrides})
+
+
+class TestRegisteringASynaptomeInput:
+    @staticmethod
+    def _run(monkeypatch, tmp_path, entity):
+        config = _config(source=_synaptome_source())
+        config.coordinate_output_root = tmp_path
+        monkeypatch.setattr(MEModelWithSynapsesCircuitFromID, "entity", Mock(return_value=entity))
+        result = BuildSynaptomeResult(
+            circuit_config_path=tmp_path / "SONATA" / "circuit_config.json",
+            output_directory=tmp_path / "SONATA",
+            generated_files=(),
+            model_template="hoc:Cell",
+        )
+        build = Mock(return_value=result)
+        register = create_autospec(
+            circuit_registration.register_circuit, return_value=SimpleNamespace(id="circuit-id")
+        )
+        update_activity = Mock()
+        monkeypatch.setattr(
+            "obi_one.scientific.tasks.build_synaptome.task.build_synaptome_artifact", build
+        )
+        monkeypatch.setattr(
+            "obi_one.scientific.tasks.build_synaptome.task.circuit_registration.register_circuit",
+            register,
+        )
+        monkeypatch.setattr(
+            MEModelSynapticModelPlacementTask,
+            "_get_execution_activity",
+            Mock(return_value=SimpleNamespace(id="activity-id")),
+        )
+        monkeypatch.setattr(
+            MEModelSynapticModelPlacementTask, "_update_execution_activity", update_activity
+        )
+        task = MEModelSynapticModelPlacementTask(config=config)
+        return task, build, register, update_activity, result
+
+    def test_the_new_circuit_is_registered_as_a_child_of_the_input(self, monkeypatch, tmp_path):
+        entity = _synaptome_entity()
+        task, build, register, update_activity, result = self._run(monkeypatch, tmp_path, entity)
+        db_client = Mock()
+
+        assert (
+            task.execute(db_client=db_client, execution_activity_id="activity-id") == "circuit-id"
+        )
+
+        build.assert_called_once()
+        register.assert_called_once_with(
+            client=db_client,
+            circuit_path=result.circuit_config_path,
+            name="test",
+            description="test synaptome",
+            build_category=CircuitBuildCategory.em_reconstruction,
+            brain_region=entity.brain_region,
+            subject=entity.subject,
+            target_simulator=TargetSimulator.NEURON,
+            experiment_date="2026-01-02",
+            license=entity.license,
+            parent=entity,
+            derivation_type=DerivationType.circuit_rewiring,
+        )
+        update_activity.assert_called_once()
+        assert update_activity.call_args.kwargs["generated"] == ["circuit-id"]
+
+    @pytest.mark.parametrize(
+        ("missing", "message"),
+        [("subject", "has no subject"), ("brain_region", "has no brain region")],
+    )
+    def test_a_synaptome_without_what_registration_needs_fails_before_the_build(
+        self, monkeypatch, tmp_path, missing, message
+    ):
+        task, build, register, _, _ = self._run(
+            monkeypatch, tmp_path, _synaptome_entity(**{missing: None})
+        )
+
+        with pytest.raises(ValueError, match=message):
+            task.execute(db_client=Mock())
+
+        build.assert_not_called()
+        register.assert_not_called()
