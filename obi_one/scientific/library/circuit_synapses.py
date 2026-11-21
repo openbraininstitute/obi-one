@@ -5,12 +5,12 @@ index gives, per node, the ranges of its edges, so the synapses of a node set co
 index, read remotely, instead of the edge files.
 """
 
+import io
 from collections import defaultdict
 from collections.abc import Callable
 from contextlib import nullcontext
 from pathlib import Path
 from threading import Lock
-from typing import BinaryIO
 
 import h5py
 import libsonata
@@ -52,7 +52,7 @@ def _synapses_per_cell(group: h5py.Group) -> np.ndarray:
 
 def read_synapses_per_cell(
     circuit_config_path: str | Path,
-    open_edges_file: Callable[[str], BinaryIO] | None = None,
+    open_edges_file: Callable[[str], io.IOBase] | None = None,
 ) -> dict[str, np.ndarray]:
     """The synapses onto each cell, for each population of biophysical cells.
 

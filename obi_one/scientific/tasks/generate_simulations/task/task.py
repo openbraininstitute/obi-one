@@ -559,9 +559,11 @@ class GenerateSimulationTask(Task):
         read remotely, once per circuit for all the simulations that follow.
         """
         circuit = getattr(self.config.initialize, "circuit", None)
+        staged = self._circuit
         if (
             not isinstance(self.config, CircuitSimulationSingleConfig)
             or not isinstance(circuit, CircuitFromID)
+            or not isinstance(staged, Circuit)
             # Until entitysdk has the field, entitycore would refuse it.
             or "number_synapses" not in Simulation.model_fields
         ):
@@ -571,14 +573,14 @@ class GenerateSimulationTask(Task):
 
         def read() -> dict[str, np.ndarray]:
             open_edges_file = None
-            if not self._circuit.has_staged_edges:
+            if not staged.has_staged_edges:
                 open_edges_file = remote_circuit_file_opener(
                     db_client,
                     entity_id=entity.id,
                     asset=asset,
-                    dest_dir=Path(self._circuit.path).parent.resolve(),
+                    dest_dir=Path(staged.path).parent.resolve(),
                 )
-            return read_synapses_per_cell(self._circuit.path, open_edges_file)
+            return read_synapses_per_cell(staged.path, open_edges_file)
 
         try:
             synapses = cached_synapses_per_cell(str(asset.id), read)
