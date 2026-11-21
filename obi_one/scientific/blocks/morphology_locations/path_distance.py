@@ -10,8 +10,7 @@ from obi_one.scientific.blocks.morphology_locations.base import (
     GeneratedMorphologyLocationsBlock,
 )
 from obi_one.scientific.library.morphology_locations import (
-    _CEN_IDX,
-    generate_neurite_locations_on,
+    generate_locations_in_path_distance_band,
 )
 
 PathDistanceToleranceParameter = Annotated[float, Field(ge=1.0)]
@@ -26,7 +25,7 @@ class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
         default=100.0,
         title="Path distance sampling mean",
         description=(
-            "Target soma path distance used to bias where candidate locations are selected. "
+            "Center of the soma path-distance band that locations are sampled from. "
             "Final locations are sampled uniformly from valid morphology intervals within "
             "the path-distance tolerance."
         ),
@@ -52,18 +51,14 @@ class PathDistanceMorphologyLocations(GeneratedMorphologyLocationsBlock):
     )
 
     def _make_points(self, morphology: morphio.Morphology) -> pd.DataFrame:
-        locs = generate_neurite_locations_on(
+        return generate_locations_in_path_distance_band(
             morphology,
-            n_centers=self.number_of_locations,  # ty:ignore[invalid-argument-type]
-            n_per_center=1,
-            srcs_per_center=1,
-            center_path_distances_mean=self.path_dist_mean,  # ty:ignore[invalid-argument-type]
-            center_path_distances_sd=0.1 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
-            max_dist_from_center=0.9 * self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
+            n_locations=self.number_of_locations,  # ty:ignore[invalid-argument-type]
+            min_path_distance=self.path_dist_mean - self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
+            max_path_distance=self.path_dist_mean + self.path_dist_tolerance,  # ty:ignore[unsupported-operator]
             lst_section_types=self.section_types,  # ty:ignore[invalid-argument-type]
             seed=self.random_seed,  # ty:ignore[invalid-argument-type]
-        ).drop(columns=[_CEN_IDX])
-        return locs
+        )
 
     def _check_parameter_values(self) -> None:
         # Only check whenever list are resolved to individual objects
