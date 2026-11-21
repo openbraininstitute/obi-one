@@ -153,23 +153,35 @@ def _estimate_counted(simulation, *, simulator="CORENEURON"):
     return result.instances, config_asset
 
 
-def test_the_synapses_of_the_failed_job_need_more_than_a_node():
-    # 1.25 * 2.5 * (0.0055 * 9,587 + 3e-6 * 219.1M) = 2,219 GB, over 670 GB usable per node.
-    assert _estimate_counted(FAILED_JOB)[0] == 4
+def test_the_failed_job_gets_the_two_nodes_it_ran_on():
+    """It ran out of memory on one node, and ran in 1 h 45 min on two (job 01a1eea9)."""
+    # 1.15 * 1.1 * (0.0055 * 9,587 + 3.5e-6 * 219.1M) = 1,037 GB, over 670 GB usable per node.
+    assert _estimate_counted(FAILED_JOB)[0] == 2
 
 
 def test_neuron_needs_less_memory_than_coreneuron():
-    nodes, config_asset = _estimate_counted(FAILED_JOB, simulator="NEURON")
+    simulation = {"number_neurons": 9_587, "number_synapses": 300_000_000}
 
-    assert nodes == 2  # 1.25 * 710 GB over 670 GB
+    neuron, config_asset = _estimate_counted(simulation, simulator="NEURON")
+    coreneuron, _ = _estimate_counted(simulation)
+
+    assert (neuron, coreneuron) == (2, 3)  # 1,269 and 1,396 GB over 670 GB
     assert config_asset.call_args.kwargs["selection"] == {"label": "sonata_simulation_config"}
 
 
-def test_the_estimate_is_never_below_the_per_cell_rule():
+def test_the_estimate_is_never_below_the_per_cell_floor():
     few_synapses = {"number_neurons": 1_000_000, "number_synapses": 10}
 
-    per_cell_rule = math.ceil(test_module.MEM_GB_PER_CELL * 1_000_000 / 788)
-    assert _estimate_counted(few_synapses)[0] == per_cell_rule
+    floor = math.ceil(test_module.MIN_GB_PER_CELL * 1_000_000 / 788)
+    assert _estimate_counted(few_synapses)[0] == floor == 39
+
+
+def test_counted_synapses_lift_the_temporary_per_cell_rule():
+    """Counted synapses replace the stopgap: an SSCX-like simulation gets the 0.03 floor."""
+    sscx = {"number_neurons": 20_000, "number_synapses": 20_000 * 2_400}
+
+    assert _estimate_counted(sscx)[0] == math.ceil(0.03 * 20_000 / 788) == 1
+    assert math.ceil(test_module.MEM_GB_PER_CELL * 20_000 / 788) == 3
 
 
 def test_a_simulation_without_synapses_keeps_the_per_cell_rule():
