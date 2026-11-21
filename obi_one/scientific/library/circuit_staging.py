@@ -22,11 +22,11 @@ from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 
 if TYPE_CHECKING:
+    import io
     from collections.abc import Callable
     from uuid import UUID
 
     import entitysdk.client
-    from entitysdk.http_file import HttpFile
     from entitysdk.models.asset import Asset
 
 L = logging.getLogger(__name__)
@@ -145,7 +145,7 @@ def stage_circuit_nodes(
 
 def remote_circuit_file_opener(
     db_client: entitysdk.client.Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
-) -> Callable[[str], HttpFile]:
+) -> Callable[[str], io.IOBase]:
     """A function that opens a file of the circuit remotely, given its path in the staged config.
 
     Reads then fetch only the bytes they need, with HTTP range requests, so an index can be read
@@ -155,9 +155,10 @@ def remote_circuit_file_opener(
         entity_id=entity_id, entity_type=Circuit, asset_id=asset.id
     ).files
 
-    def open_file(path: str) -> HttpFile:
+    def open_file(path: str) -> io.IOBase:
         asset_path = _asset_path_in(path, dest_dir)
-        return db_client.open_remote_file(
+        # Remove the ty ignore once entitysdk releases Client.open_remote_file (entitysdk#310).
+        return db_client.open_remote_file(  # ty:ignore[unresolved-attribute]
             entity_id=entity_id,
             entity_type=Circuit,
             asset_id=asset.id,
