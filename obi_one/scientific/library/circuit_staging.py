@@ -22,14 +22,20 @@ from entitysdk.models.circuit import Circuit
 from entitysdk.types import FetchFileStrategy
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from uuid import UUID
 
     import entitysdk.client
+    from entitysdk.http_file import HttpFile
     from entitysdk.models.asset import Asset
 
 L = logging.getLogger(__name__)
 
 CIRCUIT_CONFIG_FILE_NAME = "circuit_config.json"
+
+# Bytes fetched per request when a file is read remotely. An edge index is about 100 kB, and each
+# request takes the same time whatever its size, so small blocks beat the 4 MB default.
+REMOTE_BLOCK_SIZE = 256 * 1024
 
 # Matches what ``entitysdk.staging.circuit.stage_circuit`` selects, so the partial and full
 # staging paths always operate on the same asset.
@@ -135,3 +141,29 @@ def stage_circuit_nodes(
         )
 
     return config_path
+
+
+def remote_circuit_file_opener(
+    db_client: entitysdk.client.Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
+) -> Callable[[str], HttpFile]:
+    """A function that opens a file of the circuit remotely, given its path in the staged config.
+
+    Reads then fetch only the bytes they need, with HTTP range requests, so an index can be read
+    out of an edges file of many GB.
+    """
+    sizes = db_client.list_directory(
+        entity_id=entity_id, entity_type=Circuit, asset_id=asset.id
+    ).files
+
+    def open_file(path: str) -> HttpFile:
+        asset_path = _asset_path_in(path, dest_dir)
+        return db_client.open_remote_file(
+            entity_id=entity_id,
+            entity_type=Circuit,
+            asset_id=asset.id,
+            asset_path=asset_path,
+            size=sizes[Path(asset_path)].size,
+            block_size=REMOTE_BLOCK_SIZE,
+        )
+
+    return open_file
