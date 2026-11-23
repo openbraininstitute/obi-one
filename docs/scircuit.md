@@ -189,13 +189,13 @@ Recordings capture network activity:
 - **ExtracellularElectrodeArrayRecordingBlock** / **TimeWindowExtracellularElectrodeArrayRecordingBlock**: Each recorded neuron's contribution to the extracellular signal (LFP) per electrode, for the full experiment or a time window. Not offered by circuit simulations for now (left out of their recordings union), as its output grows with the number of neurons
 - **Spike detection**: Automatic spike detection and recording
 
-#### ExtracellularElectrodeArrayRecordingBlock
+#### SummedExtracellularElectrodeArrayRecordingBlock
 
-Records the extracellular signal seen by each electrode of a recording array. Only available for circuit simulations, since the signal is computed from a weight matrix covering the whole circuit, and only offered for circuits larger than a small microcircuit: the circuit's `ShowExtracellularRecordings` usability flag is false at single, pair and small scale, which greys the block out.
+Records the extracellular signal seen by each electrode of a recording array, summed over the recorded neurons: one trace per electrode for each population of the neuron set. Only available for circuit simulations, since the signal is computed from a weight matrix covering the whole circuit. It is offered at every circuit scale. `TimeWindowSummedExtracellularElectrodeArrayRecordingBlock` records only between its Start time and End time.
 
 - **Extracellular Recording Array**: ID of a `SimulatableExtracellularRecordingArray` entity, built for the circuit being simulated by `CreateExtracellularRecordingArrayTask`. Generation refuses an array built for another circuit.
 - **Neuron Set**: Neurons contributing to the signal
-- **Timestep**: Interval between recorded samples in ms
+- **Timestep**: Interval between recorded samples in ms (default 0.1 ms, at least 0.025 ms)
 
 `CreateExtracellularRecordingArrayTask` builds the circuit 50 cells per MPI process at a time and computes the weights 2,000 segments at a time, so its memory barely grows with the circuit or the array. The weights file holds 8 bytes per segment and electrode, and the task asks for disk to fit it, assuming 1,000 segments per cell, up to the 200 GB a task can have: about 23 million cells × electrodes, such as 10,000 cells with 2,300 electrodes. Its time limit allows 4 s per cell in each process: microcircuits need under 1 s, but nbS1-O1 (211,712 cells) needs about 3 s, as its morphologies are read from a 12.6 GB container over S3.
 
@@ -211,7 +211,8 @@ The block emits a SONATA report of type `lfp` whose `electrodes_file` is named a
     "dt": 0.1,
     "start_time": 0.0,
     "end_time": 100.0,
-    "electrodes_file": "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44.h5"
+    "electrodes_file": "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44.h5",
+    "method": "sum"
   }
 }
 ```

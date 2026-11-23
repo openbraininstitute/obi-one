@@ -15,25 +15,10 @@ from obi_one.scientific.blocks.recordings.base import (
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
-from obi_one.scientific.library.entity_property_types import (
-    CircuitUsability,
-    MappedPropertiesGroup,
-)
 
 
 class ExtracellularElectrodeArrayRecording(Recording, ABC):
     """An LFP recording with an extracellular recording array, summed or per neuron."""
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS,
-            SchemaKey.FALSE_MESSAGE: (
-                "Extracellular recordings are only available for circuits larger than a small "
-                "microcircuit."
-            ),
-        },
-    }
 
     # The SONATA report's `method`. None leaves it out, so the report is per cell, its default.
     method: ClassVar[str | None]

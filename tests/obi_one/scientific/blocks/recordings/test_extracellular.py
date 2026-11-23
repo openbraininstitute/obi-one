@@ -17,10 +17,6 @@ from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
-from obi_one.scientific.library.entity_property_types import (
-    CircuitUsability,
-    MappedPropertiesGroup,
-)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -216,14 +212,9 @@ class TestTimeWindow:
 
 class TestCircuitUsability:
     @pytest.mark.parametrize("block", SUMMED_BLOCKS + PER_NEURON_BLOCKS)
-    def test_is_offered_only_where_the_circuit_allows_extracellular_recordings(self, block):
-        """The frontend greys the block out when the circuit's usability flag is false."""
-        schema = block.model_json_schema()
-        usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
-
-        assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
-        assert usability[SchemaKey.PROPERTY] == CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS
-        assert usability[SchemaKey.FALSE_MESSAGE]
+    def test_is_offered_at_every_circuit_scale(self, block):
+        """Every circuit simulation runs through the launch system, so none greys it out."""
+        assert SchemaKey.BLOCK_USABILITY_DICTIONARY not in block.model_json_schema()
 
 
 class TestCircuitRecordingUnion:
