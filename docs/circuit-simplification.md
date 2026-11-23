@@ -5,7 +5,7 @@ tags:
 
 # Circuit Simplification
 
-Circuit simplification produces a reduced, simulatable SONATA circuit from a biophysically detailed parent circuit using the [sonata-simplify](https://github.com/openbraininstitute/sonata-simplify) pipeline (optional extra: `pip install 'obi-one[simplification]'`, which pulls `sonata-simplify>=0.2.6`; bluecellulab comes in as a sonata-simplify dependency). Each selected algorithm registers one derived `Circuit` entity, linked to the parent by a `circuit_simplification` derivation.
+Circuit simplification produces a reduced, simulatable SONATA circuit from a biophysically detailed parent circuit using the [sonata-simplify](https://github.com/openbraininstitute/sonata-simplify) pipeline (optional extra: `pip install 'obi-one[simplification]'`, which pulls `sonata-simplify>=0.2.6`; bluecellulab comes in as a sonata-simplify dependency). The selected algorithm registers one derived `Circuit` entity, linked to the parent by a `circuit_simplification` derivation.
 
 ## Key Components
 
@@ -14,8 +14,8 @@ Circuit simplification produces a reduced, simulatable SONATA circuit from a bio
 The `CircuitSimplificationScanConfig` class (located in `obi_one/scientific/tasks/circuit_simplification/config.py`) is UI-enabled and configures the simplification. It includes:
 
 - **Initialize**: the parent `Circuit` entity, and an optional **Target Neuron Set** reference. The pipeline uses as many worker processes as the launch system allocated (`JOB_CPUS`), or 1 when run locally.
-- **Neuron Sets**: a dictionary of biophysical neuron set blocks (e.g. by e-type or m-type via property neuron sets) that the target neuron set can reference. Without a target neuron set all biophysical neurons are simplified. A target neuron set is only accepted when every selected algorithm supports partial simplification (currently `single_compartment`); otherwise config validation fails.
-- **Algorithms**: a dictionary of simplification algorithm blocks. Each block names one algorithm to run; the registered output circuit is named `<parent>__<campaign>__<algorithm>`.
+- **Neuron Sets**: a dictionary of biophysical neuron set blocks (e.g. by e-type or m-type via property neuron sets) that the target neuron set can reference. Without a target neuron set all biophysical neurons are simplified. A target neuron set is only accepted when the selected algorithm supports partial simplification (currently `single_compartment`); otherwise config validation fails.
+- **Algorithm**: one simplification algorithm block, chosen from the list of supported algorithms. A campaign runs exactly one algorithm; the registered output circuit is named `<parent>__<campaign>__<algorithm>`. Scannable options of the algorithm (such as `filter_poles`) still expand into one config per value, and every config runs the same algorithm.
 
 ### Supported algorithms
 
@@ -30,7 +30,7 @@ The available algorithm blocks map to a base algorithm in sonata-simplify plus a
 
 Each output circuit is smoke-checked for BluePySnap loadability before registration. The simulator-specific output (`target_simulator` in the exported `circuit_config.json`, defaulting to NEURON) determines the registered entity's target simulator. For provenance, the versions of `obi-one`, `sonata-simplify` and `bluecellulab` are appended to the registered circuit's description and written, together with the algorithm parameters, to `simplification_provenance.json` next to the output `circuit_config.json`.
 
-Resource estimation (`app/services/resource_estimation/circuit_simplification.py`) sizes filter (`single_compartment`), morphological-reduction (`neuron_reduce`, `neat_reduction`) and point-neuron algorithms on separate tiers; cores follow the most demanding selected algorithm and the time limit adds up over algorithms, since they run sequentially.
+Resource estimation (`app/services/resource_estimation/circuit_simplification.py`) sizes filter (`single_compartment`), morphological-reduction (`neuron_reduce`, `neat_reduction`) and point-neuron algorithms on separate tiers.
 
 ## Local Notebook
 
