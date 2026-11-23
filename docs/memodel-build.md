@@ -30,6 +30,6 @@ The task:
 
 ## Running
 
-On the platform the build runs in Bluenaas, which takes the id of the single config. The task is also registered with the launch system, and the example notebook in `examples/obi_one/scientific/tasks/memodel_build/` runs a build locally.
+On the platform the build runs in Bluenaas, which takes the id of the single config. Launch-system execution uses the shared `neurodamus_image` dependencies and the `python_3_12_openmpi5_neuron9_neurodamus` executor image (same as simulation execution). The example notebook in `examples/obi_one/scientific/tasks/memodel_build/` is unchanged: it still runs a build locally with `obi-one[bluecellulab]` and NEURON on the host.
 
 Calibration and validation run in fresh Python processes, since NEURON loads mechanisms only once per process.

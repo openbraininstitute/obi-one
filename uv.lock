@@ -938,16 +938,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.19.37"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/db/48cee9da4aa2f14d455c9e337c176b66ef76815603b8fab8b7318c76bdee/entitysdk-0.19.37.tar.gz", hash = "sha256:2dd511f38808a8ebbf5913ce2d00ebb063c3e43c1e8327dfe65bf98ee8d8aa3f", size = 83203, upload-time = "2026-11-04T15:34:13.752Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/5f/97a5e034bafae823e2010076a9c41906162915cf91901c7ad32792679144/entitysdk-0.20.0.tar.gz", hash = "sha256:944a61b13f1eb417697919490ed33515bf63cd39547ea887630db4423b5b16cf", size = 84032, upload-time = "2026-11-19T16:36:21.981Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/1d/665acd6adf6dfd5c90faff4a4696a040bdd7897c668c10e8e659a7644ef2/entitysdk-0.19.37-py3-none-any.whl", hash = "sha256:e6b945d037ff01716f8f3445a312580249216a0076995fa891156b71dc62afd1", size = 117952, upload-time = "2026-11-04T15:34:12.042Z" },
+    { url = "https://files.pythonhosted.org/packages/71/75/8dccf17675134db25c30f0aa84f009597bb9336220e63fec62925df3883f/entitysdk-0.20.0-py3-none-any.whl", hash = "sha256:cef01c0745b103812a128e957a8610f1a8c50b346184fce0f163b5e4e0fcd892", size = 119198, upload-time = "2026-11-19T16:36:20.322Z" },
 ]
 
 [[package]]
@@ -1747,17 +1747,17 @@ wheels = [
 
 [[package]]
 name = "libsonata"
-version = "0.2.2"
+version = "0.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e9/04/fd336ee02b5518cb401b063bf4a051c28cb2c8a6a2608d3b9ea9bcb6d858/libsonata-0.2.2.tar.gz", hash = "sha256:5d808574a1818c3d44ce164c722e5849822804bf0a90d5ea061d2432505803d2", size = 2453558, upload-time = "2026-09-23T09:41:47.631Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/60/512a8dc61ba1f3937be17aec5f482568d6a3aef6a88f500240851e8f1731/libsonata-0.2.4.tar.gz", hash = "sha256:31dc927a11bb36fc74b58862c7fea16a7ccac577573f03c5bc4b8a522631eadc", size = 2457028, upload-time = "2026-11-20T09:19:38.321Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/d5/de5b66a0fef04a53b1a13b13480eccfa22f13d4ff488c327d06865dc6a1d/libsonata-0.2.2-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:22b1994ac6c5f83126796b55c9a25bbbebea89eb117e94ad28ea0f5140f5a4b8", size = 2130364, upload-time = "2026-09-23T09:41:16.595Z" },
-    { url = "https://files.pythonhosted.org/packages/42/57/5fda07853716ad858f786ef489d3453766929816a3ae8f84575aedc1622a/libsonata-0.2.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:718c1faa28ade57e174e9df901665e40185217add8eacd6f28847c3ad874d1ee", size = 1842341, upload-time = "2026-09-23T09:41:18.291Z" },
-    { url = "https://files.pythonhosted.org/packages/5f/18/74b0585046572b2036fa42874028a7834f99f04e93bb5b7eaa2e8cdd0ce0/libsonata-0.2.2-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:ac4370d80a97105fe10e186e8b9923039334d15474e0cc0e7214802344e72814", size = 2371082, upload-time = "2026-09-23T09:41:19.872Z" },
-    { url = "https://files.pythonhosted.org/packages/a8/07/f88d1ef92c8b4a10624d2e4ad7067405338e3f757cc1ec9e320aae139520/libsonata-0.2.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:57577aa4395a4cfa77798345a72642ea05291cd4b24f5eef9127ca6c7c57759a", size = 2625854, upload-time = "2026-09-23T09:41:21.323Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/15/365d5a5602ccecd79f36ebba2f2228d5c1c2a6ac2c8c2dcff4164a420e94/libsonata-0.2.4-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:c8aba4c5ffddec0f92edc043a633287b6eec3fe1e6e939b66a86f447b21add21", size = 2135357, upload-time = "2026-11-20T09:19:11.896Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/59/7dd89c2973bb6874163d13b15fd78eb86371e8e55f79c51a3769b2a5ee9c/libsonata-0.2.4-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:9c2d776c4bb2be36b78a52fd37a1ee904577e6e7fcec60e729d4abe0bf6429a6", size = 1826223, upload-time = "2026-11-20T09:19:13.392Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/84/5932f16dba24e96a9de682dbde209b20a794687e3bd7e161aa226d086f8e/libsonata-0.2.4-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:7ba54a37d227b36f6cc6073204a9aba73225ffdafe5ecc3095dbc39085c74773", size = 2376721, upload-time = "2026-11-20T09:19:15.056Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/fd/2e5914c9b8ca61f65176cde63033b3f02d755c02dfdc08e32d492173ddfb/libsonata-0.2.4-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:d9062677615f1dfc67df6b6503f42c497e5400ffb64f09d52653e4e98825ce4b", size = 2629074, upload-time = "2026-11-20T09:19:16.867Z" },
 ]
 
 [[package]]
@@ -2475,10 +2475,8 @@ service = [
     { name = "bluecellulab" },
     { name = "bluepyemodel" },
     { name = "cachetools" },
-    { name = "connectome-analysis" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "networkx" },
     { name = "obp-accounting-sdk" },
     { name = "pydantic-core" },
     { name = "pydantic-settings" },
@@ -2525,13 +2523,13 @@ requires-dist = [
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
     { name = "connectome-manipulator", specifier = ">=1.0.4" },
     { name = "connectome-utilities", specifier = ">=0.4.18" },
-    { name = "entitysdk", specifier = ">=0.19.33" },
+    { name = "entitysdk", specifier = ">=0.20" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },
     { name = "ipykernel", marker = "extra == 'notebooks'" },
     { name = "jupyter", marker = "extra == 'notebooks'" },
     { name = "jupyterlab", marker = "extra == 'notebooks'", specifier = ">=4.4.8" },
-    { name = "libsonata", specifier = ">=0.2.0" },
+    { name = "libsonata", specifier = ">=0.2.4" },
     { name = "morph-spines", specifier = ">=1.1.0" },
     { name = "morph-tool" },
     { name = "networkx", marker = "extra == 'connectivity'", specifier = ">=3.4.2" },
@@ -2542,8 +2540,8 @@ requires-dist = [
     { name = "obi-auth", specifier = ">=1.0.0" },
     { name = "obi-notebook", marker = "extra == 'notebooks'" },
     { name = "obi-one", extras = ["bluecellulab", "brian2", "circuit-extraction", "connectivity", "emodel", "meshing", "notebooks", "service"], marker = "extra == 'all'" },
-    { name = "obi-one", extras = ["connectivity", "emodel"], marker = "extra == 'service'" },
-    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.6.8" },
+    { name = "obi-one", extras = ["emodel"], marker = "extra == 'service'" },
+    { name = "obp-accounting-sdk", marker = "extra == 'service'", specifier = ">=0.7.0" },
     { name = "psutil", specifier = ">=6.1.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", marker = "extra == 'service'" },
@@ -2580,14 +2578,14 @@ docs = [
 
 [[package]]
 name = "obp-accounting-sdk"
-version = "0.6.8"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/4b/5c2839462cee59097a00830f471a11f225a2a138c236c9d145bc26043a1c/obp_accounting_sdk-0.6.8.tar.gz", hash = "sha256:dd895d3250a1767274550b714620e193196dfc52c834c8357234b6cd57697cf4", size = 37055, upload-time = "2026-10-14T10:24:18.303Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/7d/88d516105f3ed68136d094ab27e3efe0d0fe51a3a76b24d6bac881893598/obp_accounting_sdk-0.7.0.tar.gz", hash = "sha256:8107d31221a73aa1d8e6c9ff52ecb4558fd54d41be1942128f174dac10efe92a", size = 37396, upload-time = "2026-11-17T12:45:57.376Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/d0/8d16eff282e7730131e61fffc2c2c68cde56b473bf8331bf71ed637f7265/obp_accounting_sdk-0.6.8-py3-none-any.whl", hash = "sha256:ec746ff2d30d598722fe87d0d665c3be81ea2f221881e112383b473618c8013a", size = 27877, upload-time = "2026-10-14T10:24:16.684Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/fd/c656e6e14964d34fd906f0258c91cd1471a55d42de1930c5660a5401992c/obp_accounting_sdk-0.7.0-py3-none-any.whl", hash = "sha256:8ad209938b0f8837ff6849bb069ba9585e6cb8b9500bb5734006a02306446e62", size = 28096, upload-time = "2026-11-17T12:45:56.101Z" },
 ]
 
 [[package]]

@@ -33,7 +33,7 @@ dependencies = [
     # `make compile-deps` updates the uv lock file and ensures entitysdk is at the latest version.
     # WARNING: `make upgrade-deps` upgrades all dependencies (including optional) and may introduce breaking changes.
     # Add an upper bound version only if automatic upgrades must be prevented.
-    "entitysdk>=0.19.33",
+    "entitysdk>=0.20",
     "pydantic>=2.10.6",
     # -- SCIENTIFIC
     "bluepyefe>=2.3.59",
@@ -44,7 +44,7 @@ dependencies = [
     "morph_spines>=1.1.0",
     "morph-tool",
     "neurom",
-    "libsonata>=0.2.0",
+    "libsonata>=0.2.4",
     "obi-auth>=1.0.0",
     "psutil>=6.1.0",
     "pylmesh",
@@ -88,14 +88,13 @@ notebooks = [
 ]
 
 # SERVICE - optional, needed to run obi-one as a service.
-# Includes connectivity and emodel (needed by the production image and service tests).
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
 service = [
-    "obi-one[connectivity,emodel]",
+    "obi-one[emodel]",
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",
-    "obp-accounting-sdk>=0.6.8",
+    "obp-accounting-sdk>=0.7.0",
     "pydantic-core",
     "pydantic-settings>=2.8.1",
     "pyjwt>=2.10.1",
@@ -106,7 +105,7 @@ service = [
 ]
 
 # ALL - convenience alias to install all optional dependencies.
-# connectivity and emodel are listed explicitly (also pulled by service) so all stays complete if they leave service later.
+# emodel is listed explicitly (also pulled by service) so all stays complete if it leaves service later.
 all = ["obi-one[bluecellulab,brian2,circuit-extraction,connectivity,emodel,meshing,notebooks,service]"]
 
 # BLUERECORDING - optional, needed for extracellular recording array tasks.

@@ -97,6 +97,9 @@ This installs everything needed for development: all optional dependencies + dev
 # Service deployment
 make install-service
 
+# Connectivity analysis & plots (connectome-analysis / networkx)
+make install-connectivity
+
 # Notebook development
 make install-notebooks
 
@@ -108,6 +111,8 @@ make install-all
 ```
 
 Circuit extraction execution needs the optional `circuit-extraction` extra (`brainbuilder`); config generation and service submission do not. Launch-system jobs install it via `launch_scripts/launch_task_for_single_config_asset/dependencies/circuit_extraction.txt`.
+
+Connectivity plots and topology helpers need the optional `connectivity` extra (`connectome-analysis`, `networkx`). Workers that run those tasks pin it in their launch-script dependency files.
 
 ## Technical Overview / Glossary
 
@@ -130,6 +135,8 @@ Launch the FastAPI service, with docs viewable at: http://127.0.0.1:8100/docs
 make install-service
 make run-local
 ```
+
+The production service Docker image is built for **`linux/arm64`** (CI app tests and the publish workflow run on GitHub’s `ubuntu-24.04-arm`). Local `make build` / `docker compose` also target `linux/arm64`; on an amd64 host that uses emulation unless Buildx/QEMU is set up.
 
 ## Examples
 

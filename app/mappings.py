@@ -216,7 +216,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.memodel_build,
         config_type=TaskConfigType.memodel_build__config,
         activity_type=TaskActivityType.memodel_build__execution,
-        code=_obi_one_code("memodel_build.txt"),
+        code=_neurodamus_image_code(),
         resources=MachineResources(
             cores=4,
             memory=8,
@@ -226,6 +226,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
                 "cell_a": MachinePlacementType.ecs_ec2,
                 "cell_b": MachinePlacementType.azure_container_apps,
             },
+            image_type=MachineExecutorImageType.python_3_12_openmpi5_neuron9_neurodamus,
         ),
     ),
     TaskDefinitionLegacy(

@@ -6,7 +6,12 @@ from uuid import uuid4
 import entitysdk
 import pytest
 
+from obi_one.core.info import Info
+from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.tasks.circuit_extraction.config import CircuitExtractionSingleConfig
 from obi_one.scientific.tasks.circuit_extraction.estimate import estimate_circuit_extraction_count
+
+from tests.utils import CIRCUIT_DIR
 
 
 def test_estimate_circuit_extraction_count_from_neuron_set_size():
@@ -202,3 +207,48 @@ def test_estimate_circuit_extraction_count_stages_nodes_only():
     # Exactly one staging attempt, and it is nodes_only.
     assert len(stage_calls) == 1
     assert stage_calls[0]["nodes_only"] is True
+
+
+def _run_estimate_with_config(single_config):
+    db_client = entitysdk.Client(api_url="http://my-url", token_manager="token")  # ruff: ignore[hardcoded-password-func-arg]
+    db_client.get_entity = lambda **_kwargs: SimpleNamespace()
+    db_client.download_content = lambda **_kwargs: json.dumps({}).encode("utf-8")
+    with (
+        patch(
+            "obi_one.scientific.tasks.circuit_extraction.estimate.db_sdk.get_entity_asset_by_label",
+            return_value=SimpleNamespace(id=uuid4()),
+        ),
+        patch(
+            "obi_one.scientific.tasks.circuit_extraction.estimate.deserialize_obi_object_from_json_data",
+            return_value=SimpleNamespace(model_dump=dict),
+        ),
+        patch(
+            "obi_one.scientific.tasks.circuit_extraction.estimate.CircuitExtractionSingleConfig.model_validate",
+            return_value=single_config,
+        ),
+    ):
+        return estimate_circuit_extraction_count(db_client=db_client, config_id=uuid4())
+
+
+def test_estimate_circuit_extraction_count_uses_default_neuron_set():
+    """Without a neuron set, the default one is counted, as the task extracts it."""
+    default_neuron_set = SimpleNamespace(get_neuron_ids=lambda **_kwargs: {"pop_a": [1, 2]})
+    fake_config = SimpleNamespace(
+        initialize=SimpleNamespace(circuit=SimpleNamespace(), neuron_set=None),
+        default_neuron_set_reference=SimpleNamespace(block=default_neuron_set),
+    )
+    assert _run_estimate_with_config(fake_config) == 2
+
+
+def test_estimate_circuit_extraction_count_default_neuron_set_counts_biophysical_neurons():
+    """The default neuron set of a real config counts the biophysical neurons only."""
+    config = CircuitExtractionSingleConfig.empty_config()
+    config.set(Info(campaign_name="test", campaign_description="test"), name="info")
+    circuit = Circuit(
+        name="N_10__top_nodes_dim6",
+        path=str(CIRCUIT_DIR / "N_10__top_nodes_dim6" / "circuit_config.json"),
+    )
+    config.set(CircuitExtractionSingleConfig.Initialize(circuit=circuit), name="initialize")
+    assert config.initialize.neuron_set is None
+    # 10 biophysical neurons; the 351 virtual ones (POm, VPM) are not counted
+    assert _run_estimate_with_config(config) == 10

@@ -4,7 +4,8 @@ from pydantic import Discriminator
 
 from obi_one.core.block_reference import BlockReference
 from obi_one.scientific.blocks.recordings.extracellular import (
-    ExtracellularElectrodeArrayRecordingBlock,
+    SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.recordings.ion_channel import IonChannelVariableRecording
 from obi_one.scientific.blocks.recordings.morphology_location import (
@@ -28,7 +29,11 @@ _VOLTAGE_RECORDINGS = _SOMA_VOLTAGE_RECORDINGS | _MORPHOLOGY_LOCATION_VOLTAGE_RE
 
 # An extracellular recording needs a weight matrix computed for the whole circuit, so it is only
 # offered by simulations of a circuit.
-_CIRCUIT_RECORDINGS = _VOLTAGE_RECORDINGS | ExtracellularElectrodeArrayRecordingBlock
+_CIRCUIT_RECORDINGS = (
+    _VOLTAGE_RECORDINGS
+    | SummedExtracellularElectrodeArrayRecordingBlock
+    | TimeWindowSummedExtracellularElectrodeArrayRecordingBlock
+)
 
 _RECORDINGS = IonChannelVariableRecording | _CIRCUIT_RECORDINGS
 

@@ -162,6 +162,6 @@ ALGORITHM_BLOCK_CLASSES: dict[str, type[SimplificationAlgorithm]] = {
 }
 
 
-def default_simplification_algorithms() -> dict[str, SimplificationAlgorithmUnion]:
+def default_simplification_algorithm() -> SingleCompartmentAlgorithm:
     """Return the default algorithm selection for a new simplification config."""
-    return {"single_compartment": SingleCompartmentAlgorithm()}
+    return SingleCompartmentAlgorithm()

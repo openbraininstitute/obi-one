@@ -1515,6 +1515,47 @@ def test_generate_compressed_circuit_asset_with_gz_file(tmp_path):
     )
 
 
+def test_generate_compressed_circuit_asset_compresses_non_gz(tmp_path):
+    """Non-.gz circuits are compressed using the circuit entity name."""
+    circuit_config = tmp_path / "circuit_config.json"
+    circuit_config.write_text("{}")
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    compressed = tmp_path / "out" / "named.tar.gz"
+    compressed.write_bytes(b"gz")
+
+    client = MagicMock()
+    circuit_entity = MagicMock()
+    circuit_entity.name = "named"
+
+    with (
+        patch(
+            "obi_one.utils.circuit.run_circuit_folder_compression",
+            return_value=compressed,
+        ) as mock_compress,
+        patch(
+            "obi_one.db_sdk.registration.circuit.generate.add_compressed_circuit_asset"
+        ) as mock_add,
+    ):
+        generate_compressed_circuit_asset(
+            circuit_path=circuit_config,
+            output_dir=output_dir,
+            client=client,
+            circuit_entity=circuit_entity,
+        )
+
+    mock_compress.assert_called_once_with(
+        circuit_path=circuit_config,
+        circuit_name="named",
+        output_root=output_dir,
+    )
+    mock_add.assert_called_once_with(
+        client=client,
+        compressed_file=compressed,
+        registered_circuit=circuit_entity,
+    )
+
+
 def test_generate_compressed_circuit_asset_non_gz_requires_output_dir():
     """Test that a non-.gz circuit_path without output_dir raises ValueError."""
     with pytest.raises(ValueError, match="output_dir is required"):

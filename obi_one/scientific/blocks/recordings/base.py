@@ -5,7 +5,7 @@ import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -19,6 +19,32 @@ from obi_one.scientific.unions_and_references.combined_neuron_sets import (
     NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION,
     resolve_neuron_set_ref_to_node_set,
 )
+
+WindowStartTime = Annotated[
+    NonNegativeFloat | list[NonNegativeFloat],
+    Field(
+        default=0.0,
+        title="Start time",
+        description="Recording start time in milliseconds (ms).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    ),
+]
+
+WindowEndTime = Annotated[
+    NonNegativeFloat | list[NonNegativeFloat],
+    Field(
+        default=100.0,
+        title="End time",
+        description="Recording end time in milliseconds (ms).",
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLISECONDS,
+        },
+    ),
+]
 
 
 class BaseRecording(Block, ABC):
@@ -130,3 +156,24 @@ class SimulationDtRecording(BaseRecording, ABC):
     def recording_timestep(self) -> PositiveFloat:
         """Interval between recorded samples in milliseconds (ms)."""
         return self._simulation_timestep
+
+
+def check_time_window(
+    recording: BaseRecording,
+    start_time: NonNegativeFloat | list[NonNegativeFloat],
+    end_time: NonNegativeFloat | list[NonNegativeFloat],
+) -> None:
+    """Check that every window a sweep makes ends later than it starts.
+
+    A grid scan pairs every start time with every end time, so each pair is checked.
+    """
+    starts = start_time if isinstance(start_time, list) else [start_time]
+    ends = end_time if isinstance(end_time, list) else [end_time]
+    backwards = [(start, end) for start in starts for end in ends if end <= start]
+    if not backwards:
+        return
+
+    recording_name = f" '{recording.block_name}'" if recording.has_block_name() else ""
+    windows = ", ".join(f"{start} to {end} ms" for start, end in backwards)
+    msg = f"Recording{recording_name}: End time must be later than start time ({windows})!"
+    raise ConfigValidationError(msg)

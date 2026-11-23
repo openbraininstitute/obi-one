@@ -149,7 +149,7 @@ def get_electrophysiology_metrics(  # ruff: ignore[too-many-branches, too-many-l
     )
 
     # Get the available stimulus types from the trace metadata
-    available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}  # ty:ignore[not-iterable, unresolved-attribute]
+    available_stimuli = {stimulus.name.lower() for stimulus in trace_metadata.stimuli}  # ty:ignore[not-iterable]
 
     # If the user did not specify any stimulus types, try to use all step-like stimuli present in
     # the trace.
