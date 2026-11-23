@@ -111,12 +111,14 @@ def _node_population(name, population_type, number_of_nodes):
     )
 
 
-def _edge_population(name, source_name, number_of_edges):
-    """Chemical edge population from source_name onto the biophysical population."""
+def _edge_population(
+    name, source_name, number_of_edges, population_type=EdgePopulationType.chemical
+):
+    """Edge population from source_name onto the biophysical population."""
     return CircuitMetricsEdgePopulation(
         number_of_edges=number_of_edges,
         name=name,
-        population_type=EdgePopulationType.chemical,
+        population_type=population_type,
         source_name=source_name,
         target_name="bio_pop",
         property_names=[],
@@ -134,12 +136,14 @@ def _make_circuit_metrics(
     external_synapses=0,
     point_neurons=0,
     point_synapses=0,
+    electrical_synapses=0,
 ):
     """Helper to build a CircuitMetricsOutput with given node/edge counts.
 
     Node populations: "bio_pop" (biophysical), "virt_pop" (afferent virtual) and, if given,
     "external_pop" (virtual, externalized by an earlier extraction) and "point_pop" (point neurons).
-    Edge populations: one from each node population onto "bio_pop".
+    Edge populations: one chemical from each node population onto "bio_pop" and, if given, an
+    electrical one within "bio_pop".
     """
     bio_nodes = [_node_population("bio_pop", NodePopulationType.biophysical, nbio_nodes)]
     virtual_nodes = [_node_population("virt_pop", NodePopulationType.virtual, nvirt_nodes)]
@@ -156,6 +160,16 @@ def _make_circuit_metrics(
     if point_neurons or point_synapses:
         point_nodes.append(_node_population("point_pop", NodePopulationType.point, point_neurons))
         edges.append(_edge_population("point_edges", "point_pop", point_synapses))
+    electrical_edges = []
+    if electrical_synapses:
+        electrical_edges.append(
+            _edge_population(
+                "bio_electrical_edges",
+                "bio_pop",
+                electrical_synapses,
+                population_type=EdgePopulationType.electrical,
+            )
+        )
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=len(bio_nodes),
         number_of_virtual_node_populations=len(virtual_nodes),
@@ -168,11 +182,11 @@ def _make_circuit_metrics(
         virtual_node_populations=virtual_nodes,
         point_node_populations=point_nodes,
         number_of_chemical_edge_populations=len(edges),
-        number_of_electrical_edge_populations=0,
+        number_of_electrical_edge_populations=len(electrical_edges),
         names_of_chemical_edge_populations=[pop.name for pop in edges],
-        names_of_electrical_edge_populations=[],
+        names_of_electrical_edge_populations=[pop.name for pop in electrical_edges],
         chemical_edge_populations=edges,
-        electrical_edge_populations=[],
+        electrical_edge_populations=electrical_edges,
     )
 
 
@@ -565,3 +579,19 @@ def test_estimate_task_resources_counts_point_neurons(
     assert result.memory == exp_mem
     assert result.timelimit == exp_time
     assert result.model_dump(mode="json")["ephemeral_storage"] == exp_storage
+
+
+def test_estimate_task_resources_counts_electrical_synapses(db_client):
+    """Electrical synapses between extracted neurons are extracted, so they count too."""
+    # 1000 bio neurons, 300M chemical synapses; extracting all of them -> 300M output synapses
+    #   disk = 1 + 3.9e-7 * 300M = 118 GB -> 150 GB; with 60M electrical: 141.4 GB -> 150 GB
+    #   time = ceil(1 + 0.24 + 6.3) = 8 h; with electrical: ceil(1 + 0.288 + 7.56) = 9 h
+    chemical_only = _make_circuit_metrics(1000, 0, 300_000_000, 0)
+    with_electrical = _make_circuit_metrics(1000, 0, 300_000_000, 0, electrical_synapses=60_000_000)
+    assert (
+        _run_estimate_task_resources(db_client, chemical_only, do_virtual=True).timelimit == "08:00"
+    )
+    assert (
+        _run_estimate_task_resources(db_client, with_electrical, do_virtual=True).timelimit
+        == "09:00"
+    )

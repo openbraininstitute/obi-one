@@ -26,7 +26,7 @@ Parent circuit sizes come from the circuit metrics, with afferent and externaliz
 
 ## New formulas
 
-Synapses are counted from the circuit metrics; the output is the share of the input that the extracted non-virtual (biophysical and point) neurons account for.
+Synapses are counted from the circuit metrics; chemical and electrical synapses count alike, and the output is the share of the input that the extracted non-virtual (biophysical and point) neurons account for.
 
 | | Old | New |
 | --- | --- | --- |

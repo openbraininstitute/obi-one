@@ -132,8 +132,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     )
 
     # Get the size of the input and the output. All non-virtual (biophysical and point) populations
-    # are extracted. Virtual populations count when included, where "external_*" ones
-    # (externalized by an earlier extraction) are only kept by create_external.
+    # are extracted, with their chemical and electrical synapses. Virtual populations count when
+    # included, where "external_*" ones (externalized by an earlier extraction) are only kept by
+    # create_external.
     do_virtual = single_config.initialize.do_virtual  # ty:ignore[unresolved-attribute]
     create_external = single_config.initialize.create_external  # ty:ignore[unresolved-attribute]
     included_virtual_names = [
@@ -150,14 +151,17 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         for npop in circuit_metrics.biophysical_node_populations
         + circuit_metrics.point_node_populations
     )
+    edge_populations = (
+        circuit_metrics.chemical_edge_populations + circuit_metrics.electrical_edge_populations
+    )
     non_virtual_synapses = sum(
         epop.number_of_edges  # ty:ignore[unresolved-attribute]
-        for epop in circuit_metrics.chemical_edge_populations
+        for epop in edge_populations
         if epop.source_name in non_virtual_names  # ty:ignore[unresolved-attribute]
     )
     virtual_synapses = sum(
         epop.number_of_edges  # ty:ignore[unresolved-attribute]
-        for epop in circuit_metrics.chemical_edge_populations
+        for epop in edge_populations
         if epop.source_name in included_virtual_names  # ty:ignore[unresolved-attribute]
     )
     input_size_synapses = non_virtual_synapses + virtual_synapses
