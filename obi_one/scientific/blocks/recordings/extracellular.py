@@ -24,6 +24,17 @@ from obi_one.scientific.library.entity_property_types import (
 class ExtracellularElectrodeArrayRecording(Recording, ABC):
     """An LFP recording with an extracellular recording array, summed or per neuron."""
 
+    json_schema_extra_additions: ClassVar[dict] = {
+        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
+            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
+            SchemaKey.PROPERTY: CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS,
+            SchemaKey.FALSE_MESSAGE: (
+                "Extracellular recordings are only available for circuits larger than a small "
+                "microcircuit."
+            ),
+        },
+    }
+
     # The SONATA report's `method`. None leaves it out, so the report is per cell, its default.
     method: ClassVar[str | None]
 
@@ -89,17 +100,6 @@ class SummedExtracellularElectrodeArrayRecordingBlock(ExtracellularElectrodeArra
     LFP recordings need CoreNEURON as the simulator, which cannot apply electric field stimuli.
     """
 
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS,
-            SchemaKey.FALSE_MESSAGE: (
-                "Extracellular recordings are only available for circuits larger than a small "
-                "microcircuit."
-            ),
-        },
-    }
-
     title: ClassVar[str] = "Summed extracellular electrode array recording (full experiment)"
 
     method: ClassVar[str | None] = "sum"
@@ -115,17 +115,6 @@ class ExtracellularElectrodeArrayRecordingBlock(ExtracellularElectrodeArrayRecor
 
     LFP recordings need CoreNEURON as the simulator, which cannot apply electric field stimuli.
     """
-
-    json_schema_extra_additions: ClassVar[dict] = {
-        SchemaKey.BLOCK_USABILITY_DICTIONARY: {
-            SchemaKey.PROPERTY_GROUP: MappedPropertiesGroup.CIRCUIT,
-            SchemaKey.PROPERTY: CircuitUsability.SHOW_PER_CELL_EXTRACELLULAR_RECORDINGS,
-            SchemaKey.FALSE_MESSAGE: (
-                "Per-neuron extracellular recordings are unavailable for now. Use the summed "
-                "extracellular electrode array recording."
-            ),
-        },
-    }
 
     title: ClassVar[str] = "Per-neuron extracellular electrode array recording (full experiment)"
 

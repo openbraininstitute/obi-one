@@ -216,8 +216,6 @@ def test_extracellular_recordings_are_enabled_from_microcircuits_up(scale, monke
     )
 
     assert response["usability"][CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS] is True
-    # Per-neuron LFP recordings are off for every circuit for now.
-    assert response["usability"][CircuitUsability.SHOW_PER_CELL_EXTRACELLULAR_RECORDINGS] is False
 
 
 @pytest.mark.parametrize(

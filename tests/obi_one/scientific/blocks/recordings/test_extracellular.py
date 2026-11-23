@@ -31,6 +31,16 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 
 
+SUMMED_BLOCKS = [
+    SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+]
+PER_NEURON_BLOCKS = [
+    ExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
+]
+
+
 class _ClientThatMustNotBeUsed:
     """Fails the test on any use: emitting the report must not touch the database."""
 
@@ -203,53 +213,17 @@ class TestTimeWindow:
         with pytest.raises(OBIONEError, match="End time must be later than start time"):
             _recording(block=block, start_time=60.0, end_time=20.0)
 
-    def test_is_greyed_out_like_its_full_experiment_block(self):
-        for window, full in [
-            (
-                TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
-                SummedExtracellularElectrodeArrayRecordingBlock,
-            ),
-            (
-                TimeWindowExtracellularElectrodeArrayRecordingBlock,
-                ExtracellularElectrodeArrayRecordingBlock,
-            ),
-        ]:
-            assert (
-                window.model_json_schema()[SchemaKey.BLOCK_USABILITY_DICTIONARY]
-                == full.model_json_schema()[SchemaKey.BLOCK_USABILITY_DICTIONARY]
-            )
-
 
 class TestCircuitUsability:
-    def test_summed_is_offered_only_where_the_circuit_allows_extracellular_recordings(self):
+    @pytest.mark.parametrize("block", SUMMED_BLOCKS + PER_NEURON_BLOCKS)
+    def test_is_offered_only_where_the_circuit_allows_extracellular_recordings(self, block):
         """The frontend greys the block out when the circuit's usability flag is false."""
-        schema = SummedExtracellularElectrodeArrayRecordingBlock.model_json_schema()
+        schema = block.model_json_schema()
         usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
 
         assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
         assert usability[SchemaKey.PROPERTY] == CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS
         assert usability[SchemaKey.FALSE_MESSAGE]
-
-    def test_per_neuron_has_its_own_flag(self):
-        """Off for every circuit for now (see the circuit properties endpoint), so greyed out."""
-        schema = ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
-        usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
-
-        assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
-        assert (
-            usability[SchemaKey.PROPERTY] == CircuitUsability.SHOW_PER_CELL_EXTRACELLULAR_RECORDINGS
-        )
-        assert usability[SchemaKey.FALSE_MESSAGE]
-
-
-SUMMED_BLOCKS = [
-    SummedExtracellularElectrodeArrayRecordingBlock,
-    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
-]
-PER_NEURON_BLOCKS = [
-    ExtracellularElectrodeArrayRecordingBlock,
-    TimeWindowExtracellularElectrodeArrayRecordingBlock,
-]
 
 
 class TestCircuitRecordingUnion:
