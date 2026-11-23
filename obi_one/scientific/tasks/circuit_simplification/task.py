@@ -2,7 +2,7 @@
 
 Uses the sonata_simplify pipeline to transform biophysically-detailed circuits into
 simplified point-neuron, single-compartment or reduced multi-compartment circuits while
-preserving network connectivity. Each selected algorithm registers exactly one circuit in
+preserving network connectivity. The selected algorithm registers exactly one circuit in
 its target simulator format: single_compartment, neuron_reduce and neat_reduction as
 NEURON, point-neuron NEST variants as NEST, and adex_brian2 as Brian2.
 """
@@ -58,7 +58,7 @@ def simplification_package_versions() -> dict[str, str]:
 class CircuitSimplificationTask(Task):
     """Task that runs the sonata_simplify pipeline to produce simplified circuits.
 
-    For each selected algorithm, the task:
+    For the selected algorithm, the task:
     1. Runs the SimplificationPipeline to reduce the input circuit.
     2. Uses the simulator-specific exporter when the algorithm has one.
     3. Registers exactly one output Circuit entity with a derivation link to the parent.
@@ -237,8 +237,8 @@ class CircuitSimplificationTask(Task):
         """Build the pipeline simulation config, targeting the configured neuron set if any.
 
         Without a target neuron set every biophysical neuron is simplified. The config
-        validator guarantees that a target set is only combined with algorithms that
-        support node selection.
+        validator guarantees that a target set is only combined with an algorithm that
+        supports node selection.
         """
         target_neuron_set_name = None
         node_sets_file = None
@@ -297,7 +297,7 @@ class CircuitSimplificationTask(Task):
     ) -> str | None:
         """Execute the circuit simplification task.
 
-        Returns the ID of the first registered simulator-specific circuit, or None.
+        Returns the ID of the registered simulator-specific circuit, or None.
         """
         # Get execution activity
         execution_activity = CircuitSimplificationTask._get_execution_activity(
@@ -316,14 +316,10 @@ class CircuitSimplificationTask(Task):
 
             input_circuit_path = Path(self._circuit.path).absolute()
 
-            # The block dictionary contains one concrete block for each selected
-            # algorithm. The block's stable algorithm_name is used instead of the
-            # UI-generated dictionary key (for example, "Algorithm 0").
-            algorithm_blocks = self.config.algorithms
-            algorithm_names = [block.algorithm_name for block in algorithm_blocks.values()]
+            algorithm_block = self.config.algorithm
+            algorithm_name = algorithm_block.algorithm_name
 
-            output_circuit_ids: list[str] = []
-            if "single_compartment" in algorithm_names:
+            if algorithm_name == "single_compartment":
                 mechanisms_dirs = sorted(set(process.get_mechanisms_dirs(input_circuit_path)))
                 process.compile_mechanisms(
                     output_dir=Path(),
@@ -337,94 +333,91 @@ class CircuitSimplificationTask(Task):
             )
             Recipe = getattr(import_module("sonata_simplify.recipe"), "Recipe")  # ruff: ignore[non-lowercase-variable-in-function, get-attr-with-constant]
 
-            for algorithm_block in algorithm_blocks.values():
-                algorithm_name = algorithm_block.algorithm_name
-                L.info(f"Running simplification with algorithm: {algorithm_name}")
+            L.info(f"Running simplification with algorithm: {algorithm_name}")
 
-                # Split compound name into base algorithm and exporter
-                # e.g. "adex_nest" → ("adex", "nest:aeif_cond_alpha")
-                base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
+            # Split compound name into base algorithm and exporter
+            # e.g. "adex_nest" → ("adex", "nest:aeif_cond_alpha")
+            base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm_name]
 
-                # Create output directory for this algorithm
-                output_dir = (self.config.coordinate_output_root / algorithm_name).absolute()
-                output_dir.mkdir(parents=True, exist_ok=True)
+            output_dir = (self.config.coordinate_output_root / algorithm_name).absolute()
+            output_dir.mkdir(parents=True, exist_ok=True)
 
-                sim_config_path = self._build_algorithm_simulation_config(
-                    input_circuit_path, output_dir
+            sim_config_path = self._build_algorithm_simulation_config(
+                input_circuit_path, output_dir
+            )
+
+            # Initialize the pipeline with the BASE algorithm name
+            # (the pipeline's simplification_mode expects "lif", not "lif_nest")
+            pipeline = SimplificationPipeline(
+                simulation_config=str(sim_config_path),
+                simplification_mode=base_algorithm,
+                n_processes=simplification_worker_count(),
+                **algorithm_block.pipeline_kwargs(),
+            )
+
+            # Run the pipeline with a recipe that includes the exporter
+            recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
+            pipeline.run_recipe(recipe)
+
+            # The simplified SONATA circuit is in output_dir / "output"
+            # (the sim config sets output_dir to output_dir / "output")
+            simplified_circuit_path = output_dir / "output" / "circuit_config.json"
+
+            if not simplified_circuit_path.exists():
+                message = (
+                    f"Simplified circuit config not found at {simplified_circuit_path}"
+                    f" for algorithm '{algorithm_name}'"
                 )
+                L.error(message)
+                raise RuntimeError(message)
 
-                # Initialize the pipeline with the BASE algorithm name
-                # (the pipeline's simplification_mode expects "lif", not "lif_nest")
-                pipeline = SimplificationPipeline(
-                    simulation_config=str(sim_config_path),
-                    simplification_mode=base_algorithm,
-                    n_processes=simplification_worker_count(),
-                    **algorithm_block.pipeline_kwargs(),
+            # Register only the circuit in the simulator-specific format
+            # selected by the algorithm. Exporter algorithms use their
+            # converted output; single_compartment uses the base NEURON
+            # output because it has no exporter.
+            export_suffix = ""
+            registration_path = simplified_circuit_path
+            if exporter_name:
+                export_suffix = exporter_name.replace(":", "_")
+                simplified_output_dir = simplified_circuit_path.parent
+                export_dir = simplified_output_dir.parent / (
+                    f"{simplified_output_dir.name}_{export_suffix}"
                 )
-
-                # Run the pipeline with a recipe that includes the exporter
-                recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
-                pipeline.run_recipe(recipe)
-
-                # The simplified SONATA circuit is in output_dir / "output"
-                # (the sim config sets output_dir to output_dir / "output")
-                simplified_circuit_path = output_dir / "output" / "circuit_config.json"
-
-                if not simplified_circuit_path.exists():
-                    L.warning(
-                        f"Simplified circuit config not found at {simplified_circuit_path}"
-                        f" for algorithm '{algorithm_name}'"
+                registration_path = export_dir / "circuit_config.json"
+                if not registration_path.exists():
+                    message = (
+                        f"Expected {exporter_name} export at {registration_path}"
+                        f" for algorithm '{algorithm_name}', but it was not found"
                     )
-                    continue
+                    L.error(message)
+                    raise RuntimeError(message)
+                L.info(f"Using exported circuit for registration: {registration_path}")
 
-                # Register only the circuit in the simulator-specific format
-                # selected by this algorithm. Exporter algorithms use their
-                # converted output; single_compartment uses the base NEURON
-                # output because it has no exporter.
-                export_suffix = ""
-                registration_path = simplified_circuit_path
-                if exporter_name:
-                    export_suffix = exporter_name.replace(":", "_")
-                    simplified_output_dir = simplified_circuit_path.parent
-                    export_dir = simplified_output_dir.parent / (
-                        f"{simplified_output_dir.name}_{export_suffix}"
-                    )
-                    registration_path = export_dir / "circuit_config.json"
-                    if not registration_path.exists():
-                        message = (
-                            f"Expected {exporter_name} export at {registration_path}"
-                            f" for algorithm '{algorithm_name}', but it was not found"
-                        )
-                        L.error(message)
-                        raise RuntimeError(message)
-                    L.info(f"Using exported circuit for registration: {registration_path}")
+            # Smoke check the exact output that will be registered. This
+            # prevents an intermediate generic point-neuron output from
+            # being treated as the NEST or Brian2 circuit.
+            self._smoke_check_loadability(registration_path, algorithm_name)
+            self._write_provenance(registration_path.parent, algorithm_block)
 
-                # Smoke check the exact output that will be registered. This
-                # prevents an intermediate generic point-neuron output from
-                # being treated as the NEST or Brian2 circuit.
-                self._smoke_check_loadability(registration_path, algorithm_name)
-                self._write_provenance(registration_path.parent, algorithm_block)
+            output_circuit_id = None
+            if db_client and self._circuit_entity:
+                registered_entity = self._register_output(
+                    db_client=db_client,
+                    circuit_path=registration_path,
+                    algorithm_name=algorithm_name,
+                    export_suffix=f"_{export_suffix}" if export_suffix else "",
+                )
+                if registered_entity is not None:
+                    output_circuit_id = str(registered_entity.id)
 
-                if db_client and self._circuit_entity:
-                    registered_entity = self._register_output(
-                        db_client=db_client,
-                        circuit_path=registration_path,
-                        algorithm_name=algorithm_name,
-                        export_suffix=f"_{export_suffix}" if export_suffix else "",
-                    )
-                    if registered_entity is not None:
-                        output_circuit_ids.append(str(registered_entity.id))
-
-                L.info(f"Simplification with '{algorithm_name}' DONE")
+            L.info(f"Simplification with '{algorithm_name}' DONE")
 
             # Update execution activity
-            if db_client and execution_activity and output_circuit_ids:
+            if db_client and execution_activity and output_circuit_id:
                 CircuitSimplificationTask._update_execution_activity(
                     db_client=db_client,
                     execution_activity=execution_activity,
-                    generated=output_circuit_ids,
+                    generated=[output_circuit_id],
                 )
 
-        if output_circuit_ids:
-            return output_circuit_ids[0]
-        return None
+        return output_circuit_id

@@ -74,7 +74,7 @@ class TestSimplificationNotebooks:
         run_cell(LOCAL_NOTEBOOK, 19, namespace)
         run_cell(LOCAL_NOTEBOOK, 21, namespace)
         config = namespace["grid_scan"].single_configs[0]
-        assert config.algorithms[algorithm].algorithm_name == algorithm
+        assert config.algorithm.algorithm_name == algorithm
         assert (namespace["coord_root"] / "obi_one_coordinate.json").is_file()
 
     @pytest.mark.parametrize("name", [LOCAL_NOTEBOOK, BENCHMARK_NOTEBOOK])

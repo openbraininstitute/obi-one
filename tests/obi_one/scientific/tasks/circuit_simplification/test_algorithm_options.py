@@ -37,7 +37,7 @@ from .test_task import TestTaskExecution
 TASK = "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask"
 
 
-def _config_with_target_set(algorithms: dict) -> CircuitSimplificationScanConfig:
+def _config_with_target_set(algorithm) -> CircuitSimplificationScanConfig:
     return CircuitSimplificationScanConfig(
         info=Info(campaign_name="test", campaign_description="test"),
         initialize=CircuitSimplificationScanConfig.Initialize(
@@ -47,17 +47,16 @@ def _config_with_target_set(algorithms: dict) -> CircuitSimplificationScanConfig
             ),
         ),
         neuron_sets={"all_bio": AllBiophysicalNeurons()},
-        algorithms=algorithms,
+        algorithm=algorithm,
     )
 
 
 def _run(config, tmp_path: Path, mock_pipeline, *, target_set_name=None):
     task = CircuitSimplificationTask(config=config)
     mock_circuit = MagicMock(path=str(tmp_path / "input" / "circuit_config.json"))
-    for name in config.algorithms:
-        output = config.coordinate_output_root / name / "output"
-        output.mkdir(parents=True, exist_ok=True)
-        (output / "circuit_config.json").write_text("{}")
+    output = config.coordinate_output_root / config.algorithm.algorithm_name / "output"
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "circuit_config.json").write_text("{}")
     with (
         patch(
             "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
@@ -116,13 +115,13 @@ class TestAlgorithmBlocks:
 
 class TestTargetNeuronSet:
     def test_target_set_accepted_for_single_compartment(self):
-        config = _config_with_target_set({"sc": SingleCompartmentAlgorithm()})
+        config = _config_with_target_set(SingleCompartmentAlgorithm())
         assert config.initialize.target_neuron_set is not None
         assert config.initialize.target_neuron_set.block_name == "all_bio"
 
     def test_target_set_rejected_for_unsupported_algorithm(self):
         with pytest.raises(ValueError, match="not supported by: lif_nest"):
-            _config_with_target_set({"sc": SingleCompartmentAlgorithm(), "lif": LifNestAlgorithm()})
+            _config_with_target_set(LifNestAlgorithm())
 
     def test_execute_passes_target_set_to_pipeline(
         self,
@@ -149,7 +148,7 @@ class TestExecuteOptions:
         tmp_path: Path,
     ):
         config = TestTaskExecution._make_config(tmp_path)
-        config.algorithms["single_compartment"] = SingleCompartmentAlgorithm(
+        config.algorithm = SingleCompartmentAlgorithm(
             filter_poles=2, filter_method="impedance", strict_filters=False
         )
         kwargs = _run(config, tmp_path, mock_pipeline)

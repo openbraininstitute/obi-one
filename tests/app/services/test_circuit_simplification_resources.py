@@ -11,7 +11,7 @@ from app.services.resource_estimation.circuit_simplification import (
     POINT_NEURON_WORK_UNITS_PER_CORE,
     REDUCTION_ALGORITHMS,
     _get_required_cpu_memory_combo,
-    estimate_resources_for_algorithms,
+    estimate_resources_for_algorithm,
 )
 from app.services.task import estimate_task_resources
 from app.types import TaskType
@@ -91,17 +91,10 @@ class TestResourceEstimation:
         assert {"neuron_reduce", "neat_reduction"} == REDUCTION_ALGORITHMS
 
     def test_reduction_needs_more_cores_than_point_neuron(self):
-        point = estimate_resources_for_algorithms(["lif_nest"], nbio=10_000)
-        reduction = estimate_resources_for_algorithms(["neat_reduction"], nbio=10_000)
+        point = estimate_resources_for_algorithm("lif_nest", nbio=10_000)
+        reduction = estimate_resources_for_algorithm("neat_reduction", nbio=10_000)
         assert reduction[0] > point[0]
         assert reduction[2] >= point[2]
 
-    def test_time_adds_up_over_algorithms(self):
-        _, _, single = estimate_resources_for_algorithms(["neuron_reduce"], nbio=100_000)
-        _, _, both = estimate_resources_for_algorithms(
-            ["neuron_reduce", "neat_reduction"], nbio=100_000
-        )
-        assert both > single
-
     def test_small_circuit_uses_minimum_preset(self):
-        assert estimate_resources_for_algorithms(["adex_brian2"], nbio=10) == (1, 4, 1)
+        assert estimate_resources_for_algorithm("adex_brian2", nbio=10) == (1, 4, 1)

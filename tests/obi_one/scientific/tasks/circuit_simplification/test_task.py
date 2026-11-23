@@ -70,23 +70,23 @@ class TestInputEntities:
 
 
 class TestSimplificationBlock:
-    """Tests for the circuit simplification algorithm block dictionary."""
+    """Tests for the circuit simplification algorithm block."""
 
-    def test_algorithms_field_exists(self):
-        """The scan config should expose an algorithms block dictionary."""
+    def test_algorithm_field_exists(self):
+        """The scan config should expose a single algorithm block and no dictionary."""
         fields = CircuitSimplificationScanConfig.model_fields
-        assert "algorithms" in fields
+        assert "algorithm" in fields
+        assert "algorithms" not in fields
 
-    def test_algorithms_defaults_to_single_compartment(self):
-        """The default algorithm selection should contain single_compartment."""
+    def test_algorithm_defaults_to_single_compartment(self):
+        """The default algorithm selection should be single_compartment."""
         config = CircuitSimplificationScanConfig.empty_config()
-        assert list(config.algorithms) == ["single_compartment"]
-        assert isinstance(config.algorithms["single_compartment"], SingleCompartmentAlgorithm)
+        assert isinstance(config.algorithm, SingleCompartmentAlgorithm)
 
-    def test_algorithms_field_is_a_block_dictionary(self):
-        """The algorithms field should use the block_dictionary UI element."""
-        field = CircuitSimplificationScanConfig.model_fields["algorithms"]
-        assert field.json_schema_extra["ui_element"] == "block_dictionary"
+    def test_algorithm_field_is_a_block_union(self):
+        """The algorithm field should use the block_union UI element."""
+        field = CircuitSimplificationScanConfig.model_fields["algorithm"]
+        assert field.json_schema_extra["ui_element"] == "block_union"
 
 
 class TestApiCompatibility:
@@ -156,7 +156,7 @@ class TestTargetNeuronSetField:
             initialize=CircuitSimplificationScanConfig.Initialize(
                 circuit=CircuitFromID(id_str="test-circuit-id"),
             ),
-            algorithms={"single_compartment": ALGORITHM_BLOCK_CLASSES["single_compartment"]()},
+            algorithm=ALGORITHM_BLOCK_CLASSES["single_compartment"](),
         )
         ref = config.default_neuron_set_reference
         assert ref is not None
@@ -203,14 +203,14 @@ class TestTaskExecution:
 
     @staticmethod
     def _make_config(tmp_path: Path, algorithm: str = "single_compartment"):
-        """Build a CircuitSimplificationSingleConfig with one algorithm block."""
+        """Build a CircuitSimplificationSingleConfig with the algorithm block."""
         algorithm_block = ALGORITHM_BLOCK_CLASSES[algorithm]()
         config = CircuitSimplificationSingleConfig.model_construct(
             info={"campaign_name": "test", "campaign_description": "test"},
             initialize=CircuitSimplificationScanConfig.Initialize(
                 circuit=CircuitFromID(id_str="test-circuit-id"),
             ),
-            algorithms={algorithm: algorithm_block},
+            algorithm=algorithm_block,
         )
         config.scan_output_root = tmp_path / "scan_output"
         config.coordinate_output_root = tmp_path / "coord_output"
@@ -225,7 +225,7 @@ class TestTaskExecution:
         tmp_path: Path,
         monkeypatch,
     ):
-        """execute() should construct and run SimplificationPipeline for each algorithm."""
+        """execute() should construct and run SimplificationPipeline for the algorithm."""
         monkeypatch.delenv("JOB_CPUS", raising=False)
 
         # Build a single config
@@ -289,7 +289,7 @@ class TestTaskExecution:
     def test_execute_uses_allocated_cpus_as_workers(
         self,
         fake_simplified_circuit: Path,
-        mock_pipeline,
+        simplified_output,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
         monkeypatch,
@@ -319,8 +319,8 @@ class TestTaskExecution:
         ):
             task.execute(db_client=None)
 
-        mock_pipeline.assert_called_once()
-        assert mock_pipeline.call_args.kwargs["n_processes"] == 4
+        simplified_output.assert_called_once()
+        assert simplified_output.call_args.kwargs["n_processes"] == 4
 
     def test_execute_registers_only_exported_circuit(
         self,
@@ -380,6 +380,51 @@ class TestTaskExecution:
         update_activity.assert_called_once()
         assert update_activity.call_args.kwargs["generated"] == ["brian2-id"]
 
+    def test_execute_returns_none_when_nothing_is_registered(
+        self,
+        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
+        tmp_path: Path,
+    ):
+        """No registered entity means no output ID and no execution activity update."""
+        config = self._make_config(tmp_path, algorithm="single_compartment")
+        task = CircuitSimplificationTask(config=config)
+
+        mock_circuit = MagicMock()
+        mock_circuit.path = str(tmp_path / "input" / "circuit_config.json")
+        output = config.coordinate_output_root / "single_compartment" / "output"
+        output.mkdir(parents=True, exist_ok=True)
+        (output / "circuit_config.json").write_text("{}")
+
+        with (
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.circuit_db_sdk.resolve_circuit",
+                return_value=(mock_circuit, MagicMock()),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._get_execution_activity",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._update_execution_activity",
+            ) as update_activity,
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._register_output",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
+                return_value=None,
+            ),
+            patch(
+                "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._smoke_check_loadability",
+            ),
+        ):
+            result = task.execute(db_client=MagicMock())
+
+        assert result is None
+        update_activity.assert_not_called()
+
     def test_execute_fails_when_required_export_output_is_missing(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
@@ -422,13 +467,13 @@ class TestTaskExecution:
         register_output.assert_not_called()
         assert "Expected brian2:adex export" in caplog.text
 
-    def test_execute_skips_missing_output(
+    def test_execute_fails_on_missing_output(
         self,
         mock_pipeline,  # ruff: ignore[unused-method-argument]
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
-        """execute() should skip algorithms whose output circuit_config.json is missing."""
+        """execute() should fail when the pipeline wrote no circuit_config.json."""
 
         config = self._make_config(tmp_path)
 
@@ -452,18 +497,14 @@ class TestTaskExecution:
                 "obi_one.scientific.tasks.circuit_simplification.task.CircuitSimplificationTask._resolve_target_neuron_set",
                 return_value=None,
             ),
+            pytest.raises(RuntimeError, match="not found"),
         ):
-            # Don't create the output circuit_config.json — pipeline ran but
-            # produced no output (simulated failure)
-            result = task.execute(db_client=MagicMock())
-
-        # Should return None since no output was found
-        assert result is None
+            task.execute(db_client=MagicMock())
 
     def test_execute_passes_algorithm_to_pipeline(
         self,
         fake_simplified_circuit: Path,
-        mock_pipeline,
+        simplified_output,
         tmp_path: Path,
     ):
         """execute() should pass the base algorithm as simplification_mode to the pipeline."""
@@ -495,7 +536,7 @@ class TestTaskExecution:
 
         # Check that the BASE algorithm was passed as simplification_mode
         # (compound name "lif_nest" → base "lif")
-        call_kwargs = mock_pipeline.call_args
+        call_kwargs = simplified_output.call_args
         assert call_kwargs.kwargs.get("simplification_mode") == "lif"
 
         # The implicit all-biophysical selection must not be passed to point-
@@ -508,7 +549,7 @@ class TestTaskExecution:
     def test_execute_omits_target_set_for_single_compartment(
         self,
         fake_simplified_circuit: Path,
-        mock_pipeline,
+        simplified_output,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
@@ -538,24 +579,24 @@ class TestTaskExecution:
             task.execute(db_client=None)
 
         sim_config = json.loads(
-            Path(mock_pipeline.call_args.kwargs["simulation_config"]).read_text(encoding="utf-8")
+            Path(simplified_output.call_args.kwargs["simulation_config"]).read_text(
+                encoding="utf-8"
+            )
         )
         assert "node_set" not in sim_config
         assert "node_sets_file" not in sim_config
 
-    def test_execute_runs_multiple_algorithm_blocks(
+    @pytest.mark.parametrize("algorithm", list(ALGORITHM_BLOCK_CLASSES))
+    def test_execute_runs_the_selected_algorithm_once(
         self,
+        algorithm: str,
         fake_simplified_circuit: Path,
         mock_pipeline,
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
-        """execute() should run each algorithm block in the selected dictionary."""
-
-        config = self._make_config(tmp_path, algorithm="single_compartment")
-        for algorithm in ALGORITHM_BLOCK_CLASSES:
-            if algorithm != "single_compartment":
-                config.algorithms[algorithm] = ALGORITHM_BLOCK_CLASSES[algorithm]()
+        """execute() should run the pipeline once, with the base algorithm of the block."""
+        config = self._make_config(tmp_path, algorithm=algorithm)
         task = CircuitSimplificationTask(config=config)
 
         mock_circuit = MagicMock()
@@ -563,18 +604,15 @@ class TestTaskExecution:
         mock_circuit.sonata_circuit = MagicMock()
         mock_entity = MagicMock()
 
-        for algorithm in ALGORITHM_BLOCK_CLASSES:
-            output = config.coordinate_output_root / algorithm / "output"
-            output.mkdir(parents=True, exist_ok=True)
-            (output / "circuit_config.json").write_text("{}")
-            _, exporter_name = ALGORITHM_EXPORT_MAP[algorithm]
-            if exporter_name:
-                export_suffix = exporter_name.replace(":", "_")
-                export_config = (
-                    output.parent / f"{output.name}_{export_suffix}" / "circuit_config.json"
-                )
-                export_config.parent.mkdir(parents=True, exist_ok=True)
-                export_config.write_text("{}")
+        output = config.coordinate_output_root / algorithm / "output"
+        output.mkdir(parents=True, exist_ok=True)
+        (output / "circuit_config.json").write_text("{}")
+        base_algorithm, exporter_name = ALGORITHM_EXPORT_MAP[algorithm]
+        if exporter_name:
+            export_suffix = exporter_name.replace(":", "_")
+            export_config = output.parent / f"{output.name}_{export_suffix}" / "circuit_config.json"
+            export_config.parent.mkdir(parents=True, exist_ok=True)
+            export_config.write_text("{}")
 
         with (
             patch(
@@ -595,17 +633,17 @@ class TestTaskExecution:
         ):
             task.execute(db_client=None)
 
-        assert mock_pipeline.call_count == len(ALGORITHM_BLOCK_CLASSES)
-        for call in mock_pipeline.call_args_list:
-            sim_config = json.loads(
-                Path(call.kwargs["simulation_config"]).read_text(encoding="utf-8")
-            )
-            assert "node_set" not in sim_config
-            assert "node_sets_file" not in sim_config
+        mock_pipeline.assert_called_once()
+        call = mock_pipeline.call_args
+        assert call.kwargs["simplification_mode"] == base_algorithm
+        sim_config = json.loads(Path(call.kwargs["simulation_config"]).read_text(encoding="utf-8"))
+        assert "node_set" not in sim_config
+        assert "node_sets_file" not in sim_config
+        assert [p.name for p in config.coordinate_output_root.iterdir()] == [algorithm]
 
     def test_execute_cleans_up_temp_dir(
         self,
-        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        simplified_output,  # ruff: ignore[unused-method-argument]
         mock_mechanism_compilation,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
