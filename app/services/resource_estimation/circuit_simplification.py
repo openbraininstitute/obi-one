@@ -73,7 +73,7 @@ REDUCTION_ALGORITHMS = {"neuron_reduce", "neat_reduction"}
 
 
 def _algorithm_workload(algorithm_name: str, nbio: int) -> tuple[int, int, int]:
-    """Returns (work_units, work_per_core, work_per_core_hour) for one algorithm."""
+    """Returns (work_units, work_per_core, work_per_core_hour) for the algorithm."""
     if algorithm_name in FILTER_ALGORITHMS:
         return (
             nbio * DEFAULT_MAX_FILTER_LOCATIONS,
@@ -85,29 +85,17 @@ def _algorithm_workload(algorithm_name: str, nbio: int) -> tuple[int, int, int]:
     return nbio, POINT_NEURON_WORK_UNITS_PER_CORE, POINT_NEURON_WORK_UNITS_PER_CORE_HOUR
 
 
-def estimate_resources_for_algorithms(
-    algorithm_names: list[str], nbio: int
-) -> tuple[int, int, int]:
-    """Returns (cores, memory_gb, timelimit_hours) for running the algorithms in sequence.
-
-    Cores are sized for the most demanding algorithm; the time limit is the sum of the
-    per-algorithm times because the task runs the selected algorithms one after another.
-    """
-    workloads = [_algorithm_workload(name, nbio) for name in algorithm_names]
+def estimate_resources_for_algorithm(algorithm_name: str, nbio: int) -> tuple[int, int, int]:
+    """Returns (cores, memory_gb, timelimit_hours) for running the algorithm."""
+    work_units, work_per_core, work_per_core_hour = _algorithm_workload(algorithm_name, nbio)
 
     # Inverted sizing: cores from workload first, capped at the launch-system max.
-    ncpu_required = max(
-        max(1, int(np.ceil(work_units / work_per_core)))
-        for work_units, work_per_core, _ in workloads
-    )
-    ncpu_required = min(ncpu_required, 16)
+    ncpu_required = min(max(1, int(np.ceil(work_units / work_per_core))), 16)
 
     mem_gb_required = BASE_MEMORY_GB + ncpu_required * PER_WORKER_GB
     ncpu, mem_gb = _get_required_cpu_memory_combo(ncpu_required, mem_gb_required)
 
-    time_h = sum(
-        work_units / (ncpu * work_per_core_hour) for work_units, _, work_per_core_hour in workloads
-    )
+    time_h = work_units / (ncpu * work_per_core_hour)
     return ncpu, mem_gb, max(1, int(np.ceil(time_h)))
 
 
@@ -161,7 +149,7 @@ def _get_required_cpu_memory_combo(min_cores: int, mem_gb_required: float) -> tu
     return min(candidates)
 
 
-def estimate_task_resources(  # ruff: ignore[too-many-locals]
+def estimate_task_resources(
     json_model: TaskLaunchSubmit,
     db_client: entitysdk.Client,
     task_definition: LaunchableTaskDefinition,
@@ -175,9 +163,8 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     point-neuron algorithms), then memory is computed as
     base + cores x per_worker_gb.
 
-    The algorithm blocks are read from the root ``algorithms`` dictionary. Each
-    block exposes its stable compound algorithm name; only ``single_compartment``
-    triggers filter computation.
+    The algorithm block is read from the root ``algorithm`` field. It exposes its stable
+    compound algorithm name; only ``single_compartment`` triggers filter computation.
     """
     # Get simplification config
     config_type = models.TaskConfig
@@ -222,8 +209,9 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     )
 
     # The block's algorithm_name is the OBI-One compound name (for example, "adex_nest").
-    algorithm_names = [algorithm.algorithm_name for algorithm in single_config.algorithms.values()]
-    ncpu, mem_gb, time_h = estimate_resources_for_algorithms(algorithm_names, nbio)
+    ncpu, mem_gb, time_h = estimate_resources_for_algorithm(
+        single_config.algorithm.algorithm_name, nbio
+    )
 
     return task_definition.resources.model_copy(
         update={

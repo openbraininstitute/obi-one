@@ -57,14 +57,12 @@ def _metrics(nbio: int) -> CircuitMetricsOutput:
 _UNSET = object()
 
 
-def _run_estimate(db_client, metrics, algorithm_names, asset_id=_UNSET):
+def _run_estimate(db_client, metrics, algorithm_name, asset_id=_UNSET):
     """Run estimate_task_resources with mocked DB/metrics dependencies."""
     task_definition = TASK_DEFINITIONS[TaskType.circuit_simplification]
     json_model = TaskLaunchSubmit(task_type=TaskType.circuit_simplification, config_id=uuid4())
     fake_entity = SimpleNamespace(inputs=[SimpleNamespace(id=uuid4())])
-    fake_single_config = SimpleNamespace(
-        algorithms={n: SimpleNamespace(algorithm_name=n) for n in algorithm_names}
-    )
+    fake_single_config = SimpleNamespace(algorithm=SimpleNamespace(algorithm_name=algorithm_name))
     with (
         patch.object(db_client, "get_entity", return_value=fake_entity),
         patch.object(db_client, "download_content", return_value=b'{"type": "Fake"}'),
@@ -91,7 +89,7 @@ def _run_estimate(db_client, metrics, algorithm_names, asset_id=_UNSET):
 
 
 def test_estimate_task_resources_point_neuron(db_client):
-    resources = _run_estimate(db_client, _metrics(nbio=10_000), ["lif_nest"])
+    resources = _run_estimate(db_client, _metrics(nbio=10_000), "lif_nest")
 
     # nbio=10_000: 10_000/500_000 -> 1 core; memory = 2 + 1*2 = 4 GB
     assert resources.cores == 1
@@ -101,7 +99,7 @@ def test_estimate_task_resources_point_neuron(db_client):
 
 
 def test_estimate_task_resources_single_compartment_scales(db_client):
-    resources = _run_estimate(db_client, _metrics(nbio=200_000), ["single_compartment"])
+    resources = _run_estimate(db_client, _metrics(nbio=200_000), "single_compartment")
 
     # 200k cells x 100 locations = 20M units -> capped at 16 cores;
     # memory = 2 + 16*2 = 34 GB -> 16-core preset gives 64 GB;
@@ -111,17 +109,16 @@ def test_estimate_task_resources_single_compartment_scales(db_client):
     assert resources.timelimit == "13:00"
 
 
-def test_estimate_task_resources_sums_algorithm_times(db_client):
-    resources = _run_estimate(
-        db_client, _metrics(nbio=200_000), ["single_compartment", "neuron_reduce"]
-    )
+def test_estimate_task_resources_reduction_algorithm(db_client):
+    resources = _run_estimate(db_client, _metrics(nbio=200_000), "neuron_reduce")
 
-    # timelimit is the sum over sequentially-run algorithms:
-    # single_compartment 12.5 h + neuron_reduce 200k/(16 x 1000) = 12.5 h -> 25
+    # 200k cells / 2_000 per core -> capped at 16 cores; memory = 2 + 16*2 = 34 GB -> 64 GB;
+    # time = 200k / (16 x 1_000) = 12.5 h -> 13
     assert resources.cores == 16
-    assert resources.timelimit == "25:00"
+    assert resources.memory == 64
+    assert resources.timelimit == "13:00"
 
 
 def test_estimate_task_resources_missing_asset_id(db_client):
     with pytest.raises(ValueError, match="Config asset must have an id"):
-        _run_estimate(db_client, _metrics(nbio=10), ["lif_nest"], asset_id=None)
+        _run_estimate(db_client, _metrics(nbio=10), "lif_nest", asset_id=None)
