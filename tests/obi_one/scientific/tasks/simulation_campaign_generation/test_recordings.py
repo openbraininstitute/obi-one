@@ -3,6 +3,7 @@
 from typing import get_args
 
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.tuple import NamedTuple
@@ -182,6 +183,19 @@ class TestTimeWindowSomaVoltageRecording:
         result = generate(config, tmp_path)
 
         assert result.reports["Window"]["end_time"] == pytest.approx(10.0)
+
+    def test_sweeping_one_bound_is_accepted(self):
+        recording = TimeWindowSomaVoltageRecording(start_time=[0.0, 10.0], end_time=100.0)
+
+        assert recording.start_time == [0.0, 10.0]
+
+    def test_a_swept_bound_reaching_the_other_is_refused(self):
+        with pytest.raises(ValidationError, match=r"\(100.0 to 100.0 ms\)"):
+            TimeWindowSomaVoltageRecording(start_time=[0.0, 100.0], end_time=100.0)
+
+    def test_a_backwards_window_is_a_validation_error(self):
+        with pytest.raises(ValidationError, match="End time must be later than start time"):
+            TimeWindowSomaVoltageRecording(start_time=60.0, end_time=20.0)
 
 
 class TestReportsSection:

@@ -5,7 +5,7 @@ import entitysdk
 from pydantic import Field, NonNegativeFloat, PositiveFloat, PrivateAttr
 
 from obi_one.core.block import Block
-from obi_one.core.exception import OBIONEError
+from obi_one.core.exception import ConfigValidationError, OBIONEError
 from obi_one.core.parametric_multi_values import NonNegativeFloatRange
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.core.units import Units
@@ -163,20 +163,17 @@ def check_time_window(
     start_time: NonNegativeFloat | list[NonNegativeFloat],
     end_time: NonNegativeFloat | list[NonNegativeFloat],
 ) -> None:
-    """Check that a recording's window ends later than it starts."""
-    if end_time > start_time:  # ty:ignore[unsupported-operator]
+    """Check that every window a sweep makes ends later than it starts.
+
+    A grid scan pairs every start time with every end time, so each pair is checked.
+    """
+    starts = start_time if isinstance(start_time, list) else [start_time]
+    ends = end_time if isinstance(end_time, list) else [end_time]
+    backwards = [(start, end) for start in starts for end in ends if end <= start]
+    if not backwards:
         return
 
     recording_name = f" '{recording.block_name}'" if recording.has_block_name() else ""
-
-    neuron_set = recording.neuron_set
-    if neuron_set is not None and neuron_set.has_block() and neuron_set.block.has_block_name():
-        neuron_set_name = f" '{neuron_set.block.block_name}'"
-    else:
-        neuron_set_name = ""
-
-    msg = (
-        f"Recording{recording_name} for Neuron Set{neuron_set_name}: "
-        "End time must be later than start time!"
-    )
-    raise OBIONEError(msg)
+    windows = ", ".join(f"{start} to {end} ms" for start, end in backwards)
+    msg = f"Recording{recording_name}: End time must be later than start time ({windows})!"
+    raise ConfigValidationError(msg)

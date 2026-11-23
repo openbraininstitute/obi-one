@@ -4,8 +4,8 @@ from uuid import UUID
 
 import libsonata
 import pytest
+from pydantic import ValidationError
 
-from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.recordings.extracellular import (
     ExtracellularElectrodeArrayRecording,
@@ -196,8 +196,32 @@ class TestTimeWindow:
         ],
     )
     def test_the_window_must_end_after_it_starts(self, block):
-        with pytest.raises(OBIONEError, match="End time must be later than start time"):
+        with pytest.raises(ValidationError, match="End time must be later than start time"):
             _recording(block=block, start_time=60.0, end_time=20.0)
+
+    @pytest.mark.parametrize(
+        "window",
+        [
+            {"start_time": [0.0, 10.0], "end_time": 100.0},
+            {"start_time": 0.0, "end_time": [50.0, 100.0]},
+            {"start_time": [0.0, 10.0], "end_time": [50.0, 100.0]},
+        ],
+    )
+    def test_a_sweep_whose_every_window_is_forwards_is_accepted(self, window):
+        recording = _recording(
+            block=TimeWindowSummedExtracellularElectrodeArrayRecordingBlock, **window
+        )
+
+        assert recording.start_time == window["start_time"]
+
+    def test_every_combination_of_a_sweep_is_checked(self):
+        """The grid pairs 50 with 40 even though each list on its own looks fine."""
+        with pytest.raises(ValidationError, match=r"\(50.0 to 40.0 ms\)"):
+            _recording(
+                block=TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+                start_time=[0.0, 50.0],
+                end_time=[40.0, 100.0],
+            )
 
 
 class TestCircuitUsability:
