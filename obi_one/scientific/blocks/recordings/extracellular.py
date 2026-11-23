@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import ClassVar, Self
 
 import entitysdk
@@ -20,8 +20,10 @@ from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
 class ExtracellularElectrodeArrayRecording(Recording, ABC):
     """An LFP recording with an extracellular recording array, summed or per neuron."""
 
-    # The SONATA report's `method`. None leaves it out, so the report is per cell, its default.
-    method: ClassVar[str | None]
+    @property
+    @abstractmethod
+    def method(self) -> str | None:
+        """The SONATA report's `method`. None leaves it out, so the report is per cell."""
 
     electrode_array: SimulatableExtracellularRecordingArrayFromID = Field(
         title="Extracellular recording array",

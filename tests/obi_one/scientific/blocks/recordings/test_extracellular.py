@@ -8,6 +8,7 @@ import pytest
 from obi_one.core.exception import OBIONEError
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecording,
     ExtracellularElectrodeArrayRecordingBlock,
     SummedExtracellularElectrodeArrayRecordingBlock,
     TimeWindowExtracellularElectrodeArrayRecordingBlock,
@@ -46,7 +47,7 @@ class _ClientThatMustNotBeUsed:
 
 
 def _recording(
-    name="LFPRecording", dt=0.1, block=ExtracellularElectrodeArrayRecordingBlock, **window
+    name="LFPRecording", dt=0.1, block=SummedExtracellularElectrodeArrayRecordingBlock, **window
 ):
     recording = block(
         electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
@@ -57,8 +58,8 @@ def _recording(
     return recording
 
 
-class TestExtracellularElectrodeArrayRecordingBlock:
-    def test_generates_sonata_lfp_report(self):
+class TestSummedExtracellularElectrodeArrayRecordingBlock:
+    def test_generates_a_summed_sonata_lfp_report(self):
         reports = _recording().config(
             SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, default_node_set="AllBiophysical"
         )
@@ -73,6 +74,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
                 "start_time": 0.0,
                 "end_time": 100.0,
                 "electrodes_file": f"{ARRAY_ID}.h5",
+                "method": "sum",
             }
         }
 
@@ -129,27 +131,6 @@ class TestExtracellularElectrodeArrayRecordingBlock:
 
         assert parsed.report("LFPRecording").unit == "V"
 
-
-class TestSummedExtracellularElectrodeArrayRecordingBlock:
-    def test_generates_a_summed_sonata_lfp_report(self):
-        reports = _recording(block=SummedExtracellularElectrodeArrayRecordingBlock).config(
-            SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, default_node_set="AllBiophysical"
-        )
-
-        assert reports == {
-            "LFPRecording": {
-                "cells": "AllBiophysical",
-                "type": "lfp",
-                "sections": "all",
-                "unit": "V",
-                "dt": 0.1,
-                "start_time": 0.0,
-                "end_time": 100.0,
-                "electrodes_file": f"{ARRAY_ID}.h5",
-                "method": "sum",
-            }
-        }
-
     @pytest.mark.parametrize(
         ("block", "method"),
         [
@@ -169,6 +150,15 @@ class TestSummedExtracellularElectrodeArrayRecordingBlock:
         parsed = libsonata.SimulationConfig(json.dumps(sonata_config), str(tmp_path))
 
         assert parsed.report("LFPRecording").method.name == method
+
+
+class TestSharedBase:
+    def test_cannot_be_used_on_its_own(self):
+        """Only its summed or per-neuron subclasses say which method the report uses."""
+        with pytest.raises(TypeError, match="abstract"):
+            ExtracellularElectrodeArrayRecording(
+                electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
+            )
 
 
 class TestTimeWindow:

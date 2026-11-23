@@ -76,6 +76,7 @@ class TestLFPRecordings:
         result = generate(config, tmp_path)
 
         assert result.reports["LFP"]["type"] == "lfp"
+        assert result.reports["LFP"]["method"] == "sum"
         assert result.sonata_config["target_simulator"] == "CORENEURON"
 
     @pytest.mark.parametrize("block", LFP_BLOCKS)
