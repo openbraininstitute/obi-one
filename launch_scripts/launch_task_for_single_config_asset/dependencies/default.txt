@@ -2,7 +2,7 @@
 # To update, run: make compile-launch-deps or make upgrade-launch-deps
 # The obi-one pin is updated for each release by .github/workflows/release-pin.yml
 # and kept by compiling.
-obi-one==2026.11.8
+obi-one==2026.11.9
 annotated-types==0.8.0
 anyio==4.15.1
 asttokens==3.0.2
@@ -53,7 +53,7 @@ jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 kiwisolver==1.5.1
 lazy==2.0
-libsonata==0.2.2
+libsonata==0.2.4
 locket==1.0.0
 markdown-it-py==4.2.0
 markupsafe==3.0.3

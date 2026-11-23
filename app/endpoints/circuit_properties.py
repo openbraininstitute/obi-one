@@ -356,13 +356,6 @@ def mapped_circuit_properties_endpoint(
             simulation_options_usability = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: circuit.scale
                 == CircuitScale.microcircuit,
-                CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: circuit.scale
-                in {
-                    CircuitScale.microcircuit,
-                    CircuitScale.region,
-                    CircuitScale.system,
-                    CircuitScale.whole_brain,
-                },
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: circuit.has_morphologies
                 and circuit.scale
                 in {
@@ -408,7 +401,6 @@ def mapped_circuit_properties_endpoint(
             # If we can't get the circuit entity, set default usability
             mapped_circuit_properties["usability"] = {
                 CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
-                CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: False,
                 CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: False,
                 CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,
@@ -423,7 +415,6 @@ def mapped_circuit_properties_endpoint(
         # For MEModel entities, set default usability
         mapped_circuit_properties["usability"] = {
             CircuitUsability.SHOW_ELECTRIC_FIELD_STIMULI: False,
-            CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS: False,
             CircuitUsability.SHOW_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_EXPLICIT_MORPHOLOGY_LOCATIONS: True,
             CircuitUsability.SHOW_INPUT_RESISTANCE_BASED_STIMULI: False,

@@ -9,7 +9,8 @@ import pytest
 
 from obi_one.core.exception import ConfigValidationError
 from obi_one.scientific.blocks.recordings.extracellular import (
-    ExtracellularElectrodeArrayRecordingBlock,
+    SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.recordings.soma import SomaVoltageRecording
 from obi_one.scientific.blocks.stimuli.electric_field import (
@@ -37,10 +38,14 @@ ELECTRIC_FIELDS = [
 ]
 
 
-def _lfp():
-    return ExtracellularElectrodeArrayRecordingBlock(
-        electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
-    )
+LFP_BLOCKS = [
+    SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+]
+
+
+def _lfp(block=SummedExtracellularElectrodeArrayRecordingBlock):
+    return block(electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID))
 
 
 def _config(circuit, blocks, simulator=None):
@@ -65,18 +70,22 @@ class TestSimulator:
 
 
 class TestLFPRecordings:
-    def test_run_under_coreneuron(self, circuit, tmp_path):
-        result = generate(_config(circuit, {"LFP": _lfp()}, simulator="CORENEURON"), tmp_path)
+    @pytest.mark.parametrize("block", LFP_BLOCKS)
+    def test_run_under_coreneuron(self, block, circuit, tmp_path):
+        config = _config(circuit, {"LFP": _lfp(block)}, simulator="CORENEURON")
+        result = generate(config, tmp_path)
 
         assert result.reports["LFP"]["type"] == "lfp"
+        assert result.reports["LFP"]["method"] == "sum"
         assert result.sonata_config["target_simulator"] == "CORENEURON"
 
-    def test_are_refused_under_neuron(self, circuit, tmp_path):
+    @pytest.mark.parametrize("block", LFP_BLOCKS)
+    def test_are_refused_under_neuron(self, block, circuit, tmp_path):
         with pytest.raises(
             ConfigValidationError,
             match=r"LFP recordings \('LFP'\) need CoreNEURON: select it as the simulator",
         ):
-            generate(_config(circuit, {"LFP": _lfp()}), tmp_path)
+            generate(_config(circuit, {"LFP": _lfp(block)}), tmp_path)
 
     def test_the_refusal_comes_before_anything_is_written(self, circuit, tmp_path):
         db_client = FakeDBClient()
