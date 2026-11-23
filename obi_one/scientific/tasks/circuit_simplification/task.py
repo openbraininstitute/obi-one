@@ -369,7 +369,9 @@ class CircuitSimplificationTask(Task):
             )
 
             # Run the pipeline with a recipe that includes the exporter
-            recipe = Recipe.from_mode(base_algorithm, exporter=exporter_name)
+            recipe = Recipe.from_mode(
+                base_algorithm, exporter=exporter_name, **exporter_kwargs(exporter_name)
+            )
             pipeline.run_recipe(recipe)
 
             # The simplified SONATA circuit is in output_dir / "output"
@@ -396,21 +398,11 @@ class CircuitSimplificationTask(Task):
                 export_dir = simplified_output_dir.parent / (
                     f"{simplified_output_dir.name}_{export_suffix}"
                 )
-
-                # Run the pipeline with a recipe that includes the exporter
-                recipe = Recipe.from_mode(
-                    base_algorithm, exporter=exporter_name, **exporter_kwargs(exporter_name)
-                )
-                pipeline.run_recipe(recipe)
-
-                # The simplified SONATA circuit is in output_dir / "output"
-                # (the sim config sets output_dir to output_dir / "output")
-                simplified_circuit_path = output_dir / "output" / "circuit_config.json"
-
-                if not simplified_circuit_path.exists():
-                    L.warning(
-                        f"Simplified circuit config not found at {simplified_circuit_path}"
-                        f" for algorithm '{algorithm_name}'"
+                registration_path = export_dir / "circuit_config.json"
+                if not registration_path.exists():
+                    message = (
+                        f"Expected {exporter_name} export at {registration_path}"
+                        f" for algorithm '{algorithm_name}', but it was not found"
                     )
                     L.error(message)
                     raise RuntimeError(message)

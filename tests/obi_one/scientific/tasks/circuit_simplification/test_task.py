@@ -910,7 +910,7 @@ class TestExporterKwargs:
         algorithm,
         expected_kwargs,
         fake_simplified_circuit: Path,
-        mock_pipeline,  # ruff: ignore[unused-method-argument]
+        simplified_output,  # ruff: ignore[unused-method-argument]
         tmp_path: Path,
     ):
         task = CircuitSimplificationTask(
