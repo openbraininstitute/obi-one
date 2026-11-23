@@ -4,19 +4,20 @@ from uuid import UUID
 
 import libsonata
 import pytest
+from pydantic import ValidationError
 
 from obi_one.core.schema import SchemaKey
 from obi_one.scientific.blocks.recordings.extracellular import (
+    ExtracellularElectrodeArrayRecording,
     ExtracellularElectrodeArrayRecordingBlock,
+    SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.from_id.extracellular_recording_array_from_id import (
     SimulatableExtracellularRecordingArrayFromID,
 )
 from obi_one.scientific.library.constants import SIMULATION_TIMESTEP_MILLISECONDS
-from obi_one.scientific.library.entity_property_types import (
-    CircuitUsability,
-    MappedPropertiesGroup,
-)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -27,6 +28,16 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_me_model
 ARRAY_ID = "9f8ac5a5-4b6c-4e57-9a2f-2e3f7d0b1c44"
 
 
+SUMMED_BLOCKS = [
+    SummedExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+]
+PER_NEURON_BLOCKS = [
+    ExtracellularElectrodeArrayRecordingBlock,
+    TimeWindowExtracellularElectrodeArrayRecordingBlock,
+]
+
+
 class _ClientThatMustNotBeUsed:
     """Fails the test on any use: emitting the report must not touch the database."""
 
@@ -35,17 +46,20 @@ class _ClientThatMustNotBeUsed:
         raise AssertionError(msg)
 
 
-def _recording(name="LFPRecording", dt=0.1):
-    recording = ExtracellularElectrodeArrayRecordingBlock(
+def _recording(
+    name="LFPRecording", dt=0.1, block=SummedExtracellularElectrodeArrayRecordingBlock, **window
+):
+    recording = block(
         electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID),
         dt=dt,
+        **window,
     )
     recording.set_block_name(name)
     return recording
 
 
-class TestExtracellularElectrodeArrayRecordingBlock:
-    def test_generates_sonata_lfp_report(self):
+class TestSummedExtracellularElectrodeArrayRecordingBlock:
+    def test_generates_a_summed_sonata_lfp_report(self):
         reports = _recording().config(
             SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, default_node_set="AllBiophysical"
         )
@@ -60,6 +74,7 @@ class TestExtracellularElectrodeArrayRecordingBlock:
                 "start_time": 0.0,
                 "end_time": 100.0,
                 "electrodes_file": f"{ARRAY_ID}.h5",
+                "method": "sum",
             }
         }
 
@@ -116,32 +131,127 @@ class TestExtracellularElectrodeArrayRecordingBlock:
 
         assert parsed.report("LFPRecording").unit == "V"
 
+    @pytest.mark.parametrize(
+        ("block", "method"),
+        [
+            (SummedExtracellularElectrodeArrayRecordingBlock, "sum"),
+            (ExtracellularElectrodeArrayRecordingBlock, "by_cell"),
+        ],
+    )
+    def test_libsonata_reads_the_method(self, tmp_path, block, method):
+        reports = _recording(block=block).config(SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0)
+        sonata_config = {
+            "version": 1,
+            "network": "circuit_config.json",
+            "run": {"tstop": 100.0, "dt": 0.025, "random_seed": 1},
+            "reports": reports,
+        }
+
+        parsed = libsonata.SimulationConfig(json.dumps(sonata_config), str(tmp_path))
+
+        assert parsed.report("LFPRecording").method.name == method
+
+
+class TestSharedBase:
+    def test_cannot_be_used_on_its_own(self):
+        """Only its summed or per-neuron subclasses say which method the report uses."""
+        with pytest.raises(TypeError, match="abstract"):
+            ExtracellularElectrodeArrayRecording(
+                electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=ARRAY_ID)
+            )
+
+
+class TestTimeWindow:
+    @pytest.mark.parametrize(
+        ("block", "method"),
+        [
+            (TimeWindowSummedExtracellularElectrodeArrayRecordingBlock, {"method": "sum"}),
+            (TimeWindowExtracellularElectrodeArrayRecordingBlock, {}),
+        ],
+    )
+    def test_records_only_the_window(self, block, method):
+        reports = _recording(block=block, start_time=20.0, end_time=60.0).config(
+            SIMULATION_TIMESTEP_MILLISECONDS, end_time=100.0, default_node_set="AllBiophysical"
+        )
+
+        assert reports == {
+            "LFPRecording": {
+                "cells": "AllBiophysical",
+                "type": "lfp",
+                "sections": "all",
+                "unit": "V",
+                "dt": 0.1,
+                "start_time": 20.0,
+                "end_time": 60.0,
+                "electrodes_file": f"{ARRAY_ID}.h5",
+                **method,
+            }
+        }
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+            TimeWindowExtracellularElectrodeArrayRecordingBlock,
+        ],
+    )
+    def test_the_window_must_end_after_it_starts(self, block):
+        with pytest.raises(ValidationError, match="End time must be later than start time"):
+            _recording(block=block, start_time=60.0, end_time=20.0)
+
+    @pytest.mark.parametrize(
+        "window",
+        [
+            {"start_time": [0.0, 10.0], "end_time": 100.0},
+            {"start_time": 0.0, "end_time": [50.0, 100.0]},
+            {"start_time": [0.0, 10.0], "end_time": [50.0, 100.0]},
+        ],
+    )
+    def test_a_sweep_whose_every_window_is_forwards_is_accepted(self, window):
+        recording = _recording(
+            block=TimeWindowSummedExtracellularElectrodeArrayRecordingBlock, **window
+        )
+
+        assert recording.start_time == window["start_time"]
+
+    def test_every_combination_of_a_sweep_is_checked(self):
+        """The grid pairs 50 with 40 even though each list on its own looks fine."""
+        with pytest.raises(ValidationError, match=r"\(50.0 to 40.0 ms\)"):
+            _recording(
+                block=TimeWindowSummedExtracellularElectrodeArrayRecordingBlock,
+                start_time=[0.0, 50.0],
+                end_time=[40.0, 100.0],
+            )
+
 
 class TestCircuitUsability:
-    def test_is_offered_only_where_the_circuit_allows_extracellular_recordings(self):
-        """The frontend greys the block out when the circuit's usability flag is false."""
-        schema = ExtracellularElectrodeArrayRecordingBlock.model_json_schema()
-        usability = schema[SchemaKey.BLOCK_USABILITY_DICTIONARY]
-
-        assert usability[SchemaKey.PROPERTY_GROUP] == MappedPropertiesGroup.CIRCUIT
-        assert usability[SchemaKey.PROPERTY] == CircuitUsability.SHOW_EXTRACELLULAR_RECORDINGS
-        assert usability[SchemaKey.FALSE_MESSAGE]
+    @pytest.mark.parametrize("block", SUMMED_BLOCKS + PER_NEURON_BLOCKS)
+    def test_is_offered_at_every_circuit_scale(self, block):
+        """Every circuit simulation runs through the launch system, so none greys it out."""
+        assert SchemaKey.BLOCK_USABILITY_DICTIONARY not in block.model_json_schema()
 
 
 class TestCircuitRecordingUnion:
-    def test_extracellular_recording_offered_by_circuit_simulations(self):
+    @pytest.mark.parametrize("block", SUMMED_BLOCKS)
+    def test_summed_recording_offered_by_circuit_simulations(self, block):
         scan_config = CircuitSimulationScanConfig.empty_config()
-        scan_config.add(_recording(), name="LFPRecording")
+        scan_config.add(_recording(block=block), name="LFPRecording")
 
-        assert isinstance(
-            scan_config.recordings["LFPRecording"],
-            ExtracellularElectrodeArrayRecordingBlock,
-        )
+        assert isinstance(scan_config.recordings["LFPRecording"], block)
 
-    def test_extracellular_recording_rejected_by_single_cell_simulations(self):
+    @pytest.mark.parametrize("block", PER_NEURON_BLOCKS)
+    def test_per_neuron_recording_not_offered_by_circuit_simulations(self, block):
+        """Left out of the recordings union, so neither the UI nor a config can use it."""
+        scan_config = CircuitSimulationScanConfig.empty_config()
+
+        with pytest.raises(KeyError, match=block.__name__):
+            scan_config.add(_recording(block=block), name="LFPRecording")
+
+    @pytest.mark.parametrize("block", SUMMED_BLOCKS + PER_NEURON_BLOCKS)
+    def test_extracellular_recording_rejected_by_single_cell_simulations(self, block):
         """MEModel simulations have no circuit-wide weight matrix, so cannot record LFP."""
         scan_config = MEModelSimulationScanConfig.empty_config()
 
         # Not in the block mapping, because it is not part of that config's recordings union.
-        with pytest.raises(KeyError, match="ExtracellularElectrodeArrayRecordingBlock"):
-            scan_config.add(_recording(), name="LFPRecording")
+        with pytest.raises(KeyError, match=block.__name__):
+            scan_config.add(_recording(block=block), name="LFPRecording")

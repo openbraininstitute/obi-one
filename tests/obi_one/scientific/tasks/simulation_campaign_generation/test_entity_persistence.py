@@ -16,7 +16,7 @@ from obi_one.scientific.blocks.neuron_sets.id import (
     VirtualPopulationIDNeuronSet,
 )
 from obi_one.scientific.blocks.recordings.extracellular import (
-    ExtracellularElectrodeArrayRecordingBlock,
+    SummedExtracellularElectrodeArrayRecordingBlock,
 )
 from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import FullySynchronousSpikeStimulus
 from obi_one.scientific.blocks.stimuli.spike.poisson import PoissonSpikeStimulus
@@ -44,7 +44,7 @@ CORENEURON = {"simulator": "CORENEURON"}
 
 
 def _lfp_recording(array_id):
-    return ExtracellularElectrodeArrayRecordingBlock(
+    return SummedExtracellularElectrodeArrayRecordingBlock(
         electrode_array=SimulatableExtracellularRecordingArrayFromID(id_str=array_id)
     )
 
