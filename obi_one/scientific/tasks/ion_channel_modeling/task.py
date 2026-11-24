@@ -14,7 +14,10 @@ from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
-from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
+from obi_one.scientific.library.simulation.neuron.process import (
+    compile_mechanisms,
+    mechanisms_cache_dir,
+)
 from obi_one.scientific.library.simulation.neuron.schemas import NeurodamusMechanismBuild
 from obi_one.scientific.tasks.ion_channel_modeling.config import (
     IonChannelFittingSingleConfig,
@@ -108,7 +111,10 @@ def plot_fitted_model(io_path: str) -> None:
     import neuron  # ruff: ignore[import-outside-top-level]
 
     libnrnmech_path, kwargs = pickle.loads(Path(io_path).read_bytes())  # ruff: ignore[suspicious-pickle-usage]
-    neuron.h.nrn_load_dll(str(libnrnmech_path))
+    # nrn_load_dll reports a failed load by returning 0 and printing to stderr, not by raising.
+    if not neuron.h.nrn_load_dll(str(libnrnmech_path)):
+        msg = f"Could not load the compiled mechanisms from {libnrnmech_path}"
+        raise RuntimeError(msg)
     Path(io_path).write_bytes(pickle.dumps(run_ion_channel_model(**kwargs)))
 
 
@@ -296,12 +302,14 @@ class IonChannelFittingTask(Task):
         """Compile into a build folder of the coordinate, not the cwd concurrent fits share."""
         build_dir = coordinate_root / "mechanisms_build"
         build_dir.mkdir(parents=True, exist_ok=True)
-        return compile_mechanisms(
-            output_dir=build_dir,
-            mechanisms_dirs=[mechanisms_dir],
-            simulation_backend=SimulationBackend.neurodamus,
-            cache_dir=self.shared_cache.mechanisms_dir if self.shared_cache else None,
-        )  # ty:ignore[invalid-return-type]
+        shared_dir = self.shared_cache.mechanisms_dir if self.shared_cache else None
+        with mechanisms_cache_dir(shared_dir) as cache_dir:
+            return compile_mechanisms(
+                output_dir=build_dir,
+                mechanisms_dirs=[mechanisms_dir],
+                simulation_backend=SimulationBackend.neurodamus,
+                cache_dir=cache_dir,
+            )  # ty:ignore[invalid-return-type]
 
     def execute(
         self,

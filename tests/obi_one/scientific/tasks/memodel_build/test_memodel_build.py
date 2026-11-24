@@ -1,3 +1,4 @@
+import os
 from types import SimpleNamespace
 from unittest.mock import Mock, call
 from uuid import uuid4
@@ -29,6 +30,7 @@ from obi_one.scientific.tasks.memodel_build.config import (
     MEModelBuildSingleConfig,
 )
 from obi_one.scientific.tasks.memodel_build.task import MEModelBuildTask
+from obi_one.utils.shared_cache import SharedCache
 
 MORPHOLOGY_ID = str(uuid4())
 EMODEL_ID = str(uuid4())
@@ -135,7 +137,7 @@ def steps(monkeypatch, tmp_path, build_inputs):
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
     parent.compile.return_value = SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so")
     monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
-    monkeypatch.setenv("BLUECELLULAB_MOD_LIBRARY_PATH", "")
+    monkeypatch.delenv("BLUECELLULAB_MOD_LIBRARY_PATH", raising=False)
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
     monkeypatch.setattr(task_module, "run_validations_in_subprocess", parent.validate)
     monkeypatch.setattr(
@@ -151,6 +153,17 @@ def steps(monkeypatch, tmp_path, build_inputs):
 
 
 class TestExecute:
+    def test_compiles_with_the_shared_mechanisms_cache(self, tmp_path, steps):
+        shared_root = tmp_path / "shared-cache"
+        shared_root.mkdir()
+        shared_cache = SharedCache(shared_root)
+        task = _task(tmp_path)
+        task.shared_cache = shared_cache
+
+        task.execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
+
+        assert steps.compile.call_args.kwargs["cache_dir"] == shared_cache.mechanisms_dir
+
     def test_stages_calibrates_registers_then_validates(self, tmp_path, steps):
         db_client = _db_client()
         task = _task(tmp_path)
@@ -179,15 +192,20 @@ class TestExecute:
             "output_dir": tmp_path / "mechanisms_build",
             "mechanisms_dirs": [tmp_path / "mechanisms"],
             "simulation_backend": task_module.SimulationBackend.neurodamus,
-            "cache_dir": None,
+            "cache_dir": steps.compile.call_args.kwargs["cache_dir"],
         }
+        # No shared cache: a throwaway one outside the build folder, clear of the `=` in its path.
+        assert not steps.compile.call_args.kwargs["cache_dir"].is_relative_to(tmp_path)
         assert steps.calibrate.call_args.kwargs == {
             "coord_root": tmp_path,
             "hoc_path": tmp_path / "cell.hoc",
             "morphology_path": tmp_path / "cell.asc",
             "holding_current": task_module.INITIAL_HOLDING_CURRENT,
             "threshold_current": task_module.INITIAL_THRESHOLD_CURRENT,
+            "libnrnmech_path": tmp_path / "libnrnmech.so",
         }
+        assert steps.validate.call_args.kwargs["libnrnmech_path"] == tmp_path / "libnrnmech.so"
+        assert "BLUECELLULAB_MOD_LIBRARY_PATH" not in os.environ
         assert steps.register_memodel.call_args.kwargs == {
             "config": task.config,
             "db_client": db_client,
@@ -219,6 +237,7 @@ class TestExecute:
             "threshold_current": CALIBRATION["rheobase"],
             "output_dir": tmp_path / task_module.VALIDATION_FIGURES_DIRNAME,
             "n_processes": task_module.DEFAULT_VALIDATION_PROCESSES,
+            "libnrnmech_path": tmp_path / "libnrnmech.so",
         }
         steps.register_validation.assert_called_once_with(
             client=db_client,

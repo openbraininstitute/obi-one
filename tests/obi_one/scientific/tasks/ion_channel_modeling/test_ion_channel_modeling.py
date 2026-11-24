@@ -28,6 +28,7 @@ from obi_one.scientific.tasks.ion_channel_modeling.task import (
     plot_fitted_model,
     plot_in_fresh_process,
 )
+from obi_one.utils.shared_cache import SharedCache
 
 
 def test_get_range_params_stub_requires_ion_channel_builder():
@@ -456,7 +457,7 @@ def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
     assert write.call_args.kwargs["suffix"] == "kv62_fast"
     assert write.call_args.kwargs["output_name"] == tmp_path / "mechanisms" / "kv62_fast.mod"
     assert compile_.call_args.kwargs["mechanisms_dirs"] == [tmp_path / "mechanisms"]
-    assert compile_.call_args.kwargs["cache_dir"] is None
+    assert not compile_.call_args.kwargs["cache_dir"].is_relative_to(tmp_path)
     assert plot.call_args.args == (tmp_path, tmp_path / "libnrnmech.so")
     assert plot.call_args.kwargs["mech_suffix"] == "kv62_fast"
     assert plot.call_args.kwargs["temperature"] == pytest.approx(34.0)
@@ -464,8 +465,36 @@ def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
 
 
 def test_plotting_reports_the_fresh_process_error(tmp_path):
-    with pytest.raises(RuntimeError):
-        plot_in_fresh_process(tmp_path, tmp_path / "libnrnmech.so")
+    missing_lib = tmp_path / "libnrnmech.so"
+    with pytest.raises(RuntimeError, match="Could not load the compiled mechanisms"):
+        plot_in_fresh_process(tmp_path, missing_lib)
+
+
+def test_a_failed_library_load_in_the_plotting_process_raises(tmp_path, monkeypatch):
+    monkeypatch.setattr(neuron, "h", Mock(nrn_load_dll=Mock(return_value=0.0)))
+    run = Mock()
+    monkeypatch.setattr(ion_channel_modeling, "run_ion_channel_model", run)
+    io_path = tmp_path / "plot_fitted_model.pkl"
+    io_path.write_bytes(pickle.dumps((tmp_path / "libnrnmech.so", {})))
+
+    with pytest.raises(RuntimeError, match=r"libnrnmech\.so"):
+        plot_fitted_model(str(io_path))
+
+    run.assert_not_called()
+
+
+def test_the_mechanisms_are_compiled_with_the_shared_cache(tmp_path, monkeypatch):
+    shared_root = tmp_path / "shared-cache"
+    shared_root.mkdir()
+    shared_cache = SharedCache(shared_root)
+    compile_ = Mock(return_value=SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so"))
+    monkeypatch.setattr(ion_channel_modeling, "compile_mechanisms", compile_)
+    task = _task(tmp_path)
+    task.shared_cache = shared_cache
+
+    task.compile_mechanism(tmp_path, tmp_path / "mechanisms")
+
+    assert compile_.call_args.kwargs["cache_dir"] == shared_cache.mechanisms_dir
 
 
 def test_the_plotting_process_returns_the_figures_through_its_file(tmp_path, monkeypatch):

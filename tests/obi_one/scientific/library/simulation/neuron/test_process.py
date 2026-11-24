@@ -252,7 +252,19 @@ def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
     )
 
 
+@pytest.fixture
+def neurodamus_cli(monkeypatch):
+    monkeypatch.setattr(test_module.shutil, "which", lambda *_args, **_kwargs: "/opt/obi/cli")
+
+
+def test_compile_neurodamus_mechanisms_requires_the_cli(monkeypatch, tmp_path):
+    monkeypatch.setattr(test_module.shutil, "which", lambda *_args, **_kwargs: None)
+    with pytest.raises(FileNotFoundError, match="neurodamus-compile-mods was not found"):
+        test_module._compile_neurodamus_mechanisms(output_dir=tmp_path, mechanisms_dirs=[tmp_path])
+
+
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
 def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -311,6 +323,7 @@ def test_compile_neuron_mechanisms_rejects_multiple_dirs(mock_run_and_log, tmp_p
 
 
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
 def test_compile_neurodamus_mechanisms_uses_absolute_input_paths(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -341,6 +354,7 @@ def test_compile_neurodamus_mechanisms_uses_absolute_input_paths(mock_run_and_lo
 
 
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
 def test_compile_neurodamus_mechanisms_passes_cache_dir(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -482,3 +496,14 @@ def test_get_mechanisms_dirs_empty(tmp_path):
     config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=False)
 
     assert test_module.get_mechanisms_dirs(config_path) == []
+
+
+def test_mechanisms_cache_dir_prefers_the_shared_cache(tmp_path):
+    with test_module.mechanisms_cache_dir(tmp_path) as cache_dir:
+        assert cache_dir == tmp_path
+
+
+def test_mechanisms_cache_dir_is_a_throwaway_without_a_shared_cache():
+    with test_module.mechanisms_cache_dir(None) as cache_dir:
+        assert cache_dir.is_dir()
+    assert not cache_dir.exists()
