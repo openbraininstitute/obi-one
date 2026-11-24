@@ -442,7 +442,8 @@ def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
     write, plot, save = Mock(), Mock(return_value={}), Mock(return_value="model id")
     monkeypatch.setattr(ion_channel_modeling, "extract_all_equations", Mock(return_value={}))
     monkeypatch.setattr(ion_channel_modeling, "write_vgate_output", write)
-    monkeypatch.setattr(ion_channel_modeling, "run_and_log", Mock())
+    compile_ = Mock(return_value=SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so"))
+    monkeypatch.setattr(ion_channel_modeling, "compile_mechanisms", compile_)
     monkeypatch.setattr(ion_channel_modeling, "plot_in_fresh_process", plot)
     monkeypatch.setattr(ion_channel_modeling, "get_range_params_with_units", Mock(return_value=[]))
     monkeypatch.setattr(IonChannelFittingTask, "save", save)
@@ -454,18 +455,21 @@ def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
     assert model_id == "model id"
     assert write.call_args.kwargs["suffix"] == "kv62_fast"
     assert write.call_args.kwargs["output_name"] == tmp_path / "mechanisms" / "kv62_fast.mod"
+    assert compile_.call_args.kwargs["mechanisms_dirs"] == [tmp_path / "mechanisms"]
+    assert compile_.call_args.kwargs["cache_dir"] is None
+    assert plot.call_args.args == (tmp_path, tmp_path / "libnrnmech.so")
     assert plot.call_args.kwargs["mech_suffix"] == "kv62_fast"
     assert plot.call_args.kwargs["temperature"] == pytest.approx(34.0)
     assert save.call_args.kwargs["properties"].brain_region is ISOCORTEX
 
 
 def test_plotting_reports_the_fresh_process_error(tmp_path):
-    with pytest.raises(RuntimeError, match="No compiled mechanisms found"):
-        plot_in_fresh_process(tmp_path)
+    with pytest.raises(RuntimeError):
+        plot_in_fresh_process(tmp_path, tmp_path / "libnrnmech.so")
 
 
 def test_the_plotting_process_returns_the_figures_through_its_file(tmp_path, monkeypatch):
-    monkeypatch.setattr(neuron, "load_mechanisms", lambda _path: True)
+    monkeypatch.setattr(neuron, "h", Mock())
     monkeypatch.setattr(
         ion_channel_modeling,
         "run_ion_channel_model",

@@ -133,7 +133,9 @@ def steps(monkeypatch, tmp_path, build_inputs):
     monkeypatch.setattr(registration, "register_memodel", parent.register_memodel)
     monkeypatch.setattr(registration, "finalize_memodel", parent.finalize_memodel)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
+    parent.compile.return_value = SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so")
     monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
+    monkeypatch.setenv("BLUECELLULAB_MOD_LIBRARY_PATH", "")
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
     monkeypatch.setattr(task_module, "run_validations_in_subprocess", parent.validate)
     monkeypatch.setattr(
@@ -174,9 +176,10 @@ class TestExecute:
             output_dir=tmp_path,
         )
         assert steps.compile.call_args.kwargs == {
-            "output_dir": tmp_path,
+            "output_dir": tmp_path / "mechanisms_build",
             "mechanisms_dirs": [tmp_path / "mechanisms"],
-            "simulation_backend": task_module.SimulationBackend.bluecellulab,
+            "simulation_backend": task_module.SimulationBackend.neurodamus,
+            "cache_dir": None,
         }
         assert steps.calibrate.call_args.kwargs == {
             "coord_root": tmp_path,
