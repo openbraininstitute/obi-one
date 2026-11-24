@@ -444,7 +444,7 @@ def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
     monkeypatch.setattr(ion_channel_modeling, "extract_all_equations", Mock(return_value={}))
     monkeypatch.setattr(ion_channel_modeling, "write_vgate_output", write)
     compile_ = Mock(return_value=SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so"))
-    monkeypatch.setattr(ion_channel_modeling, "compile_mechanisms", compile_)
+    monkeypatch.setattr(ion_channel_modeling, "compile_neurodamus_mechanisms_in", compile_)
     monkeypatch.setattr(ion_channel_modeling, "plot_in_fresh_process", plot)
     monkeypatch.setattr(ion_channel_modeling, "get_range_params_with_units", Mock(return_value=[]))
     monkeypatch.setattr(IonChannelFittingTask, "save", save)
@@ -456,8 +456,7 @@ def test_the_fit_uses_the_resolved_properties(tmp_path, monkeypatch):
     assert model_id == "model id"
     assert write.call_args.kwargs["suffix"] == "kv62_fast"
     assert write.call_args.kwargs["output_name"] == tmp_path / "mechanisms" / "kv62_fast.mod"
-    assert compile_.call_args.kwargs["mechanisms_dirs"] == [tmp_path / "mechanisms"]
-    assert not compile_.call_args.kwargs["cache_dir"].is_relative_to(tmp_path)
+    compile_.assert_called_once_with(tmp_path / "mechanisms_build", [tmp_path / "mechanisms"], None)
     assert plot.call_args.args == (tmp_path, tmp_path / "libnrnmech.so")
     assert plot.call_args.kwargs["mech_suffix"] == "kv62_fast"
     assert plot.call_args.kwargs["temperature"] == pytest.approx(34.0)
@@ -487,14 +486,19 @@ def test_the_mechanisms_are_compiled_with_the_shared_cache(tmp_path, monkeypatch
     shared_root = tmp_path / "shared-cache"
     shared_root.mkdir()
     shared_cache = SharedCache(shared_root)
+    monkeypatch.setattr(ion_channel_modeling, "extract_all_equations", Mock(return_value={}))
+    monkeypatch.setattr(ion_channel_modeling, "write_vgate_output", Mock())
     compile_ = Mock(return_value=SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so"))
-    monkeypatch.setattr(ion_channel_modeling, "compile_mechanisms", compile_)
+    monkeypatch.setattr(ion_channel_modeling, "compile_neurodamus_mechanisms_in", compile_)
+    monkeypatch.setattr(ion_channel_modeling, "plot_in_fresh_process", Mock(return_value={}))
+    monkeypatch.setattr(ion_channel_modeling, "get_range_params_with_units", Mock(return_value=[]))
+    monkeypatch.setattr(IonChannelFittingTask, "save", Mock(return_value="model id"))
     task = _task(tmp_path)
     task.shared_cache = shared_cache
 
-    task.compile_mechanism(tmp_path, tmp_path / "mechanisms")
+    task.execute(db_client=_db_client())
 
-    assert compile_.call_args.kwargs["cache_dir"] == shared_cache.mechanisms_dir
+    assert compile_.call_args.args[2] is shared_cache
 
 
 def test_the_plotting_process_returns_the_figures_through_its_file(tmp_path, monkeypatch):

@@ -22,6 +22,7 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
 )
 from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
+from obi_one.utils.shared_cache import SharedCache
 
 L = logging.getLogger(__name__)
 
@@ -156,6 +157,30 @@ def mechanisms_cache_dir(shared_cache_dir: Path | None) -> Generator[Path]:
         return
     with tempfile.TemporaryDirectory(prefix="mechanisms_cache_") as tmp:
         yield Path(tmp)
+
+
+def compile_neurodamus_mechanisms_in(
+    build_dir: Path, mechanisms_dirs: list[Path], shared_cache: SharedCache | None
+) -> NeurodamusMechanismBuild:
+    """Compile into ``build_dir``, through the shared cache or a throwaway one.
+
+    Raises:
+        RuntimeError: If the reported library lies outside ``build_dir``; a throwaway cache is
+            removed on return, so a library inside it would fail to load later in a subprocess.
+    """
+    build_dir.mkdir(parents=True, exist_ok=True)
+    shared_dir = shared_cache.mechanisms_dir if shared_cache is not None else None
+    with mechanisms_cache_dir(shared_dir) as cache_dir:
+        build = _compile_neurodamus_mechanisms(
+            output_dir=build_dir, mechanisms_dirs=mechanisms_dirs, cache_dir=cache_dir
+        )
+    if not build.libnrnmech_path.resolve().is_relative_to(build_dir.resolve()):
+        msg = (
+            f"neurodamus-compile-mods reported {build.libnrnmech_path}, "
+            f"outside the build directory {build_dir}."
+        )
+        raise RuntimeError(msg)
+    return build
 
 
 def compile_mechanisms(

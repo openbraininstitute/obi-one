@@ -84,10 +84,9 @@ def compute_calibration_and_validation(
     return {"calibration": calibration_dict, "validation": validation_dict}
 
 
-def export_mechanisms_library(libnrnmech_path: str | None) -> None:
+def export_mechanisms_library(libnrnmech_path: str) -> None:
     """Point bluecellulab at a compiled library; only ever called inside a spawned worker."""
-    if libnrnmech_path is not None:
-        os.environ["BLUECELLULAB_MOD_LIBRARY_PATH"] = libnrnmech_path
+    os.environ["BLUECELLULAB_MOD_LIBRARY_PATH"] = libnrnmech_path
 
 
 def calibration_worker(
@@ -106,7 +105,8 @@ def calibration_worker(
     ``{holding_current, rheobase, rin}`` to ``result_json_path`` for the parent.
     """
     os.chdir(coord_root)
-    export_mechanisms_library(libnrnmech_path)
+    if libnrnmech_path is not None:
+        export_mechanisms_library(libnrnmech_path)
     try:
         from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
         from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
@@ -161,7 +161,8 @@ def validation_worker(
     ``result_json_path`` for the parent.
     """
     os.chdir(coord_root)
-    export_mechanisms_library(libnrnmech_path)
+    if libnrnmech_path is not None:
+        export_mechanisms_library(libnrnmech_path)
     try:
         from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
         from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]

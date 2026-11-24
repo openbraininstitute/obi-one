@@ -181,17 +181,22 @@ class TestLibnrnmechPath:
 
         assert runner.call_args.args[1][-1] is None
 
-    def test_worker_exports_it_for_its_own_process(self, tmp_path, monkeypatch):
+    @pytest.mark.parametrize(
+        ("libnrnmech_path", "expected"), [("/x/libnrnmech.so", "/x/libnrnmech.so"), (None, "")]
+    )
+    def test_worker_exports_it_for_its_own_process(
+        self, tmp_path, monkeypatch, libnrnmech_path, expected
+    ):
         monkeypatch.setattr(calibration_validation.os, "chdir", lambda _path: None)
-        monkeypatch.delenv("BLUECELLULAB_MOD_LIBRARY_PATH", raising=False)
+        # setenv records the original state, so teardown restores it whatever the worker sets.
+        monkeypatch.setenv("BLUECELLULAB_MOD_LIBRARY_PATH", "")
         _install_fake_bluecellulab(monkeypatch)
 
         calibration_validation.calibration_worker(
-            str(tmp_path), "hoc.hoc", "morph.swc", 0.0, 0.1, "/x/libnrnmech.so", str(tmp_path / "o")
+            str(tmp_path), "hoc.hoc", "morph.swc", 0.0, 0.1, libnrnmech_path, str(tmp_path / "o")
         )
 
-        assert os.environ["BLUECELLULAB_MOD_LIBRARY_PATH"] == "/x/libnrnmech.so"
-        monkeypatch.delenv("BLUECELLULAB_MOD_LIBRARY_PATH")
+        assert os.environ["BLUECELLULAB_MOD_LIBRARY_PATH"] == expected
 
     def test_compute_calibration_and_validation_forwards_it(self, tmp_path, monkeypatch):
         cal = Mock(return_value={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0})

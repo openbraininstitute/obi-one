@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -12,6 +13,7 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
     SimulationResults,
 )
 from obi_one.types import SimulationBackend
+from obi_one.utils.shared_cache import SharedCache
 
 
 def _touch(path):
@@ -507,3 +509,60 @@ def test_mechanisms_cache_dir_is_a_throwaway_without_a_shared_cache():
     with test_module.mechanisms_cache_dir(None) as cache_dir:
         assert cache_dir.is_dir()
     assert not cache_dir.exists()
+
+
+def _report_build_in(mock_run_and_log, lib_dir):
+    for name in ("libnrnmech.so", "libcorenrnmech.so", "special"):
+        _touch(lib_dir / name)
+    mock_run_and_log.return_value.stdout = json.dumps(
+        {
+            "NRNMECH_LIB_PATH": str(lib_dir / "libnrnmech.so"),
+            "SPECIALS_PATH": str(lib_dir),
+            "CORENEURONLIB": str(lib_dir / "libcorenrnmech.so"),
+        }
+    )
+
+
+def _passed_cache_dir(mock_run_and_log):
+    command = mock_run_and_log.call_args.args[0]
+    return Path(command[command.index("--cache-dir") + 1])
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
+def test_compile_neurodamus_mechanisms_in_uses_the_shared_cache(mock_run_and_log, tmp_path):
+    shared_cache = SharedCache(tmp_path / "shared")
+    build_dir = tmp_path / "build"
+    _report_build_in(mock_run_and_log, build_dir / "x86_64")
+
+    build = test_module.compile_neurodamus_mechanisms_in(
+        build_dir, [tmp_path / "mech"], shared_cache
+    )
+
+    assert build_dir.is_dir()
+    assert build.libnrnmech_path == build_dir / "x86_64" / "libnrnmech.so"
+    assert _passed_cache_dir(mock_run_and_log) == shared_cache.mechanisms_dir.absolute()
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
+def test_compile_neurodamus_mechanisms_in_uses_a_throwaway_cache(mock_run_and_log, tmp_path):
+    build_dir = tmp_path / "build"
+    _report_build_in(mock_run_and_log, build_dir)
+
+    test_module.compile_neurodamus_mechanisms_in(build_dir, [tmp_path / "mech"], None)
+
+    cache_dir = _passed_cache_dir(mock_run_and_log)
+    assert not cache_dir.is_relative_to(tmp_path)
+    assert not cache_dir.exists()
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
+def test_compile_neurodamus_mechanisms_in_rejects_a_library_outside_the_build(
+    mock_run_and_log, tmp_path
+):
+    _report_build_in(mock_run_and_log, tmp_path / "cache")
+
+    with pytest.raises(RuntimeError, match="outside the build directory"):
+        test_module.compile_neurodamus_mechanisms_in(tmp_path / "build", [tmp_path], None)
