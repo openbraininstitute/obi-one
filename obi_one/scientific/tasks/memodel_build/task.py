@@ -13,12 +13,11 @@ from obi_one.scientific.library.memodel_calibration_validation import (
     compute_calibration_in_subprocess,
     run_validations_in_subprocess,
 )
-from obi_one.scientific.library.simulation.neuron.process import (
-    compile_neurodamus_mechanisms_in,
-)
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.memodel_build import registration
 from obi_one.scientific.tasks.memodel_build.config import MEModelBuildSingleConfig
 from obi_one.scientific.tasks.memodel_build.staging import stage_memodel
+from obi_one.types import SimulationBackend
 
 L = logging.getLogger(__name__)
 
@@ -70,8 +69,11 @@ class MEModelBuildTask(Task):
         )
         # Built apart from output_dir: bluecellulab refuses BLUECELLULAB_MOD_LIBRARY_PATH when
         # the working directory (output_dir, for the subprocesses) holds an x86_64 folder.
-        mechanism_build = compile_neurodamus_mechanisms_in(
-            output_dir / "mechanisms_build", [staged.mechanisms_dir], self.shared_cache
+        mechanism_build = compile_mechanisms(
+            output_dir=output_dir / "mechanisms_build",
+            mechanisms_dirs=[staged.mechanisms_dir],
+            simulation_backend=SimulationBackend.neurodamus,
+            cache_dir=self.shared_cache.mechanisms_dir if self.shared_cache is not None else None,
         )
         calibration = compute_calibration_in_subprocess(
             coord_root=output_dir,

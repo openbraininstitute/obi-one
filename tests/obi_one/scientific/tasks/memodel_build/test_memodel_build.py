@@ -136,7 +136,7 @@ def steps(monkeypatch, tmp_path, build_inputs):
     monkeypatch.setattr(registration, "finalize_memodel", parent.finalize_memodel)
     monkeypatch.setattr(task_module, "stage_memodel", parent.stage_memodel)
     parent.compile.return_value = SimpleNamespace(libnrnmech_path=tmp_path / "libnrnmech.so")
-    monkeypatch.setattr(task_module, "compile_neurodamus_mechanisms_in", parent.compile)
+    monkeypatch.setattr(task_module, "compile_mechanisms", parent.compile)
     monkeypatch.delenv("BLUECELLULAB_MOD_LIBRARY_PATH", raising=False)
     monkeypatch.setattr(task_module, "compute_calibration_in_subprocess", parent.calibrate)
     monkeypatch.setattr(task_module, "run_validations_in_subprocess", parent.validate)
@@ -162,7 +162,7 @@ class TestExecute:
 
         task.execute(db_client=_db_client(), execution_activity_id=ACTIVITY_ID)
 
-        assert steps.compile.call_args.args[2] is shared_cache
+        assert steps.compile.call_args.kwargs["cache_dir"] == shared_cache.mechanisms_dir
 
     def test_stages_calibrates_registers_then_validates(self, tmp_path, steps):
         db_client = _db_client()
@@ -189,7 +189,10 @@ class TestExecute:
             output_dir=tmp_path,
         )
         steps.compile.assert_called_once_with(
-            tmp_path / "mechanisms_build", [tmp_path / "mechanisms"], None
+            output_dir=tmp_path / "mechanisms_build",
+            mechanisms_dirs=[tmp_path / "mechanisms"],
+            simulation_backend=task_module.SimulationBackend.neurodamus,
+            cache_dir=None,
         )
         assert steps.calibrate.call_args.kwargs == {
             "coord_root": tmp_path,

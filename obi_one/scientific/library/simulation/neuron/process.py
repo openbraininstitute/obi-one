@@ -22,7 +22,6 @@ from obi_one.scientific.library.simulation.neuron.schemas import (
 )
 from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
-from obi_one.utils.shared_cache import SharedCache
 
 L = logging.getLogger(__name__)
 
@@ -159,30 +158,6 @@ def mechanisms_cache_dir(shared_cache_dir: Path | None) -> Generator[Path]:
         yield Path(tmp)
 
 
-def compile_neurodamus_mechanisms_in(
-    build_dir: Path, mechanisms_dirs: list[Path], shared_cache: SharedCache | None
-) -> NeurodamusMechanismBuild:
-    """Compile into ``build_dir``, through the shared cache or a throwaway one.
-
-    Raises:
-        RuntimeError: If the reported library lies outside ``build_dir``; a throwaway cache is
-            removed on return, so a library inside it would fail to load later in a subprocess.
-    """
-    build_dir.mkdir(parents=True, exist_ok=True)
-    shared_dir = shared_cache.mechanisms_dir if shared_cache is not None else None
-    with mechanisms_cache_dir(shared_dir) as cache_dir:
-        build = _compile_neurodamus_mechanisms(
-            output_dir=build_dir, mechanisms_dirs=mechanisms_dirs, cache_dir=cache_dir
-        )
-    if not build.libnrnmech_path.resolve().is_relative_to(build_dir.resolve()):
-        msg = (
-            f"neurodamus-compile-mods reported {build.libnrnmech_path}, "
-            f"outside the build directory {build_dir}."
-        )
-        raise RuntimeError(msg)
-    return build
-
-
 def compile_mechanisms(
     *,
     output_dir: Path,
@@ -249,28 +224,39 @@ def _compile_neurodamus_mechanisms(
         )
         raise FileNotFoundError(msg)
 
-    command = [
-        "neurodamus-compile-mods",
-        *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d.absolute()))),
-        "--output-dir",
-        str(output_dir),
-        "--with-internal-mods",
-        "--simulator",
-        "coreneuron",
-        "--output-type",
-        "json",
-    ]
-    if cache_dir is not None:
-        command.extend(["--cache-dir", str(cache_dir.absolute())])
-
-    compilation_output = run_and_log(command, cwd=output_dir, env={"PATH": path}).stdout
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with mechanisms_cache_dir(cache_dir) as build_cache_dir:
+        command = [
+            "neurodamus-compile-mods",
+            *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d.absolute()))),
+            "--output-dir",
+            str(output_dir),
+            "--with-internal-mods",
+            "--simulator",
+            "coreneuron",
+            "--output-type",
+            "json",
+            "--cache-dir",
+            str(build_cache_dir.absolute()),
+        ]
+        compilation_output = run_and_log(command, cwd=output_dir, env={"PATH": path}).stdout
 
     L.debug(compilation_output)
 
     env = json.loads(compilation_output)
 
+    libnrnmech_path = Path(env["NRNMECH_LIB_PATH"])
+    # The CLI reports the copy under --output-dir, never the cache entry, which may be a
+    # throwaway one already removed.
+    if not libnrnmech_path.resolve().is_relative_to(output_dir.resolve()):
+        msg = (
+            f"neurodamus-compile-mods reported {libnrnmech_path}, "
+            f"outside the output directory {output_dir}."
+        )
+        raise RuntimeError(msg)
+
     return NeurodamusMechanismBuild(
-        libnrnmech_path=Path(env["NRNMECH_LIB_PATH"]),
+        libnrnmech_path=libnrnmech_path,
         libcorenrnmech_path=Path(env["CORENEURONLIB"]),
         special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )

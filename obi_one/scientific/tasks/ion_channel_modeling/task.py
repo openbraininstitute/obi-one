@@ -14,14 +14,13 @@ from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
-from obi_one.scientific.library.simulation.neuron.process import (
-    compile_neurodamus_mechanisms_in,
-)
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.ion_channel_modeling.config import (
     IonChannelFittingSingleConfig,
     ResolvedModelProperties,
     generic_subject,
 )
+from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
 
 try:
@@ -353,8 +352,11 @@ class IonChannelFittingTask(Task):
             figure_paths_dict = plot_in_fresh_process(
                 coordinate_root,
                 # Built in the coordinate folder, not the cwd that concurrent fits share.
-                compile_neurodamus_mechanisms_in(
-                    coordinate_root / "mechanisms_build", [mechanisms_dir], self.shared_cache
+                compile_mechanisms(
+                    output_dir=coordinate_root / "mechanisms_build",
+                    mechanisms_dirs=[mechanisms_dir],
+                    simulation_backend=SimulationBackend.neurodamus,
+                    cache_dir=self.shared_cache.mechanisms_dir if self.shared_cache else None,
                 ).libnrnmech_path,
                 mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see
