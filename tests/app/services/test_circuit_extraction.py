@@ -111,12 +111,14 @@ def _node_population(name, population_type, number_of_nodes):
     )
 
 
-def _edge_population(name, source_name, number_of_edges):
-    """Chemical edge population from source_name onto the biophysical population."""
+def _edge_population(
+    name, source_name, number_of_edges, population_type=EdgePopulationType.chemical
+):
+    """Edge population from source_name onto the biophysical population."""
     return CircuitMetricsEdgePopulation(
         number_of_edges=number_of_edges,
         name=name,
-        population_type=EdgePopulationType.chemical,
+        population_type=population_type,
         source_name=source_name,
         target_name="bio_pop",
         property_names=[],
@@ -126,13 +128,22 @@ def _edge_population(name, source_name, number_of_edges):
 
 
 def _make_circuit_metrics(
-    nbio_nodes, nvirt_nodes, sbio_edges, svirt_edges, external_neurons=0, external_synapses=0
+    nbio_nodes,
+    nvirt_nodes,
+    sbio_edges,
+    svirt_edges,
+    external_neurons=0,
+    external_synapses=0,
+    point_neurons=0,
+    point_synapses=0,
+    electrical_synapses=0,
 ):
     """Helper to build a CircuitMetricsOutput with given node/edge counts.
 
-    Node populations: "bio_pop" (biophysical), "virt_pop" (afferent virtual) and, if external
-    neurons or synapses are given, "external_pop" (virtual, externalized by an earlier extraction).
-    Edge populations: one from each node population onto "bio_pop".
+    Node populations: "bio_pop" (biophysical), "virt_pop" (afferent virtual) and, if given,
+    "external_pop" (virtual, externalized by an earlier extraction) and "point_pop" (point neurons).
+    Edge populations: one chemical from each node population onto "bio_pop" and, if given, an
+    electrical one within "bio_pop".
     """
     bio_nodes = [_node_population("bio_pop", NodePopulationType.biophysical, nbio_nodes)]
     virtual_nodes = [_node_population("virt_pop", NodePopulationType.virtual, nvirt_nodes)]
@@ -145,23 +156,37 @@ def _make_circuit_metrics(
             _node_population("external_pop", NodePopulationType.virtual, external_neurons)
         )
         edges.append(_edge_population("external_edges", "external_pop", external_synapses))
+    point_nodes = []
+    if point_neurons or point_synapses:
+        point_nodes.append(_node_population("point_pop", NodePopulationType.point, point_neurons))
+        edges.append(_edge_population("point_edges", "point_pop", point_synapses))
+    electrical_edges = []
+    if electrical_synapses:
+        electrical_edges.append(
+            _edge_population(
+                "bio_electrical_edges",
+                "bio_pop",
+                electrical_synapses,
+                population_type=EdgePopulationType.electrical,
+            )
+        )
     return CircuitMetricsOutput(
         number_of_biophys_node_populations=len(bio_nodes),
         number_of_virtual_node_populations=len(virtual_nodes),
-        number_of_point_node_populations=0,
+        number_of_point_node_populations=len(point_nodes),
         names_of_biophys_node_populations=[pop.name for pop in bio_nodes],
         names_of_virtual_node_populations=[pop.name for pop in virtual_nodes],
-        names_of_point_node_populations=[],
+        names_of_point_node_populations=[pop.name for pop in point_nodes],
         names_of_nodesets=[],
         biophysical_node_populations=bio_nodes,
         virtual_node_populations=virtual_nodes,
-        point_node_populations=[],
+        point_node_populations=point_nodes,
         number_of_chemical_edge_populations=len(edges),
-        number_of_electrical_edge_populations=0,
+        number_of_electrical_edge_populations=len(electrical_edges),
         names_of_chemical_edge_populations=[pop.name for pop in edges],
-        names_of_electrical_edge_populations=[],
+        names_of_electrical_edge_populations=[pop.name for pop in electrical_edges],
         chemical_edge_populations=edges,
-        electrical_edge_populations=[],
+        electrical_edge_populations=electrical_edges,
     )
 
 
@@ -469,8 +494,7 @@ def test_estimate_task_resources_time_limit_too_long(
     assert exc_info.value.error_code == ApiErrorCode.RESOURCE_ESTIMATION_ERROR
     assert exc_info.value.http_status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert exc_info.value.message == (
-        f"Extracting {1_000_000 + (nvirt if do_virtual else 0):,} neurons needs about 25 hours,"
-        f" more than the 24 hours a task can run. {hint}"
+        f"Extracting 10 neurons needs about 25 hours, more than the 24 hours a task can run. {hint}"
     )
 
 
@@ -478,11 +502,11 @@ def test_estimate_task_resources_time_limit_too_long(
     ("do_virtual", "create_external", "exp_mem", "exp_storage"),
     [
         # Input synapses: 50M bio + 100M afferent virtual (do_virtual) + 300M external
-        # (create_external); memory = 1.2 * min(24, 2 + 0.04e-6 * synapses), disk in 50 GB steps
-        (False, False, 6, 50),  # 50M: 4.8 GB, 20.5 GB
-        (True, False, 12, 100),  # 150M: 9.6 GB, 59.5 GB
-        (False, True, 24, 150),  # 350M: 19.2 GB, 137.5 GB
-        (True, True, 30, 200),  # 450M: 24 GB, 176.5 GB
+        # (create_external); memory = max(extraction, registration), disk in 50 GB steps
+        (False, False, 6, 50),  # 50M: max(4.8, 5.0) GB, 20.5 GB
+        (True, False, 12, 100),  # 150M: max(9.6, 10.3) GB, 59.5 GB
+        (False, True, 24, 150),  # 350M: max(19.2, 20.9) GB, 137.5 GB
+        (True, True, 30, 200),  # 450M: max(20.4, 26.2) GB, 176.5 GB
     ],
 )
 def test_estimate_task_resources_external_populations_only_count_with_create_external(
@@ -507,3 +531,67 @@ def test_estimate_extraction_resources():
 def test_estimate_registration_resources():
     assert test_module.estimate_registration_resources(0) == pytest.approx((1.2 * 2, 0))
     assert test_module.estimate_registration_resources(500e6) == pytest.approx((1.2 * 24, 10.5))
+
+
+def test_estimate_task_resources_limit_messages_report_extracted_neurons(db_client):
+    """The message names the extracted neurons, not the size of the parent circuit."""
+    # 300k of 1M neurons from a 10G-synapse parent: 3G output synapses need
+    # 1.2 * (2 + 0.044e-6 * 3e9) = 161 GB to register, more than the largest machine
+    metrics = _make_circuit_metrics(1_000_000, 500_000, 10_000_000_000, 0)
+    accounting_params = AccountingParameters(
+        count=300_000, service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION
+    )
+    with pytest.raises(ApiError) as exc_info:
+        _run_estimate_task_resources(
+            db_client, metrics, do_virtual=True, accounting_parameters=accounting_params
+        )
+    assert exc_info.value.message.startswith("Extracting 300,000 neurons needs about 161 GB")
+
+
+@pytest.mark.parametrize(
+    ("nbio", "sbio", "extracted", "exp_cores", "exp_mem", "exp_time", "exp_storage"),
+    [
+        # Point neurons only: 100M input synapses, 500 of 1000 neurons -> 50M output synapses
+        #   mem = max(7.2, 5.0) -> (1,8), time = ceil(1 + 0.08 + 1.05) = 3, disk = 20.5 -> 50
+        (0, 0, 500, 1, 8, "03:00", 50),
+        # Mixed: 1000 bio (100M synapses) + 1000 point (20M synapses), all 2000 extracted
+        #   -> 120M input and output synapses (fraction 1)
+        #   mem = max(8.2, 8.7) -> (2,12), time = ceil(1 + 0.1 + 2.52) = 4, disk = 47.8 -> 50
+        (1000, 100_000_000, 2000, 2, 12, "04:00", 50),
+    ],
+    ids=["point_only", "mixed_bio_and_point"],
+)
+def test_estimate_task_resources_counts_point_neurons(
+    db_client, nbio, sbio, extracted, exp_cores, exp_mem, exp_time, exp_storage
+):
+    """Point populations are extracted like biophysical ones, so they count the same way."""
+    point_synapses = 100_000_000 if nbio == 0 else 20_000_000
+    metrics = _make_circuit_metrics(
+        nbio, 0, sbio, 0, point_neurons=1000, point_synapses=point_synapses
+    )
+    accounting_params = AccountingParameters(
+        count=extracted, service_subtype=ServiceSubtype.CIRCUIT_EXTRACTION
+    )
+    result = _run_estimate_task_resources(
+        db_client, metrics, do_virtual=True, accounting_parameters=accounting_params
+    )
+    assert result.cores == exp_cores
+    assert result.memory == exp_mem
+    assert result.timelimit == exp_time
+    assert result.model_dump(mode="json")["ephemeral_storage"] == exp_storage
+
+
+def test_estimate_task_resources_counts_electrical_synapses(db_client):
+    """Electrical synapses between extracted neurons are extracted, so they count too."""
+    # 1000 bio neurons, 300M chemical synapses; extracting all of them -> 300M output synapses
+    #   disk = 1 + 3.9e-7 * 300M = 118 GB -> 150 GB; with 60M electrical: 141.4 GB -> 150 GB
+    #   time = ceil(1 + 0.24 + 6.3) = 8 h; with electrical: ceil(1 + 0.288 + 7.56) = 9 h
+    chemical_only = _make_circuit_metrics(1000, 0, 300_000_000, 0)
+    with_electrical = _make_circuit_metrics(1000, 0, 300_000_000, 0, electrical_synapses=60_000_000)
+    assert (
+        _run_estimate_task_resources(db_client, chemical_only, do_virtual=True).timelimit == "08:00"
+    )
+    assert (
+        _run_estimate_task_resources(db_client, with_electrical, do_virtual=True).timelimit
+        == "09:00"
+    )

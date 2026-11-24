@@ -26,7 +26,7 @@ Parent circuit sizes come from the circuit metrics, with afferent and externaliz
 
 ## New formulas
 
-Synapses are counted from the circuit metrics; the output is the share of the input that the extracted biophysical neurons account for.
+Synapses are counted from the circuit metrics; chemical and electrical synapses count alike, and the output is the share of the input that the extracted non-virtual (biophysical and point) neurons account for.
 
 | | Old | New |
 | --- | --- | --- |
@@ -59,6 +59,7 @@ The two parts are separate functions (`estimate_extraction_resources`, `estimate
 - No measured disk usage; the disk factor is a conservative guess.
 - The benchmarks record validation, upload and asset generation as one step, so the registration part cannot yet be split further. Separate benchmark sections for these would allow it.
 - The cause of the slow split runs is still to be investigated.
+- Point neurons are counted like biophysical ones and use the same rates, without benchmarks of their own (see the Allen V1 data point below). Benchmarks of pure point-neuron and hybrid circuits at a few sizes, extracting point, biophysical or both kinds of neurons, would allow separate rates. They should record time and peak memory per step and the synapse counts of the extracted circuit by source population, which would also show how much the fraction-based output estimate is off when synapse densities differ between populations.
 - Registration memory and time are only measured up to about 730M output synapses. The registration part has no cap, so used on its own (e.g. for future registration jobs) it would reject circuits above about 1G synapses (24 h and 200 GB limits), which excludes root circuits like nbS1 or rCA1 (about 10G synapses).
 
 ## Unsupported case: large extraction from nbS1 with midrange connectivity
@@ -71,3 +72,16 @@ The estimator rejects this extraction (41 h, 528 GB disk). This is accepted, as 
 - Registration time and memory scale more with biophysical than with virtual synapses (about 0.026 vs. 0.012 h per M synapses), which a single rate per synapse does not capture.
 - Extraction memory still grows above 10G parent synapses (20.4 GB for 14.2G), beyond the 17 GB saturation of the extraction part.
 - 728M output synapses fit within 200 GB of extra disk, so the disk factor of 3.9e-7 GB per synapse is likely too high (at most about 3e-7).
+
+## Data point: point-neuron extraction from the Allen V1 hybrid circuit
+
+1% of the 178,946 point neurons (about 1,789) were extracted from the Allen V1 hybrid circuit, with `do_virtual=True`. The parent has 51,978 biophysical, 178,946 point and 17,401 virtual neurons, and 165.5M synapses (138.2M from biophysical and point sources, 27.3M from virtual ones).
+
+| | Measured | Model (before margin) |
+| --- | --- | --- |
+| Split (extraction) | 31 s, 2.3 GB | 238 s, 8.6 GB |
+| Registration | 45 s, 1.0 GB | 48 s, 2.1 GB |
+
+- Registration time matches the model; its memory is about half the predicted value.
+- The split step is much cheaper than in the biophysical benchmarks: about 0.014 GB and 0.19 s per M parent synapses, against 0.03–0.04 GB and about 1.8 s per M for nbS1-HEX0. A plausible reason is that point-neuron edge populations carry far fewer properties per synapse.
+- The estimator allocates 2 CPU, 12 GB and 2 h, well above the measured use.

@@ -3,7 +3,6 @@ import math
 from http import HTTPStatus
 
 import entitysdk
-import numpy as np
 from entitysdk import models
 
 from app.errors import ApiError, ApiErrorCode
@@ -132,8 +131,10 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         level_of_detail_edges=level_of_detail_edges_dict,
     )
 
-    # Get the size of the input and the output. Virtual populations count when included, where
-    # "external_*" ones (externalized by an earlier extraction) are only kept by create_external.
+    # Get the size of the input and the output. All non-virtual (biophysical and point) populations
+    # are extracted, with their chemical and electrical synapses. Virtual populations count when
+    # included, where "external_*" ones (externalized by an earlier extraction) are only kept by
+    # create_external.
     do_virtual = single_config.initialize.do_virtual  # ty:ignore[unresolved-attribute]
     create_external = single_config.initialize.create_external  # ty:ignore[unresolved-attribute]
     included_virtual_names = [
@@ -141,27 +142,33 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         for name in circuit_metrics.names_of_virtual_node_populations
         if (create_external if name.startswith(EXTERNAL_POPULATION_PREFIX) else do_virtual)
     ]
-    nbio = np.sum([npop.number_of_nodes for npop in circuit_metrics.biophysical_node_populations])  # ty:ignore[unresolved-attribute]
-    nvirt = sum(
+    non_virtual_names = (
+        circuit_metrics.names_of_biophys_node_populations
+        + circuit_metrics.names_of_point_node_populations
+    )
+    non_virtual_neurons = sum(
         npop.number_of_nodes  # ty:ignore[unresolved-attribute]
-        for npop in circuit_metrics.virtual_node_populations
-        if npop.name in included_virtual_names  # ty:ignore[unresolved-attribute]
+        for npop in circuit_metrics.biophysical_node_populations
+        + circuit_metrics.point_node_populations
     )
-    input_size_neurons = nbio + nvirt
-    sbio = np.sum(
-        [
-            epop.number_of_edges  # ty:ignore[unresolved-attribute]
-            for epop in circuit_metrics.chemical_edge_populations
-            if epop.source_name in circuit_metrics.names_of_biophys_node_populations  # ty:ignore[unresolved-attribute]
-        ]
+    edge_populations = (
+        circuit_metrics.chemical_edge_populations + circuit_metrics.electrical_edge_populations
     )
-    svirt = sum(
+    non_virtual_synapses = sum(
         epop.number_of_edges  # ty:ignore[unresolved-attribute]
-        for epop in circuit_metrics.chemical_edge_populations
+        for epop in edge_populations
+        if epop.source_name in non_virtual_names  # ty:ignore[unresolved-attribute]
+    )
+    virtual_synapses = sum(
+        epop.number_of_edges  # ty:ignore[unresolved-attribute]
+        for epop in edge_populations
         if epop.source_name in included_virtual_names  # ty:ignore[unresolved-attribute]
     )
-    input_size_synapses = sbio + svirt
-    output_fraction = (accounting_parameters.count / nbio) if accounting_parameters else 1.0
+    input_size_synapses = non_virtual_synapses + virtual_synapses
+    extracted_neurons = (
+        accounting_parameters.count if accounting_parameters else non_virtual_neurons
+    )
+    output_fraction = extracted_neurons / non_virtual_neurons
     output_size_synapses = input_size_synapses * output_fraction
 
     # Extraction and registration run one after the other
@@ -179,7 +186,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
         ncpu, mem_gb = get_required_cpu_memory_combo(mem_gb_required)
     except ValueError as e:
         msg = (
-            f"Extracting {input_size_neurons:,} neurons needs about {mem_gb_required:.0f} GB of"
+            f"Extracting {extracted_neurons:,} neurons needs about {mem_gb_required:.0f} GB of"
             f" memory, more than the largest machine has ({MAX_MEMORY_GB} GB). {hint}"
         )
         raise ApiError(
@@ -192,7 +199,7 @@ def estimate_task_resources(  # ruff: ignore[too-many-locals]
     time_h = math.ceil(1 + extraction_time_h + registration_time_h)
     if time_h > MAX_TIME_LIMIT_H:
         msg = (
-            f"Extracting {input_size_neurons:,} neurons needs about {time_h} hours, more than the"
+            f"Extracting {extracted_neurons:,} neurons needs about {time_h} hours, more than the"
             f" {MAX_TIME_LIMIT_H} hours a task can run. {hint}"
         )
         raise ApiError(
