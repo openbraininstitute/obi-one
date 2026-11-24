@@ -1,4 +1,5 @@
 import ast
+import importlib.util
 import json
 import os
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
@@ -114,6 +115,30 @@ class TestSimplificationNotebooks:
             {"output_root": tmp_path, "brian2_result": None},
         )
         run.assert_not_called()
+
+    def test_nest_uses_extension_runner_on_simulation_config(self, tmp_path, monkeypatch):
+        run = Mock()
+        monkeypatch.setattr(subprocess, "run", run)
+        monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
+        run_cell(
+            LOCAL_NOTEBOOK,
+            35,
+            {
+                "subprocess": subprocess,
+                "sys": sys,
+                "output_root": tmp_path,
+                "nest_result": tmp_path / "export_nest",
+            },
+        )
+        args, _ = run.call_args
+        assert "sonata_simplify.nest_extension_simulation" in args[0]
+        assert str(tmp_path / "export_nest" / "simulation_config.json") in args[0]
+        assert "sonata_simplify.nest_simulation" not in args[0]
+
+    def test_local_example_defaults_to_nest_algorithm_with_extension_export(self):
+        source = cell_source(LOCAL_NOTEBOOK, 6)
+        assert '"SIMPLIFICATION_ALGORITHM", "adex_nest"' in source
+        assert "NEST_EXTENSION_FORMAT" in cell_source(LOCAL_NOTEBOOK, 29)
 
     @pytest.mark.parametrize("simulator", ["Brian2", "NEST"])
     def test_plots_with_only_one_simulator(self, simulator, tmp_path):
