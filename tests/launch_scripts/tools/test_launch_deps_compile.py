@@ -411,7 +411,31 @@ class TestPrivateIndex:
         assert ("--extra-index-url" in commands[0]) is (extra_index is not None)
 
 
+class TestUvExecutable:
+    def test_prefers_uv_env(self, monkeypatch):
+        monkeypatch.setenv("UV", "/host/bin/uv")
+        assert launch_deps_compile.uv_executable() == "/host/bin/uv"
+
+    def test_falls_back_to_uv_on_path(self, monkeypatch):
+        monkeypatch.delenv("UV", raising=False)
+        assert launch_deps_compile.uv_executable() == "uv"
+
+
 class TestCompileInFile:
+    def test_uses_uv_env_binary(self, tmp_path, monkeypatch):
+        in_file = tmp_path / "reqs.in"
+        in_file.write_text("numpy\n", encoding="utf-8")
+        monkeypatch.setenv("UV", "/host/bin/uv")
+        commands = []
+
+        def fake_run(cmd, **_):
+            commands.append(cmd)
+            Path(cmd[cmd.index("--output-file") + 1]).write_text("", encoding="utf-8")
+
+        monkeypatch.setattr(launch_deps_compile.subprocess, "run", fake_run)
+        launch_deps_compile.compile_in_file(in_file)
+        assert commands[0][0] == "/host/bin/uv"
+
     @pytest.mark.parametrize(
         ("obi_one_pin", "expected_line"),
         [("2026.9.15", "obi-one[emodel]==2026.9.15"), (None, "obi-one[emodel]")],
