@@ -2,6 +2,7 @@
 
 import builtins
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -154,6 +155,71 @@ class TestSubprocessWrappers:
         assert worker_args[8] == 3  # n_processes position in the worker arg tuple
 
 
+class TestLibnrnmechPath:
+    def test_wrappers_pass_the_library_path_to_the_workers(self, tmp_path, monkeypatch):
+        runner = Mock(return_value={})
+        monkeypatch.setattr(calibration_validation, "run_worker_in_subprocess", runner)
+        lib = tmp_path / "libnrnmech.so"
+
+        calibration_validation.compute_calibration_in_subprocess(
+            tmp_path, Path("hoc"), Path("morph"), libnrnmech_path=lib
+        )
+        calibration_validation.run_validations_in_subprocess(
+            tmp_path, Path("hoc"), Path("morph"), "cell", output_dir=tmp_path, libnrnmech_path=lib
+        )
+
+        assert runner.call_args_list[0].args[1][-1] == str(lib)
+        assert runner.call_args_list[1].args[1][-1] == str(lib)
+
+    def test_wrappers_default_to_no_library_path(self, tmp_path, monkeypatch):
+        runner = Mock(return_value={})
+        monkeypatch.setattr(calibration_validation, "run_worker_in_subprocess", runner)
+
+        calibration_validation.compute_calibration_in_subprocess(
+            tmp_path, Path("hoc"), Path("morph")
+        )
+
+        assert runner.call_args.args[1][-1] is None
+
+    @pytest.mark.parametrize(
+        ("libnrnmech_path", "expected"), [("/x/libnrnmech.so", "/x/libnrnmech.so"), (None, "")]
+    )
+    def test_worker_exports_it_for_its_own_process(
+        self, tmp_path, monkeypatch, libnrnmech_path, expected
+    ):
+        monkeypatch.setattr(calibration_validation.os, "chdir", lambda _path: None)
+        # setenv records the original state, so teardown restores it whatever the worker sets.
+        monkeypatch.setenv("BLUECELLULAB_MOD_LIBRARY_PATH", "")
+        _install_fake_bluecellulab(monkeypatch)
+
+        calibration_validation.calibration_worker(
+            str(tmp_path), "hoc.hoc", "morph.swc", 0.0, 0.1, libnrnmech_path, str(tmp_path / "o")
+        )
+
+        assert os.environ["BLUECELLULAB_MOD_LIBRARY_PATH"] == expected
+
+    def test_compute_calibration_and_validation_forwards_it(self, tmp_path, monkeypatch):
+        cal = Mock(return_value={"holding_current": -0.1, "rheobase": 0.2, "rin": 50.0})
+        val = Mock(return_value={})
+        monkeypatch.setattr(calibration_validation, "compute_calibration_in_subprocess", cal)
+        monkeypatch.setattr(calibration_validation, "run_validations_in_subprocess", val)
+        lib = tmp_path / "libnrnmech.so"
+
+        calibration_validation.compute_calibration_and_validation(
+            tmp_path,
+            Path("hoc"),
+            Path("morph"),
+            cell_name="c",
+            holding_current=0.0,
+            threshold_current=0.1,
+            output_dir=tmp_path,
+            libnrnmech_path=lib,
+        )
+
+        assert cal.call_args.kwargs["libnrnmech_path"] == lib
+        assert val.call_args.kwargs["libnrnmech_path"] == lib
+
+
 class TestJsonDefault:
     def test_numpy_and_path_objects(self, tmp_path):
         assert calibration_validation.json_default(np.float32(1.5)) == pytest.approx(1.5)
@@ -176,6 +242,7 @@ class TestWorkersRequireBluecellulab:
                 "morph.swc",
                 0.0,
                 0.1,
+                None,
                 str(tmp_path / "out.json"),
             )
 
@@ -194,6 +261,7 @@ class TestWorkersRequireBluecellulab:
                 -80.0,
                 1,
                 str(tmp_path / "figures"),
+                None,
                 str(tmp_path / "out.json"),
             )
 
@@ -208,6 +276,7 @@ class TestWorkersRequireBluecellulab:
             "morph.swc",
             0.0,
             0.1,
+            None,
             str(result_path),
         )
 
@@ -232,6 +301,7 @@ class TestWorkersRequireBluecellulab:
             -80.0,
             1,
             str(figures),
+            None,
             str(result_path),
         )
 

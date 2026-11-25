@@ -79,6 +79,17 @@ class CompileResult:
     index: str
 
 
+def uv_executable() -> str:
+    """Return the uv binary to invoke for ``uv pip compile``.
+
+    ``uv run`` prepends the project venv to ``PATH``, which can shadow the host
+    binary with an older ``uv`` PyPI package that fails ``[tool.uv]
+    required-version``. Prefer the ``UV`` env var that ``uv run`` sets to the
+    host binary.
+    """
+    return os.environ.get("UV") or "uv"
+
+
 def resolve_in_files(paths: list[str]) -> list[Path]:
     """Resolve CLI ``paths`` to a sorted, de-duplicated list of ``.in`` files.
 
@@ -371,7 +382,7 @@ def compile_in_file(
                 tmp_out.write_text(seed, encoding="utf-8")
 
         cmd = [
-            "uv",
+            uv_executable(),
             "pip",
             "compile",
             str(tmp_in),

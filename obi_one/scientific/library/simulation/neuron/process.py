@@ -2,6 +2,10 @@ import json
 import logging
 import math
 import os
+import shutil
+import tempfile
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import cast
 
@@ -139,6 +143,21 @@ def _collect_simulation_outputs(results_dir: Path, config_file: Path) -> Simulat
     )
 
 
+@contextmanager
+def mechanisms_cache_dir(shared_cache_dir: Path | None) -> Generator[Path]:
+    """Yield the cache for a neurodamus build, a throwaway one when there is no shared cache.
+
+    Without a cache neurodamus-compile-mods runs nrnivmodl inside its output directory, and make
+    stops on the ``=`` of the NAME_EQUALS_VALUE coordinate folders. With a cache it builds in the
+    cache and copies the result, so the throwaway cache keeps those builds clear of the path.
+    """
+    if shared_cache_dir is not None:
+        yield shared_cache_dir
+        return
+    with tempfile.TemporaryDirectory(prefix="mechanisms_cache_") as tmp:
+        yield Path(tmp)
+
+
 def compile_mechanisms(
     *,
     output_dir: Path,
@@ -197,30 +216,47 @@ def _compile_neurodamus_mechanisms(
     mechanisms_dirs: list[Path],
     cache_dir: Path | None = None,
 ) -> NeurodamusMechanismBuild:
-    command = [
-        "neurodamus-compile-mods",
-        *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d.absolute()))),
-        "--output-dir",
-        str(output_dir),
-        "--with-internal-mods",
-        "--simulator",
-        "coreneuron",
-        "--output-type",
-        "json",
-    ]
-    if cache_dir is not None:
-        command.extend(["--cache-dir", str(cache_dir.absolute())])
+    path = f"/opt/obi/:{os.environ['PATH']}"
+    if shutil.which("neurodamus-compile-mods", path=path) is None:
+        msg = (
+            "neurodamus-compile-mods was not found on the PATH or in /opt/obi/. "
+            "Install it with: pip install 'obi-one[bluerecording]'"
+        )
+        raise FileNotFoundError(msg)
 
-    compilation_output = run_and_log(
-        command, cwd=output_dir, env={"PATH": f"/opt/obi/:{os.environ['PATH']}"}
-    ).stdout
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with mechanisms_cache_dir(cache_dir) as build_cache_dir:
+        command = [
+            "neurodamus-compile-mods",
+            *(arg for d in mechanisms_dirs for arg in ("--input-dir", str(d.absolute()))),
+            "--output-dir",
+            str(output_dir),
+            "--with-internal-mods",
+            "--simulator",
+            "coreneuron",
+            "--output-type",
+            "json",
+            "--cache-dir",
+            str(build_cache_dir.absolute()),
+        ]
+        compilation_output = run_and_log(command, cwd=output_dir, env={"PATH": path}).stdout
 
     L.debug(compilation_output)
 
     env = json.loads(compilation_output)
 
+    libnrnmech_path = Path(env["NRNMECH_LIB_PATH"])
+    # The CLI reports the copy under --output-dir, never the cache entry, which may be a
+    # throwaway one already removed.
+    if not libnrnmech_path.resolve().is_relative_to(output_dir.resolve()):
+        msg = (
+            f"neurodamus-compile-mods reported {libnrnmech_path}, "
+            f"outside the output directory {output_dir}."
+        )
+        raise RuntimeError(msg)
+
     return NeurodamusMechanismBuild(
-        libnrnmech_path=Path(env["NRNMECH_LIB_PATH"]),
+        libnrnmech_path=libnrnmech_path,
         libcorenrnmech_path=Path(env["CORENEURONLIB"]),
         special_binary_path=Path(env["SPECIALS_PATH"]) / "special",
     )

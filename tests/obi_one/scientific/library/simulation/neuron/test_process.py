@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -252,7 +253,19 @@ def test_compile_neuron_mechanisms(mock_run_and_log, tmp_path):
     )
 
 
+@pytest.fixture
+def neurodamus_cli(monkeypatch):
+    monkeypatch.setattr(test_module.shutil, "which", lambda *_args, **_kwargs: "/opt/obi/cli")
+
+
+def test_compile_neurodamus_mechanisms_requires_the_cli(monkeypatch, tmp_path):
+    monkeypatch.setattr(test_module.shutil, "which", lambda *_args, **_kwargs: None)
+    with pytest.raises(FileNotFoundError, match="neurodamus-compile-mods was not found"):
+        test_module._compile_neurodamus_mechanisms(output_dir=tmp_path, mechanisms_dirs=[tmp_path])
+
+
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
 def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -283,7 +296,7 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
     assert mechanism_build.libcorenrnmech_path == libcorenrnmech_path
     mock_run_and_log.assert_called_once()
     call_cmd = mock_run_and_log.call_args[0][0]
-    assert call_cmd == [
+    assert call_cmd[:-1] == [
         "neurodamus-compile-mods",
         "--input-dir",
         str(mech_dir.absolute()),
@@ -294,6 +307,7 @@ def test_compile_neurodamus_mechanisms(mock_run_and_log, tmp_path):
         "coreneuron",
         "--output-type",
         "json",
+        "--cache-dir",
     ]
     assert mock_run_and_log.call_args[1]["cwd"] == output_dir
     assert mock_run_and_log.call_args[1]["env"]["PATH"].startswith("/opt/obi/:")
@@ -311,6 +325,7 @@ def test_compile_neuron_mechanisms_rejects_multiple_dirs(mock_run_and_log, tmp_p
 
 
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
 def test_compile_neurodamus_mechanisms_uses_absolute_input_paths(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -341,6 +356,7 @@ def test_compile_neurodamus_mechanisms_uses_absolute_input_paths(mock_run_and_lo
 
 
 @patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
 def test_compile_neurodamus_mechanisms_passes_cache_dir(mock_run_and_log, tmp_path):
     mech_dir = tmp_path / "mech"
     mech_dir.mkdir()
@@ -482,3 +498,82 @@ def test_get_mechanisms_dirs_empty(tmp_path):
     config_path = _write_biophysical_circuit_config(tmp_path, with_mechanisms_dir=False)
 
     assert test_module.get_mechanisms_dirs(config_path) == []
+
+
+def test_mechanisms_cache_dir_prefers_the_shared_cache(tmp_path):
+    with test_module.mechanisms_cache_dir(tmp_path) as cache_dir:
+        assert cache_dir == tmp_path
+
+
+def test_mechanisms_cache_dir_is_a_throwaway_without_a_shared_cache():
+    with test_module.mechanisms_cache_dir(None) as cache_dir:
+        assert cache_dir.is_dir()
+    assert not cache_dir.exists()
+
+
+def _report_build_in(mock_run_and_log, lib_dir):
+    for name in ("libnrnmech.so", "libcorenrnmech.so", "special"):
+        _touch(lib_dir / name)
+    mock_run_and_log.return_value.stdout = json.dumps(
+        {
+            "NRNMECH_LIB_PATH": str(lib_dir / "libnrnmech.so"),
+            "SPECIALS_PATH": str(lib_dir),
+            "CORENEURONLIB": str(lib_dir / "libcorenrnmech.so"),
+        }
+    )
+
+
+def _passed_cache_dir(mock_run_and_log):
+    command = mock_run_and_log.call_args.args[0]
+    return Path(command[command.index("--cache-dir") + 1])
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
+def test_compile_neurodamus_mechanisms_uses_a_throwaway_cache(mock_run_and_log, tmp_path):
+    """Without a cache the CLI runs nrnivmodl in --output-dir, where make stops on an ``=``."""
+    output_dir = tmp_path / "a=1" / "build"
+    _report_build_in(mock_run_and_log, output_dir / "x86_64")
+
+    test_module.compile_mechanisms(
+        output_dir=output_dir,
+        mechanisms_dirs=[tmp_path / "mech"],
+        simulation_backend=SimulationBackend.neurodamus,
+    )
+
+    cache_dir = _passed_cache_dir(mock_run_and_log)
+    assert "=" not in str(cache_dir)
+    assert not cache_dir.exists()
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
+def test_compile_neurodamus_mechanisms_creates_the_output_dir(mock_run_and_log, tmp_path):
+    def compile_into_output(*_args, **kwargs):
+        assert kwargs["cwd"].is_dir()
+        _report_build_in(mock_run_and_log, kwargs["cwd"])
+        return mock_run_and_log.return_value
+
+    mock_run_and_log.side_effect = compile_into_output
+
+    test_module.compile_mechanisms(
+        output_dir=tmp_path / "build",
+        mechanisms_dirs=[tmp_path / "mech"],
+        simulation_backend=SimulationBackend.neurodamus,
+    )
+
+
+@patch("obi_one.scientific.library.simulation.neuron.process.run_and_log")
+@pytest.mark.usefixtures("neurodamus_cli")
+def test_compile_neurodamus_mechanisms_rejects_a_library_outside_the_output_dir(
+    mock_run_and_log, tmp_path
+):
+    _report_build_in(mock_run_and_log, tmp_path / "cache")
+
+    with pytest.raises(RuntimeError, match="outside the output directory"):
+        test_module.compile_mechanisms(
+            output_dir=tmp_path / "output",
+            mechanisms_dirs=[tmp_path],
+            simulation_backend=SimulationBackend.neurodamus,
+            cache_dir=tmp_path / "cache",
+        )

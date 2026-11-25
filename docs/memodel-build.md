@@ -30,6 +30,6 @@ The task:
 
 ## Running
 
-On the platform the build runs in Bluenaas, which takes the id of the single config. Launch-system execution uses the shared `neurodamus_image` dependencies and the `python_3_12_openmpi5_neuron9_neurodamus` executor image (same as simulation execution). The example notebook in `examples/obi_one/scientific/tasks/memodel_build/` is unchanged: it still runs a build locally with `obi-one[bluecellulab]` and NEURON on the host.
+On the platform the build runs through the launch system, using the shared `neurodamus_image` dependencies and the `python_3_12_openmpi5_neuron9_neurodamus` executor image (same as simulation execution). That image provides `neurodamus-compile-mods`, which compiles the mechanisms with the shared mechanisms cache when one is available. A local run, such as the example notebook in `examples/obi_one/scientific/tasks/memodel_build/`, needs `obi-one[bluecellulab,bluerecording]` and `neurodamus-compile-mods` on the `PATH` (or in `/opt/obi/`), and raises `FileNotFoundError` otherwise.
 
-Calibration and validation run in fresh Python processes, since NEURON loads mechanisms only once per process.
+Calibration and validation run in fresh Python processes, since NEURON loads mechanisms only once per process. The compiled mechanisms library is passed to those processes, which export it as `BLUECELLULAB_MOD_LIBRARY_PATH` in their own environment only.

@@ -14,11 +14,13 @@ from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.task import Task
 from obi_one.scientific.from_id.ion_channel_recording_from_id import IonChannelRecordingFromID
+from obi_one.scientific.library.simulation.neuron.process import compile_mechanisms
 from obi_one.scientific.tasks.ion_channel_modeling.config import (
     IonChannelFittingSingleConfig,
     ResolvedModelProperties,
     generic_subject,
 )
+from obi_one.types import SimulationBackend
 from obi_one.utils.process import run_and_log
 
 try:
@@ -104,21 +106,22 @@ def plot_fitted_model(io_path: str) -> None:
     """Child side of plot_in_fresh_process: reads its arguments from io_path, writes the result."""
     import neuron  # ruff: ignore[import-outside-top-level]
 
-    mechanisms_root, kwargs = pickle.loads(Path(io_path).read_bytes())  # ruff: ignore[suspicious-pickle-usage]
-    if not neuron.load_mechanisms(str(mechanisms_root)):
-        msg = f"No compiled mechanisms found in {mechanisms_root}"
+    libnrnmech_path, kwargs = pickle.loads(Path(io_path).read_bytes())  # ruff: ignore[suspicious-pickle-usage]
+    # nrn_load_dll reports a failed load by returning 0 and printing to stderr, not by raising.
+    if not neuron.h.nrn_load_dll(str(libnrnmech_path)):
+        msg = f"Could not load the compiled mechanisms from {libnrnmech_path}"
         raise RuntimeError(msg)
     Path(io_path).write_bytes(pickle.dumps(run_ion_channel_model(**kwargs)))
 
 
-def plot_in_fresh_process(mechanisms_root: Path, **kwargs: Any) -> Any:
+def plot_in_fresh_process(mechanisms_root: Path, libnrnmech_path: Path, **kwargs: Any) -> Any:
     """NEURON loads a mechanism name only once per process, and every fit of a sweep compiles its
     own mechanism under the same name.
 
     A new interpreter rather than multiprocessing's spawn, which re-runs the caller's script.
     """
     io_path = mechanisms_root / "plot_fitted_model.pkl"
-    io_path.write_bytes(pickle.dumps((mechanisms_root, kwargs)))
+    io_path.write_bytes(pickle.dumps((libnrnmech_path, kwargs)))
     try:
         run_and_log([sys.executable, "-c", PLOT_FITTED_MODEL_COMMAND, str(io_path)])
     except subprocess.CalledProcessError as e:
@@ -345,17 +348,16 @@ class IonChannelFittingTask(Task):
                 output_name=output_name,  # ty:ignore[invalid-argument-type]
             )
 
-            # Compile into the coordinate folder rather than the process cwd, which concurrent
-            # fits in one worker share. The path is relative because make stops on the "=" of
-            # NAME_EQUALS_VALUE coordinate folders.
-            run_and_log(
-                ["nrnivmodl", "-incflags", "-DDISABLE_REPORTINGLIB", mechanisms_dir.name],
-                cwd=coordinate_root,
-            )
-
             mech_suffix = properties.ion_channel_name
             figure_paths_dict = plot_in_fresh_process(
                 coordinate_root,
+                # Built in the coordinate folder, not the cwd that concurrent fits share.
+                compile_mechanisms(
+                    output_dir=coordinate_root / "mechanisms_build",
+                    mechanisms_dirs=[mechanisms_dir],
+                    simulation_backend=SimulationBackend.neurodamus,
+                    cache_dir=self.shared_cache.mechanisms_dir if self.shared_cache else None,
+                ).libnrnmech_path,
                 mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see
                 # ion_channel_builder.io.write_output

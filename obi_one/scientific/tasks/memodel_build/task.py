@@ -67,10 +67,13 @@ class MEModelBuildTask(Task):
             emodel=emodel,
             output_dir=output_dir,
         )
-        compile_mechanisms(
-            output_dir=output_dir,
+        # Built apart from output_dir: bluecellulab refuses BLUECELLULAB_MOD_LIBRARY_PATH when
+        # the working directory (output_dir, for the subprocesses) holds an x86_64 folder.
+        mechanism_build = compile_mechanisms(
+            output_dir=output_dir / "mechanisms_build",
             mechanisms_dirs=[staged.mechanisms_dir],
-            simulation_backend=SimulationBackend.bluecellulab,
+            simulation_backend=SimulationBackend.neurodamus,
+            cache_dir=self.shared_cache.mechanisms_dir if self.shared_cache is not None else None,
         )
         calibration = compute_calibration_in_subprocess(
             coord_root=output_dir,
@@ -78,6 +81,7 @@ class MEModelBuildTask(Task):
             morphology_path=staged.morphology_path,
             holding_current=INITIAL_HOLDING_CURRENT,
             threshold_current=INITIAL_THRESHOLD_CURRENT,
+            libnrnmech_path=mechanism_build.libnrnmech_path,
         )
         memodel = registration.register_memodel(
             config=self.config,
@@ -113,6 +117,7 @@ class MEModelBuildTask(Task):
                 hoc_path=staged.hoc_path,
                 morphology_path=staged.morphology_path,
                 calibration=calibration,
+                libnrnmech_path=mechanism_build.libnrnmech_path,
                 authorized_public=authorized_public,
             )
         except Exception:
@@ -138,6 +143,7 @@ def validate_memodel(
     hoc_path: Path,
     morphology_path: Path,
     calibration: dict[str, float],
+    libnrnmech_path: Path,
     authorized_public: bool,
 ) -> None:
     validation = run_validations_in_subprocess(
@@ -149,6 +155,7 @@ def validate_memodel(
         threshold_current=calibration["rheobase"],
         output_dir=output_dir / VALIDATION_FIGURES_DIRNAME,
         n_processes=int(os.environ.get("JOB_CPUS") or DEFAULT_VALIDATION_PROCESSES),
+        libnrnmech_path=libnrnmech_path,
     )
     register_memodel_validation_results(
         client=db_client,

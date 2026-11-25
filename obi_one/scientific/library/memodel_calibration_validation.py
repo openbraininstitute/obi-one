@@ -9,8 +9,10 @@ irreversible.
 bluecellulab resolves the compiled mechanism library lazily at first ``Cell``
 creation from ``<cwd>/<arch>`` (``x86_64``/``arm64``, auto-loaded by NEURON) or
 ``BLUECELLULAB_MOD_LIBRARY_PATH``. The workers therefore ``os.chdir(coord_root)``
-*before* importing bluecellulab, where the caller has already compiled the
-mechanisms into the arch directory.
+*before* importing bluecellulab. A caller that compiled the mechanisms elsewhere passes
+the ``libnrnmech`` path, which each worker exports as ``BLUECELLULAB_MOD_LIBRARY_PATH``
+in its own process only, leaving the caller's environment untouched. Otherwise the
+caller must have compiled them into the arch directory under ``coord_root``.
 
 Keep top-level imports light: spawned children re-import this module, so it must
 not import bluepyemodel or bluecellulab at module level.
@@ -50,6 +52,7 @@ def compute_calibration_and_validation(
     threshold_current: float,
     output_dir: Path,
     n_processes: int | None = None,
+    libnrnmech_path: Path | None = None,
 ) -> dict:
     """Compute MEModel calibration, then run bluecellulab validation on it.
 
@@ -65,6 +68,7 @@ def compute_calibration_and_validation(
         morphology_path,
         holding_current=holding_current,
         threshold_current=threshold_current,
+        libnrnmech_path=libnrnmech_path,
     )
     validation_dict = run_validations_in_subprocess(
         coord_root,
@@ -75,8 +79,14 @@ def compute_calibration_and_validation(
         threshold_current=calibration_dict["rheobase"],
         output_dir=output_dir,
         n_processes=n_processes,
+        libnrnmech_path=libnrnmech_path,
     )
     return {"calibration": calibration_dict, "validation": validation_dict}
+
+
+def export_mechanisms_library(libnrnmech_path: str) -> None:
+    """Point bluecellulab at a compiled library; only ever called inside a spawned worker."""
+    os.environ["BLUECELLULAB_MOD_LIBRARY_PATH"] = libnrnmech_path
 
 
 def calibration_worker(
@@ -85,6 +95,7 @@ def calibration_worker(
     morphology_path: str,
     holding_current: float,
     threshold_current: float,
+    libnrnmech_path: str | None,
     result_json_path: str,
 ) -> None:
     """Compute MEModel calibration properties; runs in a spawned subprocess.
@@ -94,6 +105,8 @@ def calibration_worker(
     ``{holding_current, rheobase, rin}`` to ``result_json_path`` for the parent.
     """
     os.chdir(coord_root)
+    if libnrnmech_path is not None:
+        export_mechanisms_library(libnrnmech_path)
     try:
         from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
         from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
@@ -138,6 +151,7 @@ def validation_worker(
     v_init: float,
     n_processes: int,
     output_dir: str,
+    libnrnmech_path: str | None,
     result_json_path: str,
 ) -> None:
     """Run bluecellulab validations; runs in a spawned subprocess.
@@ -147,6 +161,8 @@ def validation_worker(
     ``result_json_path`` for the parent.
     """
     os.chdir(coord_root)
+    if libnrnmech_path is not None:
+        export_mechanisms_library(libnrnmech_path)
     try:
         from bluecellulab import Cell  # ruff: ignore[import-outside-top-level]
         from bluecellulab.circuit.circuit_access import (  # ruff: ignore[import-outside-top-level]
@@ -226,6 +242,7 @@ def compute_calibration_in_subprocess(
     *,
     holding_current: float = 0.0,
     threshold_current: float = 0.0,
+    libnrnmech_path: Path | None = None,
 ) -> dict:
     """Compute ``holding_current``/``rheobase``/``rin`` in an isolated subprocess.
 
@@ -241,6 +258,7 @@ def compute_calibration_in_subprocess(
             str(morphology_path),
             holding_current,
             threshold_current,
+            None if libnrnmech_path is None else str(libnrnmech_path),
         ),
         "Calibration",
     )
@@ -265,6 +283,7 @@ def run_validations_in_subprocess(
     v_init: float = DEFAULT_V_INIT,
     n_processes: int | None = None,
     output_dir: Path,
+    libnrnmech_path: Path | None = None,
 ) -> dict:
     """Run bluecellulab validations in an isolated subprocess.
 
@@ -288,6 +307,7 @@ def run_validations_in_subprocess(
             v_init,
             n_processes,
             str(output_dir),
+            None if libnrnmech_path is None else str(libnrnmech_path),
         ),
         "Validation",
     )
