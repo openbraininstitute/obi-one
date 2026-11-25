@@ -1,13 +1,15 @@
 """OBJ to Draco GLB conversion with pylmesh, with the checks pylmesh does not make itself.
 
 pylmesh does not range-check face indices: an index past the last vertex crashes the process
-in ``save_mesh`` instead of raising. It also keeps only the first three indices of a polygon.
-So the OBJ is scanned first, reading lines the way pylmesh does, and pylmesh's counts must
-match the scan's before the GLB is written.
+in ``save_mesh`` instead of raising. It keeps only the first three indices of a polygon, and
+a vertex line it cannot parse leaves its coordinates uninitialised. So the OBJ is scanned first,
+reading lines the way pylmesh does, and pylmesh's counts must match the scan's before the GLB
+is written.
 """
 
 import json
 import logging
+import math
 import struct
 import sys
 from dataclasses import dataclass
@@ -28,6 +30,7 @@ GLB_JSON_CHUNK = b"JSON"
 GLB_HEADER = struct.Struct("<4sIII4s")
 DRACO_EXTENSION = "KHR_draco_mesh_compression"
 TRIANGLE_VERTICES = 3
+VERTEX_COORDINATES = 3
 VERTEX_STATEMENT = b"v"
 FACE_STATEMENT = b"f"
 
@@ -42,6 +45,20 @@ class ObjSummary:
     faces: int
     min_index: int
     max_index: int
+
+
+def _check_vertex(tokens: bytes, line_number: int) -> None:
+    coordinates = tokens.split()
+    try:
+        # A NaN or an infinity in any coordinate makes the sum non-finite.
+        finite = len(coordinates) >= VERTEX_COORDINATES and math.isfinite(
+            sum(map(float, coordinates[:VERTEX_COORDINATES]))
+        )
+    except ValueError:
+        finite = False
+    if not finite:
+        msg = f"Line {line_number} of the OBJ is not a vertex with three finite coordinates."
+        raise MeshConversionError(msg)
 
 
 def _face_indices(tokens: bytes, line_number: int) -> list[int]:
@@ -60,9 +77,10 @@ def _face_indices(tokens: bytes, line_number: int) -> list[int]:
 
 
 def scan_obj(obj_path: Path) -> ObjSummary:
-    """Counts vertices and faces and finds the face index range in one streaming pass.
+    """Counts vertices and faces, checks vertex coordinates and finds the face index range.
 
-    A line's statement is its first whitespace-separated token, as in pylmesh's reader.
+    One streaming pass. A line's statement is its first whitespace-separated token, as in
+    pylmesh's reader.
     """
     vertices = 0
     faces = 0
@@ -73,11 +91,13 @@ def scan_obj(obj_path: Path) -> ObjSummary:
             parts = line.split(maxsplit=1)
             if not parts:
                 continue
+            rest = parts[1] if len(parts) > 1 else b""
             if parts[0] == VERTEX_STATEMENT:
                 vertices += 1
+                _check_vertex(rest, line_number)
             elif parts[0] == FACE_STATEMENT:
                 faces += 1
-                indices = _face_indices(parts[1] if len(parts) > 1 else b"", line_number)
+                indices = _face_indices(rest, line_number)
                 min_index = min(min_index, *indices)
                 max_index = max(max_index, *indices)
     return ObjSummary(vertices=vertices, faces=faces, min_index=min_index, max_index=max_index)
