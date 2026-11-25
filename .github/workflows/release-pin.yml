@@ -182,6 +182,11 @@ jobs:
           done
           failed=()
           for workflow in "${!run_ids[@]}"; do
+            # The run can return a transient 404 right after dispatch.
+            for _ in 1 2 3 4 5; do
+              gh run view "${run_ids[$workflow]}" >/dev/null 2>&1 && break
+              sleep 5
+            done
             if gh run watch "${run_ids[$workflow]}" --exit-status --interval 30 >/dev/null; then
               echo "$workflow succeeded"
             else
