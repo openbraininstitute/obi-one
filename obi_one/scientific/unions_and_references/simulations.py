@@ -4,6 +4,9 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit 
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
     LearningEngineCircuitSimulationSingleConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.nest.nest_circuit import (
+    NestCircuitSimulationSingleConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
 )
@@ -24,4 +27,5 @@ SIMULATION_GENERATION_SINGLE_CONFIGS = (
     | IonChannelModelSimulationSingleConfig
     | Brian2CircuitSimulationSingleConfig
     | LearningEngineCircuitSimulationSingleConfig
+    | NestCircuitSimulationSingleConfig
 )

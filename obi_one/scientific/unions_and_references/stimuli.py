@@ -92,6 +92,18 @@ _BRIAN2_STIMULI = (
     | _SPIKE_STIMULI
 )
 
+# The NEST runner turns SONATA `linear`, `pulse` and `sinusoidal` inputs into step and AC
+# current generators, and `synapse_replay` into spike generators wired through the circuit's own
+# edges. It has no `poisson` kick, and NEST samples a sinusoid on the simulation timestep, so the
+# variant with a Timestep of its own is not offered.
+_NEST_STIMULI = (
+    ConstantCurrentClampSomaticStimulus
+    | LinearCurrentClampSomaticStimulus
+    | MultiPulseCurrentClampSomaticStimulus
+    | SimulationDtSinusoidalCurrentClampSomaticStimulus
+    | _SPIKE_STIMULI
+)
+
 _LE_ABSOLUTE_INJECTION_STIMULI = (
     ConstantCurrentClampSomaticStimulus
     | RelativeConstantCurrentClampSomaticStimulus
@@ -122,6 +134,12 @@ IonChannelModelStimulusUnion = Annotated[
 
 Brian2CircuitStimulusUnion = Annotated[
     _BRIAN2_STIMULI,
+    Discriminator("type"),
+]
+
+
+NestCircuitStimulusUnion = Annotated[
+    _NEST_STIMULI,
     Discriminator("type"),
 ]
 

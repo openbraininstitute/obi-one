@@ -48,6 +48,11 @@ RecordingUnion = Annotated[_VOLTAGE_RECORDINGS, Discriminator("type")]
 CircuitRecordingUnion = Annotated[_CIRCUIT_RECORDINGS, Discriminator("type")]
 
 Brian2RecordingUnion = Annotated[_SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")]
+# NEST samples a soma report every whole number of simulation steps, so it offers both the
+# recordings with a Timestep of their own and those sampled on the simulation timestep.
+NestRecordingUnion = Annotated[
+    _SOMA_VOLTAGE_RECORDINGS | _SIMULATION_DT_SOMA_VOLTAGE_RECORDINGS, Discriminator("type")
+]
 
 # Morphology-location recordings are excluded: they require a `morphology_locations` block to
 # reference, and the ion channel configuration declares no such dictionary. Its circuit is built
