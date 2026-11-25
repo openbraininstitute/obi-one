@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock, create_autospec, patch
 from uuid import uuid4
 
+import h5py
 import httpx
 import morphio
 import morphio.mut
@@ -443,8 +444,9 @@ def test_create_process_outputs_raises_when_no_morphology_h5(tmp_path):
         )
 
 
+@pytest.mark.parametrize("combined_name", ["morph-with-spines.h5", "morph.h5"])
 @pytest.mark.parametrize("segment_spines", [True, False])
-def test_create_process_outputs_success(tmp_path, segment_spines):
+def test_create_process_outputs_success(tmp_path, segment_spines, combined_name):
     out = tmp_path / "outputs"
     out.mkdir()
     swc_contents = """
@@ -464,12 +466,17 @@ def test_create_process_outputs_success(tmp_path, segment_spines):
 
     mesh_path = tmp_path / "morph.obj"
 
-    (out / "morph.h5").touch()
+    (out / combined_name).touch()
 
     morph = morphio.mut.Morphology(morphio.Morphology(swc_contents, "swc"))
     swc_path = out / "morph-morphology.swc"
     morph.write(swc_path)
-    morph.write(out / "morph-morphology.h5")
+    h5_path = out / "morph-morphology.h5"
+    morph.write(h5_path)
+    with h5py.File(h5_path, "r+") as h5:
+        points = h5["points"][()]
+        del h5["points"]
+        h5.create_dataset("points", data=points, compression="gzip")
 
     result = _create_process_outputs(
         mesh_path=mesh_path, output_dir=out, segment_spines=segment_spines
@@ -480,7 +487,9 @@ def test_create_process_outputs_success(tmp_path, segment_spines):
     assert result.h5_morphology_file == out / "morph-morphology.h5"
     assert result.asc_morphology_file == out / "morph-morphology.asc"
     assert result.h5_combined_morphology_file == (combined_path if segment_spines else None)
-    assert result.h5_morphology_file.exists()
+    assert len(morphio.Morphology(result.h5_morphology_file).points) == len(
+        morph.as_immutable().points
+    )
     assert result.asc_morphology_file.exists()
     assert combined_path.exists() is segment_spines
 
