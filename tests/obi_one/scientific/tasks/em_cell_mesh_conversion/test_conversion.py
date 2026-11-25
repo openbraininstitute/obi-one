@@ -1,9 +1,9 @@
 import json
 import struct
-import sys
-import textwrap
 from pathlib import Path
+from unittest.mock import Mock
 
+import pylmesh
 import pytest
 
 from obi_one.scientific.tasks.em_cell_mesh_conversion import conversion as test_module
@@ -20,7 +20,7 @@ v 0 1 0
 v 0 0 1
 vn 0 0 1
 f 1 2 3
-f 1/1/1 3/1/1 4/1/1 2/1/1
+f 1/1/1 3/1/1 4/1/1
 """
 
 
@@ -73,7 +73,12 @@ def test_check_obj_rejects_bad_indices(tmp_path, faces, match):
 
 @pytest.mark.parametrize(
     ("face", "match"),
-    [("f 1 x 3\n", "not a valid face"), ("f 1 2\n", "fewer than 3 vertices"), ("f \n", "fewer")],
+    [
+        ("f 1 x 3\n", "not a valid face"),
+        ("f 1 2\n", "a face with 2 vertices; only triangles"),
+        ("f 1 2 3 1\n", "a face with 4 vertices; only triangles"),
+        ("f \n", "a face with 0 vertices"),
+    ],
 )
 def test_scan_obj_rejects_malformed_faces(tmp_path, face, match):
     obj = "v 0 0 0\nv 1 0 0\nv 0 1 0\n" + face
@@ -100,89 +105,65 @@ def test_check_glb_rejects_invalid_files(tmp_path, content, match):
         test_module.check_glb(write(tmp_path / "mesh.glb", content))
 
 
-def fake_ultraliser(monkeypatch, tmp_path, body: str) -> None:
-    """Replaces the Ultraliser child with a script run as `script obj out_dir counts`."""
-    script = write(tmp_path / "fake_ultraliser.py", textwrap.dedent(body))
-    monkeypatch.setattr(
-        test_module,
-        "_ultraliser_command",
-        lambda obj, out, counts: [sys.executable, str(script), str(obj), str(out), str(counts)],
-    )
-
-
-WRITE_COUNTS = """\
-    import json, sys
-    from pathlib import Path
-    obj, out, counts = sys.argv[1:]
-"""
-
-
-def test_convert_obj_to_glb_returns_the_checked_glb(monkeypatch, tmp_path):
-    glb = make_glb(DRACO_GLTF)
-    fake_ultraliser(
-        monkeypatch,
-        tmp_path,
-        WRITE_COUNTS
-        + f"""\
-    Path(counts).write_text(json.dumps({{"vertices": 4, "triangles": 3}}))
-    Path(out, "mesh.glb").write_bytes({glb!r})
-""",
-    )
-    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
-
-    glb_path = test_module.convert_obj_to_glb(obj_path, tmp_path / "work")
-
-    assert glb_path == tmp_path / "work" / "glb" / "mesh.glb"
-    assert glb_path.read_bytes() == glb
-
-
-def test_convert_obj_to_glb_fails_when_ultraliser_exits_0_without_output(monkeypatch, tmp_path):
-    fake_ultraliser(monkeypatch, tmp_path, "import sys\nsys.exit(0)\n")
-    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
-
-    with pytest.raises(MeshConversionError, match="could not read the OBJ"):
-        test_module.convert_obj_to_glb(obj_path, tmp_path / "work")
-
-
-def test_convert_obj_to_glb_reports_a_killed_child(monkeypatch, tmp_path):
-    fake_ultraliser(
-        monkeypatch, tmp_path, "import os, signal\nos.kill(os.getpid(), signal.SIGKILL)\n"
-    )
-    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
-
-    with pytest.raises(MeshConversionError, match="SIGKILL, most likely out of memory"):
-        test_module.convert_obj_to_glb(obj_path, tmp_path / "work")
-
-
-def test_convert_obj_to_glb_fails_on_zero_triangles(monkeypatch, tmp_path):
-    fake_ultraliser(
-        monkeypatch,
-        tmp_path,
-        WRITE_COUNTS + '    Path(counts).write_text(json.dumps({"vertices": 4, "triangles": 0}))\n',
-    )
-    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
-
-    with pytest.raises(MeshConversionError, match="no triangles"):
-        test_module.convert_obj_to_glb(obj_path, tmp_path / "work")
-
-
-def test_convert_obj_to_glb_stops_the_child_when_the_obj_is_invalid(monkeypatch, tmp_path):
-    marker = tmp_path / "finished"
-    fake_ultraliser(
-        monkeypatch,
-        tmp_path,
-        f"import time\nfrom pathlib import Path\ntime.sleep(30)\nPath({str(marker)!r}).touch()\n",
-    )
-    obj_path = write(tmp_path / "mesh.obj", "v 0 0 0\nf 1 2 3\n")
-
-    with pytest.raises(MeshConversionError, match="refers to vertex 3"):
-        test_module.convert_obj_to_glb(obj_path, tmp_path / "work")
-    assert not marker.exists()
-
-
-def test_scan_obj_counts_tab_separated_lines_like_ultraliser(tmp_path):
-    obj = "v\t0 0 0\nv\t1 0 0\nv\t0 1 0\n  v 9 9 9\nf\t1 2 3\n"
+def test_scan_obj_reads_statements_like_pylmesh(tmp_path):
+    obj = "v\t0 0 0\nv\t1 0 0\nv\t0 1 0\n  v 9 9 9\n\n vn 0 0 1\n\tf\t1 2 4\n"
 
     summary = test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
 
-    assert summary == ObjSummary(vertices=3, faces=1, min_index=1, max_index=3)
+    assert summary == ObjSummary(vertices=4, faces=1, min_index=1, max_index=4)
+
+
+def test_scan_obj_range_checks_an_indented_face(tmp_path):
+    obj = "v 0 0 0\nv 1 0 0\nv 0 1 0\n   f 1 2 7\n"
+
+    summary = test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
+
+    with pytest.raises(MeshConversionError, match="refers to vertex 7"):
+        test_module.check_obj(summary)
+
+
+def test_convert_obj_to_glb_writes_a_draco_glb_with_every_triangle(tmp_path):
+    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
+
+    glb_path = test_module.convert_obj_to_glb(obj_path, tmp_path)
+
+    assert glb_path == tmp_path / "mesh.glb"
+    test_module.check_glb(glb_path)
+    assert pylmesh.load_mesh(str(glb_path)).face_count() == 2
+
+
+def test_convert_obj_to_glb_refuses_a_bad_index_before_pylmesh_reads_it(monkeypatch, tmp_path):
+    load = Mock()
+    monkeypatch.setattr(test_module.pylmesh, "load_mesh", load)
+    obj_path = write(tmp_path / "mesh.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 99999999\n")
+
+    with pytest.raises(MeshConversionError, match="refers to vertex 99999999"):
+        test_module.convert_obj_to_glb(obj_path, tmp_path)
+    load.assert_not_called()
+
+
+def test_convert_obj_to_glb_refuses_counts_that_differ_from_the_scan(monkeypatch, tmp_path):
+    save = Mock()
+    monkeypatch.setattr(
+        test_module.pylmesh,
+        "load_mesh",
+        Mock(return_value=Mock(vertex_count=Mock(return_value=4), face_count=Mock(return_value=1))),
+    )
+    monkeypatch.setattr(test_module.pylmesh, "save_mesh", save)
+    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
+
+    with pytest.raises(MeshConversionError, match="read 4 vertices and 1 faces, but the scan"):
+        test_module.convert_obj_to_glb(obj_path, tmp_path)
+    save.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("step", "match"),
+    [("load_mesh", "could not read the OBJ"), ("save_mesh", "could not write the GLB")],
+)
+def test_convert_obj_to_glb_reports_pylmesh_errors(monkeypatch, tmp_path, step, match):
+    monkeypatch.setattr(test_module.pylmesh, step, Mock(side_effect=RuntimeError("boom")))
+    obj_path = write(tmp_path / "mesh.obj", CUBE_CORNER_OBJ)
+
+    with pytest.raises(MeshConversionError, match=f"{match}: boom"):
+        test_module.convert_obj_to_glb(obj_path, tmp_path)

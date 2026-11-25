@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import UUID
 
 from entitysdk import Client
-from entitysdk.models import EMCellMesh
+from entitysdk.models import Asset, EMCellMesh
 from entitysdk.types import AssetLabel, ContentType, EntityLifecycleStatus
 
 from obi_one.core.task import Task
@@ -23,6 +23,8 @@ from obi_one.scientific.tasks.em_cell_mesh_conversion.conversion import (
 )
 
 L = logging.getLogger(__name__)
+
+OBJ_FILE_NAME = "mesh.obj"
 
 
 class EMCellMeshConversionTask(Task):
@@ -56,7 +58,10 @@ class EMCellMeshConversionTask(Task):
         else:
             work_dir = Path(self.config.coordinate_output_root)
             work_dir.mkdir(parents=True, exist_ok=True)
-            obj_path = self._download_obj(db_client=db_client, mesh=mesh, work_dir=work_dir)
+            obj_asset = self._single_obj_asset(mesh)
+            obj_path = self._download_obj(
+                db_client=db_client, mesh=mesh, obj_asset=obj_asset, work_dir=work_dir
+            )
             glb_path = convert_obj_to_glb(obj_path, work_dir)
             if glb_assets(db_client.get_entity(entity_id=mesh_id, entity_type=EMCellMesh)):
                 L.info(f"EM cell mesh {mesh_id} got a GLB while converting; not uploading")
@@ -66,7 +71,7 @@ class EMCellMeshConversionTask(Task):
                     entity_id=mesh_id,
                     entity_type=EMCellMesh,
                     file_path=glb_path,
-                    file_name=f"{obj_path.stem}.glb",
+                    file_name=f"{Path(obj_asset.path).stem}.glb",
                     file_content_type=ContentType.model_gltf_binary,
                     asset_label=AssetLabel.cell_surface_mesh,
                 )
@@ -74,17 +79,24 @@ class EMCellMeshConversionTask(Task):
         set_lifecycle_status(db_client, mesh_id, EntityLifecycleStatus.active)
 
     @staticmethod
-    def _download_obj(*, db_client: Client, mesh: EMCellMesh, work_dir: Path) -> Path:
+    def _single_obj_asset(mesh: EMCellMesh) -> Asset:
         assets = obj_assets(mesh)
         if len(assets) != 1:
             msg = f"EM cell mesh {mesh.id} has {len(assets)} OBJ surface meshes instead of one."
             raise MeshConversionError(msg)
+        return assets[0]
+
+    @staticmethod
+    def _download_obj(
+        *, db_client: Client, mesh: EMCellMesh, obj_asset: Asset, work_dir: Path
+    ) -> Path:
         obj_dir = work_dir / "obj"
         obj_dir.mkdir(parents=True, exist_ok=True)
-        L.info(f"Downloading {assets[0].size} bytes of OBJ")
+        L.info(f"Downloading {obj_asset.size} bytes of OBJ")
+        # pylmesh only reads a path that ends in a lowercase ".obj".
         return db_client.download_file(
             entity_id=mesh.id,
             entity_type=EMCellMesh,
-            asset_id=assets[0],
-            output_path=obj_dir / Path(assets[0].path).name,
+            asset_id=obj_asset,
+            output_path=obj_dir / OBJ_FILE_NAME,
         )

@@ -69,11 +69,13 @@ def test_execute_uploads_the_glb_deletes_the_obj_and_activates(
 
     task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
 
-    assert db_client.download_file.call_args.kwargs["asset_id"] is obj_asset
+    download = db_client.download_file.call_args.kwargs
+    assert download["asset_id"] is obj_asset
+    assert download["output_path"] == tmp_path / "work" / "obj" / "mesh.obj"
     convert.assert_called_once_with(db_client.download_file.return_value, tmp_path / "work")
     upload = db_client.upload_file.call_args.kwargs
     assert upload["file_path"] == glb_path
-    assert upload["file_name"] == "downloaded.glb"
+    assert upload["file_name"] == "neuron_42.glb"
     assert upload["file_content_type"] == ContentType.model_gltf_binary
     assert upload["asset_label"] == AssetLabel.cell_surface_mesh
     db_client.delete_asset.assert_called_once_with(
@@ -171,3 +173,17 @@ def test_execute_does_not_upload_a_second_glb(monkeypatch, task, mesh, db_client
 
     db_client.upload_file.assert_not_called()
     assert lifecycle_updates(db_client) == [EntityLifecycleStatus.active]
+
+
+def test_execute_reads_an_uppercase_obj_asset_under_a_lowercase_name(
+    monkeypatch, task, obj_asset, db_client, tmp_path
+):
+    obj_asset.path = "Neuron_42.OBJ"
+    glb_path = tmp_path / "mesh.glb"
+    glb_path.write_bytes(b"glb")
+    monkeypatch.setattr(test_module, "convert_obj_to_glb", Mock(return_value=glb_path))
+
+    task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
+
+    assert db_client.download_file.call_args.kwargs["output_path"].name == "mesh.obj"
+    assert db_client.upload_file.call_args.kwargs["file_name"] == "Neuron_42.glb"

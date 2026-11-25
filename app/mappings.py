@@ -394,14 +394,12 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             },
         ),
     ),
-    # Ultraliser is single-threaded; memory and disk are sized for a 6 GB OBJ (~125M triangles).
+    # pylmesh is single-threaded; memory and disk are sized for a 6 GB OBJ (~140M triangles).
     TaskDefinition(
         task_type=TaskType.em_cell_mesh_conversion,
         config_type=TaskConfigType.em_cell_mesh_conversion__config,
         activity_type=TaskActivityType.em_cell_mesh_conversion__execution,
-        code=_obi_one_code(
-            "em_cell_mesh_conversion.txt", capabilities=Capabilities(private_packages=True)
-        ),
+        code=_obi_one_code("default.txt"),
         resources=MachineResources(
             cores=4,
             memory=30,
