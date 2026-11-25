@@ -168,7 +168,7 @@ class GenerateSimulationTask(Task):
                         sonata_simulation_config_directory=self.config.coordinate_output_root,  # ty:ignore[unknown-argument]
                         simulation_length=self.config.initialize.simulation_length,  # ty:ignore[unknown-argument, invalid-argument-type]
                         default_timestamps=DEFAULT_TIMESTAMPS,  # ty:ignore[invalid-argument-type]
-                        default_source_neuron_set_reference=self._default_neuron_set_ref(),  # ty:ignore[unknown-argument]
+                        default_source_neuron_set_reference=self._default_spike_source_neuron_set_ref(),  # ty:ignore[unknown-argument]
                         default_target_neuron_set_reference=self._default_neuron_set_ref(),  # ty:ignore[unknown-argument]
                     )
                 )
@@ -262,7 +262,9 @@ class GenerateSimulationTask(Task):
                 if accepts_optional_neuron_set_reference(attr_type):
                     attr_value = getattr(block, attr_name, None)
                     if attr_value is None:
-                        setattr(block, attr_name, self._default_neuron_set_ref())
+                        setattr(
+                            block, attr_name, self._default_block_neuron_set_ref(block, attr_name)
+                        )
 
     def _ensure_morphology_locations_have_neuron_set_reference(self) -> None:
         """Ensure morphology locations have a neuron-set target.
@@ -392,6 +394,21 @@ class GenerateSimulationTask(Task):
         if ref.block_name not in self.config.neuron_sets:  # ty:ignore[unresolved-attribute]
             self.config.neuron_sets[ref.block_name] = ref.block  # ty:ignore[unresolved-attribute,invalid-assignment]
         return ref
+
+    def _default_block_neuron_set_ref(
+        self, block: Block, attr_name: str
+    ) -> ALL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the default reference for the neuron set field *attr_name* of *block*."""
+        if isinstance(block, SpikeStimulus) and attr_name == "source_neuron_set":
+            return self._default_spike_source_neuron_set_ref()
+        return self._default_neuron_set_ref()
+
+    def _default_spike_source_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
+        """Returns the reference for the default source of a spike stimulus."""
+        population_type = self.config.default_spike_source_population_type(self._circuit)
+        if population_type is None:
+            return self._default_neuron_set_ref()
+        return self._default_neuron_set_ref_for_population_type(population_type)
 
     def _default_neuron_set_ref(self) -> ALL_NEURON_SETS_REFERENCE_UNION:
         """Returns the reference for the default neuron set."""
@@ -709,6 +726,7 @@ class GenerateSimulationTask(Task):
         self._add_sonata_simulation_config_inputs()
         self._add_sonata_simulation_config_reports(db_client)
         self._add_sonata_simulation_config_manipulations()
+        self.config.validate_sonata_config(self._sonata_config, self._circuit)
         self._resolve_neuron_sets_and_write_simulation_node_sets_file()
         self._write_materialized_compartment_sets_file()
         self._update_simulation_number_neurons(db_client)

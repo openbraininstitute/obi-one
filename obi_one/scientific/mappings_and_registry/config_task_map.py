@@ -196,6 +196,18 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         asset_label=None,
     ),
+    TaskType.nest_circuit_simulation: TaskSpec(
+        task_ref=_GENERATE_SIMULATION_TASK_REF,
+        single_config_ref=(
+            f"{_TASKS}.generate_simulations.config.nest.nest_circuit",
+            "NestCircuitSimulationSingleConfig",
+        ),
+        scan_config_ref=(
+            f"{_TASKS}.generate_simulations.config.nest.nest_circuit",
+            "NestCircuitSimulationScanConfig",
+        ),
+        asset_label=None,
+    ),
     TaskType.connectivity_matrix_extraction: TaskSpec(
         task_ref=(
             f"{_TASKS}.connectivity_matrix_extraction.task",

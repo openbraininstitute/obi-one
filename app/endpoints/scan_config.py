@@ -34,6 +34,9 @@ from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit 
 from obi_one.scientific.tasks.generate_simulations.config.learning_engine.le_circuit import (
     LearningEngineCircuitSimulationScanConfig,
 )
+from obi_one.scientific.tasks.generate_simulations.config.nest.nest_circuit import (
+    NestCircuitSimulationScanConfig,
+)
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationScanConfig,
 )
@@ -153,6 +156,7 @@ def activate_scan_config_endpoints() -> None:
     scan_configs: list[tuple[type[ScanConfig], str, str, bool]] = [
         (CircuitSimulationScanConfig, "generate", "", True),
         (Brian2CircuitSimulationScanConfig, "generate", "", True),
+        (NestCircuitSimulationScanConfig, "generate", "", True),
         (MEModelSimulationScanConfig, "generate", "", True),
         (MEModelWithSynapsesCircuitSimulationScanConfig, "generate", "", True),
         (MorphologyMetricsScanConfig, "run", "", True),

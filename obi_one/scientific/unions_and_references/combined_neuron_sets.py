@@ -66,6 +66,11 @@ CircuitExtractionNeuronSetUnion = _NonVirtualNeuronSetUnion
 NEURONMEModelWithSynapsesNeuronSetUnion = _VirtualNeuronSetUnion
 Brian2SimulationNeuronSetUnion = _PointNeuronSetUnion
 LearningEngineNeuronSetUnion = _PointNeuronSetUnion
+# A NEST simulation replays spikes from its virtual populations, so it also offers virtual sets.
+NestSimulationNeuronSetUnion = Annotated[
+    _POINT_NEURON_SETS | _VIRTUAL_NEURON_SETS,
+    Discriminator("type"),
+]
 NEURONSynapseParameterizationNeuronSetUnion = _AllNeuronSetUnion
 
 
@@ -141,6 +146,9 @@ POINT_NEURON_SETS_REFERENCE_UNION = (
     ATOMIC_POINT_NEURON_SETS_REFERENCE_UNION | CombinedPointNeuronSetReference
 )
 
+POINT_AND_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
+    POINT_NEURON_SETS_REFERENCE_UNION | VIRTUAL_NEURON_SETS_REFERENCE_UNION
+)
 
 NON_VIRTUAL_NEURON_SETS_REFERENCE_UNION = (
     BIOPHYSICAL_NEURON_SETS_REFERENCE_UNION
@@ -175,6 +183,10 @@ POINT_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
 
 VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
     VIRTUAL_NEURON_SETS_REFERENCE_UNION
+)
+
+POINT_AND_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(
+    POINT_AND_VIRTUAL_NEURON_SETS_REFERENCE_UNION
 )
 
 NON_VIRTUAL_NEURON_SETS_REFERENCE_TYPES = BlockReference.get_class_names(

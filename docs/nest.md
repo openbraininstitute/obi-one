@@ -32,6 +32,40 @@ net.Simulate()             # runs for run.tstop ms
 
 `run_simulation(simulation_config, num_threads=1, nestml_cache_dir=None)` does all of the above and returns `SimulationResults`: the spikes of every non-virtual population in the config's `output.spikes_file`, as a SONATA spike report, and the soma reports.
 
+## Simulation campaigns
+
+NEST simulation campaigns are configured with `NestCircuitSimulationScanConfig` (or `NestCircuitSimulationSingleConfig` for a single coordinate) in `obi_one/scientific/tasks/generate_simulations/config/nest/`, the NEST counterpart of the Brian2 config. It emits a `simulation_config.json` with `target_simulator: "NEST"` and `run.dt` 0.025 ms, and is served at `/generated/nest-circuit-simulation-scan-config-generate-grid`. Generating a campaign does not need NEST; running one does. The circuit must have a `nest_point` population, and no node populations other than `nest_point` and `virtual` ones.
+
+The config reuses the shared blocks, restricted to what the runner executes:
+
+| Kind | Blocks |
+| --- | --- |
+| Stimuli | `ConstantCurrentClampSomaticStimulus`, `LinearCurrentClampSomaticStimulus`, `MultiPulseCurrentClampSomaticStimulus`, `SimulationDtSinusoidalCurrentClampSomaticStimulus`, and the five spike stimuli (`synapse_replay`) |
+| Recordings | `SomaVoltageRecording`, `TimeWindowSomaVoltageRecording`, and their simulation-timestep variants |
+| Synaptic manipulations | `ConnectSynapticManipulation`, `DisconnectSynapticManipulation`, `ScaleWeightSynapticManipulation` |
+| Neuron sets | point and virtual neuron sets |
+
+`SinusoidalCurrentClampSomaticStimulus` is not offered, because NEST samples a sinusoid on the simulation timestep and would ignore its Timestep. Noise, Ornstein-Uhlenbeck, threshold-relative, voltage clamp and electric field stimuli have no NEST module in the spec. The initial voltage and the simulation's neuron set are hidden: NEST ignores `conditions`, and the simulation runs on all point neurons.
+
+Every untargeted block falls back to `"Default: All Point Neurons"`, except the source of a spike stimulus. When every virtual population of the circuit projects onto a point population, an untargeted spike source is `"Default: All Virtual Neurons"`: the virtual populations of a simplified circuit are its projections, which stay silent unless spikes are replayed from them. Otherwise the source is the point neurons. A manipulation's presynaptic set falls back to the point neurons like the other blocks, so a manipulation of the projections names a virtual neuron set.
+
+Generation refuses, before anything is written, what the runner would refuse once launched:
+
+- a circuit with populations other than `nest_point` and `virtual`, or without a `nest_point` population;
+- a recording whose Timestep is not a multiple of 0.025 ms;
+- a synaptic manipulation timed between two steps;
+- a pulse longer than its period;
+- a current clamp whose neuron set contains no `nest_point` neuron;
+- recordings over the memory limit.
+
+The connection override and pulse checks call the runner's own parsing (`connection_overrides.parse_overrides`, `current_clamps.pulse_steps`), and the recording frames come from `soma_reports.Frames`, so generation and the runner agree.
+
+Each recording has its own multimeter, sampled on its own Timestep over its own window, and NEST holds every sample until the run ends. Generation adds up neurons x frames over the recordings and refuses more than `MAX_NEST_RECORDED_SAMPLES` (4e7). The limit was measured with `simulate_nest` on circuits of unconnected neurons: about 104 bytes of peak memory per sample, so 4e7 samples take 4.2 GB of the job's 8 GB. A recording without a neuron set records every point neuron; a smaller neuron set, a shorter window or a coarser Timestep records fewer samples.
+
+The config adds two hooks to `BaseSimulationScanConfig`, which the other simulators keep as no-ops: `default_spike_source_population_type`, the population type an untargeted spike source defaults to, and `validate_sonata_config`, called by the generation task once the inputs, reports and connection overrides are assembled.
+
+`examples/obi_one/scientific/tasks/generate_simulations/NEST/nest_circuit_simulation.ipynb` is a worked example. It builds a campaign with these blocks for the NEST export of a simplified circuit (by default the newest export written by `run_simplification_local.ipynb`), generates the SONATA config, shows a refusal at generation, and runs the simulation with `run_simulation`.
+
 ## Simulation execution task
 
 `circuit_simulation_nest_machine` is the launch-system task for NEST simulations, alongside the neurodamus and `brian2` machine tasks. It is selected when the simulation's (or circuit's) `target_simulator` is `NEST`. It stages the circuit and simulation config (reusing the neuron staging helper), calls `run_simulation` with one NEST thread per CPU in `JOB_CPUS` (one thread when it is unset), and registers the spike report and the soma reports as a `SimulationResult`. It is built on the shared `SimulationExecutionTask`, which the neuron execution tasks also subclass; each subclass only provides circuit staging and the simulator-specific run step. NEST ignores `OMP_NUM_THREADS` and starts on one thread, so the loader sets `nest.local_num_threads` when it resets the kernel. The thread count is also the number of virtual processes, which NEST uses to seed its random number streams, so a model with random elements gives different results on a different number of CPUs. The kernel is seeded from the simulation config's `run.random_seed` plus one, because NEST rejects a seed of 0; a negative seed raises `ValueError`. With the same seed and the same number of CPUs, a random model repeats its spikes. It is billed with the `NEST_CIRCUIT_SIMULATION` service subtype, and its launch dependencies are `launch_scripts/launch_task_for_single_config_asset/dependencies/nest_image.txt` (`obi-one[nest]`). The `nest_image.override` next to it pins `nest-simulator`, which the launch-system `python3.12-compiler-nest` runtime builds from source at that version, with NESTML at the version in `nest_image.txt`; both are read at the obi-one release the image is built for.

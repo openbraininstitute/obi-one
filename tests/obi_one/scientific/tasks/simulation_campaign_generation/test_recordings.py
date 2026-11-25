@@ -21,6 +21,7 @@ from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit 
 from obi_one.scientific.unions_and_references.recordings import (
     Brian2RecordingUnion,
     IonChannelModelRecordingUnion,
+    NestRecordingUnion,
     RecordingUnion,
 )
 from obi_one.scientific.unions_and_references.simulations import (
@@ -93,6 +94,15 @@ class TestUnionCoverage:
     def test_brian2_uses_the_simulation_timestep_recordings(self):
         """Brian2 rejects a report whose dt differs from the simulation's, so it gets its own."""
         assert union_member_names(Brian2RecordingUnion) == {
+            "SimulationDtSomaVoltageRecording",
+            "SimulationDtTimeWindowSomaVoltageRecording",
+        }
+
+    def test_nest_offers_both_timestep_variants_of_the_soma_recordings(self):
+        """NEST samples a report every whole number of steps, so a Timestep of its own works."""
+        assert union_member_names(NestRecordingUnion) == {
+            "SomaVoltageRecording",
+            "TimeWindowSomaVoltageRecording",
             "SimulationDtSomaVoltageRecording",
             "SimulationDtTimeWindowSomaVoltageRecording",
         }

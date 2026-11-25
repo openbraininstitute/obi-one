@@ -42,6 +42,7 @@ from obi_one.scientific.unions_and_references.stimuli import (
     IonChannelModelStimulusUnion,
     LearningEngineCircuitStimulusUnion,
     MEModelStimulusUnion,
+    NestCircuitStimulusUnion,
 )
 
 from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest import (
@@ -125,6 +126,20 @@ class TestUnionCoverage:
         """
         assert union_member_names(Brian2CircuitStimulusUnion) == {
             "Brian2DirectPoissonStimulus",
+            "ConstantCurrentClampSomaticStimulus",
+            "LinearCurrentClampSomaticStimulus",
+            "MultiPulseCurrentClampSomaticStimulus",
+            "SimulationDtSinusoidalCurrentClampSomaticStimulus",
+            *SPIKE_STIMULI,
+        }
+
+    def test_nest_accepts_the_current_injections_and_the_spike_replays(self):
+        """The NEST runner turns `linear`, `pulse` and `sinusoidal` into current generators.
+
+        It also replays `synapse_replay` spikes, but has no `poisson` kick. NEST samples its
+        sinusoid on the simulation timestep, hence the dedicated block.
+        """
+        assert union_member_names(NestCircuitStimulusUnion) == {
             "ConstantCurrentClampSomaticStimulus",
             "LinearCurrentClampSomaticStimulus",
             "MultiPulseCurrentClampSomaticStimulus",

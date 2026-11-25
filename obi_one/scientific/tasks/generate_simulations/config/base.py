@@ -47,6 +47,7 @@ from obi_one.scientific.unions_and_references.neuron_sets import (
 )
 
 if TYPE_CHECKING:
+    from obi_one.scientific.blocks.neuron_sets.base import NeuronSetPopulationType
     from obi_one.scientific.library.circuit import Circuit
 
 SONATA_VERSION = 2.4
@@ -201,6 +202,22 @@ class BaseSimulationScanConfig(InfoScanConfig, abc.ABC):
         Called by the generation task once every recording has a neuron set, so the recorded
         neurons can be counted. The default accepts anything; simulators whose recordings are
         bounded by the job's memory override it to fail before anything is launched.
+        """
+
+    def validate_sonata_config(self, sonata_config: dict, circuit: "Circuit | None") -> None:
+        """Check the assembled SONATA config can be run by this configuration's simulator.
+
+        Called by the generation task once the inputs, reports and connection overrides are in
+        *sonata_config*, before it is written. The default accepts anything; simulators that
+        refuse some of them when they run override it to refuse them here instead.
+        """
+
+    def default_spike_source_population_type(
+        self, circuit: "Circuit | None"
+    ) -> "NeuronSetPopulationType | None":
+        """The population type the source of an untargeted spike stimulus defaults to.
+
+        ``None``, the default, keeps the simulation-wide default neuron set as the source.
         """
 
     def base_sonata_config(self, sonata_config: dict | None = None) -> dict:
