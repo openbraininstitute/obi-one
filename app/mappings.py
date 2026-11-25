@@ -394,7 +394,8 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             },
         ),
     ),
-    # pylmesh is single-threaded; memory and disk are sized for a 6 GB OBJ (~140M triangles).
+    # Memory and disk are sized for a 6 GB OBJ (~140M triangles). pylmesh is single-threaded;
+    # the 4 vCPU are what Fargate pairs with 30 GB.
     TaskDefinition(
         task_type=TaskType.em_cell_mesh_conversion,
         config_type=TaskConfigType.em_cell_mesh_conversion__config,

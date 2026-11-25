@@ -18,13 +18,12 @@ from obi_one.scientific.tasks.em_cell_mesh_conversion.config import (
     EMCellMeshConversionSingleConfig,
 )
 from obi_one.scientific.tasks.em_cell_mesh_conversion.conversion import (
+    OBJ_FILE_NAME,
     MeshConversionError,
     convert_obj_to_glb,
 )
 
 L = logging.getLogger(__name__)
-
-OBJ_FILE_NAME = "mesh.obj"
 
 
 class EMCellMeshConversionTask(Task):
@@ -90,13 +89,10 @@ class EMCellMeshConversionTask(Task):
     def _download_obj(
         *, db_client: Client, mesh: EMCellMesh, obj_asset: Asset, work_dir: Path
     ) -> Path:
-        obj_dir = work_dir / "obj"
-        obj_dir.mkdir(parents=True, exist_ok=True)
         L.info(f"Downloading {obj_asset.size} bytes of OBJ")
-        # pylmesh only reads a path that ends in a lowercase ".obj".
         return db_client.download_file(
             entity_id=mesh.id,
             entity_type=EMCellMesh,
             asset_id=obj_asset,
-            output_path=obj_dir / OBJ_FILE_NAME,
+            output_path=work_dir / OBJ_FILE_NAME,
         )

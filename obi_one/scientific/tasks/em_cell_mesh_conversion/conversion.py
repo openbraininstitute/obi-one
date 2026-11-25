@@ -19,6 +19,8 @@ from obi_one.core.exception import OBIONEError
 
 L = logging.getLogger(__name__)
 
+# pylmesh picks its reader by a lowercase ".obj" suffix, so the OBJ is saved under this name.
+OBJ_FILE_NAME = "mesh.obj"
 GLB_FILE_NAME = "mesh.glb"
 GLB_MAGIC = b"glTF"
 GLB_VERSION = 2
@@ -126,10 +128,11 @@ def _load_mesh(obj_path: Path, summary: ObjSummary) -> pylmesh.Mesh:
     except (RuntimeError, ValueError) as error:
         msg = f"pylmesh could not read the OBJ: {error}"
         raise MeshConversionError(msg) from error
-    L.info(f"pylmesh read {mesh.vertex_count()} vertices and {mesh.face_count()} faces")
-    if mesh.vertex_count() != summary.vertices or mesh.face_count() != summary.faces:
+    vertices, faces = mesh.vertex_count(), mesh.face_count()
+    L.info(f"pylmesh read {vertices} vertices and {faces} faces")
+    if (vertices, faces) != (summary.vertices, summary.faces):
         msg = (
-            f"pylmesh read {mesh.vertex_count()} vertices and {mesh.face_count()} faces,"
+            f"pylmesh read {vertices} vertices and {faces} faces,"
             f" but the scan found {summary.vertices} and {summary.faces}."
         )
         raise MeshConversionError(msg)
@@ -139,7 +142,7 @@ def _load_mesh(obj_path: Path, summary: ObjSummary) -> pylmesh.Mesh:
 def convert_obj_to_glb(obj_path: Path, work_dir: Path) -> Path:
     """Converts the OBJ to a Draco GLB in ``work_dir`` and returns the GLB's path.
 
-    pylmesh picks its reader by a lowercase ``.obj`` suffix, so ``obj_path`` must end in one.
+    ``obj_path`` must end in a lowercase ``.obj``; see ``OBJ_FILE_NAME``.
     """
     summary = scan_obj(obj_path)
     L.info(f"OBJ scan: {summary}")

@@ -106,20 +106,11 @@ def test_check_glb_rejects_invalid_files(tmp_path, content, match):
 
 
 def test_scan_obj_reads_statements_like_pylmesh(tmp_path):
-    obj = "v\t0 0 0\nv\t1 0 0\nv\t0 1 0\n  v 9 9 9\n\n vn 0 0 1\n\tf\t1 2 4\n"
+    obj = "v\t0 0 0\nv\t1 0 0\nv\t0 1 0\n  v 9 9 9\nvt 0 0\nvn 0 0 1\n\n\tf\t1 2 4\nf 4 3 2"
 
     summary = test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
 
-    assert summary == ObjSummary(vertices=4, faces=1, min_index=1, max_index=4)
-
-
-def test_scan_obj_range_checks_an_indented_face(tmp_path):
-    obj = "v 0 0 0\nv 1 0 0\nv 0 1 0\n   f 1 2 7\n"
-
-    summary = test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
-
-    with pytest.raises(MeshConversionError, match="refers to vertex 7"):
-        test_module.check_obj(summary)
+    assert summary == ObjSummary(vertices=4, faces=2, min_index=1, max_index=4)
 
 
 def test_convert_obj_to_glb_writes_a_draco_glb_with_every_triangle(tmp_path):

@@ -71,7 +71,7 @@ def test_execute_uploads_the_glb_deletes_the_obj_and_activates(
 
     download = db_client.download_file.call_args.kwargs
     assert download["asset_id"] is obj_asset
-    assert download["output_path"] == tmp_path / "work" / "obj" / "mesh.obj"
+    assert download["output_path"] == tmp_path / "work" / "mesh.obj"
     convert.assert_called_once_with(db_client.download_file.return_value, tmp_path / "work")
     upload = db_client.upload_file.call_args.kwargs
     assert upload["file_path"] == glb_path
@@ -175,7 +175,7 @@ def test_execute_does_not_upload_a_second_glb(monkeypatch, task, mesh, db_client
     assert lifecycle_updates(db_client) == [EntityLifecycleStatus.active]
 
 
-def test_execute_reads_an_uppercase_obj_asset_under_a_lowercase_name(
+def test_execute_names_the_glb_after_an_uppercase_obj_asset(
     monkeypatch, task, obj_asset, db_client, tmp_path
 ):
     obj_asset.path = "Neuron_42.OBJ"
@@ -185,5 +185,4 @@ def test_execute_reads_an_uppercase_obj_asset_under_a_lowercase_name(
 
     task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
 
-    assert db_client.download_file.call_args.kwargs["output_path"].name == "mesh.obj"
     assert db_client.upload_file.call_args.kwargs["file_name"] == "Neuron_42.glb"
