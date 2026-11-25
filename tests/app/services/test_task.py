@@ -10,7 +10,7 @@ import httpx
 import libsonata
 import pytest
 from entitysdk.common import ProjectContext
-from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
+from entitysdk.types import AssetLabel, EntityType, TaskActivityType, TaskConfigType
 
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
@@ -1191,3 +1191,83 @@ def test_emodel_optimization_job_data(config_id, activity_id, callbacks):
     ]
     assert result["project_id"] == PROJECT_ID
     assert result["callbacks"]
+
+
+def test_handle_task_failure_callback_settles_the_converted_mesh():
+    mesh_id = uuid4()
+    activity = SimpleNamespace(
+        status="running",
+        used=[
+            SimpleNamespace(id=uuid4(), type=EntityType.task_config),
+            SimpleNamespace(id=mesh_id, type=EntityType.em_cell_mesh),
+        ],
+    )
+    db_client = Mock()
+    db_client.get_entity.return_value = activity
+
+    with (
+        patch.object(test_module.db_sdk, "finalize_activity") as finalize,
+        patch.object(test_module, "settle_failed_conversion") as settle,
+    ):
+        test_module.handle_task_failure_callback(
+            activity_id=uuid4(),
+            db_client=db_client,
+            task_definition=TASK_DEFINITIONS[TaskType.em_cell_mesh_conversion],
+        )
+
+    finalize.assert_called_once()
+    settle.assert_called_once_with(db_client, mesh_id)
+
+
+def test_handle_task_failure_callback_finalizes_even_if_the_mesh_cannot_be_settled():
+    activity = SimpleNamespace(
+        status="running", used=[SimpleNamespace(id=uuid4(), type=EntityType.em_cell_mesh)]
+    )
+    db_client = Mock()
+    db_client.get_entity.return_value = activity
+
+    with (
+        patch.object(test_module.db_sdk, "finalize_activity") as finalize,
+        patch.object(
+            test_module, "settle_failed_conversion", side_effect=RuntimeError("mesh deleted")
+        ),
+    ):
+        test_module.handle_task_failure_callback(
+            activity_id=uuid4(),
+            db_client=db_client,
+            task_definition=TASK_DEFINITIONS[TaskType.em_cell_mesh_conversion],
+        )
+
+    finalize.assert_called_once()
+
+
+def test_submit_task_job_records_extra_used_entities(project_context):
+    config = SimpleNamespace(id=uuid4())
+    mesh = SimpleNamespace(id=uuid4())
+    db_client = Mock()
+    db_client.get_entity.return_value = config
+    ls_client = Mock()
+    ls_client.post.return_value = Mock(
+        is_success=True, json=Mock(return_value={"id": str(uuid4())})
+    )
+
+    with (
+        patch.object(
+            test_module.db_sdk,
+            "create_generic_activity",
+            return_value=SimpleNamespace(id=uuid4()),
+        ) as create_activity,
+        patch.object(test_module.db_sdk, "update_activity_executor"),
+    ):
+        test_module.submit_task_job(
+            db_client=db_client,
+            ls_client=ls_client,
+            config_id=config.id,
+            task_definition=get_launchable_task_definition(TaskType.em_cell_mesh_conversion),
+            project_context=project_context,
+            callback_url="http://my-callback-url",
+            callbacks=[],
+            extra_used=[mesh],
+        )
+
+    assert create_activity.call_args.kwargs["used"] == [config, mesh]

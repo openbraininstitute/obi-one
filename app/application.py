@@ -29,6 +29,7 @@ from app.endpoints import (
     count_scan_coordinates,
     distance_function_validation,
     electrical_cell_recording_properties,
+    em_cell_mesh_conversion,
     ephys_metrics,
     extracellular_locations,
     ion_channel_properties,
@@ -263,6 +264,7 @@ app.include_router(ephys_metrics.router)
 app.include_router(extracellular_locations.router)
 app.include_router(ion_channel_properties.router)
 app.include_router(circuit_visualization.memodel_router)
+app.include_router(em_cell_mesh_conversion.router)
 app.include_router(mesh_registration.router)
 app.include_router(mesh_validation.router)
 app.include_router(morphology_locations.router)

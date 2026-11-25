@@ -11,6 +11,7 @@ from entitysdk.types import (
     AssetLabel,
     CircuitScale,
     ContentType,
+    EntityType,
     ExecutorType,
     TargetSimulator,
 )
@@ -36,6 +37,7 @@ from app.schemas.task import (
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.db_sdk import db_sdk
+from obi_one.scientific.tasks.em_cell_mesh_conversion.lifecycle import settle_failed_conversion
 
 
 def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
@@ -61,8 +63,13 @@ def submit_task_job(
     project_context: entitysdk.ProjectContext,
     callback_url: str,
     callbacks: list[CallBack],
+    extra_used: list[models.Entity] | None = None,
 ) -> TaskLaunchInfo:
-    """Creates an activity and submits a task as a job on the launch-system."""
+    """Creates an activity and submits a task as a job on the launch-system.
+
+    ``extra_used`` entities are recorded as used by the activity next to the config, so the
+    activity can be found from them.
+    """
     # TODO: Remove once simulations are migrated to generic configs
     if isinstance(task_definition, TaskDefinitionLegacy):
         config_type = task_definition.config_type
@@ -80,7 +87,7 @@ def submit_task_job(
         activity_type = models.TaskActivity
         activity_id = db_sdk.create_generic_activity(
             client=db_client,
-            used=[config],
+            used=[config, *(extra_used or [])],
             activity_status=ActivityStatus.pending,
             activity_type=task_definition.activity_type,
         ).id
@@ -355,17 +362,36 @@ def handle_task_failure_callback(
     else:
         task_activity_type = models.TaskActivity
 
-    current_status = db_client.get_entity(
-        entity_id=activity_id, entity_type=task_activity_type
-    ).status
+    activity = db_client.get_entity(entity_id=activity_id, entity_type=task_activity_type)
 
-    if current_status != ActivityStatus.done:
+    if activity.status != ActivityStatus.done:
         db_sdk.finalize_activity(
             client=db_client,
             activity_id=activity_id,
             activity_type=task_activity_type,
             status=ActivityStatus.error,
         )
+
+    if task_definition.task_type == TaskType.em_cell_mesh_conversion:
+        _settle_failed_mesh_conversion(db_client=db_client, activity=activity)
+
+
+def _settle_failed_mesh_conversion(
+    *, db_client: entitysdk.Client, activity: models.Activity
+) -> None:
+    """Leaves no mesh in draft with an OBJ when the conversion job died without cleaning up.
+
+    The job settles the mesh itself on errors it can catch; this covers a killed container, a
+    timeout and a job that never started.
+    """
+    mesh_ids = [
+        entity.id for entity in activity.used or [] if entity.type == EntityType.em_cell_mesh
+    ]
+    for mesh_id in mesh_ids:
+        try:
+            settle_failed_conversion(db_client, mesh_id)
+        except Exception:  # ruff: ignore[blind-except]
+            L.exception(f"Could not settle EM cell mesh {mesh_id} after a failed conversion")
 
 
 def estimate_task_resources(

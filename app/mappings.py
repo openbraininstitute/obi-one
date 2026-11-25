@@ -394,6 +394,26 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             },
         ),
     ),
+    # Ultraliser is single-threaded; memory and disk are sized for a 6 GB OBJ (~125M triangles).
+    TaskDefinition(
+        task_type=TaskType.em_cell_mesh_conversion,
+        config_type=TaskConfigType.em_cell_mesh_conversion__config,
+        activity_type=TaskActivityType.em_cell_mesh_conversion__execution,
+        code=_obi_one_code(
+            "em_cell_mesh_conversion.txt", capabilities=Capabilities(private_packages=True)
+        ),
+        resources=MachineResources(
+            cores=4,
+            memory=30,
+            timelimit="00:45",
+            compute_cell="local",
+            ephemeral_storage=30,
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
     TaskDefinition(
         task_type=TaskType.circuit_simplification,
         config_type=TaskConfigType.circuit_simplification__config,

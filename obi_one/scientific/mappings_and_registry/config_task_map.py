@@ -159,6 +159,16 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         single_task_config_type=TaskConfigType.mesh_lod_generation__config,
         single_task_activity_type=TaskActivityType.mesh_lod_generation__execution,
     ),
+    TaskType.em_cell_mesh_conversion: TaskSpec(
+        task_ref=(f"{_TASKS}.em_cell_mesh_conversion.task", "EMCellMeshConversionTask"),
+        single_config_ref=(
+            f"{_TASKS}.em_cell_mesh_conversion.config",
+            "EMCellMeshConversionSingleConfig",
+        ),
+        asset_label=AssetLabel.task_config,
+        single_task_config_type=TaskConfigType.em_cell_mesh_conversion__config,
+        single_task_activity_type=TaskActivityType.em_cell_mesh_conversion__execution,
+    ),
     TaskType.morphology_skeletonization: TaskSpec(
         task_ref=(f"{_TASKS}.skeletonization.task", "SkeletonizationTask"),
         single_config_ref=(f"{_TASKS}.skeletonization.config", "SkeletonizationSingleConfig"),
