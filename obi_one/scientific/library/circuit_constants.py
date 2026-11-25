@@ -12,6 +12,8 @@ TYPES_OF_POINT_NODES = [
     "inait_point_neuron_lif",
     "nest_point",
 ]
+# Point neurons of the SONATA-extension NEST format, which only the NEST runner simulates
+TYPES_OF_NEST_POINT_NODES = ["nest_point"]
 
 # Node properties tied to electrical cell models (absent on structural circuits without e-models)
 ELECTRICAL_MODEL_NODE_PROPERTIES: list[str] = [
