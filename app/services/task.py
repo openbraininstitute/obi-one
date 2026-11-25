@@ -384,14 +384,13 @@ def _settle_failed_mesh_conversion(
     The job settles the mesh itself on errors it can catch; this covers a killed container, a
     timeout and a job that never started.
     """
-    mesh_ids = [
-        entity.id for entity in activity.used or [] if entity.type == EntityType.em_cell_mesh
-    ]
-    for mesh_id in mesh_ids:
+    for entity in activity.used or []:
+        if entity.type != EntityType.em_cell_mesh:
+            continue
         try:
-            settle_failed_conversion(db_client, mesh_id)
+            settle_failed_conversion(db_client, entity.id)
         except Exception:  # ruff: ignore[blind-except]
-            L.exception(f"Could not settle EM cell mesh {mesh_id} after a failed conversion")
+            L.exception(f"Could not settle EM cell mesh {entity.id} after a failed conversion")
 
 
 def estimate_task_resources(

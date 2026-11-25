@@ -82,6 +82,6 @@ class EMCellMeshConversionTask(Task):
         return db_client.download_file(
             entity_id=mesh.id,
             entity_type=EMCellMesh,
-            asset_id=assets[0].id,
+            asset_id=assets[0],
             output_path=obj_dir / Path(assets[0].path).name,
         )

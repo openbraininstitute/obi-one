@@ -124,7 +124,7 @@ def _exit_reason(returncode: int) -> str:
     return f"signal {signal_number}"
 
 
-def _read_counts(counts_path: Path) -> dict[str, int]:
+def _check_counts(counts_path: Path) -> None:
     if not counts_path.is_file():
         msg = "Ultraliser could not read the OBJ."
         raise MeshConversionError(msg)
@@ -133,7 +133,6 @@ def _read_counts(counts_path: Path) -> dict[str, int]:
     if counts["vertices"] == 0 or counts["triangles"] == 0:
         msg = "Ultraliser read no triangles from the OBJ."
         raise MeshConversionError(msg)
-    return counts
 
 
 def convert_obj_to_glb(obj_path: Path, work_dir: Path) -> Path:
@@ -157,7 +156,7 @@ def convert_obj_to_glb(obj_path: Path, work_dir: Path) -> Path:
         msg = f"Ultraliser stopped with {_exit_reason(returncode)}."
         raise MeshConversionError(msg)
 
-    _read_counts(counts_path)
+    _check_counts(counts_path)
     glb_paths = sorted(output_dir.glob("*.glb"))
     if len(glb_paths) != 1:
         msg = f"Ultraliser wrote {len(glb_paths)} GLB files instead of one."

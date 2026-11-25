@@ -22,7 +22,7 @@ from app.dependencies.launch_system import LaunchSystemClientDep
 from app.errors import ApiError, ApiErrorCode
 from app.logger import L
 from app.mappings import get_launchable_task_definition
-from app.schemas.task import TaskLaunchInfo
+from app.schemas.task import TaskLaunchInfo, TaskLaunchSubmit
 from app.services import task as task_service
 from app.types import TaskType
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
@@ -117,16 +117,17 @@ def convert_em_cell_mesh_endpoint(
     mesh = db_client.get_entity(entity_id=entity_id, entity_type=models.EMCellMesh)
     _check_convertible(db_client, mesh)
 
-    task_definition = get_launchable_task_definition(TaskType.em_cell_mesh_conversion)
-    task_definition = task_definition.model_copy(
-        update={
-            "resources": task_service.apply_placement_type(
-                task_definition.resources.model_copy(update={"compute_cell": compute_cell}),
-                compute_cell,
-            )
-        }
-    )
     task_config = _register_config(db_client, mesh)
+    task_definition = get_launchable_task_definition(TaskType.em_cell_mesh_conversion)
+    resources = task_service.estimate_task_resources(
+        json_model=TaskLaunchSubmit(
+            task_type=TaskType.em_cell_mesh_conversion, config_id=task_config.id
+        ),
+        db_client=db_client,
+        task_definition=task_definition,
+        compute_cell=compute_cell,
+    )
+    task_definition = task_definition.model_copy(update={"resources": resources})
     try:
         return task_service.submit_task_job(
             db_client=db_client,

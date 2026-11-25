@@ -68,7 +68,7 @@ def test_execute_uploads_the_glb_deletes_the_obj_and_activates(
 
     task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
 
-    assert db_client.download_file.call_args.kwargs["asset_id"] == obj_asset.id
+    assert db_client.download_file.call_args.kwargs["asset_id"] is obj_asset
     convert.assert_called_once_with(db_client.download_file.return_value, tmp_path / "work")
     upload = db_client.upload_file.call_args.kwargs
     assert upload["file_path"] == glb_path
@@ -123,24 +123,23 @@ def test_execute_fails_without_exactly_one_obj(monkeypatch, task, mesh, db_clien
 def test_settle_failed_conversion_activates_a_mesh_with_an_uploaded_glb(mesh, db_client):
     mesh.assets.append(make_asset(ContentType.model_gltf_binary))
 
-    status = lifecycle.settle_failed_conversion(db_client, mesh.id)
+    lifecycle.settle_failed_conversion(db_client, mesh.id)
 
-    assert status == EntityLifecycleStatus.active
+    assert lifecycle_updates(db_client) == [EntityLifecycleStatus.active]
     db_client.delete_asset.assert_called_once()
 
 
 def test_settle_failed_conversion_ignores_an_unfinished_glb_upload(mesh, db_client):
     mesh.assets.append(make_asset(ContentType.model_gltf_binary, AssetStatus.uploading))
 
-    status = lifecycle.settle_failed_conversion(db_client, mesh.id)
+    lifecycle.settle_failed_conversion(db_client, mesh.id)
 
-    assert status == EntityLifecycleStatus.disqualified
+    assert lifecycle_updates(db_client) == [EntityLifecycleStatus.disqualified]
 
 
 def test_settle_failed_conversion_still_disqualifies_when_the_delete_fails(mesh, db_client):
     db_client.delete_asset.side_effect = RuntimeError("entitycore down")
 
-    status = lifecycle.settle_failed_conversion(db_client, mesh.id)
+    lifecycle.settle_failed_conversion(db_client, mesh.id)
 
-    assert status == EntityLifecycleStatus.disqualified
     assert lifecycle_updates(db_client) == [EntityLifecycleStatus.disqualified]
