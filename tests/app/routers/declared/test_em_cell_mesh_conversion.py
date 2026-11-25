@@ -149,3 +149,34 @@ def test_convert_settles_the_mesh_when_the_launch_fails(api, mesh):
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     settle.assert_called_once()
     assert settle.call_args.args[1] == mesh.id
+
+
+def test_convert_settles_the_mesh_when_the_config_cannot_be_registered(api, mesh):
+    with (
+        patch(
+            f"{TARGET_MODULE}.db_sdk.register_task_config_with_asset",
+            side_effect=RuntimeError("entitycore down"),
+        ),
+        patch(f"{TARGET_MODULE}.settle_failed_conversion") as settle,
+    ):
+        response = api.post(f"/declared/em-cell-mesh/{mesh.id}/convert")
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert settle.call_args.args[1] == mesh.id
+
+
+@pytest.mark.usefixtures("register_config")
+def test_convert_reports_the_launch_failure_even_if_settling_fails(api, mesh):
+    with (
+        patch(
+            f"{TARGET_MODULE}.task_service.submit_task_job",
+            side_effect=RuntimeError("launch-system down"),
+        ),
+        patch(
+            f"{TARGET_MODULE}.settle_failed_conversion", side_effect=RuntimeError("entitycore down")
+        ),
+    ):
+        response = api.post(f"/declared/em-cell-mesh/{mesh.id}/convert")
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert response.json()["message"] == "Failed to submit the conversion task"

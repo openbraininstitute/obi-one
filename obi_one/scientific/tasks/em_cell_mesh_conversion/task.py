@@ -7,19 +7,19 @@ from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel, ContentType, EntityLifecycleStatus
 
 from obi_one.core.task import Task
+from obi_one.db_sdk.em_cell_mesh import (
+    delete_obj_assets,
+    glb_assets,
+    obj_assets,
+    set_lifecycle_status,
+    settle_failed_conversion,
+)
 from obi_one.scientific.tasks.em_cell_mesh_conversion.config import (
     EMCellMeshConversionSingleConfig,
 )
 from obi_one.scientific.tasks.em_cell_mesh_conversion.conversion import (
     MeshConversionError,
     convert_obj_to_glb,
-)
-from obi_one.scientific.tasks.em_cell_mesh_conversion.lifecycle import (
-    delete_obj_assets,
-    glb_assets,
-    obj_assets,
-    set_lifecycle_status,
-    settle_failed_conversion,
 )
 
 L = logging.getLogger(__name__)
@@ -58,15 +58,18 @@ class EMCellMeshConversionTask(Task):
             work_dir.mkdir(parents=True, exist_ok=True)
             obj_path = self._download_obj(db_client=db_client, mesh=mesh, work_dir=work_dir)
             glb_path = convert_obj_to_glb(obj_path, work_dir)
-            L.info(f"Uploading {glb_path.stat().st_size} bytes of GLB")
-            db_client.upload_file(
-                entity_id=mesh_id,
-                entity_type=EMCellMesh,
-                file_path=glb_path,
-                file_name=f"{obj_path.stem}.glb",
-                file_content_type=ContentType.model_gltf_binary,
-                asset_label=AssetLabel.cell_surface_mesh,
-            )
+            if glb_assets(db_client.get_entity(entity_id=mesh_id, entity_type=EMCellMesh)):
+                L.info(f"EM cell mesh {mesh_id} got a GLB while converting; not uploading")
+            else:
+                L.info(f"Uploading {glb_path.stat().st_size} bytes of GLB")
+                db_client.upload_file(
+                    entity_id=mesh_id,
+                    entity_type=EMCellMesh,
+                    file_path=glb_path,
+                    file_name=f"{obj_path.stem}.glb",
+                    file_content_type=ContentType.model_gltf_binary,
+                    asset_label=AssetLabel.cell_surface_mesh,
+                )
         delete_obj_assets(db_client, mesh)
         set_lifecycle_status(db_client, mesh_id, EntityLifecycleStatus.active)
 

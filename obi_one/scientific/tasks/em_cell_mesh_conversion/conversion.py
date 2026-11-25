@@ -26,6 +26,9 @@ GLB_JSON_CHUNK = b"JSON"
 GLB_HEADER = struct.Struct("<4sIII4s")
 DRACO_EXTENSION = "KHR_draco_mesh_compression"
 MIN_FACE_VERTICES = 3
+# The line starts Ultraliser's OBJ reader accepts; it skips every other line.
+VERTEX_PREFIXES = (b"v ", b"v\t")
+FACE_PREFIXES = (b"f ", b"f\t")
 
 
 class MeshConversionError(OBIONEError):
@@ -48,9 +51,9 @@ def scan_obj(obj_path: Path) -> ObjSummary:
     max_index = 0
     with obj_path.open("rb") as obj_file:
         for line_number, line in enumerate(obj_file, start=1):
-            if line.startswith(b"v "):
+            if line.startswith(VERTEX_PREFIXES):
                 vertices += 1
-            elif line.startswith(b"f "):
+            elif line.startswith(FACE_PREFIXES):
                 faces += 1
                 try:
                     indices = [int(token.split(b"/", 1)[0]) for token in line.split()[1:]]

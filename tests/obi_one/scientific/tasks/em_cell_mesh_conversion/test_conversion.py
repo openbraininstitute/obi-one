@@ -178,3 +178,11 @@ def test_convert_obj_to_glb_stops_the_child_when_the_obj_is_invalid(monkeypatch,
     with pytest.raises(MeshConversionError, match="refers to vertex 3"):
         test_module.convert_obj_to_glb(obj_path, tmp_path / "work")
     assert not marker.exists()
+
+
+def test_scan_obj_counts_tab_separated_lines_like_ultraliser(tmp_path):
+    obj = "v\t0 0 0\nv\t1 0 0\nv\t0 1 0\n  v 9 9 9\nf\t1 2 3\n"
+
+    summary = test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
+
+    assert summary == ObjSummary(vertices=3, faces=1, min_index=1, max_index=3)

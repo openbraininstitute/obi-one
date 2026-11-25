@@ -10,7 +10,13 @@ import httpx
 import libsonata
 import pytest
 from entitysdk.common import ProjectContext
-from entitysdk.types import AssetLabel, EntityType, TaskActivityType, TaskConfigType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    EntityType,
+    TaskActivityType,
+    TaskConfigType,
+)
 
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
@@ -1219,7 +1225,7 @@ def test_handle_task_failure_callback_settles_the_converted_mesh():
     settle.assert_called_once_with(db_client, mesh_id)
 
 
-def test_handle_task_failure_callback_finalizes_even_if_the_mesh_cannot_be_settled():
+def test_handle_task_failure_callback_finalizes_before_a_settle_error():
     activity = SimpleNamespace(
         status="running", used=[SimpleNamespace(id=uuid4(), type=EntityType.em_cell_mesh)]
     )
@@ -1231,6 +1237,7 @@ def test_handle_task_failure_callback_finalizes_even_if_the_mesh_cannot_be_settl
         patch.object(
             test_module, "settle_failed_conversion", side_effect=RuntimeError("mesh deleted")
         ),
+        pytest.raises(RuntimeError, match="mesh deleted"),
     ):
         test_module.handle_task_failure_callback(
             activity_id=uuid4(),
@@ -1271,3 +1278,33 @@ def test_submit_task_job_records_extra_used_entities(project_context):
         )
 
     assert create_activity.call_args.kwargs["used"] == [config, mesh]
+
+
+def test_submit_task_job_marks_the_activity_error_when_the_launch_request_fails(project_context):
+    activity_id = uuid4()
+    db_client = Mock()
+    db_client.get_entity.return_value = SimpleNamespace(id=uuid4())
+    ls_client = Mock()
+    ls_client.post.side_effect = httpx.ConnectError("launch-system down")
+
+    with (
+        patch.object(
+            test_module.db_sdk,
+            "create_generic_activity",
+            return_value=SimpleNamespace(id=activity_id),
+        ),
+        patch.object(test_module.db_sdk, "update_activity_status") as update_status,
+        pytest.raises(httpx.ConnectError),
+    ):
+        test_module.submit_task_job(
+            db_client=db_client,
+            ls_client=ls_client,
+            config_id=uuid4(),
+            task_definition=get_launchable_task_definition(TaskType.em_cell_mesh_conversion),
+            project_context=project_context,
+            callback_url="http://my-callback-url",
+            callbacks=[],
+        )
+
+    assert update_status.call_args.kwargs["activity_id"] == activity_id
+    assert update_status.call_args.kwargs["status"] == ActivityStatus.error

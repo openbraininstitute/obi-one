@@ -37,7 +37,7 @@ from app.schemas.task import (
 )
 from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.tasks.em_cell_mesh_conversion.lifecycle import settle_failed_conversion
+from obi_one.db_sdk.em_cell_mesh import settle_failed_conversion
 
 
 def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
@@ -153,14 +153,13 @@ def submit_task_job(
             )
 
     # Submit job
-    response = ls_client.post(url="/job", json=job_data)
+    try:
+        response = ls_client.post(url="/job", json=job_data)
+    except httpx.HTTPError:
+        _mark_activity_error(db_client, activity_id, activity_type)
+        raise
     if not response.is_success:
-        db_sdk.update_activity_status(
-            client=db_client,
-            activity_id=activity_id,
-            activity_type=activity_type,
-            status=ActivityStatus.error,
-        )
+        _mark_activity_error(db_client, activity_id, activity_type)
         msg = f"Job submission failed!\n{json.loads(response.text)}"
         raise RuntimeError(msg)
     response_body = response.json()
@@ -179,6 +178,17 @@ def submit_task_job(
         config_id=config_id,
         activity_id=activity_id,
         job_id=job_id,
+    )
+
+
+def _mark_activity_error(
+    db_client: entitysdk.Client, activity_id: UUID, activity_type: type[models.Activity]
+) -> None:
+    db_sdk.update_activity_status(
+        client=db_client,
+        activity_id=activity_id,
+        activity_type=activity_type,
+        status=ActivityStatus.error,
     )
 
 
@@ -385,12 +395,8 @@ def _settle_failed_mesh_conversion(
     timeout and a job that never started.
     """
     for entity in activity.used or []:
-        if entity.type != EntityType.em_cell_mesh:
-            continue
-        try:
+        if entity.type == EntityType.em_cell_mesh:
             settle_failed_conversion(db_client, entity.id)
-        except Exception:  # ruff: ignore[blind-except]
-            L.exception(f"Could not settle EM cell mesh {entity.id} after a failed conversion")
 
 
 def estimate_task_resources(

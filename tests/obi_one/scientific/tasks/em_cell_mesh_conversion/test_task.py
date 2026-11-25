@@ -6,7 +6,8 @@ import pytest
 from entitysdk.models import EMCellMesh
 from entitysdk.types import AssetLabel, AssetStatus, ContentType, EntityLifecycleStatus
 
-from obi_one.scientific.tasks.em_cell_mesh_conversion import lifecycle, task as test_module
+from obi_one.db_sdk import em_cell_mesh as lifecycle
+from obi_one.scientific.tasks.em_cell_mesh_conversion import task as test_module
 from obi_one.scientific.tasks.em_cell_mesh_conversion.config import (
     EMCellMeshConversionSingleConfig,
 )
@@ -140,6 +141,33 @@ def test_settle_failed_conversion_ignores_an_unfinished_glb_upload(mesh, db_clie
 def test_settle_failed_conversion_still_disqualifies_when_the_delete_fails(mesh, db_client):
     db_client.delete_asset.side_effect = RuntimeError("entitycore down")
 
-    lifecycle.settle_failed_conversion(db_client, mesh.id)
+    with pytest.raises(RuntimeError, match="entitycore down"):
+        lifecycle.settle_failed_conversion(db_client, mesh.id)
 
     assert lifecycle_updates(db_client) == [EntityLifecycleStatus.disqualified]
+
+
+def test_settle_failed_conversion_deletes_an_unfinished_glb(mesh, obj_asset, db_client):
+    unfinished = make_asset(ContentType.model_gltf_binary, AssetStatus.uploading)
+    mesh.assets.append(unfinished)
+
+    lifecycle.settle_failed_conversion(db_client, mesh.id)
+
+    deleted = [c.kwargs["asset_id"] for c in db_client.delete_asset.mock_calls]
+    assert deleted == [obj_asset.id, unfinished.id]
+    assert lifecycle_updates(db_client) == [EntityLifecycleStatus.disqualified]
+
+
+def test_execute_does_not_upload_a_second_glb(monkeypatch, task, mesh, db_client, tmp_path):
+    glb_path = tmp_path / "mesh.glb"
+    glb_path.write_bytes(b"glb")
+    monkeypatch.setattr(test_module, "convert_obj_to_glb", Mock(return_value=glb_path))
+    converted_elsewhere = SimpleNamespace(
+        id=mesh.id, assets=[*mesh.assets, make_asset(ContentType.model_gltf_binary)]
+    )
+    db_client.get_entity.side_effect = [mesh, converted_elsewhere]
+
+    task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
+
+    db_client.upload_file.assert_not_called()
+    assert lifecycle_updates(db_client) == [EntityLifecycleStatus.active]

@@ -27,13 +27,13 @@ from app.services import task as task_service
 from app.types import TaskType
 from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
 from obi_one.db_sdk import db_sdk
-from obi_one.scientific.tasks.em_cell_mesh_conversion.config import (
-    EMCellMeshConversionSingleConfig,
-)
-from obi_one.scientific.tasks.em_cell_mesh_conversion.lifecycle import (
+from obi_one.db_sdk.em_cell_mesh import (
     glb_assets,
     obj_assets,
     settle_failed_conversion,
+)
+from obi_one.scientific.tasks.em_cell_mesh_conversion.config import (
+    EMCellMeshConversionSingleConfig,
 )
 
 router = APIRouter(
@@ -104,6 +104,7 @@ def _register_config(db_client: entitysdk.Client, mesh: models.EMCellMesh) -> mo
     description=(
         "Launches a free task that converts the mesh's OBJ to a Draco GLB, deletes the OBJ and"
         " sets the mesh to active. On failure the OBJ is deleted and the mesh disqualified."
+        " Call it once per mesh: two calls at the same time can both launch a job."
     ),
 )
 def convert_em_cell_mesh_endpoint(
@@ -117,18 +118,18 @@ def convert_em_cell_mesh_endpoint(
     mesh = db_client.get_entity(entity_id=entity_id, entity_type=models.EMCellMesh)
     _check_convertible(db_client, mesh)
 
-    task_config = _register_config(db_client, mesh)
-    task_definition = get_launchable_task_definition(TaskType.em_cell_mesh_conversion)
-    resources = task_service.estimate_task_resources(
-        json_model=TaskLaunchSubmit(
-            task_type=TaskType.em_cell_mesh_conversion, config_id=task_config.id
-        ),
-        db_client=db_client,
-        task_definition=task_definition,
-        compute_cell=compute_cell,
-    )
-    task_definition = task_definition.model_copy(update={"resources": resources})
     try:
+        task_config = _register_config(db_client, mesh)
+        task_definition = get_launchable_task_definition(TaskType.em_cell_mesh_conversion)
+        resources = task_service.estimate_task_resources(
+            json_model=TaskLaunchSubmit(
+                task_type=TaskType.em_cell_mesh_conversion, config_id=task_config.id
+            ),
+            db_client=db_client,
+            task_definition=task_definition,
+            compute_cell=compute_cell,
+        )
+        task_definition = task_definition.model_copy(update={"resources": resources})
         return task_service.submit_task_job(
             db_client=db_client,
             ls_client=ls_client,
@@ -141,7 +142,10 @@ def convert_em_cell_mesh_endpoint(
         )
     except Exception as exc:
         L.exception(f"Failed to submit the conversion of EM cell mesh {entity_id}")
-        settle_failed_conversion(db_client, entity_id)
+        try:
+            settle_failed_conversion(db_client, entity_id)
+        except Exception:  # ruff: ignore[blind-except]
+            L.exception(f"Could not settle EM cell mesh {entity_id} after the failed submission")
         raise ApiError(
             message="Failed to submit the conversion task",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
