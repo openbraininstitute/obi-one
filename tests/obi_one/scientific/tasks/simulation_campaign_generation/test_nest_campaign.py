@@ -109,6 +109,24 @@ class TestCircuitValidation:
         with pytest.raises(ConfigValidationError, match="'brian2_point'"):
             generate(nest_config(point_circuit), tmp_path)
 
+    def test_a_circuit_without_nest_point_neurons_is_refused(self):
+        """Virtual neurons only replay spikes, so there would be nothing to simulate."""
+        circuit = MagicMock()
+        circuit.name = "projections"
+        circuit.sonata_circuit.nodes.population_names = ["input"]
+        circuit.sonata_circuit.nodes.__getitem__.return_value = MagicMock(type="virtual")
+        config = NestCircuitSimulationSingleConfig.empty_config()
+
+        with pytest.raises(
+            ConfigValidationError, match="needs a 'nest_point' population; circuit 'projections'"
+        ):
+            config.validate_circuit(circuit)
+
+    def test_nothing_is_checked_without_a_circuit(self):
+        config = NestCircuitSimulationSingleConfig.empty_config()
+
+        assert config.validate_circuit(None) is None
+
 
 class TestDefaultNeuronSets:
     def test_untargeted_blocks_use_all_point_neurons(self, nest_circuit, tmp_path):
@@ -164,6 +182,11 @@ class TestDefaultNeuronSets:
         assert config.default_spike_source_population_type(circuit) == (
             NeuronSetPopulationType.VIRTUAL
         )
+
+    def test_the_simulation_default_is_kept_without_a_circuit(self):
+        config = NestCircuitSimulationSingleConfig.empty_config()
+
+        assert config.default_spike_source_population_type(None) is None
 
 
 class TestRefusedAtGeneration:
