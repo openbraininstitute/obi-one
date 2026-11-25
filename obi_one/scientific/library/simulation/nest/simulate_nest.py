@@ -119,7 +119,7 @@ class NestSonataNetwork:
         self._node_collections: dict = {}
         self._are_nodes_created = False
         self._is_network_built = False
-        self._nestml_cache_dir = self._base_dir / ".nestml_cache"
+        self._nestml_cache_dir = Path.cwd() / ".nestml_cache"  # TEMP e2e: circuit dir is read-only
         self._node_sets: libsonata.NodeSets | None = None
         self._replay_collections: dict = {}
         self._replay_nodes: dict = {}
