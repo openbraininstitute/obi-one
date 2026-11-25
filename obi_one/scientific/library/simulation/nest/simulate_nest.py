@@ -63,6 +63,7 @@ class NestSonataNetwork:
         config: str | Path,
         sim_config: str | Path | None = None,
         num_threads: int = 1,
+        nestml_cache_dir: str | Path | None = None,
     ) -> None:
         """Parse the configuration files with ``libsonata``.
 
@@ -73,6 +74,9 @@ class NestSonataNetwork:
                 ignored.
             num_threads: OpenMP threads of the NEST kernel. NEST ignores ``OMP_NUM_THREADS`` and
                 runs on one thread unless this is set.
+            nestml_cache_dir: Writable directory for the NESTML modules built for ``nestml:``
+                templates. Defaults to ``<circuit dir>/.nestml_cache``, which a staged circuit on
+                a read-only mount cannot use.
         """
         if num_threads < 1:
             msg = f"num_threads must be at least 1, got {num_threads}."
@@ -119,7 +123,11 @@ class NestSonataNetwork:
         self._node_collections: dict = {}
         self._are_nodes_created = False
         self._is_network_built = False
-        self._nestml_cache_dir = self._base_dir / ".nestml_cache"
+        self._nestml_cache_dir = (
+            Path(nestml_cache_dir)
+            if nestml_cache_dir is not None
+            else self._base_dir / ".nestml_cache"
+        )
         self._node_sets: libsonata.NodeSets | None = None
         self._replay_collections: dict = {}
         self._replay_nodes: dict = {}
@@ -840,14 +848,21 @@ class NestSonataNetwork:
         return path
 
 
-def run_simulation(simulation_config: str | Path, num_threads: int = 1) -> SimulationResults:
+def run_simulation(
+    simulation_config: str | Path,
+    num_threads: int = 1,
+    nestml_cache_dir: str | Path | None = None,
+) -> SimulationResults:
     """Build and simulate the circuit of *simulation_config*; write and return its reports.
 
     Spikes of every non-virtual population go to the config's ``output.spikes_file``, and each
     enabled report is written as a SONATA soma report to its ``file_name``. NEST runs on
-    *num_threads* threads.
+    *num_threads* threads, and NESTML modules are built under *nestml_cache_dir*
+    (see ``NestSonataNetwork``).
     """
-    network = NestSonataNetwork(simulation_config, num_threads=num_threads)
+    network = NestSonataNetwork(
+        simulation_config, num_threads=num_threads, nestml_cache_dir=nestml_cache_dir
+    )
     network.BuildNetwork()
     recorders = network.add_spike_recorders()
     network.add_report_recorders()

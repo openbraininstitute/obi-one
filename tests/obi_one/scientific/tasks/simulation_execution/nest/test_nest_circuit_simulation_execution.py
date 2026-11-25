@@ -70,7 +70,11 @@ def test_execute_local_skips_registration(
 
     mock_stage_circuit.assert_called_once()
     mock_stage_simulation.assert_called_once()
-    mock_run_simulation.assert_called_once_with(tmp_path / "simulation_config.json", num_threads=1)
+    mock_run_simulation.assert_called_once_with(
+        tmp_path / "simulation_config.json",
+        num_threads=1,
+        nestml_cache_dir=(tmp_path / "coord").resolve() / "nestml_cache",
+    )
     db_client.update_entity.assert_not_called()
 
 
@@ -152,4 +156,4 @@ def test_execute_runs_nest_on_the_job_cpus(
         db_client=db_client, execution_activity_id=None
     )
 
-    assert mock_run_simulation.call_args.kwargs == {"num_threads": expected}
+    assert mock_run_simulation.call_args.kwargs["num_threads"] == expected

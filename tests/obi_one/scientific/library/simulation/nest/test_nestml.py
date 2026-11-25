@@ -96,8 +96,12 @@ def test_nestml_gsl_model_matches_reference(tmp_path):
     assert math.isfinite(adex.get("V_m"))
 
 
-def test_nestml_model_is_compiled_into_cache_and_installed(tmp_path, monkeypatch):
-    """The loader compiles the source into a hash-keyed cache directory and installs the result."""
+@pytest.mark.parametrize("custom_cache_dir", [False, True])
+def test_nestml_model_is_compiled_into_cache_and_installed(tmp_path, monkeypatch, custom_cache_dir):
+    """The loader compiles the source into a hash-keyed cache directory and installs the result.
+
+    The cache is ``<circuit dir>/.nestml_cache`` unless ``nestml_cache_dir`` is given.
+    """
     calls = {}
 
     def fake_compile(source, output_dir, module_name):
@@ -115,14 +119,15 @@ def test_nestml_model_is_compiled_into_cache_and_installed(tmp_path, monkeypatch
     )
     monkeypatch.setattr(simulate_nest, "nest", fake_nest)
     config_path = _write_nestml_circuit(tmp_path, "iaf_toy_neuron")
-    net = NestSonataNetwork(config_path)
+    cache_dir = tmp_path / "output" / "nestml_cache" if custom_cache_dir else None
+    net = NestSonataNetwork(config_path, nestml_cache_dir=cache_dir)
     model_dir = net.node_populations["toy"]["point_neuron_models_dir"]
 
     name = net._ensure_nestml_model("iaf_toy_neuron", model_dir)
 
     source, output_dir, module_name = calls["compile"]
     assert source == model_dir / "iaf_toy_neuron.nestml"
-    assert output_dir.parent == tmp_path / ".nestml_cache"
+    assert output_dir.parent == (cache_dir or tmp_path / ".nestml_cache")
     assert module_name.startswith("nestml_")
     assert module_name.endswith("module")
     assert calls["install"] == str(output_dir / f"{module_name}.so")

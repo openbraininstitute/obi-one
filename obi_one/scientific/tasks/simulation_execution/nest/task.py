@@ -63,4 +63,9 @@ class NestCircuitSimulationExecutionTask(SimulationExecutionTask):
             run_simulation,
         )
 
-        return run_simulation(simulation_config_path, num_threads=simulation_thread_count())
+        # The staged circuit can be a read-only asset mount, so NESTML builds under the output.
+        return run_simulation(
+            simulation_config_path,
+            num_threads=simulation_thread_count(),
+            nestml_cache_dir=Path(self.config.coordinate_output_root).resolve() / "nestml_cache",
+        )
