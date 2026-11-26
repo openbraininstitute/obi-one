@@ -7,7 +7,9 @@ tags:
 
 `POST /declared/em-cell-mesh/{entity_id}/convert` launches a job that converts the OBJ surface
 mesh of a draft `EMCellMesh` to a Draco-compressed GLB with pylmesh, at full resolution. The
-conversion is free. The generic `POST /declared/task/launch` refuses this task type with a 400.
+conversion is free. Launch it through this endpoint: the generic `POST /declared/task/launch`
+skips the checks below and charges the job. Even then, the task never changes a mesh that is
+not `draft`.
 
 ## Lifecycle
 

@@ -169,16 +169,6 @@ def test_convert_leaves_the_mesh_to_a_job_that_may_be_running(api, mesh, db_clie
     settle.assert_not_called()
 
 
-def test_generic_launch_refuses_a_conversion(api):
-    response = api.post(
-        "/declared/task/launch",
-        json={"task_type": TaskType.em_cell_mesh_conversion, "config_id": str(uuid4())},
-    )
-
-    assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert "/declared/em-cell-mesh/{entity_id}/convert" in response.json()["message"]
-
-
 def test_convert_settles_the_mesh_when_the_config_cannot_be_registered(api, mesh):
     with (
         patch(
