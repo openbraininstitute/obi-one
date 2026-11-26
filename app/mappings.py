@@ -394,6 +394,25 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
             },
         ),
     ),
+    # Memory and disk are sized for a 6 GB OBJ (~140M triangles). pylmesh is single-threaded;
+    # the 4 vCPU are what Fargate pairs with 30 GB.
+    TaskDefinition(
+        task_type=TaskType.em_cell_mesh_conversion,
+        config_type=TaskConfigType.em_cell_mesh_conversion__config,
+        activity_type=TaskActivityType.em_cell_mesh_conversion__execution,
+        code=_obi_one_code("default.txt"),
+        resources=MachineResources(
+            cores=4,
+            memory=30,
+            timelimit="00:45",
+            compute_cell="local",
+            ephemeral_storage=30,
+            placement_type_map={
+                "cell_a": MachinePlacementType.fargate,
+                "cell_b": MachinePlacementType.azure_container_apps,
+            },
+        ),
+    ),
     TaskDefinition(
         task_type=TaskType.circuit_simplification,
         config_type=TaskConfigType.circuit_simplification__config,

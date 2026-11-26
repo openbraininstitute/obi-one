@@ -10,7 +10,13 @@ import httpx
 import libsonata
 import pytest
 from entitysdk.common import ProjectContext
-from entitysdk.types import AssetLabel, TaskActivityType, TaskConfigType
+from entitysdk.types import (
+    ActivityStatus,
+    AssetLabel,
+    EntityType,
+    TaskActivityType,
+    TaskConfigType,
+)
 
 import app.services.resource_estimation.circuit_simulation
 from app.config import settings
@@ -1191,3 +1197,147 @@ def test_emodel_optimization_job_data(config_id, activity_id, callbacks):
     ]
     assert result["project_id"] == PROJECT_ID
     assert result["callbacks"]
+
+
+def test_handle_task_failure_callback_settles_the_converted_mesh():
+    mesh_id = uuid4()
+    activity = SimpleNamespace(
+        status="running",
+        used=[
+            SimpleNamespace(id=uuid4(), type=EntityType.task_config),
+            SimpleNamespace(id=mesh_id, type=EntityType.em_cell_mesh),
+        ],
+    )
+    db_client = Mock()
+    db_client.get_entity.return_value = activity
+
+    with (
+        patch.object(test_module.db_sdk, "finalize_activity") as finalize,
+        patch.object(test_module, "settle_failed_conversion") as settle,
+    ):
+        test_module.handle_task_failure_callback(
+            activity_id=uuid4(),
+            db_client=db_client,
+            task_definition=TASK_DEFINITIONS[TaskType.em_cell_mesh_conversion],
+        )
+
+    finalize.assert_called_once()
+    settle.assert_called_once_with(db_client, mesh_id)
+
+
+def test_handle_task_failure_callback_finalizes_before_a_settle_error():
+    activity = SimpleNamespace(
+        status="running", used=[SimpleNamespace(id=uuid4(), type=EntityType.em_cell_mesh)]
+    )
+    db_client = Mock()
+    db_client.get_entity.return_value = activity
+
+    with (
+        patch.object(test_module.db_sdk, "finalize_activity") as finalize,
+        patch.object(
+            test_module, "settle_failed_conversion", side_effect=RuntimeError("mesh deleted")
+        ),
+        pytest.raises(RuntimeError, match="mesh deleted"),
+    ):
+        test_module.handle_task_failure_callback(
+            activity_id=uuid4(),
+            db_client=db_client,
+            task_definition=TASK_DEFINITIONS[TaskType.em_cell_mesh_conversion],
+        )
+
+    finalize.assert_called_once()
+
+
+def test_submit_task_job_records_extra_used_entities(project_context):
+    config = SimpleNamespace(id=uuid4())
+    mesh = SimpleNamespace(id=uuid4())
+    db_client = Mock()
+    db_client.get_entity.return_value = config
+    ls_client = Mock()
+    ls_client.post.return_value = Mock(
+        is_success=True, json=Mock(return_value={"id": str(uuid4())})
+    )
+
+    with (
+        patch.object(
+            test_module.db_sdk,
+            "create_generic_activity",
+            return_value=SimpleNamespace(id=uuid4()),
+        ) as create_activity,
+        patch.object(test_module.db_sdk, "update_activity_executor"),
+    ):
+        test_module.submit_task_job(
+            db_client=db_client,
+            ls_client=ls_client,
+            config_id=config.id,
+            task_definition=get_launchable_task_definition(TaskType.em_cell_mesh_conversion),
+            project_context=project_context,
+            callback_url="http://my-callback-url",
+            callbacks=[],
+            extra_used=[mesh],
+        )
+
+    assert create_activity.call_args.kwargs["used"] == [config, mesh]
+
+
+@pytest.mark.parametrize(
+    "error", [httpx.ConnectError("refused"), httpx.ConnectTimeout("timed out")]
+)
+def test_submit_task_job_marks_the_activity_error_when_the_launch_request_fails(
+    project_context, error
+):
+    activity_id = uuid4()
+    db_client = Mock()
+    db_client.get_entity.return_value = SimpleNamespace(id=uuid4())
+    ls_client = Mock()
+    ls_client.post.side_effect = error
+
+    with (
+        patch.object(
+            test_module.db_sdk,
+            "create_generic_activity",
+            return_value=SimpleNamespace(id=activity_id),
+        ),
+        patch.object(test_module.db_sdk, "update_activity_status") as update_status,
+        pytest.raises(type(error)),
+    ):
+        test_module.submit_task_job(
+            db_client=db_client,
+            ls_client=ls_client,
+            config_id=uuid4(),
+            task_definition=get_launchable_task_definition(TaskType.em_cell_mesh_conversion),
+            project_context=project_context,
+            callback_url="http://my-callback-url",
+            callbacks=[],
+        )
+
+    assert update_status.call_args.kwargs["activity_id"] == activity_id
+    assert update_status.call_args.kwargs["status"] == ActivityStatus.error
+
+
+def test_submit_task_job_keeps_the_activity_pending_when_the_job_may_exist(project_context):
+    db_client = Mock()
+    db_client.get_entity.return_value = SimpleNamespace(id=uuid4())
+    ls_client = Mock()
+    ls_client.post.side_effect = httpx.ReadTimeout("no response")
+
+    with (
+        patch.object(
+            test_module.db_sdk,
+            "create_generic_activity",
+            return_value=SimpleNamespace(id=uuid4()),
+        ),
+        patch.object(test_module.db_sdk, "update_activity_status") as update_status,
+        pytest.raises(httpx.ReadTimeout),
+    ):
+        test_module.submit_task_job(
+            db_client=db_client,
+            ls_client=ls_client,
+            config_id=uuid4(),
+            task_definition=get_launchable_task_definition(TaskType.em_cell_mesh_conversion),
+            project_context=project_context,
+            callback_url="http://my-callback-url",
+            callbacks=[],
+        )
+
+    update_status.assert_not_called()
