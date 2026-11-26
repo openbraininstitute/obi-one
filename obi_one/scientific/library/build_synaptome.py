@@ -171,11 +171,13 @@ def _location_edge_properties(
 
 
 def _sample_physiology(
-    model: SynapticModelBase, indices: pd.DataFrame, *, group_name: str
+    model: SynapticModelBase, indices: pd.DataFrame, *, group_name: str, physiology_random_seed: int
 ) -> pd.DataFrame:
     count = len(indices)
     try:
-        physiology = model.sample(indices)
+        # One generator for all of the group's parameters, so they are not drawn from the same
+        # stream; otherwise each distribution would seed itself from its own `random_seed`.
+        physiology = model.sample(indices, rng=np.random.default_rng(physiology_random_seed))
     except Exception as exc:
         msg = (
             f"Synapse group '{group_name}' could not sample physiology from "
@@ -402,7 +404,12 @@ def build_synaptome_artifact(  # ruff: ignore[complex-structure, too-many-branch
             edge_data = pd.concat(
                 [
                     _location_edge_properties(morphology, locations),
-                    _sample_physiology(synaptic_model, source_target, group_name=group_key),
+                    _sample_physiology(
+                        synaptic_model,
+                        source_target,
+                        group_name=group_key,
+                        physiology_random_seed=group.physiology_random_seed,  # ty:ignore[invalid-argument-type]
+                    ),
                 ],
                 axis=1,
             )
