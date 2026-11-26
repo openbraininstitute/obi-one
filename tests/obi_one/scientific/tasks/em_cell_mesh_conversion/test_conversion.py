@@ -25,7 +25,12 @@ f 1/1/1 3/1/1 4/1/1
 
 
 def make_glb(gltf: dict, *, length_delta: int = 0, magic: bytes = b"glTF") -> bytes:
-    json_chunk = json.dumps(gltf).encode()
+    return glb_with_json_chunk(json.dumps(gltf).encode(), length_delta=length_delta, magic=magic)
+
+
+def glb_with_json_chunk(
+    json_chunk: bytes, *, length_delta: int = 0, magic: bytes = b"glTF"
+) -> bytes:
     json_chunk += b" " * (-len(json_chunk) % 4)
     total = 12 + 8 + len(json_chunk)
     return (
@@ -69,7 +74,8 @@ class TestScanObj:
             test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
 
     @pytest.mark.parametrize(
-        "vertex", ["v abc\n", "v 1 2\n", "v nan 0 0\n", "v 0 inf 0\n", "v\n", "v 1_0 0 0\n"]
+        "vertex",
+        ["v abc\n", "v 1 x 0\n", "v 1 2\n", "v nan 0 0\n", "v 0 inf 0\n", "v\n", "v 1_0 0 0\n"],
     )
     def test_rejects_vertices_without_three_finite_coordinates(self, tmp_path, vertex):
         obj = "v 0 0 0\nv 1 0 0\n" + vertex + "f 1 2 3\n"
@@ -122,6 +128,7 @@ class TestCheckGlb:
             (make_glb(DRACO_GLTF, magic=b"PK\x03\x04"), "not a binary glTF"),
             (make_glb(DRACO_GLTF, length_delta=100), "incomplete"),
             (make_glb({"asset": {"version": "2.0"}}), "without Draco"),
+            (glb_with_json_chunk(b'{"asset": '), "JSON chunk cannot be read"),
         ],
     )
     def test_rejects_invalid_files(self, tmp_path, content, match):
