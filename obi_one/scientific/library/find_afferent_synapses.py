@@ -6,7 +6,7 @@ import numpy  # ruff: ignore[unconventional-import-alias]
 import pandas  # ruff: ignore[unconventional-import-alias]
 from scipy import stats
 
-from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
+from obi_one.utils.lazy_import import import_optional
 
 if TYPE_CHECKING:
     from conntility.subcellular import MorphologyPathDistanceCalculator
@@ -22,12 +22,7 @@ def morphology_and_pathdistance_calculator(
       node_population (str): Name of the node population of the neuron
       node_id (int): Neuron node id.
     """
-    try:
-        from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
-            MorphologyPathDistanceCalculator,
-        )
-    except ImportError as err:
-        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
+    subcellular = import_optional("conntility.subcellular", extra="connectivity")
 
     node = circ.nodes[node_population]
     try:
@@ -35,7 +30,7 @@ def morphology_and_pathdistance_calculator(
     except Exception as err:
         msg = f"Error loading hdf5 morphology for {node_population} - {node_id}"
         raise RuntimeError(msg) from err
-    PD = MorphologyPathDistanceCalculator(morph)  # ruff: ignore[non-lowercase-variable-in-function]
+    PD = subcellular.MorphologyPathDistanceCalculator(morph)  # ruff: ignore[non-lowercase-variable-in-function]
     return morph, PD
 
 

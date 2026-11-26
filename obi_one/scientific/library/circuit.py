@@ -14,6 +14,7 @@ from obi_one.scientific.library.circuit_constants import (
     TYPES_OF_POINT_NODES,
     TYPES_OF_VIRTUAL_NODES,
 )
+from obi_one.utils.lazy_import import import_optional
 
 if TYPE_CHECKING:
     from conntility import ConnectivityMatrix
@@ -48,16 +49,8 @@ class Circuit(OBIBaseModel):
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
-            try:
-                from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
-            except ImportError as err:
-                from obi_one.scientific.library.morphology_locations import (  # ruff: ignore[import-outside-top-level]
-                    CONNECTIVITY_INSTALL_HINT,
-                )
-
-                raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
-
-            cmat = ConnectivityMatrix.from_h5(
+            conntility = import_optional("conntility", extra="connectivity")
+            cmat = conntility.ConnectivityMatrix.from_h5(
                 self.matrix_path
             )  # Basic check: Try to load the connectivity matrix w/o error
             np.testing.assert_array_equal(
@@ -87,16 +80,8 @@ class Circuit(OBIBaseModel):
         if self.matrix_path is None:
             msg = "Connectivity matrix has not been found"
             raise FileNotFoundError(msg)
-        try:
-            from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
-        except ImportError as err:
-            from obi_one.scientific.library.morphology_locations import (  # ruff: ignore[import-outside-top-level]
-                CONNECTIVITY_INSTALL_HINT,
-            )
-
-            raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
-
-        cmat = ConnectivityMatrix.from_h5(self.matrix_path)
+        conntility = import_optional("conntility", extra="connectivity")
+        cmat = conntility.ConnectivityMatrix.from_h5(self.matrix_path)
         if cmat.is_multigraph:
             cmat = cmat.compress()
         return cmat

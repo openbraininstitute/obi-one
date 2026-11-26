@@ -111,6 +111,7 @@ When registering a new **`TaskType`**:
 ## Code Conventions
 
 - Never add imports in `obi_one/**/__init__.py`. Import from the defining module.
+- Import optional-extra packages (e.g. `conntility`, `connectome_manipulator`) where they are used, via `obi_one.utils.lazy_import.import_optional(module, extra=...)`, instead of hand-written `try/except ImportError` blocks. Keep module-level imports for type hints under `TYPE_CHECKING`. If a launched task needs such a package at run time, list it in the task's launch deps `*.in` and in `_RUNTIME_OPTIONAL_IMPORTS` in `tests/obi_one/scientific/tasks/test_task_imports_with_launch_deps.py`.
 - Before adding any new function/helper, search `obi_one/utils/`, `obi_one/db_sdk/`, `obi_one/scientific/library/`, and entitysdk (`Client` methods, `entitysdk.registration`). Reuse; do not duplicate. If reusable DB/registration logic is missing from entitysdk, flag it for entitysdk instead of building a parallel version in obi-one.
 - Put generic helpers (filesystem, format I/O, serialization, etc.) in `obi_one/utils/`; keep them task-agnostic.
 - Put database-related (entitysdk) helpers in `obi_one/db_sdk/`, not in task modules or `obi_one/utils/`.

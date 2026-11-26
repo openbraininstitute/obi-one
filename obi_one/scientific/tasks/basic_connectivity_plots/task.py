@@ -15,22 +15,13 @@ import numpy as np
 import pandas as pd
 
 from obi_one.core.task import Task
-from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
 from obi_one.scientific.tasks.basic_connectivity_plots.config import (
     BasicConnectivityPlotsSingleConfig,
 )
+from obi_one.utils.lazy_import import import_optional
 
 if TYPE_CHECKING:
     from conntility import ConnectivityMatrix
-
-
-def _connectivity_matrix_type() -> type["ConnectivityMatrix"]:
-    """Import conntility's ConnectivityMatrix, or raise if the connectivity extra is missing."""
-    try:
-        from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
-    except ImportError as err:
-        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
-    return ConnectivityMatrix
 
 
 # Helpers need the connectivity extra; suppress so this module still imports without it.
@@ -375,7 +366,8 @@ class BasicConnectivityPlotsTask(Task):
 
         # Load matrix
         L.info(f"Info: Loading matrix '{self.config.initialize.matrix_path}'")
-        conn = _connectivity_matrix_type().from_h5(
+        conntility = import_optional("conntility", extra="connectivity")
+        conn = conntility.ConnectivityMatrix.from_h5(
             self.config.initialize.matrix_path.path  # ty:ignore[unresolved-attribute]
         )
 

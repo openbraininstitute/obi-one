@@ -4,27 +4,19 @@ import morphio
 import numpy as np
 import pandas as pd
 
+from obi_one.utils.lazy_import import import_optional
+
 if TYPE_CHECKING:
     from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
     from scipy.stats._distn_infrastructure import rv_frozen
-
-CONNECTIVITY_INSTALL_HINT = (
-    "This feature requires the connectivity extra. "
-    "Install with: pip install obi-one[connectivity] or make install-connectivity"
-)
 
 
 def load_optimized_morphology_path_distance_calculator(
     morphology: morphio.Morphology,
 ) -> "OptimizedMorphologyPathDistanceCalculator":
-    """Build a conntility path-distance calculator, or raise if the extra is missing."""
-    try:
-        from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
-            OptimizedMorphologyPathDistanceCalculator,
-        )
-    except ImportError as err:
-        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
-    return OptimizedMorphologyPathDistanceCalculator(morphology)
+    """Build a conntility path-distance calculator for ``morphology``."""
+    subcellular = import_optional("conntility.subcellular", extra="connectivity")
+    return subcellular.OptimizedMorphologyPathDistanceCalculator(morphology)
 
 
 _SEC_ID = "section_id"

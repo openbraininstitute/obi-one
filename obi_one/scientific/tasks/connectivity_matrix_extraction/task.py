@@ -3,30 +3,18 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 import entitysdk.client
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
-from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
 from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (
     ConnectivityMatrixExtractionSingleConfig,
 )
-
-if TYPE_CHECKING:
-    from conntility.connectivity import ConnectivityMatrix
+from obi_one.utils.lazy_import import import_optional
 
 L = logging.getLogger(__name__)
-
-
-def _connectivity_matrix_type() -> type["ConnectivityMatrix"]:
-    """Import conntility's ConnectivityMatrix, or raise if the connectivity extra is missing."""
-    try:
-        from conntility.connectivity import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
-    except ImportError as err:
-        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
-    return ConnectivityMatrix
 
 
 class ConnectivityMatrixExtractionTask(Task):
@@ -134,11 +122,11 @@ class ConnectivityMatrixExtractionTask(Task):
         }
         L.info(f"Node properties to extract: {node_props}")
         L.info(f"Extracting connectivity from edge population '{edge_popul}'")
-        connectivity_matrix_type = _connectivity_matrix_type()
+        connectivity = import_optional("conntility.connectivity", extra="connectivity")
         dummy_edge_prop = next(
             filter(lambda x: "@" not in x, c.edges[edge_popul].property_names)
         )  # Select any existing edge property w/o "@"
-        cmat = connectivity_matrix_type.from_bluepy(
+        cmat = connectivity.ConnectivityMatrix.from_bluepy(
             c,
             load_cfg,
             connectome=edge_popul,

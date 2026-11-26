@@ -14,7 +14,9 @@ from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
 
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
+from obi_one.utils.lazy_import import import_optional
+
+CONNECTIVITY_COMPARISON_MODULE = "connectome_manipulator.connectome_comparison.connectivity"
 
 
 class ConnectivityMetricsRequest(BaseModel):
@@ -219,15 +221,8 @@ def get_connectivity_metrics(
         if not group_by:
             group_by = None
 
-        try:
-            from connectome_manipulator.connectome_comparison import (  # ruff: ignore[import-outside-top-level]
-                connectivity,
-            )
-        except ImportError as err:
-            raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
-
         # Compute connection probability
-        conn_dict = connectivity.compute(
+        conn_dict = import_optional(CONNECTIVITY_COMPARISON_MODULE, extra="connectivity").compute(
             c,
             sel_src=pre_dict,
             sel_dest=post_dict,
