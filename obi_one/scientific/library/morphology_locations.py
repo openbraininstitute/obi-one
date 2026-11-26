@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from scipy.stats._distn_infrastructure import rv_frozen
 
 CONNECTIVITY_INSTALL_HINT = (
-    "Connectome-Utilities (conntility) is required. "
+    "This feature requires the connectivity extra. "
     "Install with: pip install obi-one[connectivity] or make install-connectivity"
 )
 

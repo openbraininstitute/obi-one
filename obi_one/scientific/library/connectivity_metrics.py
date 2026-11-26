@@ -6,7 +6,6 @@ from uuid import UUID
 import bluepysnap as snap
 import numpy as np
 import pandas as pd
-from connectome_manipulator.connectome_comparison import connectivity
 from entitysdk.client import Client
 from entitysdk.models import Asset, Circuit as EntityCircuitModel
 from entitysdk.types import FetchFileStrategy
@@ -15,6 +14,7 @@ from pydantic import BaseModel, Field
 from pydantic.types import PositiveFloat
 
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
 
 
 class ConnectivityMetricsRequest(BaseModel):
@@ -218,6 +218,13 @@ def get_connectivity_metrics(
 
         if not group_by:
             group_by = None
+
+        try:
+            from connectome_manipulator.connectome_comparison import (  # ruff: ignore[import-outside-top-level]
+                connectivity,
+            )
+        except ImportError as err:
+            raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
         # Compute connection probability
         conn_dict = connectivity.compute(

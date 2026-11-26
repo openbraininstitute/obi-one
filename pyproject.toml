@@ -39,7 +39,6 @@ dependencies = [
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.10",
     "caveclient>=7.11.0",
-    "connectome-manipulator>=1.0.4",
     "morph_spines>=1.1.0",
     "morph-tool",
     "neurom",
@@ -68,9 +67,11 @@ circuit-extraction = ["brainbuilder>=0.20.9"]
 emodel = ["bluepyemodel>=1.0.50", "bluecellulab>=2.6.113"]
 
 # CONNECTIVITY - optional, needed for analysis & plot generation, morphology-location
-# path-distance helpers (conntility), and related launch workers / the service preview API.
+# path-distance helpers (conntility), circuit connectivity-metrics API (connectome-manipulator),
+# and related launch workers / the service preview API.
 connectivity = [
     "connectome-utilities>=0.4.18",
+    "connectome-manipulator>=1.0.4",
     "connectome-analysis>=1.0.1",
     "networkx>=3.4.2",
 ]
@@ -93,7 +94,7 @@ notebooks = [
 
 # SERVICE - optional, needed to run obi-one as a service.
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
-# connectivity is included for morphology-location preview (conntility path-distance).
+# connectivity is included for morphology-location preview and connectivity-metrics API.
 service = [
     "obi-one[emodel,connectivity]",
     "cachetools>=5.5.2",
