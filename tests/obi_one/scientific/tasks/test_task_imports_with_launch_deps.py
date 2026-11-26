@@ -38,6 +38,20 @@ _EXTRA_IMPORT_NAMES: dict[str, frozenset[str]] = {
 
 _ALL_OPTIONAL_IMPORT_NAMES: frozenset[str] = frozenset().union(*_EXTRA_IMPORT_NAMES.values())
 
+# Import names of optional packages listed directly in a ``*.in`` file, where they differ from the
+# normalized distribution name.
+_DIST_IMPORT_NAMES: dict[str, str] = {
+    "connectome_utilities": "conntility",
+    "connectome_analysis": "connalysis",
+}
+
+# Optional packages a task needs when it runs (not just to import), e.g. path-distance helpers
+# behind morphology-location sampling. The import test cannot see these.
+_RUNTIME_OPTIONAL_IMPORTS: dict[TaskType, frozenset[str]] = {
+    TaskType.circuit_single_build: frozenset({"conntility"}),
+    TaskType.em_synapse_mapping: frozenset({"conntility"}),
+}
+
 _OBI_ONE_REQ = re.compile(
     r"^obi-one(?:\[(?P<extras>[^\]]*)\])?(?:==| @|@|$)",
     re.IGNORECASE,
@@ -64,7 +78,8 @@ def _parse_in_allowed_imports(in_path: Path) -> frozenset[str]:
             continue
         match = _REQ_NAME.match(line)
         if match:
-            allowed.add(_norm_pkg(match.group(1)))
+            name = _norm_pkg(match.group(1))
+            allowed.add(_DIST_IMPORT_NAMES.get(name, name))
     return frozenset(allowed)
 
 
@@ -202,8 +217,15 @@ def test_launch_deps_mapping_covers_obi_one_code_tasks():
     assert TaskType.em_synapse_mapping in _LAUNCH_DEPS_BY_TASK
     assert TaskType.circuit_simulation_neurodamus_machine in _LAUNCH_DEPS_BY_TASK
     allowed = _parse_in_allowed_imports(_LAUNCH_DEPS_BY_TASK[TaskType.circuit_single_build])
-    assert "conntility" not in allowed
+    assert "conntility" in allowed
     assert "connectome_manipulator" not in allowed
-    em_allowed = _parse_in_allowed_imports(_LAUNCH_DEPS_BY_TASK[TaskType.em_synapse_mapping])
-    assert "conntility" in em_allowed
-    assert "connectome_manipulator" in em_allowed
+
+
+@pytest.mark.parametrize(
+    ("task_type", "required"),
+    sorted(_RUNTIME_OPTIONAL_IMPORTS.items(), key=lambda item: item[0].name),
+)
+def test_launch_deps_provide_runtime_optional_packages(task_type: TaskType, required: frozenset):
+    """Tasks that need optional packages at run time get them from their launch deps."""
+    allowed = _parse_in_allowed_imports(_LAUNCH_DEPS_BY_TASK[task_type])
+    assert required <= allowed, sorted(required - allowed)
