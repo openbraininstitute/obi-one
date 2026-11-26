@@ -94,9 +94,13 @@ notebooks = [
 
 # SERVICE - optional, needed to run obi-one as a service.
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
-# connectivity is included for morphology-location preview and connectivity-metrics API.
+# Connectome utilities/manipulator cover morphology-location preview and connectivity-metrics.
+# Do not pull the full connectivity extra: connectome-analysis → pyflagser has no aarch64 wheel
+# (app CI / some service hosts are aarch64).
 service = [
-    "obi-one[emodel,connectivity]",
+    "obi-one[emodel]",
+    "connectome-utilities>=0.4.18",
+    "connectome-manipulator>=1.0.4",
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",

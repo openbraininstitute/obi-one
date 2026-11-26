@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import entitysdk.client
 
@@ -14,10 +14,13 @@ from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (
     ConnectivityMatrixExtractionSingleConfig,
 )
 
+if TYPE_CHECKING:
+    from conntility.connectivity import ConnectivityMatrix
+
 L = logging.getLogger(__name__)
 
 
-def _connectivity_matrix_type() -> type:
+def _connectivity_matrix_type() -> type["ConnectivityMatrix"]:
     """Import conntility's ConnectivityMatrix, or raise if the connectivity extra is missing."""
     try:
         from conntility.connectivity import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from conntility import ConnectivityMatrix
 
 
-def _connectivity_matrix_type() -> type:
+def _connectivity_matrix_type() -> type["ConnectivityMatrix"]:
     """Import conntility's ConnectivityMatrix, or raise if the connectivity extra is missing."""
     try:
         from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]

@@ -158,7 +158,7 @@ Read [`docs/gui-definition-spec/gui-definition.md`](docs/gui-definition-spec/gui
 - Package manager: **uv** (>=0.9.22)
 - entitysdk is always kept at latest version (`make compile-deps` enforces this)
 - Key scientific deps: bluepysnap, neurom, bluepyefe, caveclient
-- Optional scientific extras include `bluecellulab` (BlueCelluLab simulation / MEModel validation), `brian2` (Brian2 SONATA simulation runner), `circuit-extraction` (brainbuilder subcircuit extraction), `emodel` (bluepyemodel + bluecellulab), `simplification` (sonata-simplify; brings bluecellulab transitively), `meshing`, `connectivity` (connectome-utilities / conntility, connectome-manipulator, connectome-analysis, networkx), and `bluerecording`. The `service` extra also pulls `emodel` and `connectivity`.
+- Optional scientific extras include `bluecellulab` (BlueCelluLab simulation / MEModel validation), `brian2` (Brian2 SONATA simulation runner), `circuit-extraction` (brainbuilder subcircuit extraction), `emodel` (bluepyemodel + bluecellulab), `simplification` (sonata-simplify; brings bluecellulab transitively), `meshing`, `connectivity` (connectome-utilities / conntility, connectome-manipulator, connectome-analysis, networkx), and `bluerecording`. The `service` extra pulls `emodel` plus `connectome-utilities` and `connectome-manipulator` (not full `connectivity`, so aarch64 service installs avoid `pyflagser` from connectome-analysis).
 
 ## CI/CD
 
