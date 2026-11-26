@@ -48,11 +48,13 @@ class ObjSummary:
 
 
 def _check_vertex(tokens: bytes, line_number: int) -> None:
-    coordinates = tokens.split()
+    coordinates = tokens.split()[:VERTEX_COORDINATES]
     try:
-        # A NaN or an infinity in any coordinate makes the sum non-finite.
-        finite = len(coordinates) >= VERTEX_COORDINATES and math.isfinite(
-            sum(map(float, coordinates[:VERTEX_COORDINATES]))
+        # float() also reads "1_000"; a C parser does not.
+        finite = (
+            len(coordinates) == VERTEX_COORDINATES
+            and b"_" not in tokens
+            and all(map(math.isfinite, map(float, coordinates)))
         )
     except ValueError:
         finite = False

@@ -1,17 +1,9 @@
-import tempfile
 from http import HTTPStatus
-from pathlib import Path
 from uuid import UUID
 
 import entitysdk
 from entitysdk import models
-from entitysdk.types import (
-    ActivityStatus,
-    AssetStatus,
-    EntityLifecycleStatus,
-    TaskActivityType,
-    TaskConfigType,
-)
+from entitysdk.types import AssetStatus, EntityLifecycleStatus
 from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import UserContextWithProjectIdDep, user_verified
@@ -25,15 +17,12 @@ from app.mappings import get_launchable_task_definition
 from app.schemas.task import TaskLaunchInfo, TaskLaunchSubmit
 from app.services import task as task_service
 from app.types import TaskType
-from obi_one.core.serialization_constants import COORDINATE_CONFIG_FILENAME
-from obi_one.db_sdk import db_sdk
 from obi_one.db_sdk.em_cell_mesh import (
     glb_assets,
+    has_unfinished_conversion,
     obj_assets,
+    register_conversion_config,
     settle_failed_conversion,
-)
-from obi_one.scientific.tasks.em_cell_mesh_conversion.config import (
-    EMCellMeshConversionSingleConfig,
 )
 
 router = APIRouter(
@@ -41,12 +30,6 @@ router = APIRouter(
     tags=["declared"],
     dependencies=[Depends(user_verified)],
 )
-
-UNFINISHED_ACTIVITY_STATUSES = {
-    ActivityStatus.created,
-    ActivityStatus.pending,
-    ActivityStatus.running,
-}
 
 
 def _refuse(message: str) -> ApiError:
@@ -68,34 +51,24 @@ def _check_convertible(db_client: entitysdk.Client, mesh: models.EMCellMesh) -> 
     if len(objs) != 1 or objs[0].status != AssetStatus.created:
         msg = "The mesh needs exactly one fully uploaded OBJ surface mesh."
         raise _refuse(msg)
-
-    conversions = db_client.search_entity(
-        entity_type=models.TaskActivity,
-        query={
-            "used__id": str(mesh.id),
-            "task_activity_type": TaskActivityType.em_cell_mesh_conversion__execution,
-        },
-    )
-    if any(activity.status in UNFINISHED_ACTIVITY_STATUSES for activity in conversions):
+    if has_unfinished_conversion(db_client, mesh.id):
         msg = "A conversion of this mesh is already pending or running."
         raise _refuse(msg)
 
 
-def _register_config(db_client: entitysdk.Client, mesh: models.EMCellMesh) -> models.TaskConfig:
-    config = EMCellMeshConversionSingleConfig(em_cell_mesh_id=mesh.id)
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        config_path = Path(tmp_dir) / COORDINATE_CONFIG_FILENAME
-        config_path.write_text(config.model_dump_json())
-        task_config, _ = db_sdk.register_task_config_with_asset(
-            client=db_client,
-            name=f"EM cell mesh conversion {mesh.name}",
-            description=f"OBJ to GLB conversion of EM cell mesh {mesh.id}",
-            task_config_type=TaskConfigType.em_cell_mesh_conversion__config,
-            multiple_value_parameters_dictionary={},
-            input_entities=[mesh],  # ty:ignore[invalid-argument-type]
-            task_config_file_path=config_path,
-        )
-    return task_config
+def _settle_unless_submitted(db_client: entitysdk.Client, mesh_id: UUID) -> None:
+    """Settles the mesh only when no conversion job of it can be running.
+
+    An unfinished activity means the job may have reached the launch system; that job, or the
+    failure callback, settles the mesh.
+    """
+    try:
+        if has_unfinished_conversion(db_client, mesh_id):
+            L.warning(f"The conversion of EM cell mesh {mesh_id} may be running; not settling it")
+            return
+        settle_failed_conversion(db_client, mesh_id)
+    except Exception:  # ruff: ignore[blind-except]
+        L.exception(f"Could not settle EM cell mesh {mesh_id} after the failed submission")
 
 
 @router.post(
@@ -119,7 +92,7 @@ def convert_em_cell_mesh_endpoint(
     _check_convertible(db_client, mesh)
 
     try:
-        task_config = _register_config(db_client, mesh)
+        task_config = register_conversion_config(db_client, mesh)
         task_definition = get_launchable_task_definition(TaskType.em_cell_mesh_conversion)
         resources = task_service.estimate_task_resources(
             json_model=TaskLaunchSubmit(
@@ -142,10 +115,7 @@ def convert_em_cell_mesh_endpoint(
         )
     except Exception as exc:
         L.exception(f"Failed to submit the conversion of EM cell mesh {entity_id}")
-        try:
-            settle_failed_conversion(db_client, entity_id)
-        except Exception:  # ruff: ignore[blind-except]
-            L.exception(f"Could not settle EM cell mesh {entity_id} after the failed submission")
+        _settle_unless_submitted(db_client, entity_id)
         raise ApiError(
             message="Failed to submit the conversion task",
             http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR,

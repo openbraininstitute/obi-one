@@ -73,6 +73,16 @@ def task_launch_endpoint(
     compute_cell: ComputeCellDep,
     accounting_factory: AccountingSessionFactoryDep,
 ) -> TaskLaunchInfo:
+    if json_model.task_type == TaskType.em_cell_mesh_conversion:
+        raise ApiError(
+            message=(
+                "An EM cell mesh conversion is launched with"
+                " POST /declared/em-cell-mesh/{entity_id}/convert."
+            ),
+            error_code=ApiErrorCode.INVALID_REQUEST,
+            http_status_code=HTTPStatus.BAD_REQUEST,
+        )
+
     project_context = db_client.project_context
 
     # circuit_simulation maps to a group of tasks. Select the correct one based on circuit

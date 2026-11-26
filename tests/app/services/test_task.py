@@ -1280,12 +1280,17 @@ def test_submit_task_job_records_extra_used_entities(project_context):
     assert create_activity.call_args.kwargs["used"] == [config, mesh]
 
 
-def test_submit_task_job_marks_the_activity_error_when_the_launch_request_fails(project_context):
+@pytest.mark.parametrize(
+    "error", [httpx.ConnectError("refused"), httpx.ConnectTimeout("timed out")]
+)
+def test_submit_task_job_marks_the_activity_error_when_the_launch_request_fails(
+    project_context, error
+):
     activity_id = uuid4()
     db_client = Mock()
     db_client.get_entity.return_value = SimpleNamespace(id=uuid4())
     ls_client = Mock()
-    ls_client.post.side_effect = httpx.ConnectError("launch-system down")
+    ls_client.post.side_effect = error
 
     with (
         patch.object(
@@ -1294,7 +1299,7 @@ def test_submit_task_job_marks_the_activity_error_when_the_launch_request_fails(
             return_value=SimpleNamespace(id=activity_id),
         ),
         patch.object(test_module.db_sdk, "update_activity_status") as update_status,
-        pytest.raises(httpx.ConnectError),
+        pytest.raises(type(error)),
     ):
         test_module.submit_task_job(
             db_client=db_client,
@@ -1308,3 +1313,31 @@ def test_submit_task_job_marks_the_activity_error_when_the_launch_request_fails(
 
     assert update_status.call_args.kwargs["activity_id"] == activity_id
     assert update_status.call_args.kwargs["status"] == ActivityStatus.error
+
+
+def test_submit_task_job_keeps_the_activity_pending_when_the_job_may_exist(project_context):
+    db_client = Mock()
+    db_client.get_entity.return_value = SimpleNamespace(id=uuid4())
+    ls_client = Mock()
+    ls_client.post.side_effect = httpx.ReadTimeout("no response")
+
+    with (
+        patch.object(
+            test_module.db_sdk,
+            "create_generic_activity",
+            return_value=SimpleNamespace(id=uuid4()),
+        ),
+        patch.object(test_module.db_sdk, "update_activity_status") as update_status,
+        pytest.raises(httpx.ReadTimeout),
+    ):
+        test_module.submit_task_job(
+            db_client=db_client,
+            ls_client=ls_client,
+            config_id=uuid4(),
+            task_definition=get_launchable_task_definition(TaskType.em_cell_mesh_conversion),
+            project_context=project_context,
+            callback_url="http://my-callback-url",
+            callbacks=[],
+        )
+
+    update_status.assert_not_called()

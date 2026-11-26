@@ -39,6 +39,9 @@ from app.types import CallBackAction, CallBackEvent, TaskType
 from obi_one.db_sdk import db_sdk
 from obi_one.db_sdk.em_cell_mesh import settle_failed_conversion
 
+# Errors raised before the request reached the launch system, so no job can exist.
+REQUEST_NOT_SENT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
+
 
 def apply_placement_type(resources: Resources, compute_cell: str) -> Resources:
     """Pick the placement the task definition declares for this compute cell.
@@ -155,7 +158,7 @@ def submit_task_job(
     # Submit job
     try:
         response = ls_client.post(url="/job", json=job_data)
-    except httpx.HTTPError:
+    except REQUEST_NOT_SENT_ERRORS:
         _mark_activity_error(db_client, activity_id, activity_type)
         raise
     if not response.is_success:

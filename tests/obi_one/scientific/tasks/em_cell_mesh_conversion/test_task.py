@@ -32,7 +32,9 @@ def obj_asset():
 
 @pytest.fixture
 def mesh(obj_asset):
-    return SimpleNamespace(id=uuid4(), assets=[obj_asset])
+    return SimpleNamespace(
+        id=uuid4(), lifecycle_status=EntityLifecycleStatus.draft, assets=[obj_asset]
+    )
 
 
 @pytest.fixture
@@ -110,6 +112,45 @@ class TestExecute:
         assert db_client.delete_asset.call_args.kwargs["asset_id"] == obj_asset.id
         assert lifecycle_updates(db_client) == [EntityLifecycleStatus.disqualified]
 
+    @pytest.mark.parametrize(
+        "status", [EntityLifecycleStatus.active, EntityLifecycleStatus.disqualified]
+    )
+    def test_leaves_a_mesh_that_is_not_draft_alone(
+        self, monkeypatch, task, mesh, db_client, status
+    ):
+        mesh.lifecycle_status = status
+        convert = Mock()
+        monkeypatch.setattr(test_module, "convert_obj_to_glb", convert)
+
+        with pytest.raises(MeshConversionError, match="only a draft is converted"):
+            task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
+
+        convert.assert_not_called()
+        db_client.download_file.assert_not_called()
+        db_client.delete_asset.assert_not_called()
+        db_client.update_entity.assert_not_called()
+
+    def test_deletes_an_unfinished_glb_before_uploading(
+        self, monkeypatch, task, mesh, obj_asset, db_client, tmp_path
+    ):
+        unfinished = make_asset(ContentType.model_gltf_binary, AssetStatus.uploading)
+        mesh.assets.append(unfinished)
+        glb_path = tmp_path / "mesh.glb"
+        glb_path.write_bytes(b"glb")
+        monkeypatch.setattr(test_module, "convert_obj_to_glb", Mock(return_value=glb_path))
+        calls = Mock()
+        calls.attach_mock(db_client.delete_asset, "delete_asset")
+        calls.attach_mock(db_client.upload_file, "upload_file")
+
+        task.execute(db_client=db_client, execution_activity_id=str(uuid4()))
+
+        assert [(c[0], c.kwargs.get("asset_id")) for c in calls.mock_calls] == [
+            ("delete_asset", unfinished.id),
+            ("upload_file", None),
+            ("delete_asset", obj_asset.id),
+        ]
+        assert lifecycle_updates(db_client) == [EntityLifecycleStatus.active]
+
     def test_fails_without_exactly_one_obj(self, monkeypatch, task, mesh, db_client):
         mesh.assets.append(make_asset(ContentType.application_obj))
         monkeypatch.setattr(test_module, "convert_obj_to_glb", Mock())
@@ -170,6 +211,14 @@ class TestSettleFailedConversion:
             lifecycle.settle_failed_conversion(db_client, mesh.id)
 
         assert lifecycle_updates(db_client) == [EntityLifecycleStatus.disqualified]
+
+    def test_leaves_a_mesh_that_is_not_draft_alone(self, mesh, db_client):
+        mesh.lifecycle_status = EntityLifecycleStatus.active
+
+        lifecycle.settle_failed_conversion(db_client, mesh.id)
+
+        db_client.delete_asset.assert_not_called()
+        db_client.update_entity.assert_not_called()
 
     def test_deletes_an_unfinished_glb(self, mesh, obj_asset, db_client):
         unfinished = make_asset(ContentType.model_gltf_binary, AssetStatus.uploading)

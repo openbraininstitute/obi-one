@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import httpx
 import pytest
 from entitysdk.types import (
     ActivityStatus,
@@ -20,6 +21,7 @@ from app.schemas.task import TaskLaunchInfo
 from app.types import MachinePlacementType, TaskType
 
 TARGET_MODULE = "app.endpoints.em_cell_mesh_conversion"
+DB_SDK_MODULE = "obi_one.db_sdk.db_sdk"
 
 
 def make_asset(content_type, status=AssetStatus.created):
@@ -63,7 +65,7 @@ def task_config():
 @pytest.fixture
 def register_config(task_config):
     with patch(
-        f"{TARGET_MODULE}.db_sdk.register_task_config_with_asset",
+        f"{DB_SDK_MODULE}.register_task_config_with_asset",
         return_value=(task_config, None),
     ) as patched:
         yield patched
@@ -151,10 +153,36 @@ def test_convert_settles_the_mesh_when_the_launch_fails(api, mesh):
     assert settle.call_args.args[1] == mesh.id
 
 
+@pytest.mark.usefixtures("register_config")
+def test_convert_leaves_the_mesh_to_a_job_that_may_be_running(api, mesh, db_client):
+    db_client.search_entity.side_effect = [[], [SimpleNamespace(status=ActivityStatus.pending)]]
+    with (
+        patch(
+            f"{TARGET_MODULE}.task_service.submit_task_job",
+            side_effect=httpx.ReadTimeout("no response from the launch-system"),
+        ),
+        patch(f"{TARGET_MODULE}.settle_failed_conversion") as settle,
+    ):
+        response = api.post(f"/declared/em-cell-mesh/{mesh.id}/convert")
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    settle.assert_not_called()
+
+
+def test_generic_launch_refuses_a_conversion(api):
+    response = api.post(
+        "/declared/task/launch",
+        json={"task_type": TaskType.em_cell_mesh_conversion, "config_id": str(uuid4())},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "/declared/em-cell-mesh/{entity_id}/convert" in response.json()["message"]
+
+
 def test_convert_settles_the_mesh_when_the_config_cannot_be_registered(api, mesh):
     with (
         patch(
-            f"{TARGET_MODULE}.db_sdk.register_task_config_with_asset",
+            f"{DB_SDK_MODULE}.register_task_config_with_asset",
             side_effect=RuntimeError("entitycore down"),
         ),
         patch(f"{TARGET_MODULE}.settle_failed_conversion") as settle,

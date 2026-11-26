@@ -68,12 +68,21 @@ class TestScanObj:
         with pytest.raises(MeshConversionError, match=f"Line 4 .*{match}"):
             test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
 
-    @pytest.mark.parametrize("vertex", ["v abc\n", "v 1 2\n", "v nan 0 0\n", "v 0 inf 0\n", "v\n"])
+    @pytest.mark.parametrize(
+        "vertex", ["v abc\n", "v 1 2\n", "v nan 0 0\n", "v 0 inf 0\n", "v\n", "v 1_0 0 0\n"]
+    )
     def test_rejects_vertices_without_three_finite_coordinates(self, tmp_path, vertex):
         obj = "v 0 0 0\nv 1 0 0\n" + vertex + "f 1 2 3\n"
 
         with pytest.raises(MeshConversionError, match=r"Line 3 .*three finite coordinates"):
             test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
+
+    def test_accepts_large_finite_coordinates(self, tmp_path):
+        obj = "v 1e308 1e308 0\nv 1 0 0 1\nv 0 1 0\nf 1 2 3\n"
+
+        summary = test_module.scan_obj(write(tmp_path / "mesh.obj", obj))
+
+        assert summary.vertices == 3
 
     def test_reads_statements_like_pylmesh(self, tmp_path):
         obj = "v\t0 0 0\nv\t1 0 0\nv\t0 1 0\n  v 9 9 9\nvt 0 0\nvn 0 0 1\n\n\tf\t1 2 4\nf 4 3 2"
