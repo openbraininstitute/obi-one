@@ -78,6 +78,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
         ),
         single_task_config_type=TaskConfigType.em_synapse_mapping__config,
         single_task_activity_type=TaskActivityType.em_synapse_mapping__execution,
+        requires_package="conntility",
     ),
     TaskType.efeature_extraction: TaskSpec(
         task_ref=(
@@ -182,6 +183,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             "BasicConnectivityPlotsScanConfig",
         ),
         asset_label=None,
+        requires_package="conntility",
     ),
     TaskType.brian2_circuit_simulation: TaskSpec(
         task_ref=_GENERATE_SIMULATION_TASK_REF,
@@ -209,6 +211,7 @@ TASK_SPECS: dict[TaskType, TaskSpec] = {
             "ConnectivityMatrixExtractionScanConfig",
         ),
         asset_label=None,
+        requires_package="conntility",
     ),
     TaskType.electrophysiology_metrics: TaskSpec(
         task_ref=(f"{_TASKS}.ephys_extraction.task", "ElectrophysiologyMetricsTask"),

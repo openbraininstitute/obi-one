@@ -1,4 +1,4 @@
-import warnings
+from typing import TYPE_CHECKING
 
 import bluepysnap as snap
 import morphio
@@ -6,15 +6,15 @@ import numpy  # ruff: ignore[unconventional-import-alias]
 import pandas  # ruff: ignore[unconventional-import-alias]
 from scipy import stats
 
-try:
+from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
+
+if TYPE_CHECKING:
     from conntility.subcellular import MorphologyPathDistanceCalculator
-except ImportError:
-    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 
 def morphology_and_pathdistance_calculator(
     circ: snap.Circuit, node_population: str, node_id: int
-) -> tuple[morphio.Morphology, MorphologyPathDistanceCalculator]:
+) -> tuple[morphio.Morphology, "MorphologyPathDistanceCalculator"]:
     """Loads for a specified neuron its morphology and creates a path-distance calculator object.
 
     Args:
@@ -22,6 +22,13 @@ def morphology_and_pathdistance_calculator(
       node_population (str): Name of the node population of the neuron
       node_id (int): Neuron node id.
     """
+    try:
+        from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
+            MorphologyPathDistanceCalculator,
+        )
+    except ImportError as err:
+        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
+
     node = circ.nodes[node_population]
     try:
         morph = node.morph.get(node_id, extension="h5")
@@ -150,7 +157,7 @@ def apply_filters(
 
 
 def relevant_path_distances(
-    PD: MorphologyPathDistanceCalculator,  # ruff: ignore[invalid-argument-name]
+    PD: "MorphologyPathDistanceCalculator",  # ruff: ignore[invalid-argument-name]
     syns: pandas.DataFrame,
 ) -> tuple[numpy.ndarray, numpy.ndarray]:
     """Calculates and return path distances to the soma and all pairwise path distances for

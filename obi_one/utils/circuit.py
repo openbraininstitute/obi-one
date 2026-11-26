@@ -707,7 +707,14 @@ def run_basic_connectivity_plots(
     Returns:
         Tuple of (output_dir, list of plot filenames).
     """
-    from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+    try:
+        from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+    except ImportError as err:
+        from obi_one.scientific.library.morphology_locations import (  # ruff: ignore[import-outside-top-level]
+            CONNECTIVITY_INSTALL_HINT,
+        )
+
+        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
     from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
         run_tasks_for_generated_scan,

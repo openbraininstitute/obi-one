@@ -48,7 +48,14 @@ class Circuit(OBIBaseModel):
         c = snap.Circuit(self.path)  # Basic check: Try to load the SONATA circuit w/o error
 
         if self.matrix_path is not None:
-            from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+            try:
+                from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+            except ImportError as err:
+                from obi_one.scientific.library.morphology_locations import (  # ruff: ignore[import-outside-top-level]
+                    CONNECTIVITY_INSTALL_HINT,
+                )
+
+                raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
             cmat = ConnectivityMatrix.from_h5(
                 self.matrix_path
@@ -80,7 +87,14 @@ class Circuit(OBIBaseModel):
         if self.matrix_path is None:
             msg = "Connectivity matrix has not been found"
             raise FileNotFoundError(msg)
-        from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+        try:
+            from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+        except ImportError as err:
+            from obi_one.scientific.library.morphology_locations import (  # ruff: ignore[import-outside-top-level]
+                CONNECTIVITY_INSTALL_HINT,
+            )
+
+            raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
         cmat = ConnectivityMatrix.from_h5(self.matrix_path)
         if cmat.is_multigraph:

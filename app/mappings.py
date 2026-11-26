@@ -301,7 +301,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         config_type=TaskConfigType.em_synapse_mapping__config,
         activity_type=TaskActivityType.em_synapse_mapping__execution,
         code=_obi_one_code(
-            "default.txt",
+            "em_synapse_mapping.txt",
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),

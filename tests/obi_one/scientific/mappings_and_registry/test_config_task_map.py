@@ -303,6 +303,9 @@ def test_scan_config_class_is_not_in_the_single_config_index():
 def test_emodel_optimization_declares_its_optional_dependency():
     assert TASK_SPECS[TaskType.emodel_optimization].requires_package == "bluepyemodel"
     assert TASK_SPECS[TaskType.memodel_build].requires_package == "bluecellulab"
+    assert TASK_SPECS[TaskType.basic_connectivity_plots].requires_package == "conntility"
+    assert TASK_SPECS[TaskType.connectivity_matrix_extraction].requires_package == "conntility"
+    assert TASK_SPECS[TaskType.em_synapse_mapping].requires_package == "conntility"
 
 
 @patch(

@@ -2,7 +2,6 @@
 
 import json
 import logging
-import warnings
 from pathlib import Path
 from typing import ClassVar
 
@@ -10,6 +9,7 @@ import entitysdk.client
 
 from obi_one.core.exception import OBIONEError
 from obi_one.core.task import Task
+from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
 from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (
     ConnectivityMatrixExtractionSingleConfig,
 )
@@ -18,8 +18,8 @@ L = logging.getLogger(__name__)
 
 try:
     from conntility.connectivity import ConnectivityMatrix
-except ImportError:
-    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
+except ImportError as err:
+    raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
 
 class ConnectivityMatrixExtractionTask(Task):

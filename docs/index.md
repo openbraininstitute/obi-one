@@ -112,7 +112,7 @@ make install-all
 
 Circuit extraction execution needs the optional `circuit-extraction` extra (`brainbuilder`); config generation and service submission do not. Launch-system jobs install it via `launch_scripts/launch_task_for_single_config_asset/dependencies/circuit_extraction.txt`.
 
-Connectivity plots and topology helpers need the optional `connectivity` extra (`connectome-analysis`, `networkx`). Workers that run those tasks pin it in their launch-script dependency files.
+Connectivity plots, topology helpers, and morphology-location path-distance helpers need the optional `connectivity` extra (`connectome-utilities` / `conntility`, `connectome-analysis`, `networkx`). The service extra includes it (morphology-location preview). Workers that run connectivity or path-distance tasks pin it in their launch-script dependency files.
 
 ## Technical Overview / Glossary
 

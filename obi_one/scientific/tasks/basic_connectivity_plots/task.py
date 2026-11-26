@@ -12,12 +12,17 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from conntility import ConnectivityMatrix
 
 from obi_one.core.task import Task
+from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
 from obi_one.scientific.tasks.basic_connectivity_plots.config import (
     BasicConnectivityPlotsSingleConfig,
 )
+
+try:
+    from conntility import ConnectivityMatrix
+except ImportError as err:
+    raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
 # Since there are some scientific modules importing this module, but not necessarily using its
 # classes, we protect the imports without crashing at load time. In any case, if the

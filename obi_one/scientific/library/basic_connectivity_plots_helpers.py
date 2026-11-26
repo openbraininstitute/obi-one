@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from conntility import ConnectivityMatrix
 from matplotlib import gridspec
 from matplotlib.colors import Colormap
 from matplotlib.gridspec import GridSpec
@@ -24,14 +23,20 @@ from matplotlib.ticker import FuncFormatter
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.spatial import KDTree
 
-# Connectivity dependencies (optional) - check for networkx
+from obi_one.scientific.library.morphology_locations import CONNECTIVITY_INSTALL_HINT
+
+# Connectivity dependencies (optional) - check for conntility / networkx / connalysis
+try:
+    from conntility import ConnectivityMatrix
+except ImportError as e:  # pragma: no cover
+    raise ImportError(CONNECTIVITY_INSTALL_HINT) from e
+
 try:
     import networkx as nx
 except ImportError as e:  # pragma: no cover
     msg = "Connectivity plotting requires networkx. Install with: pip install obi-one[connectivity]"
     raise ImportError(msg) from e
 
-# Connectivity dependencies (optional) - check for connalysis
 try:
     from connalysis.network.classic import (
         density,

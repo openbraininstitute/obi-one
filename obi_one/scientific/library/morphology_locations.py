@@ -1,4 +1,3 @@
-import warnings
 from typing import TYPE_CHECKING
 
 import morphio
@@ -6,12 +5,27 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
+    from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
     from scipy.stats._distn_infrastructure import rv_frozen
 
-try:
-    from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
-except ImportError:
-    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
+CONNECTIVITY_INSTALL_HINT = (
+    "Connectome-Utilities (conntility) is required. "
+    "Install with: pip install obi-one[connectivity] or make install-connectivity"
+)
+
+
+def load_optimized_morphology_path_distance_calculator(
+    morphology: morphio.Morphology,
+) -> "OptimizedMorphologyPathDistanceCalculator":
+    """Build a conntility path-distance calculator, or raise if the extra is missing."""
+    try:
+        from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
+            OptimizedMorphologyPathDistanceCalculator,
+        )
+    except ImportError as err:
+        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
+    return OptimizedMorphologyPathDistanceCalculator(morphology)
+
 
 _SEC_ID = "section_id"
 _SEG_ID = "segment_id"
@@ -29,7 +43,7 @@ _PRE_IDX = "source_index"
 def path_distance_all_segments_from(
     locs_ref: pd.DataFrame,
     m: morphio.Morphology,
-    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
+    path_distance_calculator: "OptimizedMorphologyPathDistanceCalculator",
     normalized_seg_loc: float = 0.5,
     lst_sec_types: list | None = None,
 ) -> pd.DataFrame:
@@ -196,7 +210,7 @@ def candidate_segments_for_center(
     locs: pd.DataFrame,
     max_dist: float,
     m: morphio.Morphology,
-    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
+    path_distance_calculator: "OptimizedMorphologyPathDistanceCalculator",
     lst_sec_types: list | None = None,
 ) -> pd.DataFrame:
     """Creates dataframe specifying candidate locations to be picked around center of a cluster.
@@ -301,7 +315,7 @@ def map_presynaptic_ids(dataframe: pd.DataFrame, n_per_center: int) -> None:
 def add_normalized_section_offset(
     dataframe: pd.DataFrame,
     m: morphio.Morphology,
-    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator,
+    path_distance_calculator: "OptimizedMorphologyPathDistanceCalculator",
 ) -> None:
     """Adds the normalized section offset to a dataframe that defines morphology locations.
 
@@ -399,7 +413,7 @@ def generate_neurite_locations_on(
     if seed is not None:
         np.random.seed(seed)  # ruff: ignore[numpy-legacy-random]
 
-    path_distance_calculator = OptimizedMorphologyPathDistanceCalculator(m)
+    path_distance_calculator = load_optimized_morphology_path_distance_calculator(m)
 
     soma = pd.DataFrame({_SEC_ID: [0], _SEG_ID: [0], _SEG_OFF: [0]})
 

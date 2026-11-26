@@ -208,9 +208,12 @@ def calc_section_offset(
         from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
             MorphologyPathDistanceCalculator,
         )
-    except ImportError:
-        err_str = "Optional dependency Connectome-Utilities not installed!"
-        raise RuntimeError(err_str) from None
+    except ImportError as err:
+        from obi_one.scientific.library.morphology_locations import (  # ruff: ignore[import-outside-top-level]
+            CONNECTIVITY_INSTALL_HINT,
+        )
+
+        raise ImportError(CONNECTIVITY_INSTALL_HINT) from err
 
     pd_calc = MorphologyPathDistanceCalculator(morph.to_morphio())
     all_sec_l = numpy.array([sec.length for sec in morph.sections])

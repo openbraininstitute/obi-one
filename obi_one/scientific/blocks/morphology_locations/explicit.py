@@ -1,4 +1,4 @@
-from typing import Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 import morphio
 import numpy as np
@@ -24,8 +24,11 @@ from obi_one.scientific.library.morphology_locations import (
     _SEG_ID,
     _SEG_OFF,
     _SOM_PAD,
-    OptimizedMorphologyPathDistanceCalculator,
+    load_optimized_morphology_path_distance_calculator,
 )
+
+if TYPE_CHECKING:
+    from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 
 _LOCATION_COLUMNS = pandas.Index(
     [
@@ -69,7 +72,7 @@ def neurite_section_for_id(morphology: morphio.Morphology, section_id: int) -> m
 
 def _point_on_section(
     morphology: morphio.Morphology,
-    path_distance_calculator: OptimizedMorphologyPathDistanceCalculator | None,
+    path_distance_calculator: "OptimizedMorphologyPathDistanceCalculator | None",
     section_id: int,
     offset: float,
 ) -> dict[str, int | float]:
@@ -175,7 +178,7 @@ class ExplicitMorphologyLocations(MorphologyLocationsBlock):
             raise ConfigValidationError(msg)
 
         path_distance_calculator = (
-            OptimizedMorphologyPathDistanceCalculator(morphology)
+            load_optimized_morphology_path_distance_calculator(morphology)
             if any(location.section_id != _SOMA_SECTION_ID for location in self.locations)
             else None
         )
