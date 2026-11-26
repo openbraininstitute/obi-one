@@ -66,9 +66,9 @@ circuit-extraction = ["brainbuilder>=0.20.9"]
 # Includes bluecellulab for MEModel calibration and validation after fitting.
 emodel = ["bluepyemodel>=1.0.50", "bluecellulab>=2.6.113"]
 
-# CONNECTIVITY - optional, needed for analysis & plot generation, morphology-location
-# path-distance helpers (conntility), circuit connectivity-metrics API (connectome-manipulator),
-# and related launch workers / the service preview API.
+# CONNECTIVITY - optional, for tasks/workers that need the full stack: path-distance helpers
+# (conntility), connectivity-metrics (connectome-manipulator), plots/topology (connectome-analysis /
+# networkx). The service extra does not pull this; it lists only the packages the API process uses.
 connectivity = [
     "connectome-utilities>=0.4.18",
     "connectome-manipulator>=1.0.4",
@@ -94,9 +94,9 @@ notebooks = [
 
 # SERVICE - optional, needed to run obi-one as a service.
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
-# Connectome utilities/manipulator cover morphology-location preview and connectivity-metrics.
-# Do not pull the full connectivity extra: connectome-analysis → pyflagser has no aarch64 wheel
-# (app CI / some service hosts are aarch64).
+# List only packages the API process needs at runtime (not the full connectivity extra):
+# emodel (scan-config / emodel endpoints), connectome-utilities (morphology-location preview),
+# connectome-manipulator (connectivity-metrics).
 service = [
     "obi-one[emodel]",
     "connectome-utilities>=0.4.18",
