@@ -846,16 +846,21 @@ class TestTaskInternals:
         assert kwargs["target_simulator"].name == "Brian2"
         assert kwargs["parent"] is parent
         assert kwargs["derivation_type"] == DerivationType.circuit_simplification
-        assert kwargs["skip_validation"] is False
 
-    def test_register_output_skips_validation_for_nest(self, tmp_path: Path):
-        """NEST extension circuits skip bluepysnap validation, which cannot read them."""
+    @pytest.mark.parametrize(
+        ("target_simulator", "skip_validation"),
+        [("NEST", True), ("Brian2", True), ("NEURON", False)],
+    )
+    def test_register_output_skips_validation_for_point_neuron_simulators(
+        self, tmp_path: Path, target_simulator, skip_validation
+    ):
+        """NEST and Brian2 outputs skip bluepysnap validation; NEURON outputs keep it."""
         task = self._make_task(tmp_path)
         task.config.info = Info(campaign_name="test", campaign_description="test description")
         task._circuit_entity = MagicMock()
 
         circuit_path = tmp_path / "circuit_config.json"
-        circuit_path.write_text(json.dumps({"target_simulator": "NEST"}))
+        circuit_path.write_text(json.dumps({"target_simulator": target_simulator}))
 
         with (
             patch(
@@ -874,8 +879,8 @@ class TestTaskInternals:
             )
 
         kwargs = register_circuit.call_args.kwargs
-        assert kwargs["target_simulator"].name == "NEST"
-        assert kwargs["skip_validation"] is True
+        assert kwargs["target_simulator"].name == target_simulator
+        assert kwargs["skip_validation"] is skip_validation
 
 
 class TestExporterKwargs:

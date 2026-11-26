@@ -48,6 +48,12 @@ NEST_EXPORTER_PREFIX = "nest:"
 # Output format of the "nest:<model>" exporters; the sonata-simplify default is stock NEST SONATA.
 NEST_EXTENSION_FORMAT = "sonata-extension"
 
+# Exports registered without bluepysnap SONATA validation. bluepysnap has no schema for the
+# SONATA-extension NEST population types; Brian2 exports are exempted for now as well.
+SIMULATORS_WITHOUT_SONATA_VALIDATION = frozenset(
+    {types.TargetSimulator.NEST, types.TargetSimulator.Brian2}
+)
+
 
 def exporter_kwargs(exporter_name: str | None) -> dict[str, str]:
     """Extra ``Recipe.from_mode`` arguments for an exporter: the NEST output format."""
@@ -128,8 +134,7 @@ class CircuitSimplificationTask(Task):
             root=parent.root_circuit_id or parent.id,  # ty:ignore[unresolved-attribute]
             parent=parent,
             derivation_type=DerivationType.circuit_simplification,
-            # bluepysnap has no schema for the SONATA-extension NEST population types
-            skip_validation=target_simulator == types.TargetSimulator.NEST,
+            skip_validation=target_simulator in SIMULATORS_WITHOUT_SONATA_VALIDATION,
         )
 
     @staticmethod
