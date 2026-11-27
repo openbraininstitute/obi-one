@@ -39,8 +39,6 @@ dependencies = [
     "bluepyefe>=2.3.59",
     "bluepysnap>=3.0.10",
     "caveclient>=7.11.0",
-    "connectome-utilities>=0.4.18",
-    "connectome-manipulator>=1.0.4",
     "morph_spines>=1.1.0",
     "morph-tool",
     "neurom",
@@ -68,8 +66,15 @@ circuit-extraction = ["brainbuilder>=0.20.9"]
 # Includes bluecellulab for MEModel calibration and validation after fitting.
 emodel = ["bluepyemodel>=1.0.50", "bluecellulab>=2.6.113"]
 
-# CONNECTIVITY - optional, needed for analysis & plot generation
-connectivity = ["connectome-analysis>=1.0.1", "networkx>=3.4.2"]
+# CONNECTIVITY - optional, for tasks/workers that need the full stack: path-distance helpers
+# (conntility), connectivity-metrics (connectome-manipulator), plots/topology (connectome-analysis /
+# networkx). The service extra does not pull this; it lists only the packages the API process uses.
+connectivity = [
+    "connectome-utilities>=0.4.18",
+    "connectome-manipulator>=1.0.4",
+    "connectome-analysis>=1.0.1",
+    "networkx>=3.4.2",
+]
 
 # MESHING - optional, private dependency needed for skeletonization and mesh LOD generation
 meshing = ["ultraliser>=2.1.9"]
@@ -89,8 +94,13 @@ notebooks = [
 
 # SERVICE - optional, needed to run obi-one as a service.
 # The Docker image and `make install-service` install this extra only (plus default/dev groups).
+# List only packages the API process needs at runtime (not the full connectivity extra):
+# emodel (scan-config / emodel endpoints), connectome-utilities (morphology-location preview),
+# connectome-manipulator (connectivity-metrics).
 service = [
     "obi-one[emodel]",
+    "connectome-utilities>=0.4.18",
+    "connectome-manipulator>=1.0.4",
     "cachetools>=5.5.2",
     "fastapi",
     "httpx>=0.28.1",

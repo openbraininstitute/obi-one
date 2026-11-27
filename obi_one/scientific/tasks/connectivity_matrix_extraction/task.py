@@ -2,7 +2,6 @@
 
 import json
 import logging
-import warnings
 from pathlib import Path
 from typing import ClassVar
 
@@ -13,13 +12,9 @@ from obi_one.core.task import Task
 from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (
     ConnectivityMatrixExtractionSingleConfig,
 )
+from obi_one.utils.lazy_import import import_optional
 
 L = logging.getLogger(__name__)
-
-try:
-    from conntility.connectivity import ConnectivityMatrix
-except ImportError:
-    warnings.warn("Connectome functionalities not available", UserWarning, stacklevel=1)
 
 
 class ConnectivityMatrixExtractionTask(Task):
@@ -127,10 +122,11 @@ class ConnectivityMatrixExtractionTask(Task):
         }
         L.info(f"Node properties to extract: {node_props}")
         L.info(f"Extracting connectivity from edge population '{edge_popul}'")
+        connectivity = import_optional("conntility.connectivity", extra="connectivity")
         dummy_edge_prop = next(
             filter(lambda x: "@" not in x, c.edges[edge_popul].property_names)
         )  # Select any existing edge property w/o "@"
-        cmat = ConnectivityMatrix.from_bluepy(
+        cmat = connectivity.ConnectivityMatrix.from_bluepy(
             c,
             load_cfg,
             connectome=edge_popul,

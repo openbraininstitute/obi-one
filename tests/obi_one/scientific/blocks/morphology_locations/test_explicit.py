@@ -2,6 +2,7 @@ import morphio
 import numpy as np
 import pandas as pd
 import pytest
+from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 from pydantic import TypeAdapter, ValidationError
 
 from obi_one.scientific.blocks.morphology_locations.explicit import (
@@ -12,9 +13,6 @@ from obi_one.scientific.blocks.morphology_locations.random import RandomMorpholo
 from obi_one.scientific.library.entity_property_types import (
     CircuitUsability,
     MappedPropertiesGroup,
-)
-from obi_one.scientific.library.morphology_locations import (
-    OptimizedMorphologyPathDistanceCalculator,
 )
 from obi_one.scientific.unions_and_references.morphology_locations import MorphologyLocationUnion
 

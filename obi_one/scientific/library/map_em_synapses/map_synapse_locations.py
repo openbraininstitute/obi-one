@@ -27,6 +27,7 @@ from obi_one.scientific.library.map_em_synapses.constants import (
     V_FALLBACK,
     WITH_DIR,
 )
+from obi_one.utils.lazy_import import import_optional
 
 
 def find_nearest_mesh_points(
@@ -204,15 +205,8 @@ def _map_points_to_segs_df(segs: pandas.DataFrame, pts: numpy.ndarray) -> pandas
 def calc_section_offset(
     syns: pandas.DataFrame, morph: Morphology, prefix: str = ""
 ) -> numpy.ndarray:
-    try:
-        from conntility.subcellular import (  # ruff: ignore[import-outside-top-level]
-            MorphologyPathDistanceCalculator,
-        )
-    except ImportError:
-        err_str = "Optional dependency Connectome-Utilities not installed!"
-        raise RuntimeError(err_str) from None
-
-    pd_calc = MorphologyPathDistanceCalculator(morph.to_morphio())
+    subcellular = import_optional("conntility.subcellular", extra="connectivity")
+    pd_calc = subcellular.MorphologyPathDistanceCalculator(morph.to_morphio())
     all_sec_l = numpy.array([sec.length for sec in morph.sections])
     is_not_on_neurite = syns[prefix + STR_SEC_ID] < 1
 

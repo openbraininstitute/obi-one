@@ -6,23 +6,25 @@ Requires: pip install obi-one[connectivity]
 import contextlib
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import entitysdk.client
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from conntility import ConnectivityMatrix
 
 from obi_one.core.task import Task
 from obi_one.scientific.tasks.basic_connectivity_plots.config import (
     BasicConnectivityPlotsSingleConfig,
 )
+from obi_one.utils.lazy_import import import_optional
 
-# Since there are some scientific modules importing this module, but not necessarily using its
-# classes, we protect the imports without crashing at load time. In any case, if the
-# BasicConnectivityPlotsTask class is used, it will crash at execute() at runtime.
+if TYPE_CHECKING:
+    from conntility import ConnectivityMatrix
 
+
+# Helpers need the connectivity extra; suppress so this module still imports without it.
 with contextlib.suppress(ImportError):  # Connectivity helpers (optional)
     from obi_one.scientific.library.basic_connectivity_plots_helpers import (
         CANONICAL_EXC,
@@ -61,7 +63,7 @@ class BasicConnectivityPlotsTask(Task):
 
     @staticmethod
     def nodes_plot(
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         full_width: int,
         plot_formats: tuple[str, ...],
         dpi: int,
@@ -88,7 +90,7 @@ class BasicConnectivityPlotsTask(Task):
         dpi: int,
         size: tuple[int, int],
         n_min_stats: int,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         deg: pd.DataFrame,
         deg_er: pd.DataFrame,
         dir_path: str | Path,
@@ -125,7 +127,7 @@ class BasicConnectivityPlotsTask(Task):
         n_min_stats: int,
         adj: np.ndarray,
         adj_er: np.ndarray,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         dir_path: str | Path,
     ) -> None:
         if size[0] < n_min_stats:
@@ -150,7 +152,7 @@ class BasicConnectivityPlotsTask(Task):
         dpi: int,
         size: tuple[int, int],
         n_max_2d_plot: int,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         dir_path: str | Path,
     ) -> None:
         if size[0] > n_max_2d_plot:
@@ -176,7 +178,7 @@ class BasicConnectivityPlotsTask(Task):
         dpi: int,
         size: tuple[int, int],
         n_max_2d_plot: int,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         dir_path: str | Path,
     ) -> None:
         if size[0] > n_max_2d_plot:
@@ -195,7 +197,7 @@ class BasicConnectivityPlotsTask(Task):
         dpi: int,
         size: tuple[int, int],
         n_max_2d_plot: int,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         dir_path: str | Path,
     ) -> None:
         """Generate circular projection plot only (ax4 from plot_smallMC)."""
@@ -286,7 +288,7 @@ class BasicConnectivityPlotsTask(Task):
         dpi: int,
         size: tuple[int, int],
         n_max_2d_plot: int,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         dir_path: str | Path,
         colors_cmap: mcolors.Colormap,
         colors_file: str | Path,
@@ -314,7 +316,7 @@ class BasicConnectivityPlotsTask(Task):
         dpi: int,
         size: tuple[int, int],
         n_max_2d_plot: int,
-        conn: ConnectivityMatrix,
+        conn: "ConnectivityMatrix",
         dir_path: str | Path,
         figsize: tuple[float, float] | None = None,
     ) -> None:
@@ -364,7 +366,10 @@ class BasicConnectivityPlotsTask(Task):
 
         # Load matrix
         L.info(f"Info: Loading matrix '{self.config.initialize.matrix_path}'")
-        conn = ConnectivityMatrix.from_h5(self.config.initialize.matrix_path.path)  # ty:ignore[unresolved-attribute]
+        conntility = import_optional("conntility", extra="connectivity")
+        conn = conntility.ConnectivityMatrix.from_h5(
+            self.config.initialize.matrix_path.path  # ty:ignore[unresolved-attribute]
+        )
 
         # Size metrics
         size = np.array([len(conn.vertices), conn.matrix.nnz, conn.matrix.sum()])

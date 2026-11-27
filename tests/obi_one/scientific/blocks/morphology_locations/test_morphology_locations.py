@@ -1,6 +1,7 @@
 import morphio
 import pandas as pd
 import pytest
+from conntility.subcellular import OptimizedMorphologyPathDistanceCalculator
 from morphio import PointLevel, SectionType
 from morphio.mut import Morphology as MutMorphology
 from pydantic import ValidationError
@@ -27,7 +28,6 @@ from obi_one.scientific.library.morphology_locations import (
     _SEC_LOC,
     _SEG_ID,
     _SEG_OFF,
-    OptimizedMorphologyPathDistanceCalculator,
     add_normalized_section_offset,
 )
 

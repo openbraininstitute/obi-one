@@ -5,7 +5,6 @@ from conntility import ConnectivityMatrix
 from obi_one.core.run_tasks import run_tasks_for_generated_scan
 from obi_one.core.scan_generation import GridScanGenerationTask
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.tasks.connectivity_matrix_extraction import task
 from obi_one.scientific.tasks.connectivity_matrix_extraction.config import (
     ConnectivityMatrixExtractionScanConfig,
 )
@@ -164,7 +163,7 @@ def test_connectivity_matrix_extraction_suppresses_tqdm(tmp_path, monkeypatch):
         return real_from_bluepy(*args, **kwargs)
 
     monkeypatch.setattr(
-        task.ConnectivityMatrix,
+        ConnectivityMatrix,
         "from_bluepy",
         spy_from_bluepy,
     )

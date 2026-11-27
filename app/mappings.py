@@ -86,7 +86,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         task_type=TaskType.circuit_single_build,
         config_type=TaskConfigType.circuit_single_build__config,
         activity_type=TaskActivityType.circuit_single_build__execution,
-        code=_obi_one_code("default.txt"),
+        code=_obi_one_code("synaptome_build.txt"),
         resources=MachineResources(
             cores=1,
             memory=8,
@@ -301,7 +301,7 @@ _TASK_DEFINITIONS: list[AnyTaskDefinition] = [
         config_type=TaskConfigType.em_synapse_mapping__config,
         activity_type=TaskActivityType.em_synapse_mapping__execution,
         code=_obi_one_code(
-            "default.txt",
+            "em_synapse_mapping.txt",
             capabilities=Capabilities(
                 env_secrets=[obi_settings.cave_client_config.microns_api_key]
             ),

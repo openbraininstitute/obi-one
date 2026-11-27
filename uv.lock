@@ -2399,8 +2399,6 @@ dependencies = [
     { name = "bluepyefe" },
     { name = "bluepysnap" },
     { name = "caveclient" },
-    { name = "connectome-manipulator" },
-    { name = "connectome-utilities" },
     { name = "entitysdk" },
     { name = "libsonata" },
     { name = "morph-spines" },
@@ -2422,6 +2420,8 @@ all = [
     { name = "brian2" },
     { name = "cachetools" },
     { name = "connectome-analysis" },
+    { name = "connectome-manipulator" },
+    { name = "connectome-utilities" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "ipykernel" },
@@ -2455,6 +2455,8 @@ circuit-extraction = [
 ]
 connectivity = [
     { name = "connectome-analysis" },
+    { name = "connectome-manipulator" },
+    { name = "connectome-utilities" },
     { name = "networkx" },
 ]
 emodel = [
@@ -2475,6 +2477,8 @@ service = [
     { name = "bluecellulab" },
     { name = "bluepyemodel" },
     { name = "cachetools" },
+    { name = "connectome-manipulator" },
+    { name = "connectome-utilities" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "obp-accounting-sdk" },
@@ -2521,8 +2525,10 @@ requires-dist = [
     { name = "cachetools", marker = "extra == 'service'", specifier = ">=5.5.2" },
     { name = "caveclient", specifier = ">=7.11.0" },
     { name = "connectome-analysis", marker = "extra == 'connectivity'", specifier = ">=1.0.1" },
-    { name = "connectome-manipulator", specifier = ">=1.0.4" },
-    { name = "connectome-utilities", specifier = ">=0.4.18" },
+    { name = "connectome-manipulator", marker = "extra == 'connectivity'", specifier = ">=1.0.4" },
+    { name = "connectome-manipulator", marker = "extra == 'service'", specifier = ">=1.0.4" },
+    { name = "connectome-utilities", marker = "extra == 'connectivity'", specifier = ">=0.4.18" },
+    { name = "connectome-utilities", marker = "extra == 'service'", specifier = ">=0.4.18" },
     { name = "entitysdk", specifier = ">=0.20" },
     { name = "fastapi", marker = "extra == 'service'" },
     { name = "httpx", marker = "extra == 'service'", specifier = ">=0.28.1" },

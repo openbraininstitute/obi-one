@@ -31,6 +31,7 @@ from obi_one.scientific.library.circuit_constants import (
 )
 from obi_one.scientific.library.constants import MAX_SMALL_MICROCIRCUIT_SIZE, NEURON_PAIR_SIZE
 from obi_one.utils.filesystem import filter_extension
+from obi_one.utils.lazy_import import import_optional
 
 L = logging.getLogger(__name__)
 
@@ -707,7 +708,7 @@ def run_basic_connectivity_plots(
     Returns:
         Tuple of (output_dir, list of plot filenames).
     """
-    from conntility import ConnectivityMatrix  # ruff: ignore[import-outside-top-level]
+    conntility = import_optional("conntility", extra="connectivity")
 
     from obi_one.core.run_tasks import (  # ruff: ignore[import-outside-top-level]
         run_tasks_for_generated_scan,
@@ -737,7 +738,7 @@ def run_basic_connectivity_plots(
         name="connectivity_matrix",
         path=str(matrix_file),
     )
-    cmat = ConnectivityMatrix.from_h5(matrix_path.path)
+    cmat = conntility.ConnectivityMatrix.from_h5(matrix_path.path)
     if cmat.vertices.shape[0] <= MAX_SMALL_MICROCIRCUIT_SIZE:
         plot_types = (
             "nodes",
