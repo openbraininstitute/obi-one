@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 
 from obi_one.scientific.blocks.distributions.gamma import GammaDistribution
 from obi_one.scientific.blocks.synaptic_models.tsodyks_markram.block import (
     ExcitatoryTsodyksMarkramSynapticModel,
+    InhibitoryTsodyksMarkramSynapticModel,
 )
 from obi_one.scientific.unions_and_references.distributions import AllDistributionsReference
 
@@ -79,3 +81,13 @@ def test_the_drawn_parameters_respond_to_the_seed_and_the_fixed_ones_do_not():
     assert "u_hill_coefficient" not in varying
     assert "conductance_scale_factor" not in varying
     assert {"facilitation_time", "depression_time", "decay_time", "u_syn", "delay"} <= varying
+
+
+def test_a_shared_generator_draws_the_defaults_without_rank_correlation():
+    drawn = ["conductance", "facilitation_time", "depression_time", "decay_time", "u_syn", "delay"]
+    for model in (ExcitatoryTsodyksMarkramSynapticModel(), InhibitoryTsodyksMarkramSynapticModel()):
+        samples = model.sample(pd.DataFrame(index=range(5000)), rng=np.random.default_rng(1))
+        rho = np.abs(spearmanr(samples[drawn]).statistic)
+        np.fill_diagonal(rho, 0.0)
+
+        assert rho.max() < 0.1

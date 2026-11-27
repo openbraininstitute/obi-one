@@ -228,9 +228,11 @@ def test_location_edge_properties_rejects_soma_section_id():
         _location_edge_properties(Mock(), locations)
 
 
-def _group(model: str, placement: str) -> SynapticModelPlacer:
+def _group(model: str, placement: str, physiology_random_seed: int = 1) -> SynapticModelPlacer:
     return SynapticModelPlacer(
-        synaptic_model=_reference(model), placement_strategy=_placement_reference(placement)
+        synaptic_model=_reference(model),
+        placement_strategy=_placement_reference(placement),
+        physiology_random_seed=physiology_random_seed,
     )
 
 
@@ -613,6 +615,80 @@ def test_different_placement_seed_changes_locations(tmp_path, stage_memodel):
     )
 
 
+# Parameters drawn from built-in defaults in `_config`'s models; constants are left out.
+_PHYSIOLOGY_COLUMNS = ["facilitation_time", "depression_time", "decay_time", "u_syn"]
+
+
+def _physiology(result, group: str) -> pd.DataFrame:
+    return _edge_frame(result, f"{group}_sources__target__chemical")[_PHYSIOLOGY_COLUMNS]
+
+
+def test_groups_draw_the_same_physiology_only_when_they_share_a_physiology_seed(
+    tmp_path, stage_memodel
+):
+    stage_memodel()
+    groups = {
+        "first": _group("exc", "basal", 1),
+        "same_seed": _group("exc", "basal", 1),
+        "other_seed": _group("exc", "basal", 2),
+    }
+    result = build_synaptome(_config(groups=groups), tmp_path / "artifact", db_client=Mock())
+
+    pd.testing.assert_frame_equal(_physiology(result, "first"), _physiology(result, "same_seed"))
+    assert not _physiology(result, "first").equals(_physiology(result, "other_seed"))
+
+
+def test_reordering_synapse_groups_does_not_change_physiology(tmp_path, stage_memodel):
+    stage_memodel()
+    forward = {"first": _group("exc", "basal", 1), "second": _group("exc", "basal", 2)}
+    reverse = {"second": _group("exc", "basal", 2), "first": _group("exc", "basal", 1)}
+    results = [
+        build_synaptome(_config(groups=groups), tmp_path / name, db_client=Mock())
+        for name, groups in (("forward", forward), ("reverse", reverse))
+    ]
+
+    for group in ("first", "second"):
+        pd.testing.assert_frame_equal(
+            _physiology(results[0], group), _physiology(results[1], group)
+        )
+
+
+def test_physiology_seed_redraws_parameters_without_moving_synapses(tmp_path, stage_memodel):
+    stage_memodel()
+    first, second = (
+        build_synaptome(
+            _config(groups={"basal": _group("exc", "basal", seed)}),
+            tmp_path / f"seed_{seed}",
+            db_client=Mock(),
+        )
+        for seed in (1, 2)
+    )
+
+    pd.testing.assert_frame_equal(_locations(first, "basal"), _locations(second, "basal"))
+    assert not _physiology(first, "basal").equals(_physiology(second, "basal"))
+
+
+def test_placement_seed_moves_synapses_without_redrawing_parameters(tmp_path, stage_memodel):
+    stage_memodel()
+    first, second = (
+        build_synaptome(
+            _config(
+                morphology_locations={
+                    "basal": RandomMorphologyLocations(
+                        number_of_locations=4, section_types=(3,), random_seed=seed
+                    )
+                }
+            ),
+            tmp_path / f"placement_{seed}",
+            db_client=Mock(),
+        )
+        for seed in (11, 12)
+    )
+
+    assert not _locations(first, "basal").equals(_locations(second, "basal"))
+    pd.testing.assert_frame_equal(_physiology(first, "basal"), _physiology(second, "basal"))
+
+
 def test_placement_does_not_mutate_global_numpy_rng(tmp_path, stage_memodel):
     stage_memodel()
     np.random.seed(123)  # ruff: ignore[numpy-legacy-random] - verifies isolation from the legacy placer RNG
@@ -737,7 +813,9 @@ def test_sample_physiology_wraps_sampling_error():
     model = SimpleNamespace(sample=Mock(side_effect=ValueError("bad distribution")))
 
     with pytest.raises(BuildSynaptomeError, match=r"basal.*could not sample physiology"):
-        _sample_physiology(model, pd.DataFrame(index=[0]), group_name="basal")
+        _sample_physiology(
+            model, pd.DataFrame(index=[0]), group_name="basal", physiology_random_seed=1
+        )
 
 
 def test_sample_physiology_rejects_invalid_result():
@@ -747,7 +825,9 @@ def test_sample_physiology_rejects_invalid_result():
     )
 
     with pytest.raises(BuildSynaptomeError, match=r"basal.*invalid physiology data"):
-        _sample_physiology(model, pd.DataFrame(index=[0]), group_name="basal")
+        _sample_physiology(
+            model, pd.DataFrame(index=[0]), group_name="basal", physiology_random_seed=1
+        )
 
 
 def test_sample_physiology_rejects_wrong_row_count():
@@ -757,7 +837,9 @@ def test_sample_physiology_rejects_wrong_row_count():
     )
 
     with pytest.raises(BuildSynaptomeError, match=r"basal.*invalid physiology data"):
-        _sample_physiology(model, pd.DataFrame(index=[0]), group_name="basal")
+        _sample_physiology(
+            model, pd.DataFrame(index=[0]), group_name="basal", physiology_random_seed=1
+        )
 
 
 def test_write_virtual_nodes_rejects_non_positive_count(tmp_path):

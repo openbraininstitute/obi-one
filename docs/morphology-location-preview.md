@@ -65,6 +65,8 @@ Generated locations are reproducible using the strategy's configured `random_see
 
 To generate independent spatial distributions, use separate placement strategies with different random seeds.
 
+The placement seed affects locations only. Synaptic parameters are drawn with each synapse group's `physiology_random_seed` (default `1`): all of a group's parameters draw from one random generator seeded with it, and a distribution's own `random_seed` is not used. Groups with the same physiology seed, synaptic model and synapse count draw identical values; use different physiology seeds for independent groups. Changing a group's physiology seed redraws its parameters without moving its synapses.
+
 ## Errors
 
 | Status | Cause |
