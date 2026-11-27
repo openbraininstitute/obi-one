@@ -231,8 +231,6 @@ def skeletonization_single_config(tmp_path, skeletonization_info, single_cell_me
     initialize = SkeletonizationSingleConfig.Initialize(
         cell_mesh=EMCellMeshFromID(id_str=single_cell_mesh_id),
         neuron_voxel_size=0.1,
-        spines_voxel_size=0.1,
-        write_raw_spines=False,
     )
     return SkeletonizationSingleConfig(
         info=skeletonization_info,
@@ -256,16 +254,14 @@ def make_outputs(tmp_path, *, with_spines=True):
     )
 
 
-def _skeletonize_2_2_9(
+def _skeletonize_without_repair(
     *,
     mesh_path,
     output_path,
     neuron_voxel_size,
-    spines_voxel_size,
     segment_spines,
-    write_raw_spines,
 ):
-    """Keywords that Ultraliser 2.2.9's skeletonize_neuron_mesh accepts."""
+    """Keywords of an Ultraliser release that cannot repair slicing artifacts."""
 
 
 def _skeletonize_with_repair(
@@ -273,9 +269,7 @@ def _skeletonize_with_repair(
     mesh_path,
     output_path,
     neuron_voxel_size,
-    spines_voxel_size,
     segment_spines,
-    write_raw_spines,
     repair_slicing_artifacts=False,
 ):
     """Keywords of an Ultraliser release that can repair slicing artifacts."""
@@ -288,8 +282,6 @@ def _process_parameters(tmp_path, *, repair_slicing_artifacts=False):
         mesh_path=mesh_path,
         segment_spines=True,
         neuron_voxel_size=0.1,
-        spines_voxel_size=0.1,
-        write_raw_spines=False,
         repair_slicing_artifacts=repair_slicing_artifacts,
     )
 
@@ -368,7 +360,7 @@ def test_run_process_calls_ultraliser(tmp_path):
     params = _process_parameters(tmp_path)
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_2_2_9))
+    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_without_repair))
 
     with patch.dict(sys.modules, {"ultraliser": ultraliser_mock}):
         _run_process_executable(params, output_dir)
@@ -377,8 +369,6 @@ def test_run_process_calls_ultraliser(tmp_path):
         output_path=str(output_dir),
         segment_spines=True,
         neuron_voxel_size=0.1,
-        spines_voxel_size=0.1,
-        write_raw_spines=False,
     )
 
 
@@ -393,15 +383,13 @@ def test_run_process_repairs_slicing_artifacts(tmp_path):
         output_path=str(tmp_path),
         segment_spines=True,
         neuron_voxel_size=0.1,
-        spines_voxel_size=0.1,
-        write_raw_spines=False,
         repair_slicing_artifacts=True,
     )
 
 
 def test_run_process_refuses_repair_with_older_ultraliser(tmp_path):
     params = _process_parameters(tmp_path, repair_slicing_artifacts=True)
-    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_2_2_9))
+    ultraliser_mock = Mock(skeletonize_neuron_mesh=create_autospec(_skeletonize_without_repair))
 
     with (
         patch.dict(sys.modules, {"ultraliser": ultraliser_mock}),

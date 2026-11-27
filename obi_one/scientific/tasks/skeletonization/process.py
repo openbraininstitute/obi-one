@@ -41,8 +41,6 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
             - mesh_path: Path to the input neuron mesh.
             - segment_spines: Whether to remove spines from the skeleton and segment them.
             - neuron_voxel_size: Voxel size for neuron processing.
-            - spines_voxel_size: Voxel size for spine processing.
-            - write_raw_spines: Whether to include raw segmented spines in the output.
             - repair_slicing_artifacts: Whether to repair slicing artifacts in the mesh.
         output_dir: Directory where skeletonization outputs will be written.
     """
@@ -62,8 +60,6 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
         output_path=str(output_dir),
         segment_spines=parameters.segment_spines,
         neuron_voxel_size=parameters.neuron_voxel_size,
-        spines_voxel_size=parameters.spines_voxel_size,
-        write_raw_spines=parameters.write_raw_spines,
         **options,
     )
 

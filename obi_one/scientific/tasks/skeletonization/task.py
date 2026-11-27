@@ -71,9 +71,7 @@ class SkeletonizationTask(Task):
             parameters=ProcessParameters(
                 mesh_path=em_cell_mesh_asset.path,
                 neuron_voxel_size=self.config.initialize.neuron_voxel_size,  # ty:ignore[invalid-argument-type]
-                spines_voxel_size=self.config.initialize.spines_voxel_size,  # ty:ignore[invalid-argument-type]
                 segment_spines=segment_spines,
-                write_raw_spines=self.config.initialize.write_raw_spines,
                 repair_slicing_artifacts=self.config.initialize.repair_slicing_artifacts,
             ),
         )

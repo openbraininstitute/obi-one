@@ -29,8 +29,6 @@ class ProcessParameters(BaseModel):
     mesh_path: Path
     segment_spines: bool
     neuron_voxel_size: float
-    spines_voxel_size: float
-    write_raw_spines: bool
     repair_slicing_artifacts: bool = False
 
 

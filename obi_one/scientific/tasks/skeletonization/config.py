@@ -77,32 +77,6 @@ class SkeletonizationScanConfig(InfoScanConfig, abc.ABC):
             },
         )
 
-        spines_voxel_size: (
-            Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]
-            | list[Annotated[PositiveFloat, Field(ge=0.1, le=0.5)]]
-        ) = Field(
-            default=0.1,
-            title="Spine voxel size",
-            description="Spine reconstruction resolution in micrometers.",
-            json_schema_extra={
-                SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
-                SchemaKey.UNITS: Units.MICROMETERS,
-            },
-        )
-
-        write_raw_spines: bool = Field(
-            default=True,
-            title="Include full resolution spines",
-            description=(
-                "By default a morphology h5 file is created with reconstructed spines. "
-                "Set this parameter to True to additionally include the initially "
-                "extracted full resolution segmented spine meshes in the h5 file. "
-                "This may be useful for use cases which require "
-                "the full resolution spine data."
-            ),
-            json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.BOOLEAN_INPUT},
-        )
-
         remove_spines_from_skeleton: bool = Field(
             default=True,
             title="Remove spines from skeleton",
