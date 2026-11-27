@@ -58,7 +58,7 @@ class TestReplayedSynapses:
     def test_a_population_replays_its_share_of_synapses_times_the_margin(self):
         replayed = replayed_synapses({"VPM": 1000.0, "cells": 500.0}, {"VPM": 1}, SIZES)
 
-        assert replayed == round(1000 * module.SUBSET_FACTOR / 10)
+        assert replayed == round(1000 * module.WORST_CASE_SUBSET_DENSITY_VS_AVERAGE / 10)
 
     def test_the_share_is_capped_at_all_the_synapses_of_the_population(self):
         sources = {"VPM": 5, "POm": 4}

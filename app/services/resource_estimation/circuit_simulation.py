@@ -8,7 +8,7 @@ from app.errors import ApiError, ApiErrorCode
 from app.mappings import CLUSTER_INSTANCES_INFO
 from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
-from obi_one.scientific.library.circuit_synapses import SUBSET_FACTOR
+from obi_one.scientific.library.circuit_synapses import WORST_CASE_SUBSET_DENSITY_VS_AVERAGE
 
 # Units, in GiB: the unit of the estimate, as memory_per_instance_gb.
 MIB = 2**-10
@@ -59,7 +59,12 @@ def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
     if not config.recording_arrays:
         return 0.0
     circuit = db_client.get_entity(entity_id=config.entity_id, entity_type=models.Circuit)
-    share = min(1.0, SUBSET_FACTOR * config.number_neurons / max(circuit.number_neurons, 1))
+    share = min(
+        1.0,
+        WORST_CASE_SUBSET_DENSITY_VS_AVERAGE
+        * config.number_neurons
+        / max(circuit.number_neurons, 1),
+    )
     weights = 0
     for linked in config.recording_arrays:
         array = db_client.get_entity(

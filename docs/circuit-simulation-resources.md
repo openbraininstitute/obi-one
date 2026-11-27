@@ -12,14 +12,14 @@ The nodes allocated to a neurodamus circuit simulation come from the memory it n
 Generation (`GenerateSimulationTask`, through `simulation_synapse_counts` of `obi_one/scientific/library/simulation_synapses.py`) records three counts on the `Simulation` next to `number_neurons`, each only if the installed entitysdk's `Simulation` has the field:
 
 - `number_synapses`: the synapses of the chemical edge populations onto the biophysical cells of the node set, as neurodamus creates them (`obi_one/scientific/library/circuit_synapses.py`).
-- `number_replayed_synapses`: those whose source spikes in a spike stimulus. For each source population, its synapses times the share of its nodes that spike, times `SUBSET_FACTOR`, up to all of them (`obi_one/scientific/library/replay_inputs.py`).
+- `number_replayed_synapses`: those whose source spikes in a spike stimulus. For each source population, its synapses times the share of its nodes that spike, times `WORST_CASE_SUBSET_DENSITY_VS_AVERAGE`, up to all of them (`obi_one/scientific/library/replay_inputs.py`).
 - `number_replay_spikes`: the spikes of all the spike files generation wrote.
 
 Any error while counting records the neuron count only.
 
 Generation runs in the API service with the nodes of the circuit staged and not its edges, which can be many GB. The synapses come from the `indices/target_to_source` index of each edges file: `node_id_to_ranges` gives each cell its ranges of `range_to_edge_id`, which give its edges. The index is read with `Client.open_file`, from the local asset store if it has the file and otherwise with HTTP range reads of `REMOTE_BLOCK_SIZE`. The simulations of a campaign share the staged circuit, so the first one reads the synapses per cell and writes them next to the staged circuit config (`SYNAPSES_FILE_NAME`), and the others load that file. Nothing is kept in the service between requests: each campaign reads the indices once.
 
-The layout of an edges file is not trusted. An edge population is counted per cell only if its index is at most `MAX_INDEX_BYTES` and accounts for every one of its edges. Otherwise it is counted in total from the shape of `source_node_id` (HDF5 metadata), and a node set gets its share of the cells times `SUBSET_FACTOR`, up to the total. Rows of an index beyond the population are ignored. What this catches in the circuits of staging and production (2,926 on 2026-11-26):
+The layout of an edges file is not trusted. An edge population is counted per cell only if its index is at most `MAX_INDEX_BYTES` and accounts for every one of its edges. Otherwise it is counted in total from the shape of `source_node_id` (HDF5 metadata), and a node set gets its share of the cells times `WORST_CASE_SUBSET_DENSITY_VS_AVERAGE`, up to the total. Rows of an index beyond the population are ignored. What this catches in the circuits of staging and production (2,926 on 2026-11-26):
 
 - The `target_to_source` index of the Multi-synaptome circuits leaves out the last cell and the edges onto it. That population is counted in total.
 - The index of the Afferent-synaptome circuits has more rows than the population, all empty. The extra rows are ignored.
@@ -38,7 +38,7 @@ nodes    = max(ceil(split / ((1 - reserved_node_memory_fraction) * M - per_node)
 
 The terms are the fields of the frozen pydantic model `MemoryModel`, whose defaults are the values below; `MEMORY_MODEL` is the instance the estimator uses, and its methods `per_node_gb` and `split_gb` compute the two parts.
 
-`per_node` is paid on every node whatever their number, since every rank holds it. The LFP weights are those of the simulated cells: the weight matrix of each recording array covers its whole circuit (generation refuses arrays of another circuit), so it counts for the simulated share of the circuit's cells, times `SUBSET_FACTOR`, up to all of it.
+`per_node` is paid on every node whatever their number, since every rank holds it. The LFP weights are those of the simulated cells: the weight matrix of each recording array covers its whole circuit (generation refuses arrays of another circuit), so it counts for the simulated share of the circuit's cells, times `WORST_CASE_SUBSET_DENSITY_VS_AVERAGE`, up to all of it.
 
 The estimate is refused, with an error that says why, if `per_node` is more than the usable memory of a node (spike inputs every rank must hold, whatever the number of nodes), or if the nodes are more than `max_instances`. A simulation without a synapse count (`number_synapses` 0, as for those generated before it existed) gets `uncounted_gb_per_cell` per cell.
 
@@ -67,7 +67,7 @@ The terms were fitted with non-negative least squares on relative errors over 76
 | Constant | Value | Represents | How it was obtained |
 |---|---|---|---|
 | `MAX_INDEX_BYTES` (`circuit_synapses.py`) | 32 MB | The most index read per edge population, its node and range datasets, 16 bytes a row: a population of 1M cells sorted by target. Above it the population is counted in total. | Chosen so the service reads at most a few tens of MB. The largest indices read exactly are those of rCA1 (456k cells, 14.6 MB per population). |
-| `SUBSET_FACTOR` (`circuit_synapses.py`) | 2.5 | How many times the mean share a node set, or a set of replayed sources, may hold of what is counted in total. | The uniform share against the exact counts of 371 populations: the cells of one layer or m-type (contiguous 10% blocks of node ids) hold up to 2.2 times the mean in SSCX, random 1% samples up to 2 times. |
+| `WORST_CASE_SUBSET_DENSITY_VS_AVERAGE` (`circuit_synapses.py`) | 2.5 | How many times denser than average a subset may be: a node set's synapses per cell, or replayed sources' synapses per source, against the population's average. Where only a total is known, a subset with a fraction `f` of the members is given `min(1, 2.5 × f)` of it. | The uniform share against the exact counts of 371 populations: the cells of one layer or m-type (contiguous 10% blocks of node ids) hold up to 2.2 times the mean in SSCX, random 1% samples up to 2 times. |
 | `SYNAPSES_FILE_NAME` (`circuit_synapses.py`) | `synapses_per_cell.npz` | The synapses per cell of a staged circuit, by population and source, as `read_synapses_per_cell` gives them: a `uint32` per cell and source counted exactly, a total per source counted in total. | 5.2 MB for the whole rCA1 circuit (456k cells, 3 sources), saved in 11 ms and loaded in 9 ms; populations counted in total store one number. |
 | `REMOTE_BLOCK_SIZE` (`obi_one/db_sdk/circuit.py`) | 256 KB | Bytes per range request of a remote file. | An index is about 100 kB and a request takes the same time whatever its size: 4.5 to 5.4 s for the rCA1 slice against 6.3 to 8.6 s with 4 MB blocks; smaller gave nothing more. |
 | `CHUNK` (`replay_inputs.py`) | 1M | Node ids read at once from a spike file, 8 bytes each. | Bounds the memory of the count: 13.4M spikes take 0.09 s and 23 MB. |

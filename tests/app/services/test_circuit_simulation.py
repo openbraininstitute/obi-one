@@ -255,7 +255,7 @@ def _lfp_client(simulation, *, weights_gb, circuit_neurons):
 
 
 def test_lfp_counts_the_weights_of_the_simulated_cells():
-    """A tenth of the circuit counts at most a quarter of the weights (SUBSET_FACTOR is 2.5)."""
+    """A tenth of the circuit counts at most a quarter of the weights: 2.5 times its share."""
     simulation = _simulation(**FAILED_JOB)
     db_client = _lfp_client(simulation, weights_gb=400, circuit_neurons=95_870)
 

@@ -22,7 +22,7 @@ from obi_one.scientific.library.circuit_constants import (
 L = logging.getLogger(__name__)
 
 MAX_INDEX_BYTES = 32 * 1024 * 1024
-SUBSET_FACTOR = 2.5
+WORST_CASE_SUBSET_DENSITY_VS_AVERAGE = 2.5
 
 # Kept next to the staged circuit config, which the simulations of a campaign share.
 SYNAPSES_FILE_NAME = "synapses_per_cell.npz"
@@ -48,7 +48,11 @@ class CellSynapses(BaseModel):
         ids = np.unique(np.asarray(ids, dtype=np.int64))
         ids = ids[(ids >= 0) & (ids < self.size)]
         counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
-        share = min(1.0, SUBSET_FACTOR * len(ids) / self.size) if self.size else 0.0
+        share = (
+            min(1.0, WORST_CASE_SUBSET_DENSITY_VS_AVERAGE * len(ids) / self.size)
+            if self.size
+            else 0.0
+        )
         for source, synapses in self.estimated.items():
             counts[source] = counts.get(source, 0.0) + synapses * share
         return counts

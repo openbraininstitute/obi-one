@@ -152,7 +152,9 @@ def test_the_replay_of_a_spike_stimulus_is_recorded(all_counts, tmp_path, vpm_si
 
     generate(config(vpm_replay(sources)), tmp_path / "out", db_client=all_counts)
 
-    share = min(1.0, circuit_synapses.SUBSET_FACTOR * len(sources) / vpm_size)
+    share = min(
+        1.0, circuit_synapses.WORST_CASE_SUBSET_DENSITY_VS_AVERAGE * len(sources) / vpm_size
+    )
     assert recorded(all_counts) == {
         "number_neurons": N_CELLS,
         "number_synapses": N_SYNAPSES,

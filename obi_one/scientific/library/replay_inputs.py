@@ -10,7 +10,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-from obi_one.scientific.library.circuit_synapses import SUBSET_FACTOR
+from obi_one.scientific.library.circuit_synapses import WORST_CASE_SUBSET_DENSITY_VS_AVERAGE
 
 CHUNK = 1_000_000
 
@@ -62,5 +62,7 @@ def replayed_synapses(
     total = 0.0
     for source, synapses in synapses_by_source.items():
         if size := population_sizes.get(source):
-            total += synapses * min(1.0, SUBSET_FACTOR * replayed_sources.get(source, 0) / size)
+            total += synapses * min(
+                1.0, WORST_CASE_SUBSET_DENSITY_VS_AVERAGE * replayed_sources.get(source, 0) / size
+            )
     return round(total)
