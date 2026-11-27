@@ -76,7 +76,7 @@ meshing = ["ultraliser>=2.1.9"]
 
 # SIMPLIFICATION - optional, private dependency needed to run circuit simplification.
 # sonata-simplify already depends on bluecellulab.
-simplification = ["sonata-simplify[simulation,reduction]>=0.2.6"]
+simplification = ["sonata-simplify[simulation,reduction]>=0.3.0"]
 
 # NOTEBOOKS - optional, needed to run the notebooks locally
 notebooks = [

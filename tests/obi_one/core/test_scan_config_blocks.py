@@ -205,6 +205,33 @@ class TestFillBlockReferences:
                 ref_holder=holder,
             )
 
+    def test_empty_dict_name_for_dict_block_raises_with_hint(self):
+        holder = RefHolder(ref_field=TestRef(block_name="target_block"))
+        with pytest.raises(ValidationError, match="block_dict_name='blocks'"):
+            ConfigWithRefBlock(
+                initialize=ConfigWithRefBlock.Initialize(),
+                blocks={"target_block": BlockTypeA()},
+                ref_holder=holder,
+            )
+
+    def test_empty_dict_name_for_unknown_block_raises(self):
+        holder = RefHolder(ref_field=TestRef(block_name="nowhere"))
+        with pytest.raises(ValidationError, match="'nowhere' is not a root level block"):
+            ConfigWithRefBlock(
+                initialize=ConfigWithRefBlock.Initialize(),
+                blocks={},
+                ref_holder=holder,
+            )
+
+    def test_empty_dict_name_resolves_root_block(self):
+        holder = RefHolder(ref_field=TestRef(block_name="initialize"))
+        config = ConfigWithRefBlock(
+            initialize=ConfigWithRefBlock.Initialize(),
+            blocks={},
+            ref_holder=holder,
+        )
+        assert config.ref_holder.ref_field.block is config.initialize
+
 
 class TestSetMethod:
     def test_set_replaces_root_block(self):

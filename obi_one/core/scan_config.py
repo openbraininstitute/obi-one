@@ -505,10 +505,23 @@ class ScanConfig(OBIBaseModel, extra="forbid"):
             self._correct_reference_type(block_reference)
 
         elif not block_reference.block_dict_name and block_reference.block_name:
-            # If the block_dict_name is empty, we assume the block_name
-            # is a direct reference to a Block instance
-            if block_reference.block_name == "neuron_set_extra":
-                block_reference.block = self.__dict__[block_reference.block_name]
+            root_block = self.__dict__.get(block_reference.block_name)
+            if not isinstance(root_block, Block):
+                containing = [
+                    name
+                    for name, value in self.__dict__.items()
+                    if isinstance(value, dict) and block_reference.block_name in value
+                ]
+                hint = ""
+                if len(containing) == 1:
+                    hint = f" It is defined in '{containing[0]}', so set "
+                    hint += f"block_dict_name='{containing[0]}'."
+                msg = (
+                    f"Block '{block_reference.block_name}' is not a root level block, but its "
+                    f"reference has an empty `block_dict_name`.{hint}"
+                )
+                raise ValueError(msg)
+            block_reference.block = root_block
         else:
             msg = "BlockReference must have a non-empty block_dict_name and block_name."
             raise ValueError(msg)

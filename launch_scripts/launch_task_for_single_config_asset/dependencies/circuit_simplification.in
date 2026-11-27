@@ -1,2 +1,2 @@
 obi-one[connectivity]
-sonata-simplify[simulation,reduction]>=0.2.6
+sonata-simplify[simulation,reduction]>=0.3.0

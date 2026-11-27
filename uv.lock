@@ -938,16 +938,16 @@ wheels = [
 
 [[package]]
 name = "entitysdk"
-version = "0.20.0"
+version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx2" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/82/5f/97a5e034bafae823e2010076a9c41906162915cf91901c7ad32792679144/entitysdk-0.20.0.tar.gz", hash = "sha256:944a61b13f1eb417697919490ed33515bf63cd39547ea887630db4423b5b16cf", size = 84032, upload-time = "2026-11-19T16:36:21.981Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/3a/cf3d1058f3307f63d125b36cd311a41f2e655e668837b2b4945abffaaed9/entitysdk-0.22.0.tar.gz", hash = "sha256:a8870e47182c035e69fc235ee6de95558f4d6b459350ed2792d8aff1c1d5bc64", size = 90517, upload-time = "2026-11-26T08:35:13.613Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/75/8dccf17675134db25c30f0aa84f009597bb9336220e63fec62925df3883f/entitysdk-0.20.0-py3-none-any.whl", hash = "sha256:cef01c0745b103812a128e957a8610f1a8c50b346184fce0f163b5e4e0fcd892", size = 119198, upload-time = "2026-11-19T16:36:20.322Z" },
+    { url = "https://files.pythonhosted.org/packages/80/fe/0d1406a79df04788082ca853ba3907f60a9eec1356a64dc6297a3a595f39/entitysdk-0.22.0-py3-none-any.whl", hash = "sha256:639c72793ae2009d32dc48553b6d506b401b43f9ff8516bf3877bf0c05231b18", size = 126265, upload-time = "2026-11-26T08:35:12.128Z" },
 ]
 
 [[package]]
@@ -2551,7 +2551,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'service'" },
     { name = "scipy" },
     { name = "sentry-sdk", marker = "extra == 'service'", specifier = ">=2.65.0" },
-    { name = "sonata-simplify", extras = ["reduction", "simulation"], marker = "extra == 'simplification'", specifier = ">=0.2.6", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
+    { name = "sonata-simplify", extras = ["reduction", "simulation"], marker = "extra == 'simplification'", specifier = ">=0.3.0", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "starlette", marker = "extra == 'service'" },
     { name = "ultraliser", marker = "extra == 'meshing'", specifier = ">=2.1.9", index = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" },
     { name = "uvicorn", marker = "extra == 'service'" },
@@ -3466,7 +3466,7 @@ wheels = [
 
 [[package]]
 name = "sonata-simplify"
-version = "0.2.6"
+version = "0.3.0"
 source = { registry = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/" }
 dependencies = [
     { name = "click" },
@@ -3476,9 +3476,9 @@ dependencies = [
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.6/sonata_simplify-0.2.6.tar.gz", hash = "sha512:a74ecf0a35bddf427bbf325b5de0323a1743b6b0c11c0a1696945afb0910dea443867991df141619afee8e4713d852eb48d5ee8d714026f284fc88673465b40b", size = 2651029, upload-time = "2026-10-26T07:46:09.821Z" }
+sdist = { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.3.0/sonata_simplify-0.3.0.tar.gz", hash = "sha512:af17aa23342b4349d4b72d863e6afc4f2cd5ce35724bce09739c04cd69e459b43a01efc68471fa988b8a79084dc4725867166a60b6f96acc097aecb484c495c1", size = 2713375, upload-time = "2026-11-20T16:29:56.871Z" }
 wheels = [
-    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.2.6/sonata_simplify-0.2.6-py3-none-any.whl", hash = "sha512:9156ca92edd4fcf331d177b9695056b3d609f3017f795de5dfdc35f66d5243c385b74b41bba72a148f4285aa344a439387bd52cdedd02163a97f0ffa2860dec3", size = 402033, upload-time = "2026-10-26T07:46:09.407Z" },
+    { url = "https://openbraininstitute-985539765147.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-prod/simple/sonata-simplify/0.3.0/sonata_simplify-0.3.0-py3-none-any.whl", hash = "sha512:b846ef4acbb6535819b1fc8cfb9e1907233a1cbcca40fb8588b46024f47e3f33aac2ff935ed7a9752a6f6dbfeb556ff7d67234d09fa8a1e207652c2c75f105f1", size = 430459, upload-time = "2026-11-20T16:29:56.462Z" },
 ]
 
 [package.optional-dependencies]
