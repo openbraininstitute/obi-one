@@ -1,7 +1,7 @@
 """The synapses that generation records next to the neuron count of a simulation.
 
 Generation stages the nodes of the circuit only. The synapses come from the indices of the edge
-files, read remotely with ``Client.open_remote_file``.
+files, read remotely with ``Client.open_file``.
 """
 
 import io
@@ -12,9 +12,16 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
+import libsonata
 import pytest
 from entitysdk.models import Simulation
 
+from obi_one.core.tuple import NamedTuple
+from obi_one.scientific.blocks.neuron_sets.id import VirtualPopulationIDNeuronSet
+from obi_one.scientific.blocks.stimuli.spike.fully_synchronous import (
+    FullySynchronousSpikeStimulus,
+)
+from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library import circuit_synapses
 from obi_one.scientific.library.circuit import Circuit
@@ -56,7 +63,7 @@ class RemoteDBClient(FakeDBClient):
         }
         return SimpleNamespace(files=files)
 
-    def open_remote_file(self, *, asset_path, size, block_size, **_):
+    def open_file(self, *, asset_path, size, block_size, **_):
         if self.fail_with is not None:
             raise self.fail_with
         self.opened.append(asset_path)
@@ -91,8 +98,43 @@ def db_client(full_circuit, tmp_path, monkeypatch):
     return client
 
 
-def config():
-    return build_config(CircuitSimulationSingleConfig, circuit=CircuitFromID(id_str=str(uuid4())))
+def config(blocks=None):
+    return build_config(
+        CircuitSimulationSingleConfig, circuit=CircuitFromID(id_str=str(uuid4())), blocks=blocks
+    )
+
+
+VPM_SYNAPSES = 471  # onto the 10 cells
+
+
+def vpm_replay(sources):
+    """A synchronous volley from VPM nodes ``sources``, once."""
+    timestamp = SingleTimestamp(start_time=10.0)
+    source = VirtualPopulationIDNeuronSet(
+        population="VPM", neuron_ids=NamedTuple(name="vpm", elements=list(sources))
+    )
+    return {
+        "Volley": timestamp,
+        "VPMSources": source,
+        "Spikes": lambda: FullySynchronousSpikeStimulus(
+            timestamps=timestamp.ref, source_neuron_set=source.ref
+        ),
+    }
+
+
+@pytest.fixture
+def all_counts(db_client, monkeypatch):
+    """An entitysdk whose Simulation has the replay counts too."""
+    fields = dict(Simulation.model_fields)
+    for name in ("number_replayed_synapses", "number_replay_spikes"):
+        fields[name] = fields["number_neurons"]
+    monkeypatch.setattr(Simulation, "model_fields", fields)
+    return db_client
+
+
+@pytest.fixture
+def vpm_size(full_circuit):
+    return libsonata.CircuitConfig.from_file(str(full_circuit)).node_population("VPM").size
 
 
 def recorded(db_client):
@@ -102,6 +144,37 @@ def recorded(db_client):
 
 def test_the_synapses_onto_the_simulated_cells_are_recorded(db_client, tmp_path):
     generate(config(), tmp_path / "out", db_client=db_client)
+
+    assert recorded(db_client) == {"number_neurons": N_CELLS, "number_synapses": N_SYNAPSES}
+
+
+def test_the_replay_of_a_spike_stimulus_is_recorded(all_counts, tmp_path, vpm_size):
+    sources = range(5)
+
+    generate(config(vpm_replay(sources)), tmp_path / "out", db_client=all_counts)
+
+    share = min(1.0, circuit_synapses.SUBSET_FACTOR * len(sources) / vpm_size)
+    assert recorded(all_counts) == {
+        "number_neurons": N_CELLS,
+        "number_synapses": N_SYNAPSES,
+        "number_replayed_synapses": round(VPM_SYNAPSES * share),
+        "number_replay_spikes": len(sources),
+    }
+
+
+def test_a_simulation_without_spike_inputs_replays_nothing(all_counts, tmp_path):
+    generate(config(), tmp_path / "out", db_client=all_counts)
+
+    assert recorded(all_counts) == {
+        "number_neurons": N_CELLS,
+        "number_synapses": N_SYNAPSES,
+        "number_replayed_synapses": 0,
+        "number_replay_spikes": 0,
+    }
+
+
+def test_an_entitysdk_with_the_synapses_only_records_them_only(db_client, tmp_path):
+    generate(config(vpm_replay(range(5))), tmp_path / "out", db_client=db_client)
 
     assert recorded(db_client) == {"number_neurons": N_CELLS, "number_synapses": N_SYNAPSES}
 
@@ -134,7 +207,12 @@ def test_a_circuit_is_read_once_for_all_its_simulations(db_client, tmp_path):
 
 
 @pytest.mark.parametrize(
-    "error", [OSError("Expected 206 for a range request, got 200"), KeyError("indices")]
+    "error",
+    [
+        OSError("Expected 206 for a range request, got 200"),
+        KeyError("indices"),
+        ValueError("an edges file of a layout not foreseen"),
+    ],
 )
 def test_a_circuit_that_cannot_be_read_records_the_neurons_only(db_client, tmp_path, caplog, error):
     db_client.fail_with = error

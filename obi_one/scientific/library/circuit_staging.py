@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 import libsonata
 from entitysdk.models.circuit import Circuit
-from entitysdk.types import FetchFileStrategy
+from entitysdk.types import FetchFileStrategy, OpenFileStrategy
 
 if TYPE_CHECKING:
     import io
@@ -143,26 +143,27 @@ def stage_circuit_nodes(
     return config_path
 
 
-def remote_circuit_file_opener(
+def circuit_file_opener(
     db_client: entitysdk.client.Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
-) -> Callable[[str], io.IOBase]:
-    """A function that opens a file of the circuit remotely, given its path in the staged config.
+) -> Callable[[str], io.BufferedReader]:
+    """A function that opens a file of the circuit, given its path in the staged config.
 
-    Reads then fetch only the bytes they need, with HTTP range requests, so an index can be read
-    out of an edges file of many GB.
+    The file is read from the local asset store when the client has one with the file in it, and
+    otherwise remotely: reads then fetch only the bytes they need, with HTTP range requests, so an
+    index can be read out of an edges file of many GB.
     """
     sizes = db_client.list_directory(
         entity_id=entity_id, entity_type=Circuit, asset_id=asset.id
     ).files
 
-    def open_file(path: str) -> io.IOBase:
+    def open_file(path: str) -> io.BufferedReader:
         asset_path = _asset_path_in(path, dest_dir)
-        # Remove the ty ignore once entitysdk releases Client.open_remote_file (entitysdk#310).
-        return db_client.open_remote_file(  # ty:ignore[unresolved-attribute]
+        return db_client.open_file(
             entity_id=entity_id,
             entity_type=Circuit,
             asset_id=asset.id,
             asset_path=asset_path,
+            strategy=OpenFileStrategy.local_or_remote,
             size=sizes[Path(asset_path)].size,
             block_size=REMOTE_BLOCK_SIZE,
         )

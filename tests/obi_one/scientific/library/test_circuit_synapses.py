@@ -1,4 +1,5 @@
 import json
+import operator
 import shutil
 from pathlib import Path
 
@@ -9,8 +10,10 @@ import pytest
 
 from obi_one.scientific.library import circuit_synapses as module
 from obi_one.scientific.library.circuit_synapses import (
+    CellSynapses,
     cached_synapses_per_cell,
     count_synapses,
+    count_synapses_by_source,
     read_synapses_per_cell,
 )
 
@@ -74,10 +77,19 @@ class TestReadSynapsesPerCell:
         self, circuit, synapses
     ):
         assert list(synapses) == [CELLS]
-        assert synapses[CELLS].tolist() == [synapses_onto(circuit, [i]) for i in range(N_CELLS)]
+        assert estimated(synapses[CELLS]) == 0
+        assert exact(synapses[CELLS]).tolist() == [
+            synapses_onto(circuit, [i]) for i in range(N_CELLS)
+        ]
 
     def test_the_total_is_the_edges_onto_the_cells(self, synapses):
-        assert synapses[CELLS].sum() == 471 + 260 + 176
+        assert exact(synapses[CELLS]).sum() == 471 + 260 + 176
+
+    def test_the_synapses_are_kept_by_source_population(self, circuit, synapses):
+        assert sorted(synapses[CELLS].exact) == sorted(["S1nonbarrel_neurons", "VPM", "POm"])
+        by_source = count_synapses_by_source(synapses, {CELLS: list(range(N_CELLS))})
+        assert by_source["VPM"] == vpm_edges(circuit)
+        assert sum(by_source.values()) == 907
 
     def test_each_edges_file_is_opened_once(self, circuit):
         opened = []
@@ -96,19 +108,17 @@ class TestReadSynapsesPerCell:
         merged = read_synapses_per_cell(circuit, open_recording(opened))
 
         assert len(opened) == 2
-        assert np.array_equal(merged[CELLS], synapses[CELLS])
+        assert np.array_equal(exact(merged[CELLS]), exact(synapses[CELLS]))
 
-    def test_a_large_index_gives_estimates_with_the_right_total(
-        self, circuit, synapses, monkeypatch
+    def test_a_large_index_is_not_read_and_its_population_is_counted_in_total(
+        self, circuit, monkeypatch
     ):
-        """Above the limit, each cell gets its ranges times the mean edges per range."""
-        monkeypatch.setattr(module, "MAX_RANGES_READ", 0)
+        monkeypatch.setattr(module, "MAX_INDEX_BYTES", 0)
 
-        estimated = read_synapses_per_cell(circuit)
+        counted_in_total = read_synapses_per_cell(circuit)
 
-        assert estimated[CELLS].sum() == pytest.approx(synapses[CELLS].sum())
-        assert not np.array_equal(estimated[CELLS], synapses[CELLS])
-        assert np.all((estimated[CELLS] > 0) == (synapses[CELLS] > 0))
+        assert estimated(counted_in_total[CELLS]) == 907
+        assert exact(counted_in_total[CELLS]) is None
 
     def test_edges_onto_a_virtual_population_are_left_out(self, circuit):
         config = json.loads(circuit.read_text())
@@ -122,14 +132,78 @@ class TestReadSynapsesPerCell:
     def test_electrical_synapses_are_left_out(self, circuit):
         circuit.write_text(circuit.read_text().replace('"chemical"', '"electrical"'))
 
-        assert read_synapses_per_cell(circuit) == {}
+        assert count_synapses(read_synapses_per_cell(circuit), {CELLS: list(range(N_CELLS))}) == 0
 
-    def test_an_edges_file_without_indices_cannot_be_counted(self, circuit):
+    def test_an_edges_file_without_indices_is_counted_in_total(self, circuit):
         with h5py.File(circuit.parent / VPM / "edges.h5", "r+") as f:
             del f[f"edges/{VPM}/indices"]
 
-        with pytest.raises(KeyError):
-            read_synapses_per_cell(circuit)
+        counted = read_synapses_per_cell(circuit)
+
+        assert estimated(counted[CELLS]) == vpm_edges(circuit)
+        assert exact(counted[CELLS]).sum() + estimated(counted[CELLS]) == 907
+
+    def test_an_index_without_its_last_cells_is_counted_in_total(self, circuit):
+        """A writer of synaptome circuits leaves the last target out of the index."""
+        rewrite_node_ranges(circuit, operator.itemgetter(slice(-1)))
+
+        assert read_synapses_per_cell(circuit)[CELLS].estimated == {"VPM": vpm_edges(circuit)}
+
+    def test_rows_of_an_index_beyond_the_population_are_ignored(self, circuit, synapses):
+        """Another writer pads the index of one cell with empty rows, up to the sources."""
+        rewrite_node_ranges(
+            circuit, lambda ranges: np.vstack([ranges, np.repeat(ranges[-1:, 1:], 2, axis=1)])
+        )
+
+        padded = read_synapses_per_cell(circuit)
+
+        assert estimated(padded[CELLS]) == 0
+        assert np.array_equal(exact(padded[CELLS]), exact(synapses[CELLS]))
+
+    def test_an_index_pointing_past_its_ranges_is_counted_in_total(self, circuit):
+        rewrite_node_ranges(circuit, lambda ranges: ranges + 1000)
+
+        assert read_synapses_per_cell(circuit)[CELLS].estimated == {"VPM": vpm_edges(circuit)}
+
+    def test_a_population_missing_from_its_file_is_left_out(self, circuit, caplog):
+        missing = vpm_edges(circuit)
+        with h5py.File(circuit.parent / VPM / "edges.h5", "r+") as f:
+            f.move(f"edges/{VPM}", "edges/renamed")
+
+        counted = read_synapses_per_cell(circuit)
+
+        assert exact(counted[CELLS]).sum() == 907 - missing
+        assert f"{VPM} of" in caplog.text
+
+    def test_an_edges_file_that_cannot_be_opened_fails_the_count(self, circuit):
+        def refuse(_path):
+            msg = "Expected 206 for a range request, got 200"
+            raise OSError(msg)
+
+        with pytest.raises(OSError, match="206"):
+            read_synapses_per_cell(circuit, refuse)
+
+
+def exact(cells):
+    """The exact synapses of each cell, summed over the source populations, or None."""
+    return sum(cells.exact.values()) if cells.exact else None
+
+
+def estimated(cells):
+    return sum(cells.estimated.values())
+
+
+def vpm_edges(circuit):
+    with h5py.File(circuit.parent / VPM / "edges.h5", "r") as f:
+        return f[f"edges/{VPM}/source_node_id"].shape[0]
+
+
+def rewrite_node_ranges(circuit, change):
+    with h5py.File(circuit.parent / VPM / "edges.h5", "r+") as f:
+        index = f[f"edges/{VPM}/indices/target_to_source"]
+        ranges = change(index["node_id_to_ranges"][:])
+        del index["node_id_to_ranges"]
+        index["node_id_to_ranges"] = ranges
 
 
 @pytest.fixture
@@ -200,4 +274,34 @@ class TestCountSynapses:
         )
 
     def test_the_estimate_is_rounded_to_an_integer(self):
-        assert count_synapses({"cells": np.array([1.4, 1.4])}, {"cells": [0, 1]}) == 3
+        cells = CellSynapses(10, estimated={"virtual": 7})
+
+        assert count_synapses({"cells": cells}, {"cells": [0]}) == 2
+
+    def test_ids_outside_the_population_or_repeated_are_ignored(self, synapses):
+        assert count_synapses(synapses, {CELLS: [0, 0, N_CELLS, -1]}) == count_synapses(
+            synapses, {CELLS: [0]}
+        )
+
+
+class TestEstimatedSynapses:
+    """A population counted in total gives a node set its share of the cells, times a margin."""
+
+    CELLS = CellSynapses(
+        4, {"cells": np.array([1, 2, 3, 4], dtype=np.uint32)}, estimated={"virtual": 1000}
+    )
+
+    def test_all_the_cells_get_the_total(self):
+        assert self.CELLS.count([0, 1, 2, 3]) == 1010
+
+    def test_a_subset_gets_its_share_times_the_margin(self):
+        assert self.CELLS.count([0]) == 1 + 1000 * module.SUBSET_FACTOR / 4
+
+    def test_the_share_is_capped_at_the_total(self):
+        assert self.CELLS.count([0, 1]) == 3 + 1000
+
+    def test_each_source_keeps_its_own_count(self):
+        assert self.CELLS.count_by_source([0]) == {
+            "cells": 1,
+            "virtual": 1000 * module.SUBSET_FACTOR / 4,
+        }
