@@ -60,9 +60,10 @@ def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
         array = db_client.get_entity(
             entity_id=linked.id, entity_type=models.SimulatableExtracellularRecordingArray
         )
-        weights += sum(
-            a.size or 0 for a in array.assets if a.label == AssetLabel.electrode_array_weight_matrix
+        matrices = db_client.select_assets(
+            array, {"label": AssetLabel.electrode_array_weight_matrix}
         )
+        weights += sum(asset.size or 0 for asset in matrices)
     return share * weights / 2**30
 
 

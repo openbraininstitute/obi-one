@@ -248,6 +248,9 @@ def _lfp_client(simulation, *, weights_gb, circuit_neurons):
     }
     db_client = Mock()
     db_client.get_entity.side_effect = lambda *, entity_type, **_: entities[entity_type]
+    db_client.select_assets.side_effect = lambda entity, selection: iter(
+        [a for a in entity.assets if a.label == selection["label"]]
+    )
     return db_client
 
 
