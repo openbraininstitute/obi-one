@@ -1,13 +1,6 @@
 """Synapses onto the cells of a circuit, from the indices of its edge files.
 
-Simulations are generated in the API service with the nodes of the circuit only. The SONATA edge
-index gives, per node, the ranges of its edges, so the synapses of a node set come from a few MB of
-index, read remotely, instead of the edge files.
-
-The layout of an edges file is not trusted. An edge population whose index is missing, too large
-to read in the service, or inconsistent with its edges, is counted from its number of edges, which
-is HDF5 metadata, and the synapses of a node set are then estimated from the share of the cells it
-holds.
+See docs/circuit-simulation-resources.md.
 """
 
 import io
@@ -29,35 +22,22 @@ from obi_one.scientific.library.circuit_constants import (
 
 L = logging.getLogger(__name__)
 
-# Bytes of index read at most per edge population: the node and range datasets, 16 bytes a row.
-# A population of 1M cells sorted by target takes 32 MB. Above that, the synapses are estimated.
 MAX_INDEX_BYTES = 32 * 1024 * 1024
-
-# How many times the mean synapses per cell a node set may hold, for the edge populations that are
-# estimated. The cells of one layer or one m-type (contiguous 10% blocks of node ids) hold up to
-# 2.2 times the mean in the SSCX circuits of entitycore, and random 1% samples up to 2 times
-# (openbraininstitute/prod-circuit-simulation#265).
 SUBSET_FACTOR = 2.5
 
-# The synapses per cell of the circuits read so far, which take seconds to read remotely and are
-# at most 4 bytes per cell and source population. Kept by the id of the circuit's asset, which
-# changes if it is replaced.
+# By the id of the circuit's sonata_circuit asset.
 MAX_CACHED_CIRCUITS = 16
 SYNAPSES_PER_CELL_CACHE: dict[str, dict[str, "CellSynapses"]] = {}
 SYNAPSES_PER_CELL_CACHE_LOCK = Lock()
 
 
 class CellSynapses(BaseModel):
-    """The synapses onto the cells of a population of biophysical cells, by source population.
-
-    Kept by source because replay drives the synapses of some sources only, and each replayed
-    connection costs memory. Frozen: it is cached and shared by the simulations of a circuit.
+    """The synapses onto the cells of a population, by source population.
 
     Attributes:
         size: The cells of the population.
-        exact: The synapses of each cell from a source, for the edge populations whose index was
-            read.
-        estimated: The synapses from a source of the edge populations counted in total only.
+        exact: The synapses of each cell, from the edge populations whose index was read.
+        estimated: The synapses of the edge populations counted in total only.
     """
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
@@ -67,11 +47,7 @@ class CellSynapses(BaseModel):
     estimated: dict[str, int] = {}
 
     def count_by_source(self, ids: list[int] | np.ndarray) -> dict[str, float]:
-        """The synapses onto the cells ``ids`` from each source, estimated in part.
-
-        The synapses of a source counted in total give the cells their share of them, times
-        ``SUBSET_FACTOR``, up to the total.
-        """
+        """The synapses onto the cells ``ids`` from each source."""
         ids = np.unique(np.asarray(ids, dtype=np.int64))
         ids = ids[(ids >= 0) & (ids < self.size)]
         counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
@@ -81,17 +57,12 @@ class CellSynapses(BaseModel):
         return counts
 
     def count(self, ids: list[int] | np.ndarray) -> float:
-        """The synapses onto the cells ``ids``, estimated in part (see ``count_by_source``)."""
+        """The synapses onto the cells ``ids``."""
         return sum(self.count_by_source(ids).values())
 
 
 def _exact_synapses_per_cell(group: h5py.Group, size: int, n_edges: int) -> np.ndarray | None:
-    """The edges onto each node from the ``target_to_source`` index, or None if it is not usable.
-
-    ``node_id_to_ranges`` gives each node the ranges ``[first, last)`` of ``range_to_edge_id``, and
-    each of those the edges ``[start, end)``. The index is used only if it is small enough and if
-    it accounts for every edge: some writers give it fewer or more rows than the population.
-    """
+    """The edges onto each node from the ``target_to_source`` index, or None if not usable."""
     if "indices/target_to_source" not in group:
         return None
     index = group["indices/target_to_source"]
@@ -129,18 +100,12 @@ def read_synapses_per_cell(
 ) -> dict[str, CellSynapses]:
     """The synapses onto each cell, for each population of biophysical cells.
 
-    The chemical edge populations onto a population are added up. Only the edge indices and the
-    shapes of the edge datasets are read, and each edges file is opened once, whatever the number
-    of populations in it. An edge population that cannot be read exactly is counted in total.
-
     Args:
-        circuit_config_path: The circuit, whose nodes are on disk and edge files need not be.
-        open_edges_file: Opens an edges file, given its path in the circuit config, for example
-            as a remote file. By default the path itself is opened.
+        circuit_config_path: The circuit, whose nodes are on disk.
+        open_edges_file: Opens an edges file given its path in the config. By default, the path.
 
     Returns:
-        The synapses of the cells, by population of cells. An edges file that cannot be opened
-        or read raises, since a count without it would be too low.
+        The synapses by population of cells. An edges file that cannot be read raises.
     """
     config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
     sizes = {
@@ -190,7 +155,6 @@ def cached_synapses_per_cell(
     """The synapses per cell of a circuit, read with ``read`` the first time only."""
     with SYNAPSES_PER_CELL_CACHE_LOCK:
         if circuit_key in SYNAPSES_PER_CELL_CACHE:
-            # The least recently used circuit is dropped first.
             SYNAPSES_PER_CELL_CACHE[circuit_key] = SYNAPSES_PER_CELL_CACHE.pop(circuit_key)
             return SYNAPSES_PER_CELL_CACHE[circuit_key]
     synapses = read()

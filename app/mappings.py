@@ -436,15 +436,14 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=16,
-            ranks_per_instance=4,  # t3a.xlarge, hardware threads (pcs-queue-small)
-            max_instances=12,  # aws-terraform-deployment launch_system/pcs.tf
+            ranks_per_instance=4,  # t3a.xlarge
+            max_instances=12,
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=768,
-            ranks_per_instance=192,  # hpc7a.96xlarge (pcs-queue-large)
-            # pcs_large_nodes_max_instance_count in aws-terraform-deployment main.tf
+            ranks_per_instance=192,  # hpc7a.96xlarge
             max_instances=20,
         ),
     ],
@@ -453,17 +452,13 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=8,
-            # The small pool of azure-terraform-deployment is Standard_D4s_v5. launch-system sends
-            # jobs to the pool "timestamped-neurodamus", which is not in that repository.
-            ranks_per_instance=4,
+            ranks_per_instance=4,  # Standard_D4s_v5
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=788,
-            # Standard_HB176rs_v4, the large pool of azure-terraform-deployment. Its nodes are
-            # limited by the vCPU quota of the subscription (pool allocation "UserSubscription").
-            ranks_per_instance=176,
+            ranks_per_instance=176,  # Standard_HB176rs_v4
         ),
     ],
 }

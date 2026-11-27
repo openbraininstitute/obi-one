@@ -556,12 +556,9 @@ class GenerateSimulationTask(Task):
             self._sonata_config["compartment_sets_file"] = self.COMPARTMENT_SETS_FILE_NAME
 
     def _synapse_counts(self, db_client: Client, node_ids: dict[str, list[int]]) -> dict[str, int]:
-        """The synapses onto the simulated cells, those from replayed sources, the replayed spikes.
+        """The synapses onto the simulated cells, those from replayed sources, and the spikes.
 
-        The synapses come from the indices of the edge files, which generation does not stage:
-        they are read remotely, once per circuit for all the simulations that follow. Only the
-        counts the installed entitysdk's Simulation has are returned, since entitycore would
-        refuse the others.
+        Only the counts entitysdk's Simulation has are returned.
         """
         circuit = getattr(self.config.initialize, "circuit", None)
         staged = self._circuit
@@ -624,9 +621,7 @@ class GenerateSimulationTask(Task):
                 try:
                     counts = self._synapse_counts(db_client, neuron_set_ids)
                 except Exception:  # ruff: ignore[blind-except]
-                    # The counts only size the resources of the simulation, which the estimator
-                    # does from the neurons without them: whatever the circuit holds, they must not
-                    # fail generation.
+                    # The counts are optional: the estimator falls back to the neurons.
                     circuit = getattr(self.config.initialize, "circuit", None)
                     L.warning("The synapses of circuit %s are not counted", circuit, exc_info=True)
             else:

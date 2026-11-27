@@ -33,8 +33,6 @@ L = logging.getLogger(__name__)
 
 CIRCUIT_CONFIG_FILE_NAME = "circuit_config.json"
 
-# Bytes fetched per request when a file is read remotely. An edge index is about 100 kB, and each
-# request takes the same time whatever its size, so small blocks beat the 4 MB default.
 REMOTE_BLOCK_SIZE = 256 * 1024
 
 # Matches what ``entitysdk.staging.circuit.stage_circuit`` selects, so the partial and full
@@ -146,11 +144,9 @@ def stage_circuit_nodes(
 def circuit_file_opener(
     db_client: entitysdk.client.Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
 ) -> Callable[[str], io.BufferedReader]:
-    """A function that opens a file of the circuit, given its path in the staged config.
+    """A function opening a file of the circuit, given its path in the staged config.
 
-    The file is read from the local asset store when the client has one with the file in it, and
-    otherwise remotely: reads then fetch only the bytes they need, with HTTP range requests, so an
-    index can be read out of an edges file of many GB.
+    From the local asset store if it has the file, otherwise with range requests.
     """
     sizes = db_client.list_directory(
         entity_id=entity_id, entity_type=Circuit, asset_id=asset.id

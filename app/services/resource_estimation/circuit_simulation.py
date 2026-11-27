@@ -9,49 +9,24 @@ from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
 from obi_one.scientific.library.circuit_synapses import SUBSET_FACTOR
 
-# This was chosen based off the simulations run and recorded here:
-# https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a
-# The lowest `Mem(GB) / cell` was ~ 0.025, so a bit of margin was chosen
-# to allow for the variations in connectivity.
-# Tripled (0.03 -> 0.09) for the CA3 projections, and kept for the simulations whose synapses were
-# not counted: those generated before the counts existed.
+# For the simulations whose synapses were not counted.
 MEM_GB_PER_CELL = 0.09
 
-# Peak memory of a neurodamus simulation, fitted on 76 runs in the simulation image: neurodamus
-# 4.2.11 and 4.3.0, NEURON and CoreNEURON, rCA1 and SSCX cells, 1 to 16 ranks, with and without
-# replay, reports and LFP (openbraininstitute/prod-circuit-simulation#265).
-#
-# Held by every rank, so paid on every node whatever the number of nodes:
+# Memory model: see docs/circuit-simulation-resources.md.
 GB_PER_RANK = 34.9 / 1024
-# Every rank reads all the replay spike files while it sets the replay up: 41.4 bytes per spike at
-# the exact peak of a rank, with 16 ranks.
 GB_PER_REPLAY_SPIKE_PER_RANK = 41.4 / 2**30
 GB_PER_RANK_WITH_LFP = 6.5 / 1024
-# Split over the nodes:
 GB_PER_CELL = 5.55 / 1024
 GB_PER_SYNAPSE = 3.07 / 2**20
-# The spike train and NetCon of a replayed connection. Counted per synapse: a connection has one
-# synapse or more (1.1 in the CA3 projection), so this errs on the safe side.
 GB_PER_REPLAYED_SYNAPSE = 2.05 / 2**20
-# The LFP weights of the simulated cells, as neurodamus copies them for CoreNEURON.
 LFP_WEIGHTS_FACTOR = 1.04
-# The largest measured peak was 1.09 times the fit, and the CA1 job 01a1cb34 ran out of memory on
-# one node at 1.06 times it.
 MARGIN = 1.15
-# The share of a node's memory left to the simulation, after the system and MPI.
 USABLE_FRACTION = 0.9
-# The SSCX rule, which production ran with, stays a floor: the cells of other circuits were not
-# measured, and some may cost more than those of rCA1 and SSCX.
 MIN_GB_PER_CELL = 0.03
 
 
 def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
-    """The LFP weights of the simulated cells, from the weight matrices of the recording arrays.
-
-    A weight matrix covers every cell of the circuit, and neurodamus reads the rows of the
-    simulated ones: it counts for their share of the circuit's cells, times ``SUBSET_FACTOR``, up
-    to all of it. Generation refuses arrays of another circuit than the simulated one.
-    """
+    """The LFP weights of the simulated cells, estimated from the weight matrices."""
     if not config.recording_arrays:
         return 0.0
     circuit = db_client.get_entity(entity_id=config.entity_id, entity_type=models.Circuit)
@@ -74,9 +49,9 @@ def nodes_per_cell(gb_per_cell: float, cells: int, instance: ClusterInstanceInfo
 def simulation_nodes(
     config: models.Simulation, instance: ClusterInstanceInfo, db_client: Client
 ) -> int:
-    """The nodes a simulation needs, from its cells, synapses, replay and LFP if counted."""
+    """The nodes a simulation needs."""
     cells = config.number_neurons
-    # 0 is what entitycore gives the simulations generated before the synapses were counted.
+    # 0: not counted (generated before the counts existed).
     synapses = getattr(config, "number_synapses", 0)
     if not synapses:
         return nodes_per_cell(MEM_GB_PER_CELL, cells, instance)

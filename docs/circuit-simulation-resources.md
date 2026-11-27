@@ -5,52 +5,89 @@ tags:
 
 # Circuit Simulation Resources
 
-The nodes allocated to a neurodamus circuit simulation come from the memory it needs, and that memory comes mostly from the synapses onto the simulated cells, not from the cells. An SSCX cell has about 2,400 synapses, and an rCA1 cell about 22,000, 92% of them from the CA3 projection. A rule per cell that fits one does not fit the other (openbraininstitute/prod-circuit-simulation#265).
+The nodes allocated to a neurodamus circuit simulation come from the memory it needs, and that memory comes mostly from the synapses onto the simulated cells, from their replay and from the replay spike files, not from the cells. An SSCX cell has about 2,400 synapses, and an rCA1 cell about 22,000, 92% of them from the CA3 projection. A rule per cell that fits one does not fit the other (openbraininstitute/prod-circuit-simulation#265). The measurements behind the constants below are in [Circuit Simulation Memory Measurements](circuit-simulation-memory-measurements.md).
 
-## Counting the synapses at generation
+## Counting at generation
 
-Generation records three counts on the `Simulation` next to `number_neurons`:
+Generation (`GenerateSimulationTask`) records three counts on the `Simulation` next to `number_neurons`, each only if the installed entitysdk's `Simulation` has the field:
 
-- `number_synapses`: the synapses of the chemical edge populations onto the biophysical cells of the node set, as neurodamus creates them.
-- `number_replayed_synapses`: those whose source spikes in a spike stimulus. For each source population, its synapses times the share of its nodes that spike, times 2.5 for source sets that project more than the mean onto the simulated cells, up to all of them. The spike files are those generation writes, read in chunks.
-- `number_replay_spikes`: the spikes of all the spike files.
+- `number_synapses`: the synapses of the chemical edge populations onto the biophysical cells of the node set, as neurodamus creates them (`obi_one/scientific/library/circuit_synapses.py`).
+- `number_replayed_synapses`: those whose source spikes in a spike stimulus. For each source population, its synapses times the share of its nodes that spike, times `SUBSET_FACTOR`, up to all of them (`obi_one/scientific/library/replay_inputs.py`).
+- `number_replay_spikes`: the spikes of all the spike files generation wrote.
 
-Each count is recorded only if the installed entitysdk's `Simulation` has the field.
+Any error while counting records the neuron count only.
 
-Generation runs in the API service with the nodes of the circuit staged and not its edges, which can be many GB. The synapses come from the `indices/target_to_source` index of each edges file: `node_id_to_ranges` gives each cell its ranges of `range_to_edge_id`, which give its edges. The index is read with `Client.open_file`, from the local asset store when it has the file and otherwise with HTTP range reads, 256 KB at a time. The synapses per cell of a circuit are kept in the memory of the service (4 bytes per cell, at most 16 circuits), so only the first simulation of a circuit reads them.
+Generation runs in the API service with the nodes of the circuit staged and not its edges, which can be many GB. The synapses come from the `indices/target_to_source` index of each edges file: `node_id_to_ranges` gives each cell its ranges of `range_to_edge_id`, which give its edges. The index is read with `Client.open_file`, from the local asset store if it has the file and otherwise with HTTP range reads of `REMOTE_BLOCK_SIZE`. The synapses per cell of a circuit are cached in the service, by the id of its `sonata_circuit` asset, so only the first simulation of a circuit reads them.
 
-The layout of an edge population is not trusted. Its synapses are counted per cell only if its index is no larger than 32 MB (a population of 1M cells) and accounts for every one of its edges. Otherwise it is counted in total, from the shape of `source_node_id` (HDF5 metadata), and a node set gets its share of the cells times 2.5, capped at the total. The 2.5 covers the node sets that hold more synapses per cell than the mean: the cells of one layer hold up to 2.2 times the mean in the SSCX circuits. Rows of an index beyond the population are ignored. An edges file that cannot be read, or any other error, records the neuron count only.
+The layout of an edges file is not trusted. An edge population is counted per cell only if its index is at most `MAX_INDEX_BYTES` and accounts for every one of its edges. Otherwise it is counted in total from the shape of `source_node_id` (HDF5 metadata), and a node set gets its share of the cells times `SUBSET_FACTOR`, up to the total. Rows of an index beyond the population are ignored. What this catches in the circuits of staging and production (2,926 on 2026-11-26):
 
-The edge files of all the circuits of staging and production (2,926 on 2026-11-26) are sorted by target and indexed. What the rules above catch:
-
-- The `target_to_source` index of some synaptome circuits leaves out the last cell, and the edges onto it (Multi-synaptome). That population is counted in total.
-- The index of others has more rows than the population, all empty (Afferent-synaptome). The extra rows are ignored.
-- The indices of nbS1 (4.2M cells) are 68 MB per edge population. Its populations are counted in total.
+- The `target_to_source` index of the Multi-synaptome circuits leaves out the last cell and the edges onto it. That population is counted in total.
+- The index of the Afferent-synaptome circuits has more rows than the population, all empty. The extra rows are ignored.
+- nbS1 and nbS1-midrange (4.2M cells) have 68 MB of index per edge population, counted in total.
 
 ## Memory and nodes
 
-`app/services/resource_estimation/circuit_simulation.py` gives a simulation the nodes that hold its peak memory. The model was fitted on 76 runs in the simulation image (neurodamus 4.2.11 and 4.3.0, NEURON and CoreNEURON, rCA1 and SSCX cells, 1 to 16 ranks, with and without replay, reports and LFP), and the measurements, the fit and its checks are in [Circuit Simulation Memory Measurements](circuit-simulation-memory-measurements.md).
+`app/services/resource_estimation/circuit_simulation.py`, with `R` the ranks of a node (`ranks_per_instance`), `M` its memory (`memory_per_instance_gb`), and the counts of the `Simulation`:
 
-Held by every MPI rank, so paid on every node whatever their number (launch-system runs one rank per core, `ranks_per_instance`):
+```
+per_node = MARGIN * R * (GB_PER_RANK + GB_PER_REPLAY_SPIKE_PER_RANK * spikes + GB_PER_RANK_WITH_LFP if LFP)
+split    = MARGIN * (GB_PER_CELL * cells + GB_PER_SYNAPSE * synapses
+                     + GB_PER_REPLAYED_SYNAPSE * replayed + LFP_WEIGHTS_FACTOR * LFP weights)
+nodes    = max(ceil(split / (USABLE_FRACTION * M - per_node)), ceil(MIN_GB_PER_CELL * cells / M))
+```
 
-- 34.9 MB per rank.
-- 41.4 bytes per replay spike per rank: every rank reads all the spike files while it sets up the replay.
-- 6.5 MB per rank with LFP.
+`per_node` is paid on every node whatever their number, since every rank holds it. The LFP weights are those of the simulated cells: the weight matrix of each recording array covers its whole circuit (generation refuses arrays of another circuit), so it counts for the simulated share of the circuit's cells, times `SUBSET_FACTOR`, up to all of it.
 
-Split over the nodes:
+The estimate is refused, with an error that says why, if `per_node` is more than the usable memory of a node (spike inputs every rank must hold, whatever the number of nodes), or if the nodes are more than `max_instances`. A simulation without a synapse count (`number_synapses` 0, as for those generated before it existed) gets `MEM_GB_PER_CELL` per cell.
 
-- 5.55 MB per cell.
-- 3.07 KB per synapse. neurodamus creates every synapse, replayed or not.
-- 2.05 KB per replayed synapse, for the spike train and NetCon of its connection.
-- 1.04 times the LFP weights of the simulated cells. The weight matrix of a recording array covers its whole circuit, so it counts for the simulated share of the circuit's cells, times 2.5, up to all of it.
+## Constants
 
-Both are times 1.15: the largest measured peak was 1.09 times the fit, and the CA1 job `01a1cb34` ran out of memory on one node at about 1.06 times it (about 4 GB on each of 192 ranks, against 722 GB from the fit). A node gives the simulation 90% of its memory. The nodes are the split memory over what a node has left after its own share, and at least 0.03 GB per cell, the rule SSCX simulations have run with.
+### Memory model (`app/services/resource_estimation/circuit_simulation.py`)
+
+The terms were fitted with non-negative least squares on relative errors over 76 runs in the simulation image: neurodamus 4.2.11 and 4.3.0, NEURON and CoreNEURON, rCA1 and SSCX cells, 1 to 16 ranks, with and without replay, spike files, reports and LFP. Memory is the anonymous and shared memory of the job's cgroup at its peak, what the OOM killer counts.
+
+| Constant | Value | Represents | How it was obtained |
+|---|---|---|---|
+| `GB_PER_RANK` | 34.9 MB | An MPI rank: NEURON, neurodamus, Python and MPI, before any cell. | Fit; 1 to 16 ranks on the same 48 rCA1 cells. |
+| `GB_PER_REPLAY_SPIKE_PER_RANK` | 41.4 B | A spike of the replay files, on every rank: each reads all the files whole while it sets the replay up, about 2.6 copies of the 16 bytes of a spike. | Not fitted: the exact peak (`VmHWM`) of a rank, 16 ranks, 13.4M spikes against 267k. With fewer ranks a rank's share of the model hides this transient. |
+| `GB_PER_RANK_WITH_LFP` | 6.5 MB | What a rank adds with an LFP report, whatever the electrodes. | Fit; LFP with 16 to 1,024 electrodes on 48 and 128 rCA1 and 400 SSCX cells, neurodamus 4.3.0. |
+| `GB_PER_CELL` | 5.55 MB | A cell without its synapses: sections, mechanisms, its share of the model. | Fit; separated from the synapses by SSCX (2.4k synapses per cell) against rCA1 (19k). |
+| `GB_PER_SYNAPSE` | 3.07 KB | A synapse, loaded and instantiated. neurodamus 4.2.11 and 4.3.0 create every synapse, replayed or not. | Fit; 288k to 4.9M synapses. |
+| `GB_PER_REPLAYED_SYNAPSE` | 2.05 KB | The spike train (`VecStim`) and `NetCon` of a replayed connection, counted per replayed synapse: a connection has one synapse or more (1.1 in the CA3 projection), so this errs on the safe side. | Fit; 0 to 100% of the CA3 (and VPM, POm) sources replayed. |
+| `LFP_WEIGHTS_FACTOR` | 1.04 | The LFP weights of the simulated cells (segments × electrodes × 8 bytes), as neurodamus copies them for CoreNEURON. | Fit; summed and per-cell LFP cost the same. |
+| `MARGIN` | 1.15 | Headroom over the fit. | The largest measured peak was 1.09 times the fit, runs repeated in different sessions differ by 2 to 4%, and the CA1 job `01a1cb34` ran out of memory on one node at about 1.06 times the fit (about 4 GB on each of 192 ranks, against 722 GB). |
+| `USABLE_FRACTION` | 0.9 | The share of a node's memory left to the simulation, after the system, the 750 MB Slurm reserves on cell_a (`MemSpecLimit`) and MPI. | Chosen, not measured. |
+| `MIN_GB_PER_CELL` | 0.03 GB | A floor: the rule SSCX simulations ran with. | The lowest memory per cell of production runs was about 0.025 GB ([sheet](https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a)), with some margin. The image measured SSCX at 0.013 to 0.016 GB per cell, a gap not explained, and circuits other than rCA1 and SSCX were not measured. |
+| `MEM_GB_PER_CELL` | 0.09 GB | The rule for simulations without a synapse count. | The 0.03 rule tripled for the CA3 projections of rCA1. |
+
+### Counting (`obi_one/scientific/library/`)
+
+| Constant | Value | Represents | How it was obtained |
+|---|---|---|---|
+| `MAX_INDEX_BYTES` (`circuit_synapses.py`) | 32 MB | The most index read per edge population, its node and range datasets, 16 bytes a row: a population of 1M cells sorted by target. Above it the population is counted in total. | Chosen so the service reads at most a few tens of MB. The largest indices read exactly are those of rCA1 (456k cells, 14.6 MB per population). |
+| `SUBSET_FACTOR` (`circuit_synapses.py`) | 2.5 | How many times the mean share a node set, or a set of replayed sources, may hold of what is counted in total. | The uniform share against the exact counts of 371 populations: the cells of one layer or m-type (contiguous 10% blocks of node ids) hold up to 2.2 times the mean in SSCX, random 1% samples up to 2 times. |
+| `MAX_CACHED_CIRCUITS` (`circuit_synapses.py`) | 16 | The circuits whose synapses per cell the service keeps, dropping the least recently used. | At most 4.6 MB per circuit measured (nbS1 long slice, 404k cells); populations counted in total keep nothing. |
+| `REMOTE_BLOCK_SIZE` (`circuit_staging.py`) | 256 KB | Bytes per range request of a remote file. | An index is about 100 kB and a request takes the same time whatever its size: 4.5 to 5.4 s for the rCA1 slice against 6.3 to 8.6 s with 4 MB blocks; smaller gave nothing more. |
+| `CHUNK` (`replay_inputs.py`) | 1M | Node ids read at once from a spike file, 8 bytes each. | Bounds the memory of the count: 13.4M spikes take 0.09 s and 23 MB. |
+
+### Instances (`app/mappings.py`, `CLUSTER_INSTANCES_INFO`)
+
+`ranks_per_instance` is the cores of a node: launch-system starts one rank per core (`nproc --all` × nodes). `max_instances` is the most nodes of the type a job can get; `None` if not known. A request for more would wait in the queue forever.
+
+| Cell | Instance | Machine | `memory_per_instance_gb` | `ranks_per_instance` | `max_instances` | Source |
+|---|---|---|---|---|---|---|
+| cell_a | small | `t3a.xlarge`, 4 vCPU, 16 GiB | 16 | 4 (hardware threads) | 12 | aws-terraform-deployment `launch_system/pcs.tf` |
+| cell_a | large | `hpc7a.96xlarge`, 192 cores, 768 GiB | 768 | 192 | 20 | `pcs_large_nodes_max_instance_count` in aws-terraform-deployment `main.tf`; no fallback instance type |
+| cell_b | small | `Standard_D4s_v5`, 4 vCPU, 16 GiB | 8 | 4 | `None` | azure-terraform-deployment `batch/batch.tf` |
+| cell_b | large | `Standard_HB176rs_v4`, 176 cores | 788 | 176 | `None` | azure-terraform-deployment `batch/batch.tf` |
+
+The Azure pools autoscale with the active tasks and allocate their VMs in the subscription (`UserSubscription`), so their nodes are limited by its vCPU quota, which is not in the repository. launch-system sends cell_b jobs to the pools `largenode` and `timestamped-neurodamus`, which are not defined there either.
+
+## What it gives
 
 - The CA1 job (9,587 cells, 219.1M synapses, 5.4% of the CA3 sources replayed) gets 2 nodes of cell_a: it ran out of memory on one node and ran on two.
 - The same with every CA3 source spiking at 10 Hz for 5 s (13.4M spikes) gets 3: the spikes take about 100 GB of every node before the margin, 114 GB with it.
-- Spike inputs that no node can hold make the estimate fail with an error that says so, since more nodes would not help.
-- A simulation that needs more nodes than an instance type offers (`max_instances`: 20 large and 12 small nodes on cell_a, from `launch_system/pcs.tf` in aws-terraform-deployment) fails the same way, instead of waiting in the queue. On cell_a that is the whole rCA1 circuit (456k cells, 54 nodes); its node sets fit up to about 170k cells without replay, 110k with every CA3 source replayed.
-- SSCX circuits get the 0.03 GB per cell floor, as before.
-- A simulation without a synapse count (`number_synapses` absent or 0, as for those generated before it existed) keeps 0.09 GB per cell.
+- SSCX circuits get the `MIN_GB_PER_CELL` floor, as before. Of 122 circuits of staging and production simulated whole, 112 get the nodes of the 0.03 rule and the 10 rCA1 circuits whose synapses need them more; none get fewer.
+- The whole rCA1 circuit (456k cells) needs 54 nodes, more than the 20 of cell_a, and is refused; its node sets fit up to about 170k cells without replay, 110k with every CA3 source replayed.
 
-What the model does not cover: recordings (their buffers are a few MB per rank and were within the noise of the runs), runs much longer than 3 s (a 3 s run used 4% more than a 100 ms one), and circuits whose cells were not measured, which the floor covers.
+What the model does not cover: recordings (their buffers are a few MB per rank, within the noise of the runs), runs much longer than 3 s (a 3 s run used 4% more than a 100 ms one), more than 16 ranks (the per-rank terms are extrapolated to 176 and 192), and circuits whose cells were not measured, which the floor covers.
