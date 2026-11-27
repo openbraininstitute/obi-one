@@ -1,4 +1,4 @@
-"""The sources and spikes of the spike replay inputs of a simulation.
+"""Count the sources and spikes of a simulation's replay spike files.
 
 See docs/circuit-simulation-resources.md.
 """
@@ -17,11 +17,11 @@ CHUNK = 1_000_000
 
 @dataclass
 class ReplayCounts:
-    """What the spike files of a simulation replay.
+    """Sources and spikes found in a simulation's replay spike files.
 
     Attributes:
-        sources: The distinct nodes that spike, by population.
-        spikes: The spikes of all the files.
+        sources: Number of distinct spiking nodes, by population.
+        spikes: Total number of spikes in all the files.
     """
 
     sources: dict[str, int] = field(default_factory=dict)
@@ -29,11 +29,11 @@ class ReplayCounts:
 
 
 def count_replay(spike_files: Iterable[Path], population_sizes: dict[str, int]) -> ReplayCounts:
-    """The spiking nodes and the spikes of SONATA spike files, read in chunks.
+    """Count the spiking nodes and the spikes in SONATA spike files, reading them in chunks.
 
     Args:
-        spike_files: The spike files of the replay inputs.
-        population_sizes: The nodes of each population of the circuit.
+        spike_files: Spike files of the replay inputs.
+        population_sizes: Number of nodes in each population of the circuit.
     """
     masks: dict[str, np.ndarray] = {}
     counts = ReplayCounts()
@@ -58,7 +58,7 @@ def replayed_synapses(
     replayed_sources: dict[str, int],
     population_sizes: dict[str, int],
 ) -> int:
-    """The synapses whose source spikes, estimated from each source's share of spiking nodes."""
+    """Estimate the synapses with a spiking source, from each source's share of spiking nodes."""
     total = 0.0
     for source, synapses in synapses_by_source.items():
         if size := population_sizes.get(source):

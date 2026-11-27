@@ -1,4 +1,4 @@
-"""Synapses onto the cells of a circuit, from the indices of its edge files.
+"""Count the synapses onto each cell of a circuit from the indices of its edge files.
 
 See docs/circuit-simulation-resources.md.
 """
@@ -29,12 +29,12 @@ SYNAPSES_FILE_NAME = "synapses_per_cell.npz"
 
 
 class CellSynapses(BaseModel):
-    """The synapses onto the cells of a population, by source population.
+    """Synapse counts onto the cells of one population, by source population.
 
     Attributes:
-        size: The cells of the population.
-        exact: The synapses of each cell, from the edge populations whose index was read.
-        estimated: The synapses of the edge populations counted in total only.
+        size: Number of cells in the population.
+        exact: Synapses per cell, from the edge populations whose index was read.
+        estimated: Total synapses of the edge populations that could only be counted in total.
     """
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
@@ -44,7 +44,7 @@ class CellSynapses(BaseModel):
     estimated: dict[str, int] = {}
 
     def count_by_source(self, ids: list[int] | np.ndarray) -> dict[str, float]:
-        """The synapses onto the cells ``ids`` from each source."""
+        """Return the number of synapses onto the cells ``ids`` from each source population."""
         ids = np.unique(np.asarray(ids, dtype=np.int64))
         ids = ids[(ids >= 0) & (ids < self.size)]
         counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
@@ -54,12 +54,12 @@ class CellSynapses(BaseModel):
         return counts
 
     def count(self, ids: list[int] | np.ndarray) -> float:
-        """The synapses onto the cells ``ids``."""
+        """Return the number of synapses onto the cells ``ids``."""
         return sum(self.count_by_source(ids).values())
 
 
 def _exact_synapses_per_cell(group: h5py.Group, size: int, n_edges: int) -> np.ndarray | None:
-    """The edges onto each node from the ``target_to_source`` index, or None if not usable."""
+    """Return the edges onto each node from the ``target_to_source`` index, or None if unusable."""
     if "indices/target_to_source" not in group:
         return None
     index = group["indices/target_to_source"]
@@ -95,14 +95,15 @@ def read_synapses_per_cell(
     circuit_config_path: str | Path,
     open_edges_file: Callable[[str], io.IOBase] | None = None,
 ) -> dict[str, CellSynapses]:
-    """The synapses onto each cell, for each population of biophysical cells.
+    """Count the synapses onto each cell of every biophysical population.
 
     Args:
-        circuit_config_path: The circuit, whose nodes are on disk.
-        open_edges_file: Opens an edges file given its path in the config. By default, the path.
+        circuit_config_path: Config of a circuit whose node files are on disk.
+        open_edges_file: Opens an edges file given its path in the config; opens the path itself
+            by default.
 
     Returns:
-        The synapses by population of cells. An edges file that cannot be read raises.
+        The counts by population. Raises if an edges file cannot be read.
     """
     config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
     sizes = {
@@ -147,7 +148,7 @@ def read_synapses_per_cell(
 
 
 def save_synapses_per_cell(path: Path, synapses: dict[str, CellSynapses]) -> None:
-    """Write the result of ``read_synapses_per_cell`` to an ``.npz`` file."""
+    """Save the counts of ``read_synapses_per_cell`` to an ``.npz`` file."""
     arrays = {}
     for target, cells in synapses.items():
         arrays[f"size/{target}"] = np.array(cells.size)
@@ -159,7 +160,7 @@ def save_synapses_per_cell(path: Path, synapses: dict[str, CellSynapses]) -> Non
 
 
 def load_synapses_per_cell(path: Path) -> dict[str, CellSynapses]:
-    """Read a file written by ``save_synapses_per_cell``."""
+    """Load counts saved by ``save_synapses_per_cell``."""
     with np.load(path) as f:
         parts = [(tuple(key.split("/")), f[key]) for key in f.files]
     return {
@@ -176,7 +177,7 @@ def load_synapses_per_cell(path: Path) -> dict[str, CellSynapses]:
 def staged_synapses_per_cell(
     circuit_config_path: Path, read: Callable[[], dict[str, CellSynapses]]
 ) -> dict[str, CellSynapses]:
-    """The synapses per cell of a staged circuit, read with ``read`` once and kept beside it."""
+    """Return a staged circuit's counts, reading them once and saving them beside its config."""
     path = circuit_config_path.parent / SYNAPSES_FILE_NAME
     if path.exists():
         return load_synapses_per_cell(path)
@@ -188,7 +189,7 @@ def staged_synapses_per_cell(
 def count_synapses_by_source(
     synapses: dict[str, CellSynapses], node_ids: dict[str, list[int]]
 ) -> dict[str, float]:
-    """The synapses onto the given cells, by population, from each source population."""
+    """Return the number of synapses onto the given cells from each source population."""
     counts: dict[str, float] = {}
     for pop, ids in node_ids.items():
         if pop in synapses:
@@ -198,5 +199,5 @@ def count_synapses_by_source(
 
 
 def count_synapses(synapses: dict[str, CellSynapses], node_ids: dict[str, list[int]]) -> int:
-    """The synapses onto the given cells, by population, from ``read_synapses_per_cell``."""
+    """Return the number of synapses onto the given cells."""
     return round(sum(count_synapses_by_source(synapses, node_ids).values()))

@@ -40,7 +40,7 @@ class TestCountReplay:
         assert count_replay([spikes], SIZES) == ReplayCounts(sources={"VPM": 6}, spikes=7)
 
     def test_a_population_not_in_the_circuit_counts_its_spikes_only(self, tmp_path):
-        """Every rank still reads its spikes, but it has no synapse to replay."""
+        """Every rank still reads these spikes, but no synapse replays them."""
         spikes = write_spikes(tmp_path / "a.h5", {"elsewhere": [0, 1]})
 
         assert count_replay([spikes], SIZES) == ReplayCounts(sources={}, spikes=2)

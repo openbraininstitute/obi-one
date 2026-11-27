@@ -216,7 +216,7 @@ def test_spike_inputs_that_no_node_can_hold_are_refused():
 
 
 def test_cells_with_few_synapses_keep_the_sscx_rule():
-    """nbS1-HEX0: 30,190 cells with 2,650 synapses each fit one node, the floor gives two."""
+    """nbS1-HEX0 (30,190 cells, 2,650 synapses each) fits one node; the floor gives it two."""
     sscx = _simulation(number_neurons=30_190, number_synapses=30_190 * 2_650)
 
     assert _estimate_counted(sscx) == math.ceil(0.03 * 30_190 / 768) == 2
@@ -224,7 +224,7 @@ def test_cells_with_few_synapses_keep_the_sscx_rule():
 
 @pytest.mark.parametrize("synapses", [{}, {"number_synapses": 0}])
 def test_a_simulation_without_counted_synapses_keeps_the_per_cell_rule(synapses):
-    """entitycore gives 0 synapses to the simulations generated before they were counted."""
+    """entitycore gives 0 synapses to simulations generated before the counts existed."""
     simulation = _simulation(number_neurons=9_587, **synapses)
 
     assert _estimate_counted(simulation) == math.ceil(
@@ -255,7 +255,7 @@ def _lfp_client(simulation, *, weights_gb, circuit_neurons):
 
 
 def test_lfp_counts_the_weights_of_the_simulated_cells():
-    """A tenth of the circuit reads a quarter of the weights, at most: SUBSET_FACTOR is 2.5."""
+    """A tenth of the circuit counts at most a quarter of the weights (SUBSET_FACTOR is 2.5)."""
     simulation = _simulation(**FAILED_JOB)
     db_client = _lfp_client(simulation, weights_gb=400, circuit_neurons=95_870)
 

@@ -1,4 +1,4 @@
-"""The synapse and replay counts recorded on a Simulation.
+"""Compute the synapse and replay counts recorded on a Simulation.
 
 See docs/circuit-simulation-resources.md.
 """
@@ -24,7 +24,7 @@ from obi_one.scientific.library.replay_inputs import count_replay, replayed_syna
 
 
 def replay_spike_files(sonata_config: dict, directory: Path) -> list[Path]:
-    """The spike files of the replay inputs of a SONATA simulation config."""
+    """Return the spike files of the replay inputs in a SONATA simulation config."""
     return [
         Path(directory, config["spike_file"])
         for config in sonata_config.get("inputs", {}).values()
@@ -39,9 +39,9 @@ def simulation_synapse_counts(
     node_ids: dict[str, list[int]],
     spike_files: list[Path],
 ) -> dict[str, int]:
-    """The synapses onto the simulated cells, those from replayed sources, and the spikes.
+    """Count the synapses onto the simulated cells, those with a replayed source, and the spikes.
 
-    Only the counts entitysdk's Simulation has are returned.
+    Returns only the counts that entitysdk's Simulation has fields for.
     """
     if "number_synapses" not in Simulation.model_fields:
         return {}

@@ -17,7 +17,7 @@ BYTE = 2**-30
 
 
 class MemoryModel(BaseModel):
-    """Peak memory of a neurodamus simulation, in GB. See docs/circuit-simulation-resources.md."""
+    """Peak memory of a neurodamus simulation, in GiB. See docs/circuit-simulation-resources.md."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -35,14 +35,14 @@ class MemoryModel(BaseModel):
     uncounted_gb_per_cell: float = 0.09
 
     def per_node_gb(self, ranks: int, spikes: int, *, lfp: bool) -> float:
-        """The memory every node holds, whatever the number of nodes."""
+        """Return the memory each node needs, however many nodes run the simulation."""
         per_rank = self.gb_per_rank + self.gb_per_replay_spike_per_rank * spikes
         if lfp:
             per_rank += self.gb_per_rank_with_lfp
         return self.peak_memory_safety_factor * ranks * per_rank
 
     def split_gb(self, cells: int, synapses: int, replayed: int, lfp_weights_gb: float) -> float:
-        """The memory split over the nodes."""
+        """Return the memory divided among the nodes."""
         return self.peak_memory_safety_factor * (
             self.gb_per_cell * cells
             + self.gb_per_synapse * synapses
@@ -55,7 +55,7 @@ MEMORY_MODEL = MemoryModel()
 
 
 def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
-    """The LFP weights of the simulated cells, estimated from the weight matrices."""
+    """Estimate the size of the simulated cells' LFP weights, in GiB."""
     if not config.recording_arrays:
         return 0.0
     circuit = db_client.get_entity(entity_id=config.entity_id, entity_type=models.Circuit)
@@ -82,7 +82,7 @@ def simulation_nodes(
     db_client: Client,
     model: MemoryModel = MEMORY_MODEL,
 ) -> int:
-    """The nodes a simulation needs."""
+    """Return the number of nodes the simulation needs."""
     cells = config.number_neurons
     # 0: not counted (generated before the counts existed).
     synapses = getattr(config, "number_synapses", 0)

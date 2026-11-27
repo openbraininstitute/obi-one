@@ -1,4 +1,4 @@
-"""The synapses that generation records next to the neuron count of a simulation.
+"""Tests of the synapse counts that generation records on a Simulation.
 
 Generation stages the nodes of the circuit only. The synapses come from the indices of the edge
 files, read remotely with ``Client.open_file``.
@@ -43,7 +43,7 @@ N_SYNAPSES = 471 + 260 + 176
 
 @dataclass
 class RemoteDBClient(FakeDBClient):
-    """Serves the files of the full circuit as remote files, as entitycore and S3 would."""
+    """Serve the files of the full circuit as remote files, as entitycore and S3 would."""
 
     circuit_dir: Path | None = None
     entity: SimpleNamespace = field(default_factory=lambda: SimpleNamespace(id=uuid4()))
@@ -82,7 +82,7 @@ def full_circuit(tmp_path):
 
 @pytest.fixture
 def db_client(full_circuit, tmp_path, monkeypatch):
-    """A client for a circuit from entitycore, staged with its nodes only."""
+    """Return a client for an entitycore circuit staged with its nodes only."""
     staged = tmp_path / "staged"
     shutil.copytree(full_circuit.parent, staged)
     for edges_file in staged.rglob("edges.h5"):
@@ -107,7 +107,7 @@ VPM_SYNAPSES = 471  # onto the 10 cells
 
 
 def vpm_replay(sources):
-    """A synchronous volley from VPM nodes ``sources``, once."""
+    """Return the blocks of one synchronous volley from the VPM nodes ``sources``."""
     timestamp = SingleTimestamp(start_time=10.0)
     source = VirtualPopulationIDNeuronSet(
         population="VPM", neuron_ids=NamedTuple(name="vpm", elements=list(sources))
@@ -123,7 +123,7 @@ def vpm_replay(sources):
 
 @pytest.fixture
 def all_counts(db_client, monkeypatch):
-    """An entitysdk whose Simulation has the replay counts too."""
+    """Give entitysdk's Simulation the replay count fields as well."""
     fields = dict(Simulation.model_fields)
     for name in ("number_replayed_synapses", "number_replay_spikes"):
         fields[name] = fields["number_neurons"]
@@ -189,7 +189,7 @@ def test_only_the_edges_files_are_opened_remotely(db_client, tmp_path):
 
 
 def test_the_indices_are_read_in_small_blocks(db_client, tmp_path):
-    """An index is about 100 kB, and the time of a request does not depend on its size."""
+    """An index is about 100 kB, and a request takes the same time whatever its size."""
     generate(config(), tmp_path / "out", db_client=db_client)
 
     assert db_client.block_sizes == [256 * 1024] * 3

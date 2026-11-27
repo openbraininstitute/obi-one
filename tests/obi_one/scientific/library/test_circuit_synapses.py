@@ -41,7 +41,7 @@ def synapses(circuit):
 
 
 def synapses_onto(circuit, cells):
-    """The edges onto the cells, counted by libsonata in every edge population of the circuit."""
+    """Count the edges onto the cells with libsonata, over every edge population of the circuit."""
     config = libsonata.CircuitConfig.from_file(str(circuit))
     return sum(
         config.edge_population(name).afferent_edges(cells).flat_size
@@ -147,13 +147,13 @@ class TestReadSynapsesPerCell:
         assert exact(counted[CELLS]).sum() + estimated(counted[CELLS]) == 907
 
     def test_an_index_without_its_last_cells_is_counted_in_total(self, circuit):
-        """A writer of synaptome circuits leaves the last target out of the index."""
+        """One synaptome writer leaves the last target cell out of the index."""
         rewrite_node_ranges(circuit, operator.itemgetter(slice(-1)))
 
         assert read_synapses_per_cell(circuit)[CELLS].estimated == {"VPM": vpm_edges(circuit)}
 
     def test_rows_of_an_index_beyond_the_population_are_ignored(self, circuit, synapses):
-        """Another writer pads the index of one cell with empty rows, up to the sources."""
+        """Another writer pads the index with empty rows beyond the population."""
         rewrite_node_ranges(
             circuit, lambda ranges: np.vstack([ranges, np.repeat(ranges[-1:, 1:], 2, axis=1)])
         )
@@ -188,7 +188,7 @@ class TestReadSynapsesPerCell:
 
 
 def exact(cells):
-    """The exact synapses of each cell, summed over the source populations, or None."""
+    """Return each cell's exact synapses, summed over the source populations, or None."""
     return sum(cells.exact.values()) if cells.exact else None
 
 
@@ -210,7 +210,7 @@ def rewrite_node_ranges(circuit, change):
 
 
 class TestStagedSynapsesPerCell:
-    """The simulations of a campaign share the staged circuit, and read its edges once."""
+    """The simulations of a campaign share the staged circuit and read its edges once."""
 
     def test_a_circuit_is_read_once_and_kept_beside_its_config(self, circuit):
         reads = []
@@ -295,7 +295,7 @@ class TestCountSynapses:
 
 
 class TestEstimatedSynapses:
-    """A population counted in total gives a node set its share of the cells, times a margin."""
+    """A node set gets its share of a population counted in total, times a margin."""
 
     CELLS = CellSynapses(
         size=4,
@@ -320,7 +320,7 @@ class TestEstimatedSynapses:
 
 
 class TestCellSynapsesAreFrozen:
-    """They are cached and shared by every simulation of a circuit."""
+    """Their counts are shared by every simulation of a campaign."""
 
     def test_the_fields_cannot_be_replaced(self, synapses):
         with pytest.raises(ValidationError, match="frozen"):

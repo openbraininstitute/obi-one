@@ -175,9 +175,9 @@ def resolve_circuit(
 def circuit_file_opener(
     db_client: Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
 ) -> Callable[[str], io.BufferedReader]:
-    """A function opening a file of the circuit, given its path in the staged config.
+    """Return a function that opens a circuit file, given its path in the staged config.
 
-    From the local asset store if it has the file, otherwise with range requests.
+    The file is read from the local asset store if it is there, otherwise with range requests.
     """
     sizes = db_client.list_directory(
         entity_id=entity_id, entity_type=models.Circuit, asset_id=asset.id
