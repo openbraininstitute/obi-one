@@ -56,17 +56,15 @@ class TestCountReplay:
 
 class TestReplayedSynapses:
     def test_a_population_replays_its_share_of_synapses_times_the_margin(self):
-        replay = ReplayCounts(sources={"VPM": 1}, spikes=1)
-
-        replayed = replayed_synapses({"VPM": 1000.0, "cells": 500.0}, replay, SIZES)
+        replayed = replayed_synapses({"VPM": 1000.0, "cells": 500.0}, {"VPM": 1}, SIZES)
 
         assert replayed == round(1000 * module.SUBSET_FACTOR / 10)
 
     def test_the_share_is_capped_at_all_the_synapses_of_the_population(self):
-        replay = ReplayCounts(sources={"VPM": 5, "POm": 4}, spikes=9)
+        sources = {"VPM": 5, "POm": 4}
 
-        assert replayed_synapses({"VPM": 1000.0, "POm": 300.0}, replay, SIZES) == 1300
+        assert replayed_synapses({"VPM": 1000.0, "POm": 300.0}, sources, SIZES) == 1300
 
     @pytest.mark.parametrize("sources", [{}, {"VPM": 0}])
     def test_no_spiking_source_replays_nothing(self, sources):
-        assert replayed_synapses({"VPM": 1000.0}, ReplayCounts(sources=sources), SIZES) == 0
+        assert replayed_synapses({"VPM": 1000.0}, sources, SIZES) == 0

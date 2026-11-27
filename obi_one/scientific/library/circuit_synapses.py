@@ -107,17 +107,18 @@ def _exact_synapses_per_cell(group: h5py.Group, size: int, n_edges: int) -> np.n
     node_ranges_ds, ranges_ds = index["node_id_to_ranges"], index["range_to_edge_id"]
     if (min(node_ranges_ds.shape[0], size) + ranges_ds.shape[0]) * 16 > MAX_INDEX_BYTES:
         return None
-    node_ranges = node_ranges_ds[:size].astype(np.int64).reshape(-1, 2)
+    first, last = node_ranges_ds[:size].astype(np.int64).reshape(-1, 2).T
     ranges = ranges_ds[:].astype(np.int64).reshape(-1, 2)
     edges_per_range = np.diff(ranges, axis=1).ravel()
     if (
         np.any(edges_per_range < 0)
-        or np.any(node_ranges[:, 1] < node_ranges[:, 0])
-        or (node_ranges.size and (node_ranges.min() < 0 or node_ranges.max() > len(ranges)))
+        or np.any(last < first)
+        or first.min(initial=0) < 0
+        or last.max(initial=0) > len(ranges)
     ):
         return None
     cumulative = np.concatenate([[0], np.cumsum(edges_per_range)])
-    counts = cumulative[node_ranges[:, 1]] - cumulative[node_ranges[:, 0]]
+    counts = cumulative[last] - cumulative[first]
     counts = np.pad(counts, (0, size - len(counts)))
     if counts.sum() != n_edges:
         return None
@@ -149,17 +150,18 @@ def read_synapses_per_cell(
         or read raises, since a count without it would be too low.
     """
     config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    sizes = {}
-    for name in config.node_populations:
-        if config.node_population_properties(name).type in TYPES_OF_BIOPHYS_NODES:
-            sizes[name] = config.node_population(name).size
+    synapses = {
+        name: CellSynapses(size)
+        for name in config.node_populations
+        if config.node_population_properties(name).type in TYPES_OF_BIOPHYS_NODES
+        and (size := config.node_population(name).size)
+    }
     populations_by_file: dict[str, list[str]] = {}
     for name in config.edge_populations:
         properties = config.edge_population_properties(name)
         if properties.type in TYPES_OF_CHEMICAL_SYNS:
             populations_by_file.setdefault(properties.elements_path, []).append(name)
 
-    synapses = {name: CellSynapses(size) for name, size in sizes.items()}
     for path, names in populations_by_file.items():
         opened = open_edges_file(path) if open_edges_file else nullcontext(path)
         with opened as edges_file, h5py.File(edges_file, "r") as f:
@@ -181,7 +183,7 @@ def read_synapses_per_cell(
                     cells.add_estimated(source, n_edges)
                 else:
                     cells.add_exact(source, counts)
-    return {name: cells for name, cells in synapses.items() if cells.size}
+    return synapses
 
 
 def cached_synapses_per_cell(
@@ -190,6 +192,8 @@ def cached_synapses_per_cell(
     """The synapses per cell of a circuit, read with ``read`` the first time only."""
     with SYNAPSES_PER_CELL_CACHE_LOCK:
         if circuit_key in SYNAPSES_PER_CELL_CACHE:
+            # The least recently used circuit is dropped first.
+            SYNAPSES_PER_CELL_CACHE[circuit_key] = SYNAPSES_PER_CELL_CACHE.pop(circuit_key)
             return SYNAPSES_PER_CELL_CACHE[circuit_key]
     synapses = read()
     with SYNAPSES_PER_CELL_CACHE_LOCK:

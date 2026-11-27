@@ -558,9 +558,10 @@ class GenerateSimulationTask(Task):
     def _synapse_counts(self, db_client: Client, node_ids: dict[str, list[int]]) -> dict[str, int]:
         """The synapses onto the simulated cells, those from replayed sources, the replayed spikes.
 
-        They size the resources of the simulation. The synapses come from the indices of the edge
-        files, which generation does not stage: they are read remotely, once per circuit for all
-        the simulations that follow. Empty if they cannot be counted.
+        The synapses come from the indices of the edge files, which generation does not stage:
+        they are read remotely, once per circuit for all the simulations that follow. Only the
+        counts the installed entitysdk's Simulation has are returned, since entitycore would
+        refuse the others.
         """
         circuit = getattr(self.config.initialize, "circuit", None)
         staged = self._circuit
@@ -568,33 +569,9 @@ class GenerateSimulationTask(Task):
             not isinstance(self.config, CircuitSimulationSingleConfig)
             or not isinstance(circuit, CircuitFromID)
             or not isinstance(staged, Circuit)
-            # Until entitysdk has the field, entitycore would refuse it.
             or "number_synapses" not in Simulation.model_fields
         ):
             return {}
-        try:
-            counts = self._read_synapse_counts(db_client, circuit, staged, node_ids)
-        except Exception:  # ruff: ignore[blind-except]
-            # The counts only size the resources of the simulation, and the estimator falls back to
-            # the neurons without them: whatever the circuit holds, they must not fail generation.
-            L.warning("The synapses of circuit %s are not counted", circuit, exc_info=True)
-            return {}
-        return {name: n for name, n in counts.items() if name in Simulation.model_fields}
-
-    def _replay_spike_files(self) -> list[Path]:
-        return [
-            Path(self.config.coordinate_output_root, config["spike_file"])
-            for config in self._sonata_config.get("inputs", {}).values()
-            if config.get("module") == SONATA.SPIKE_STIMULUS_MODULE and config.get("spike_file")
-        ]
-
-    def _read_synapse_counts(
-        self,
-        db_client: Client,
-        circuit: CircuitFromID,
-        staged: Circuit,
-        node_ids: dict[str, list[int]],
-    ) -> dict[str, int]:
         entity = circuit.entity(db_client)
         asset = db_client.select_assets(entity, SONATA_CIRCUIT_ASSET_SELECTION).one()
 
@@ -609,16 +586,28 @@ class GenerateSimulationTask(Task):
                 )
             return read_synapses_per_cell(staged.path, open_edges_file)
 
-        synapses = cached_synapses_per_cell(str(asset.id), read)
-        by_source = count_synapses_by_source(synapses, node_ids)
+        by_source = count_synapses_by_source(
+            cached_synapses_per_cell(str(asset.id), read), node_ids
+        )
+        counts = {"number_synapses": round(sum(by_source.values()))}
+        counts["number_replayed_synapses"], counts["number_replay_spikes"] = self._replay_counts(
+            staged, by_source
+        )
+        return {name: n for name, n in counts.items() if name in Simulation.model_fields}
+
+    def _replay_counts(self, staged: Circuit, by_source: dict[str, float]) -> tuple[int, int]:
+        """The synapses from replayed sources and the spikes of the spike files written here."""
+        spike_files = [
+            Path(self.config.coordinate_output_root, config["spike_file"])
+            for config in self._sonata_config.get("inputs", {}).values()
+            if config.get("module") == SONATA.SPIKE_STIMULUS_MODULE and config.get("spike_file")
+        ]
+        if not spike_files:
+            return 0, 0
         config = libsonata.CircuitConfig.from_file(staged.path)
         sizes = {pop: config.node_population(pop).size for pop in config.node_populations}
-        replay = count_replay(self._replay_spike_files(), sizes)
-        return {
-            "number_synapses": round(sum(by_source.values())),
-            "number_replayed_synapses": replayed_synapses(by_source, replay, sizes),
-            "number_replay_spikes": replay.spikes,
-        }
+        replay = count_replay(spike_files, sizes)
+        return replayed_synapses(by_source, replay.sources, sizes), replay.spikes
 
     def _update_simulation_number_neurons(self, db_client: Client | None) -> None:
         if db_client:
@@ -632,7 +621,14 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
                 neuron_set_ids = neuron_set.block.get_neuron_ids(self._circuit)  # ty:ignore[unresolved-attribute]
                 number_neurons = sum(len(v) for v in neuron_set_ids.values())
-                counts = self._synapse_counts(db_client, neuron_set_ids)
+                try:
+                    counts = self._synapse_counts(db_client, neuron_set_ids)
+                except Exception:  # ruff: ignore[blind-except]
+                    # The counts only size the resources of the simulation, which the estimator
+                    # does from the neurons without them: whatever the circuit holds, they must not
+                    # fail generation.
+                    circuit = getattr(self.config.initialize, "circuit", None)
+                    L.warning("The synapses of circuit %s are not counted", circuit, exc_info=True)
             else:
                 # Essentially the memodel case when no neuron_sets
                 number_neurons = 1

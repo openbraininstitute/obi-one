@@ -149,7 +149,7 @@ LARGE = ClusterInstanceInfo(
 
 
 def _simulation(**fields):
-    return SimpleNamespace(recording_arrays=[], **fields)
+    return SimpleNamespace(recording_arrays=[], entity_id=uuid4(), **fields)
 
 
 def _estimate_counted(simulation, db_client=None):
@@ -226,7 +226,7 @@ def test_a_simulation_without_counted_synapses_keeps_the_per_cell_rule(synapses)
 
 
 def _lfp_client(simulation, *, weights_gb, circuit_neurons):
-    array_id, circuit_id = uuid4(), uuid4()
+    array_id, circuit_id = uuid4(), simulation.entity_id
     simulation.recording_arrays = [SimpleNamespace(id=array_id)]
     weights = SimpleNamespace(
         label=AssetLabel.electrode_array_weight_matrix, size=int(weights_gb * 2**30)

@@ -48,22 +48,27 @@ MIN_GB_PER_CELL = 0.03
 def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
     """The LFP weights of the simulated cells, from the weight matrices of the recording arrays.
 
-    A weight matrix holds every cell of its circuit and neurodamus reads the rows of the simulated
-    ones: the matrix counts for the simulated share of the circuit's cells, times
-    ``SUBSET_FACTOR`` for node sets of larger cells than the mean, up to all of it.
+    A weight matrix covers every cell of the circuit, and neurodamus reads the rows of the
+    simulated ones: it counts for their share of the circuit's cells, times ``SUBSET_FACTOR``, up
+    to all of it. Generation refuses arrays of another circuit than the simulated one.
     """
-    total = 0.0
+    if not config.recording_arrays:
+        return 0.0
+    circuit = db_client.get_entity(entity_id=config.entity_id, entity_type=models.Circuit)
+    share = min(1.0, SUBSET_FACTOR * config.number_neurons / max(circuit.number_neurons, 1))
+    weights = 0
     for linked in config.recording_arrays:
         array = db_client.get_entity(
             entity_id=linked.id, entity_type=models.SimulatableExtracellularRecordingArray
         )
-        size = sum(
+        weights += sum(
             a.size or 0 for a in array.assets if a.label == AssetLabel.electrode_array_weight_matrix
         )
-        circuit = db_client.get_entity(entity_id=array.circuit_id, entity_type=models.Circuit)
-        share = SUBSET_FACTOR * config.number_neurons / max(circuit.number_neurons, 1)
-        total += size / 2**30 * min(1.0, share)
-    return total
+    return share * weights / 2**30
+
+
+def nodes_per_cell(gb_per_cell: float, cells: int, instance: ClusterInstanceInfo) -> int:
+    return math.ceil(gb_per_cell * cells / instance.memory_per_instance_gb)
 
 
 def simulation_nodes(
@@ -74,10 +79,9 @@ def simulation_nodes(
     # 0 is what entitycore gives the simulations generated before the synapses were counted.
     synapses = getattr(config, "number_synapses", 0)
     if not synapses:
-        return math.ceil(MEM_GB_PER_CELL * cells / instance.memory_per_instance_gb)
+        return nodes_per_cell(MEM_GB_PER_CELL, cells, instance)
     spikes = getattr(config, "number_replay_spikes", 0)
     replayed = getattr(config, "number_replayed_synapses", 0)
-    lfp_gb = lfp_weights_gb(config, db_client) if config.recording_arrays else 0.0
 
     per_rank = GB_PER_RANK + GB_PER_REPLAY_SPIKE_PER_RANK * spikes
     if config.recording_arrays:
@@ -87,7 +91,7 @@ def simulation_nodes(
         GB_PER_CELL * cells
         + GB_PER_SYNAPSE * synapses
         + GB_PER_REPLAYED_SYNAPSE * replayed
-        + LFP_WEIGHTS_FACTOR * lfp_gb
+        + LFP_WEIGHTS_FACTOR * lfp_weights_gb(config, db_client)
     )
     room = USABLE_FRACTION * instance.memory_per_instance_gb - per_node
     if room <= 0:
@@ -101,11 +105,7 @@ def simulation_nodes(
             ),
             error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
         )
-    nodes = max(
-        1,
-        math.ceil(split / room),
-        math.ceil(MIN_GB_PER_CELL * cells / instance.memory_per_instance_gb),
-    )
+    nodes = max(1, math.ceil(split / room), nodes_per_cell(MIN_GB_PER_CELL, cells, instance))
     if instance.max_instances is not None and nodes > instance.max_instances:
         raise ApiError(
             message=(

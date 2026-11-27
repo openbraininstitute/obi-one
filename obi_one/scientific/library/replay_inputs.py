@@ -61,7 +61,7 @@ def count_replay(spike_files: Iterable[Path], population_sizes: dict[str, int]) 
 
 def replayed_synapses(
     synapses_by_source: dict[str, float],
-    replay: ReplayCounts,
+    replayed_sources: dict[str, int],
     population_sizes: dict[str, int],
 ) -> int:
     """The synapses whose source spikes, estimated from the share of each population that spikes.
@@ -74,5 +74,5 @@ def replayed_synapses(
     for source, synapses in synapses_by_source.items():
         size = population_sizes.get(source)
         if size:
-            total += synapses * min(1.0, SUBSET_FACTOR * replay.sources.get(source, 0) / size)
+            total += synapses * min(1.0, SUBSET_FACTOR * replayed_sources.get(source, 0) / size)
     return round(total)
