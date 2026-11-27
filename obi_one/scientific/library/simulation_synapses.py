@@ -70,7 +70,7 @@ def simulation_synapse_counts(
         replayed, spikes = replayed_synapses(by_source, replay.sources, sizes), replay.spikes
     counts = {
         "number_synapses": round(sum(by_source.values())),
-        "number_replayed_synapses": replayed,
-        "number_replay_spikes": spikes,
+        "number_synapses_in_replay": replayed,
+        "number_spikes_in_replay": spikes,
     }
     return {name: n for name, n in counts.items() if name in Simulation.model_fields}

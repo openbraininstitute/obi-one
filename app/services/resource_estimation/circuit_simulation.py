@@ -93,8 +93,8 @@ def simulation_nodes(
     synapses = getattr(config, "number_synapses", 0)
     if not synapses:
         return nodes_per_cell(model.uncounted_gb_per_cell, cells, instance)
-    spikes = getattr(config, "number_replay_spikes", 0)
-    replayed = getattr(config, "number_replayed_synapses", 0)
+    spikes = getattr(config, "number_spikes_in_replay", 0)
+    replayed = getattr(config, "number_synapses_in_replay", 0)
 
     per_node = model.per_node_gb(
         instance.ranks_per_instance, spikes, lfp=bool(config.recording_arrays)

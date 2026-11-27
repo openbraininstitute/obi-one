@@ -141,8 +141,8 @@ def test_estimate_task_resources_no_available_instances():
 FAILED_JOB = {
     "number_neurons": 9_587,
     "number_synapses": 219_103_973,
-    "number_replayed_synapses": 10_903_152,
-    "number_replay_spikes": 14_548,
+    "number_synapses_in_replay": 10_903_152,
+    "number_spikes_in_replay": 14_548,
 }
 LARGE = ClusterInstanceInfo(
     name="large", max_neurons=10**6, memory_per_instance_gb=768, ranks_per_instance=192
@@ -184,7 +184,7 @@ def test_the_failed_job_gets_the_two_nodes_it_ran_on():
 
 
 def test_replaying_every_source_costs_more_than_replaying_a_few():
-    every_source = FAILED_JOB | {"number_replayed_synapses": 200_306_893}
+    every_source = FAILED_JOB | {"number_synapses_in_replay": 200_306_893}
 
     assert test_module.simulation_nodes(_simulation(**every_source), LARGE, Mock()) == 2
     assert (
@@ -198,15 +198,15 @@ def test_replaying_every_source_costs_more_than_replaying_a_few():
 def test_a_large_spike_file_costs_on_every_node():
     """10 Hz for 5 s on every CA3 source: 13.4M spikes that each of the 192 ranks reads."""
     poisson = FAILED_JOB | {
-        "number_replayed_synapses": 200_306_893,
-        "number_replay_spikes": 13_361_900,
+        "number_synapses_in_replay": 200_306_893,
+        "number_spikes_in_replay": 13_361_900,
     }
 
     assert _estimate_counted(_simulation(**poisson)) == 3
 
 
 def test_spike_inputs_that_no_node_can_hold_are_refused():
-    too_many = FAILED_JOB | {"number_replay_spikes": 100_000_000}
+    too_many = FAILED_JOB | {"number_spikes_in_replay": 100_000_000}
 
     with pytest.raises(ApiError) as exc_info:
         _estimate_counted(_simulation(**too_many))

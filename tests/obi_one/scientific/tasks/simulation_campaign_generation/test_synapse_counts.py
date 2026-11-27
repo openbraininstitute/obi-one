@@ -125,7 +125,7 @@ def vpm_replay(sources):
 def all_counts(db_client, monkeypatch):
     """Give entitysdk's Simulation the replay count fields as well."""
     fields = dict(Simulation.model_fields)
-    for name in ("number_replayed_synapses", "number_replay_spikes"):
+    for name in ("number_synapses_in_replay", "number_spikes_in_replay"):
         fields[name] = fields["number_neurons"]
     monkeypatch.setattr(Simulation, "model_fields", fields)
     return db_client
@@ -158,8 +158,8 @@ def test_the_replay_of_a_spike_stimulus_is_recorded(all_counts, tmp_path, vpm_si
     assert recorded(all_counts) == {
         "number_neurons": N_CELLS,
         "number_synapses": N_SYNAPSES,
-        "number_replayed_synapses": round(VPM_SYNAPSES * share),
-        "number_replay_spikes": len(sources),
+        "number_synapses_in_replay": round(VPM_SYNAPSES * share),
+        "number_spikes_in_replay": len(sources),
     }
 
 
@@ -169,8 +169,8 @@ def test_a_simulation_without_spike_inputs_replays_nothing(all_counts, tmp_path)
     assert recorded(all_counts) == {
         "number_neurons": N_CELLS,
         "number_synapses": N_SYNAPSES,
-        "number_replayed_synapses": 0,
-        "number_replay_spikes": 0,
+        "number_synapses_in_replay": 0,
+        "number_spikes_in_replay": 0,
     }
 
 
