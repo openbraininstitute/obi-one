@@ -558,7 +558,9 @@ def test_a_hyperpolarization_activated_model_has_a_nonspecific_current(tmp_path)
     db_client = _db_client()
     db_client.register_entity.side_effect = lambda entity: entity
     mouse = _species("Mus musculus", "NCBITaxon:10090")
-    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+    subject = models.Subject(
+        id=uuid4(), name="Mouse 1", description="", sex=Sex.male, species=mouse
+    )
 
     (model,) = _save(tmp_path, db_client, subject=subject, species=mouse, **HCN_MODEL)
 
@@ -570,7 +572,9 @@ def test_a_hodgkin_huxley_model_uses_potassium(tmp_path):
     db_client = _db_client()
     db_client.register_entity.side_effect = lambda entity: entity
     mouse = _species("Mus musculus", "NCBITaxon:10090")
-    subject = models.Subject(id=uuid4(), name="Mouse 1", sex=Sex.male, species=mouse)
+    subject = models.Subject(
+        id=uuid4(), name="Mouse 1", description="", sex=Sex.male, species=mouse
+    )
 
     (model,) = _save(tmp_path, db_client, subject=subject, species=mouse)
 
