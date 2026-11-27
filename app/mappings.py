@@ -453,14 +453,17 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=8,
-            # Not checked: the vm size of the small pool is not in azure-terraform-deployment.
-            ranks_per_instance=2,
+            # The small pool of azure-terraform-deployment is Standard_D4s_v5. launch-system sends
+            # jobs to the pool "timestamped-neurodamus", which is not in that repository.
+            ranks_per_instance=4,
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=788,
-            ranks_per_instance=176,  # Standard_HB176rs_v4
+            # Standard_HB176rs_v4, the large pool of azure-terraform-deployment. Its nodes are
+            # limited by the vCPU quota of the subscription (pool allocation "UserSubscription").
+            ranks_per_instance=176,
         ),
     ],
 }
