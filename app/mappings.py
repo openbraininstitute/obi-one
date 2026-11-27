@@ -436,11 +436,15 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=16,
+            ranks_per_instance=4,  # t3a.xlarge
+            max_instances=12,
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=768,
+            ranks_per_instance=192,  # hpc7a.96xlarge
+            max_instances=20,
         ),
     ],
     "cell_b": [
@@ -448,11 +452,13 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=8,
+            ranks_per_instance=4,  # Standard_D4s_v5
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=788,
+            ranks_per_instance=176,  # Standard_HB176rs_v4
         ),
     ],
 }

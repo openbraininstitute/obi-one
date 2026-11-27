@@ -1,15 +1,21 @@
+import io
 import logging
+from collections.abc import Callable
 from pathlib import Path
+from uuid import UUID
 
 from entitysdk import Client, MultipartUploadTransferConfig, models
 from entitysdk.models.asset import Asset
-from entitysdk.types import AssetLabel, ContentType
+from entitysdk.types import AssetLabel, ContentType, OpenFileStrategy
 
 from obi_one.core.exception import OBIONEError
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_staging import asset_path_in
 
 L = logging.getLogger(__name__)
+
+REMOTE_BLOCK_SIZE = 256 * 1024
 
 
 def _asset_label_value(label: object) -> str:
@@ -164,3 +170,29 @@ def resolve_circuit(
 
     msg = f"Unsupported circuit type: {type(circuit)}"
     raise OBIONEError(msg)
+
+
+def circuit_file_opener(
+    db_client: Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
+) -> Callable[[str], io.BufferedReader]:
+    """Return a function that opens a circuit file, given its path in the staged config.
+
+    The file is read from the local asset store if it is there, otherwise with range requests.
+    """
+    sizes = db_client.list_directory(
+        entity_id=entity_id, entity_type=models.Circuit, asset_id=asset.id
+    ).files
+
+    def open_file(path: str) -> io.BufferedReader:
+        asset_path = asset_path_in(path, dest_dir)
+        return db_client.open_file(
+            entity_id=entity_id,
+            entity_type=models.Circuit,
+            asset_id=asset.id,
+            asset_path=asset_path,
+            strategy=OpenFileStrategy.local_or_remote,
+            size=sizes[Path(asset_path)].size,
+            block_size=REMOTE_BLOCK_SIZE,
+        )
+
+    return open_file

@@ -40,7 +40,7 @@ SONATA_CIRCUIT_ASSET_SELECTION = {
 }
 
 
-def _asset_path_in(declared_path: str, dest_dir: Path) -> str:
+def asset_path_in(declared_path: str, dest_dir: Path) -> str:
     """The path of a file declared in the circuit config, relative to the staging directory.
 
     ``expanded_json`` reflects the config's manifest. With the usual ``"$BASE_DIR": "./"`` the
@@ -84,7 +84,7 @@ def _files_to_stage(config: dict, dest_dir: Path) -> list[str]:
 
     asset_paths = []
     for declared_path in declared:
-        asset_path = _asset_path_in(declared_path, dest_dir)
+        asset_path = asset_path_in(declared_path, dest_dir)
         if asset_path not in asset_paths:
             asset_paths.append(asset_path)
     return asset_paths

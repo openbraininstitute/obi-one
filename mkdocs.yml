@@ -21,6 +21,8 @@ nav:
   - Circuit Simplification: circuit-simplification.md
   - ME-model Build: memodel-build.md
   - Neuronal Manipulation Properties: neuronal-manipulation-properties.md
+  - Circuit Simulation Resources: circuit-simulation-resources.md
+  - Circuit Simulation Memory Measurements: circuit-simulation-memory-measurements.md
 
 # Plugins
 plugins:

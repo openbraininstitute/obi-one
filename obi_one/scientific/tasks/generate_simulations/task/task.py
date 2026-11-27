@@ -33,6 +33,10 @@ from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.library.compartment_sets import MaterializedCompartmentSet
 from obi_one.scientific.library.ion_channel_model_circuit import CircuitFromIonChannelModels
 from obi_one.scientific.library.memodel_circuit import MEModelCircuit
+from obi_one.scientific.library.simulation_synapses import (
+    replay_spike_files,
+    simulation_synapse_counts,
+)
 from obi_one.scientific.library.sonata_circuit_helpers import (
     add_neuron_sets_to_sonata_circuit,
     write_circuit_compartment_set_file,
@@ -40,6 +44,9 @@ from obi_one.scientific.library.sonata_circuit_helpers import (
 )
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
+)
+from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
+    CircuitSimulationSingleConfig,
 )
 from obi_one.scientific.tasks.generate_simulations.materialize_locations import (
     materialize_locations_to_compartment_sets,
@@ -541,6 +548,7 @@ class GenerateSimulationTask(Task):
 
     def _update_simulation_number_neurons(self, db_client: Client | None) -> None:
         if db_client:
+            counts = {}
             if hasattr(self.config, "neuron_sets") and hasattr(self.config.initialize, "node_set"):
                 neuron_set = self.config.initialize.node_set
                 if neuron_set is None:
@@ -550,6 +558,24 @@ class GenerateSimulationTask(Task):
                     raise OBIONEError(msg)
                 neuron_set_ids = neuron_set.block.get_neuron_ids(self._circuit)  # ty:ignore[unresolved-attribute]
                 number_neurons = sum(len(v) for v in neuron_set_ids.values())
+                circuit = getattr(self.config.initialize, "circuit", None)
+                if (
+                    isinstance(self.config, CircuitSimulationSingleConfig)
+                    and isinstance(circuit, CircuitFromID)
+                    and isinstance(self._circuit, Circuit)
+                ):
+                    spike_files = replay_spike_files(
+                        self._sonata_config, self.config.coordinate_output_root
+                    )
+                    try:
+                        counts = simulation_synapse_counts(
+                            db_client, circuit, self._circuit, neuron_set_ids, spike_files
+                        )
+                    except Exception:  # ruff: ignore[blind-except]
+                        # The counts are optional: the estimator falls back to the neurons.
+                        L.warning(
+                            "The synapses of circuit %s are not counted", circuit, exc_info=True
+                        )
             else:
                 # Essentially the memodel case when no neuron_sets
                 number_neurons = 1
@@ -557,7 +583,7 @@ class GenerateSimulationTask(Task):
             db_client.update_entity(
                 entity_id=self.config.single_entity.id,
                 entity_type=Simulation,
-                attrs_or_entity={"number_neurons": number_neurons},
+                attrs_or_entity={"number_neurons": number_neurons, **counts},
             )
 
     def _extracellular_recordings(self) -> list[ExtracellularElectrodeArrayRecording]:
