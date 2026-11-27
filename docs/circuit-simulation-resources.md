@@ -30,35 +30,37 @@ The layout of an edges file is not trusted. An edge population is counted per ce
 `app/services/resource_estimation/circuit_simulation.py`, with `R` the ranks of a node (`ranks_per_instance`), `M` its memory (`memory_per_instance_gb`), and the counts of the `Simulation`:
 
 ```
-per_node = MARGIN * R * (GB_PER_RANK + GB_PER_REPLAY_SPIKE_PER_RANK * spikes + GB_PER_RANK_WITH_LFP if LFP)
-split    = MARGIN * (GB_PER_CELL * cells + GB_PER_SYNAPSE * synapses
-                     + GB_PER_REPLAYED_SYNAPSE * replayed + LFP_WEIGHTS_FACTOR * LFP weights)
-nodes    = max(ceil(split / (USABLE_FRACTION * M - per_node)), ceil(MIN_GB_PER_CELL * cells / M))
+per_node = margin * R * (gb_per_rank + gb_per_replay_spike_per_rank * spikes + gb_per_rank_with_lfp if LFP)
+split    = margin * (gb_per_cell * cells + gb_per_synapse * synapses
+                     + gb_per_replayed_synapse * replayed + lfp_weights_factor * LFP weights)
+nodes    = max(ceil(split / (usable_fraction * M - per_node)), ceil(min_gb_per_cell * cells / M))
 ```
+
+The terms are the fields of the frozen pydantic model `MemoryModel`, whose defaults are the values below; `MEMORY_MODEL` is the instance the estimator uses, and its methods `per_node_gb` and `split_gb` compute the two parts.
 
 `per_node` is paid on every node whatever their number, since every rank holds it. The LFP weights are those of the simulated cells: the weight matrix of each recording array covers its whole circuit (generation refuses arrays of another circuit), so it counts for the simulated share of the circuit's cells, times `SUBSET_FACTOR`, up to all of it.
 
-The estimate is refused, with an error that says why, if `per_node` is more than the usable memory of a node (spike inputs every rank must hold, whatever the number of nodes), or if the nodes are more than `max_instances`. A simulation without a synapse count (`number_synapses` 0, as for those generated before it existed) gets `MEM_GB_PER_CELL` per cell.
+The estimate is refused, with an error that says why, if `per_node` is more than the usable memory of a node (spike inputs every rank must hold, whatever the number of nodes), or if the nodes are more than `max_instances`. A simulation without a synapse count (`number_synapses` 0, as for those generated before it existed) gets `uncounted_gb_per_cell` per cell.
 
 ## Constants
 
-### Memory model (`app/services/resource_estimation/circuit_simulation.py`)
+### Memory model (`MemoryModel` in `app/services/resource_estimation/circuit_simulation.py`)
 
 The terms were fitted with non-negative least squares on relative errors over 76 runs in the simulation image: neurodamus 4.2.11 and 4.3.0, NEURON and CoreNEURON, rCA1 and SSCX cells, 1 to 16 ranks, with and without replay, spike files, reports and LFP. Memory is the anonymous and shared memory of the job's cgroup at its peak, what the OOM killer counts.
 
-| Constant | Value | Represents | How it was obtained |
+| Field | Value | Represents | How it was obtained |
 |---|---|---|---|
-| `GB_PER_RANK` | 34.9 MB | An MPI rank: NEURON, neurodamus, Python and MPI, before any cell. | Fit; 1 to 16 ranks on the same 48 rCA1 cells. |
-| `GB_PER_REPLAY_SPIKE_PER_RANK` | 41.4 B | A spike of the replay files, on every rank: each reads all the files whole while it sets the replay up, about 2.6 copies of the 16 bytes of a spike. | Not fitted: the exact peak (`VmHWM`) of a rank, 16 ranks, 13.4M spikes against 267k. With fewer ranks a rank's share of the model hides this transient. |
-| `GB_PER_RANK_WITH_LFP` | 6.5 MB | What a rank adds with an LFP report, whatever the electrodes. | Fit; LFP with 16 to 1,024 electrodes on 48 and 128 rCA1 and 400 SSCX cells, neurodamus 4.3.0. |
-| `GB_PER_CELL` | 5.55 MB | A cell without its synapses: sections, mechanisms, its share of the model. | Fit; separated from the synapses by SSCX (2.4k synapses per cell) against rCA1 (19k). |
-| `GB_PER_SYNAPSE` | 3.07 KB | A synapse, loaded and instantiated. neurodamus 4.2.11 and 4.3.0 create every synapse, replayed or not. | Fit; 288k to 4.9M synapses. |
-| `GB_PER_REPLAYED_SYNAPSE` | 2.05 KB | The spike train (`VecStim`) and `NetCon` of a replayed connection, counted per replayed synapse: a connection has one synapse or more (1.1 in the CA3 projection), so this errs on the safe side. | Fit; 0 to 100% of the CA3 (and VPM, POm) sources replayed. |
-| `LFP_WEIGHTS_FACTOR` | 1.04 | The LFP weights of the simulated cells (segments × electrodes × 8 bytes), as neurodamus copies them for CoreNEURON. | Fit; summed and per-cell LFP cost the same. |
-| `MARGIN` | 1.15 | Headroom over the fit. | The largest measured peak was 1.09 times the fit, runs repeated in different sessions differ by 2 to 4%, and the CA1 job `01a1cb34` ran out of memory on one node at about 1.06 times the fit (about 4 GB on each of 192 ranks, against 722 GB). |
-| `USABLE_FRACTION` | 0.9 | The share of a node's memory left to the simulation, after the system, the 750 MB Slurm reserves on cell_a (`MemSpecLimit`) and MPI. | Chosen, not measured. |
-| `MIN_GB_PER_CELL` | 0.03 GB | A floor: the rule SSCX simulations ran with. | The lowest memory per cell of production runs was about 0.025 GB ([sheet](https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a)), with some margin. The image measured SSCX at 0.013 to 0.016 GB per cell, a gap not explained, and circuits other than rCA1 and SSCX were not measured. |
-| `MEM_GB_PER_CELL` | 0.09 GB | The rule for simulations without a synapse count. | The 0.03 rule tripled for the CA3 projections of rCA1. |
+| `gb_per_rank` | 34.9 MB | An MPI rank: NEURON, neurodamus, Python and MPI, before any cell. | Fit; 1 to 16 ranks on the same 48 rCA1 cells. |
+| `gb_per_replay_spike_per_rank` | 41.4 B | A spike of the replay files, on every rank: each reads all the files whole while it sets the replay up, about 2.6 copies of the 16 bytes of a spike. | Not fitted: the exact peak (`VmHWM`) of a rank, 16 ranks, 13.4M spikes against 267k. With fewer ranks a rank's share of the model hides this transient. |
+| `gb_per_rank_with_lfp` | 6.5 MB | What a rank adds with an LFP report, whatever the electrodes. | Fit; LFP with 16 to 1,024 electrodes on 48 and 128 rCA1 and 400 SSCX cells, neurodamus 4.3.0. |
+| `gb_per_cell` | 5.55 MB | A cell without its synapses: sections, mechanisms, its share of the model. | Fit; separated from the synapses by SSCX (2.4k synapses per cell) against rCA1 (19k). |
+| `gb_per_synapse` | 3.07 KB | A synapse, loaded and instantiated. neurodamus 4.2.11 and 4.3.0 create every synapse, replayed or not. | Fit; 288k to 4.9M synapses. |
+| `gb_per_replayed_synapse` | 2.05 KB | The spike train (`VecStim`) and `NetCon` of a replayed connection, counted per replayed synapse: a connection has one synapse or more (1.1 in the CA3 projection), so this errs on the safe side. | Fit; 0 to 100% of the CA3 (and VPM, POm) sources replayed. |
+| `lfp_weights_factor` | 1.04 | The LFP weights of the simulated cells (segments × electrodes × 8 bytes), as neurodamus copies them for CoreNEURON. | Fit; summed and per-cell LFP cost the same. |
+| `margin` | 1.15 | Headroom over the fit. | The largest measured peak was 1.09 times the fit, runs repeated in different sessions differ by 2 to 4%, and the CA1 job `01a1cb34` ran out of memory on one node at about 1.06 times the fit (about 4 GB on each of 192 ranks, against 722 GB). |
+| `usable_fraction` | 0.9 | The share of a node's memory left to the simulation, after the system, the 750 MB Slurm reserves on cell_a (`MemSpecLimit`) and MPI. | Chosen, not measured. |
+| `min_gb_per_cell` | 0.03 GB | A floor: the rule SSCX simulations ran with. | The lowest memory per cell of production runs was about 0.025 GB ([sheet](https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a)), with some margin. The image measured SSCX at 0.013 to 0.016 GB per cell, a gap not explained, and circuits other than rCA1 and SSCX were not measured. |
+| `uncounted_gb_per_cell` | 0.09 GB | The rule for simulations without a synapse count. | The 0.03 rule tripled for the CA3 projections of rCA1. |
 
 ### Counting (`obi_one/scientific/library/`)
 
@@ -87,7 +89,7 @@ The Azure pools autoscale with the active tasks and allocate their VMs in the su
 
 - The CA1 job (9,587 cells, 219.1M synapses, 5.4% of the CA3 sources replayed) gets 2 nodes of cell_a: it ran out of memory on one node and ran on two.
 - The same with every CA3 source spiking at 10 Hz for 5 s (13.4M spikes) gets 3: the spikes take about 100 GB of every node before the margin, 114 GB with it.
-- SSCX circuits get the `MIN_GB_PER_CELL` floor, as before. Of 122 circuits of staging and production simulated whole, 112 get the nodes of the 0.03 rule and the 10 rCA1 circuits whose synapses need them more; none get fewer.
+- SSCX circuits get the `min_gb_per_cell` floor, as before. Of 122 circuits of staging and production simulated whole, 112 get the nodes of the 0.03 rule and the 10 rCA1 circuits whose synapses need them more; none get fewer.
 - The whole rCA1 circuit (456k cells) needs 54 nodes, more than the 20 of cell_a, and is refused; its node sets fit up to about 170k cells without replay, 110k with every CA3 source replayed.
 
 What the model does not cover: recordings (their buffers are a few MB per rank, within the noise of the runs), runs much longer than 3 s (a 3 s run used 4% more than a 100 ms one), more than 16 ranks (the per-rank terms are extrapolated to 176 and 192), and circuits whose cells were not measured, which the floor covers.

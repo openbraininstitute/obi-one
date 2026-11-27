@@ -2,6 +2,7 @@ import math
 
 from entitysdk import Client, models
 from entitysdk.types import AssetLabel
+from pydantic import BaseModel, ConfigDict
 
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import CLUSTER_INSTANCES_INFO
@@ -9,20 +10,43 @@ from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
 from obi_one.scientific.library.circuit_synapses import SUBSET_FACTOR
 
-# For the simulations whose synapses were not counted.
-MEM_GB_PER_CELL = 0.09
 
-# Memory model: see docs/circuit-simulation-resources.md.
-GB_PER_RANK = 34.9 / 1024
-GB_PER_REPLAY_SPIKE_PER_RANK = 41.4 / 2**30
-GB_PER_RANK_WITH_LFP = 6.5 / 1024
-GB_PER_CELL = 5.55 / 1024
-GB_PER_SYNAPSE = 3.07 / 2**20
-GB_PER_REPLAYED_SYNAPSE = 2.05 / 2**20
-LFP_WEIGHTS_FACTOR = 1.04
-MARGIN = 1.15
-USABLE_FRACTION = 0.9
-MIN_GB_PER_CELL = 0.03
+class MemoryModel(BaseModel):
+    """Peak memory of a neurodamus simulation, in GB. See docs/circuit-simulation-resources.md."""
+
+    model_config = ConfigDict(frozen=True)
+
+    gb_per_rank: float = 34.9 / 1024
+    gb_per_replay_spike_per_rank: float = 41.4 / 2**30
+    gb_per_rank_with_lfp: float = 6.5 / 1024
+    gb_per_cell: float = 5.55 / 1024
+    gb_per_synapse: float = 3.07 / 2**20
+    gb_per_replayed_synapse: float = 2.05 / 2**20
+    lfp_weights_factor: float = 1.04
+    margin: float = 1.15
+    usable_fraction: float = 0.9
+    min_gb_per_cell: float = 0.03
+    # For the simulations whose synapses were not counted.
+    uncounted_gb_per_cell: float = 0.09
+
+    def per_node_gb(self, ranks: int, spikes: int, *, lfp: bool) -> float:
+        """The memory every node holds, whatever the number of nodes."""
+        per_rank = self.gb_per_rank + self.gb_per_replay_spike_per_rank * spikes
+        if lfp:
+            per_rank += self.gb_per_rank_with_lfp
+        return self.margin * ranks * per_rank
+
+    def split_gb(self, cells: int, synapses: int, replayed: int, lfp_weights_gb: float) -> float:
+        """The memory split over the nodes."""
+        return self.margin * (
+            self.gb_per_cell * cells
+            + self.gb_per_synapse * synapses
+            + self.gb_per_replayed_synapse * replayed
+            + self.lfp_weights_factor * lfp_weights_gb
+        )
+
+
+MEMORY_MODEL = MemoryModel()
 
 
 def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
@@ -47,28 +71,25 @@ def nodes_per_cell(gb_per_cell: float, cells: int, instance: ClusterInstanceInfo
 
 
 def simulation_nodes(
-    config: models.Simulation, instance: ClusterInstanceInfo, db_client: Client
+    config: models.Simulation,
+    instance: ClusterInstanceInfo,
+    db_client: Client,
+    model: MemoryModel = MEMORY_MODEL,
 ) -> int:
     """The nodes a simulation needs."""
     cells = config.number_neurons
     # 0: not counted (generated before the counts existed).
     synapses = getattr(config, "number_synapses", 0)
     if not synapses:
-        return nodes_per_cell(MEM_GB_PER_CELL, cells, instance)
+        return nodes_per_cell(model.uncounted_gb_per_cell, cells, instance)
     spikes = getattr(config, "number_replay_spikes", 0)
     replayed = getattr(config, "number_replayed_synapses", 0)
 
-    per_rank = GB_PER_RANK + GB_PER_REPLAY_SPIKE_PER_RANK * spikes
-    if config.recording_arrays:
-        per_rank += GB_PER_RANK_WITH_LFP
-    per_node = MARGIN * instance.ranks_per_instance * per_rank
-    split = MARGIN * (
-        GB_PER_CELL * cells
-        + GB_PER_SYNAPSE * synapses
-        + GB_PER_REPLAYED_SYNAPSE * replayed
-        + LFP_WEIGHTS_FACTOR * lfp_weights_gb(config, db_client)
+    per_node = model.per_node_gb(
+        instance.ranks_per_instance, spikes, lfp=bool(config.recording_arrays)
     )
-    room = USABLE_FRACTION * instance.memory_per_instance_gb - per_node
+    split = model.split_gb(cells, synapses, replayed, lfp_weights_gb(config, db_client))
+    room = model.usable_fraction * instance.memory_per_instance_gb - per_node
     if room <= 0:
         raise ApiError(
             message=(
@@ -80,7 +101,7 @@ def simulation_nodes(
             ),
             error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
         )
-    nodes = max(1, math.ceil(split / room), nodes_per_cell(MIN_GB_PER_CELL, cells, instance))
+    nodes = max(1, math.ceil(split / room), nodes_per_cell(model.min_gb_per_cell, cells, instance))
     if instance.max_instances is not None and nodes > instance.max_instances:
         raise ApiError(
             message=(

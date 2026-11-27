@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from entitysdk import models
 from entitysdk.types import AssetLabel
+from pydantic import ValidationError
 
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import TASK_DEFINITIONS
@@ -75,7 +76,7 @@ def test_estimate_task_resources_scales_instances_with_mem_per_cell():
         ]
     }
     expected_instances = math.ceil(
-        test_module.MEM_GB_PER_CELL * number_neurons / memory_per_instance_gb
+        test_module.MEMORY_MODEL.uncounted_gb_per_cell * number_neurons / memory_per_instance_gb
     )
 
     with patch.object(test_module, "CLUSTER_INSTANCES_INFO", mocked_instances):
@@ -170,12 +171,12 @@ def test_the_failed_job_gets_the_two_nodes_it_ran_on():
 
     assert _estimate_counted(simulation) == 2
     # It does not fit one node: what the model gives it is more than the usable memory.
-    one_node = test_module.MARGIN * (
-        LARGE.ranks_per_instance * test_module.GB_PER_RANK
-        + test_module.GB_PER_CELL * 9_587
-        + test_module.GB_PER_SYNAPSE * 219_103_973
+    one_node = test_module.MEMORY_MODEL.margin * (
+        LARGE.ranks_per_instance * test_module.MEMORY_MODEL.gb_per_rank
+        + test_module.MEMORY_MODEL.gb_per_cell * 9_587
+        + test_module.MEMORY_MODEL.gb_per_synapse * 219_103_973
     )
-    assert one_node > test_module.USABLE_FRACTION * LARGE.memory_per_instance_gb
+    assert one_node > test_module.MEMORY_MODEL.usable_fraction * LARGE.memory_per_instance_gb
 
 
 def test_replaying_every_source_costs_more_than_replaying_a_few():
@@ -222,7 +223,9 @@ def test_a_simulation_without_counted_synapses_keeps_the_per_cell_rule(synapses)
     """entitycore gives 0 synapses to the simulations generated before they were counted."""
     simulation = _simulation(number_neurons=9_587, **synapses)
 
-    assert _estimate_counted(simulation) == math.ceil(test_module.MEM_GB_PER_CELL * 9_587 / 768)
+    assert _estimate_counted(simulation) == math.ceil(
+        test_module.MEMORY_MODEL.uncounted_gb_per_cell * 9_587 / 768
+    )
 
 
 def _lfp_client(simulation, *, weights_gb, circuit_neurons):
@@ -284,3 +287,27 @@ def test_a_simulation_within_the_available_nodes_gets_them():
     limited = LARGE.model_copy(update={"max_instances": 2})
 
     assert test_module.simulation_nodes(_simulation(**FAILED_JOB), limited, Mock()) == 2
+
+
+def test_the_memory_model_is_frozen():
+    with pytest.raises(ValidationError, match="frozen"):
+        test_module.MEMORY_MODEL.margin = 1.0
+
+
+def test_the_memory_model_splits_what_every_node_holds_from_what_nodes_share():
+    model = test_module.MemoryModel(
+        gb_per_rank=1.0,
+        gb_per_replay_spike_per_rank=0.5,
+        gb_per_rank_with_lfp=0.25,
+        gb_per_cell=2.0,
+        gb_per_synapse=0.1,
+        gb_per_replayed_synapse=0.01,
+        lfp_weights_factor=3.0,
+        margin=2.0,
+    )
+
+    assert model.per_node_gb(4, 2, lfp=False) == pytest.approx(2.0 * 4 * (1.0 + 0.5 * 2))
+    assert model.per_node_gb(4, 2, lfp=True) == pytest.approx(2.0 * 4 * (1.0 + 0.5 * 2 + 0.25))
+    assert model.split_gb(10, 100, 50, 7.0) == pytest.approx(
+        2.0 * (2.0 * 10 + 0.1 * 100 + 0.01 * 50 + 3.0 * 7.0)
+    )
