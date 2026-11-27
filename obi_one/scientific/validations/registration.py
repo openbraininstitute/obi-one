@@ -9,6 +9,7 @@ Handles:
 """
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path
@@ -179,6 +180,7 @@ def _update_existing(
     test_result: TestResult,
     validated_entity_id: UUID,
     out_dir: Path | None,
+    description: str,
 ) -> UUID:
     """Update a result in place and replace its validation artifacts.
 
@@ -187,18 +189,19 @@ def _update_existing(
             owned by another user and cannot be updated/replaced (HTTP 403).
     """
     entity_id = _result_id(existing)
+    # The details text is persisted separately as an asset via _upload_details below,
+    # so it is not sent here; the update endpoint rejects unknown fields with a 422.
+    attrs: dict[str, object] = {
+        "name": test_result.name,
+        "passed": test_result.passed,
+        "validated_entity_id": validated_entity_id,
+        "description": description,
+    }
     try:
-        # ValidationResult only carries name/passed/validated_entity_id. The details
-        # text is persisted separately as an asset via _upload_details below, so it is
-        # not sent here; the update endpoint rejects unknown fields with a 422.
         client.update_entity(
             entity_id=entity_id,
             entity_type=ValidationResult,
-            attrs_or_entity={
-                "name": test_result.name,
-                "passed": test_result.passed,
-                "validated_entity_id": validated_entity_id,
-            },
+            attrs_or_entity=attrs,
         )
 
         # Asset replacement is intentionally explicit. The EntitySDK update operation
@@ -227,6 +230,7 @@ def register_outcome(
     *,
     out_dir: Path | None = None,
     overwrite_existing: bool = False,
+    description: str = "",
 ) -> RegisteredResult:
     """Register or optionally update a single TestResult.
 
@@ -237,6 +241,8 @@ def register_outcome(
         out_dir: Directory for writing temporary detail files.
         overwrite_existing: If False, skip a matching result. If True, update the
             matching result in place while preserving its platform ID.
+        description: Plain-text description of what the test ran. Empty when the
+            caller has none.
 
     Returns:
         A RegisteredResult indicating whether the result was created, updated, or skipped.
@@ -269,6 +275,7 @@ def register_outcome(
             test_result,
             validated_entity_uuid,
             out_dir,
+            description,
         )
         logger.info(
             "Updated ValidationResult '%s' (id=%s, passed=%s)",
@@ -285,7 +292,7 @@ def register_outcome(
     # Details are persisted as an asset via _upload_details, not as an entity field.
     validation_result = ValidationResult(
         name=test_result.name,
-        description="",
+        description=description,
         passed=test_result.passed,
         validated_entity_id=validated_entity_uuid,
     )
@@ -313,6 +320,7 @@ def register_outcomes(
     *,
     out_dir: Path | None = None,
     overwrite_existing: bool = False,
+    descriptions: Mapping[str, str] | None = None,
 ) -> list[RegisteredResult]:
     """Register multiple test results using one overwrite policy.
 
@@ -323,6 +331,8 @@ def register_outcomes(
         out_dir: Directory for writing temporary detail files.
         overwrite_existing: If False, skip matching results. If True, update matching
             results in place while preserving their platform IDs.
+        descriptions: Plain-text descriptions keyed by test result name. Results
+            without an entry get an empty description.
 
     Returns:
         List of RegisteredResult objects.
@@ -339,6 +349,7 @@ def register_outcomes(
                 validated_entity_id,
                 out_dir=out_dir,
                 overwrite_existing=overwrite_existing,
+                description=(descriptions or {}).get(test_result.name, ""),
             )
             results.append(result)
         except ValidationResultAlreadyExistsError:

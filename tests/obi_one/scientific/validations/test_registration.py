@@ -267,6 +267,33 @@ class TestOverwriteExisting:
 
 
 class TestAssetUpload:
+    def test_thumbnail_is_registered_as_a_png_figure(self, mock_client, tmp_path):
+        # The platform's thumbnail generation looks up ValidationResult(name="thumbnail")
+        # and its figure asset, as written by the legacy validation.
+        thumbnail = tmp_path / "thumbnail.png"
+        thumbnail.write_text("fake png")
+        test_result = TestResult(name="thumbnail", passed=True, details="", figures=[thumbnail])
+        search_iter = MagicMock()
+        search_iter.all.return_value = []
+        mock_client.search_entity.return_value = search_iter
+        mock_client.register_entity.return_value = MagicMock(id="thumb-id")
+
+        register_outcome(
+            client=mock_client,
+            test_result=test_result,
+            validated_entity_id="3f4e8f5e-2a6e-4b40-9a1d-1f4e5f6a7b8c",
+            out_dir=tmp_path,
+        )
+
+        registered = mock_client.register_entity.call_args.kwargs["entity"]
+        assert registered.name == "thumbnail"
+        assert registered.passed is True
+        # Only the figure is uploaded; empty details produce no details asset.
+        mock_client.upload_file.assert_called_once()
+        kwargs = mock_client.upload_file.call_args.kwargs
+        assert kwargs["file_content_type"] == ContentType.image_png
+        assert kwargs["asset_label"] == AssetLabel.validation_result_figure
+
     def test_png_figure_uses_image_content_type(self, mock_client, tmp_path):
         png = tmp_path / "trace.png"
         png.write_text("fake png")
@@ -305,3 +332,80 @@ class TestAssetUpload:
         )
 
         mock_client.upload_file.assert_not_called()
+
+
+class TestDescription:
+    validated_entity_id = "3f4e8f5e-2a6e-4b40-9a1d-1f4e5f6a7b8c"
+
+    def _search_returns(self, mock_client, matches):
+        search_iter = MagicMock()
+        search_iter.all.return_value = matches
+        mock_client.search_entity.return_value = search_iter
+
+    def test_new_result_carries_the_description(self, mock_client, sample_test_result, tmp_path):
+        self._search_returns(mock_client, [])
+        mock_client.register_entity.return_value = MagicMock(id="new-id")
+
+        register_outcome(
+            client=mock_client,
+            test_result=sample_test_result,
+            validated_entity_id=self.validated_entity_id,
+            out_dir=tmp_path,
+            description="Injects a step.",
+        )
+
+        entity = mock_client.register_entity.call_args.kwargs["entity"]
+        assert entity.description == "Injects a step."
+
+    def test_update_sends_the_description(self, mock_client, sample_test_result, tmp_path):
+        self._search_returns(mock_client, [MagicMock(id="existing-id")])
+        mock_client.get_entity_assets.return_value.all.return_value = []
+
+        register_outcome(
+            client=mock_client,
+            test_result=sample_test_result,
+            validated_entity_id=self.validated_entity_id,
+            out_dir=tmp_path,
+            overwrite_existing=True,
+            description="Injects a step.",
+        )
+
+        attrs = mock_client.update_entity.call_args.kwargs["attrs_or_entity"]
+        assert attrs["description"] == "Injects a step."
+
+    def test_new_result_without_description_never_sends_null(
+        self, mock_client, sample_test_result, tmp_path
+    ):
+        # entitycore rejects a null description.
+        self._search_returns(mock_client, [])
+        mock_client.register_entity.return_value = MagicMock(id="new-id")
+
+        register_outcome(
+            client=mock_client,
+            test_result=sample_test_result,
+            validated_entity_id=self.validated_entity_id,
+            out_dir=tmp_path,
+        )
+
+        entity = mock_client.register_entity.call_args.kwargs["entity"]
+        assert isinstance(entity.description, str)
+        assert not entity.description
+
+    def test_descriptions_are_matched_by_result_name(self, mock_client, tmp_path):
+        self._search_returns(mock_client, [])
+        mock_client.register_entity.return_value = MagicMock(id="new-id")
+        test_results = [
+            TestResult(name="A", passed=True, details=""),
+            TestResult(name="B", passed=False, details=""),
+        ]
+
+        register_outcomes(
+            client=mock_client,
+            test_results=test_results,
+            validated_entity_id=self.validated_entity_id,
+            out_dir=tmp_path,
+            descriptions={"A": "Describes A."},
+        )
+
+        entities = [call.kwargs["entity"] for call in mock_client.register_entity.call_args_list]
+        assert [entity.description for entity in entities] == ["Describes A.", ""]
