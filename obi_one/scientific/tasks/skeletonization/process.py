@@ -2,6 +2,7 @@ import logging
 from inspect import signature
 from pathlib import Path
 
+import h5py
 import morphio
 
 from obi_one.core.exception import OBIONEError
@@ -68,6 +69,16 @@ def _run_process_executable(parameters: ProcessParameters, output_dir: Path) -> 
     )
 
 
+def _store_uncompressed(h5_path: Path) -> None:
+    """Store the datasets uncompressed: MorphIO cannot read those of Ultraliser 3."""
+    with h5py.File(h5_path, "r+") as h5:
+        for name, item in list(h5.items()):
+            if isinstance(item, h5py.Dataset) and item.compression:
+                data = item[()]
+                del h5[name]
+                h5.create_dataset(name, data=data)
+
+
 def _create_process_outputs(
     mesh_path: Path, output_dir: Path, *, segment_spines: bool
 ) -> SkeletonizationOutputs:
@@ -100,12 +111,13 @@ def _create_process_outputs(
     """
     stem_name = mesh_path.stem  # e.g. foo/bar.h5 -> bar
 
-    spiny_morph_path = output_dir / f"{stem_name}.h5"
+    # Ultraliser 3 writes "<stem>-with-spines.h5", earlier releases "<stem>.h5"
+    spiny_morph_path = output_dir / f"{stem_name}-with-spines.h5"
+    if not spiny_morph_path.exists():
+        spiny_morph_path = output_dir / f"{stem_name}.h5"
 
     if segment_spines and not spiny_morph_path.exists():
-        msg = (
-            f"No combined morphology h5 file {spiny_morph_path.name} found in the output location."
-        )
+        msg = f"No combined morphology h5 file for {stem_name} found in the output location."
         raise OBIONEError(msg)
 
     swc_path = output_dir / f"{stem_name}-morphology.swc"
@@ -119,6 +131,8 @@ def _create_process_outputs(
     if not h5_path.exists():
         msg = f"No HDF5 morphology file {h5_path.name} found in the output location"
         raise OBIONEError(msg)
+
+    _store_uncompressed(h5_path)
 
     # Rename the combined morphology by adding "_with_spines" suffix
     combined_morph_path = None
