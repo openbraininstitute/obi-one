@@ -171,12 +171,16 @@ def test_the_failed_job_gets_the_two_nodes_it_ran_on():
 
     assert _estimate_counted(simulation) == 2
     # It does not fit one node: what the model gives it is more than the usable memory.
-    one_node = test_module.MEMORY_MODEL.margin * (
+    one_node = test_module.MEMORY_MODEL.peak_memory_safety_factor * (
         LARGE.ranks_per_instance * test_module.MEMORY_MODEL.gb_per_rank
         + test_module.MEMORY_MODEL.gb_per_cell * 9_587
         + test_module.MEMORY_MODEL.gb_per_synapse * 219_103_973
     )
-    assert one_node > test_module.MEMORY_MODEL.usable_fraction * LARGE.memory_per_instance_gb
+    assert (
+        one_node
+        > (1 - test_module.MEMORY_MODEL.reserved_node_memory_fraction)
+        * LARGE.memory_per_instance_gb
+    )
 
 
 def test_replaying_every_source_costs_more_than_replaying_a_few():
@@ -291,7 +295,7 @@ def test_a_simulation_within_the_available_nodes_gets_them():
 
 def test_the_memory_model_is_frozen():
     with pytest.raises(ValidationError, match="frozen"):
-        test_module.MEMORY_MODEL.margin = 1.0
+        test_module.MEMORY_MODEL.peak_memory_safety_factor = 1.0
 
 
 def test_the_memory_model_splits_what_every_node_holds_from_what_nodes_share():
@@ -303,7 +307,7 @@ def test_the_memory_model_splits_what_every_node_holds_from_what_nodes_share():
         gb_per_synapse=0.1,
         gb_per_replayed_synapse=0.01,
         lfp_weights_factor=3.0,
-        margin=2.0,
+        peak_memory_safety_factor=2.0,
     )
 
     assert model.per_node_gb(4, 2, lfp=False) == pytest.approx(2.0 * 4 * (1.0 + 0.5 * 2))

@@ -23,8 +23,8 @@ class MemoryModel(BaseModel):
     gb_per_synapse: float = 3.07 / 2**20
     gb_per_replayed_synapse: float = 2.05 / 2**20
     lfp_weights_factor: float = 1.04
-    margin: float = 1.15
-    usable_fraction: float = 0.9
+    peak_memory_safety_factor: float = 1.15
+    reserved_node_memory_fraction: float = 0.1
     min_gb_per_cell: float = 0.03
     # For the simulations whose synapses were not counted.
     uncounted_gb_per_cell: float = 0.09
@@ -34,11 +34,11 @@ class MemoryModel(BaseModel):
         per_rank = self.gb_per_rank + self.gb_per_replay_spike_per_rank * spikes
         if lfp:
             per_rank += self.gb_per_rank_with_lfp
-        return self.margin * ranks * per_rank
+        return self.peak_memory_safety_factor * ranks * per_rank
 
     def split_gb(self, cells: int, synapses: int, replayed: int, lfp_weights_gb: float) -> float:
         """The memory split over the nodes."""
-        return self.margin * (
+        return self.peak_memory_safety_factor * (
             self.gb_per_cell * cells
             + self.gb_per_synapse * synapses
             + self.gb_per_replayed_synapse * replayed
@@ -89,7 +89,8 @@ def simulation_nodes(
         instance.ranks_per_instance, spikes, lfp=bool(config.recording_arrays)
     )
     split = model.split_gb(cells, synapses, replayed, lfp_weights_gb(config, db_client))
-    room = model.usable_fraction * instance.memory_per_instance_gb - per_node
+    usable = (1 - model.reserved_node_memory_fraction) * instance.memory_per_instance_gb
+    room = usable - per_node
     if room <= 0:
         raise ApiError(
             message=(

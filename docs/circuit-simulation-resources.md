@@ -30,10 +30,10 @@ The layout of an edges file is not trusted. An edge population is counted per ce
 `app/services/resource_estimation/circuit_simulation.py`, with `R` the ranks of a node (`ranks_per_instance`), `M` its memory (`memory_per_instance_gb`), and the counts of the `Simulation`:
 
 ```
-per_node = margin * R * (gb_per_rank + gb_per_replay_spike_per_rank * spikes + gb_per_rank_with_lfp if LFP)
-split    = margin * (gb_per_cell * cells + gb_per_synapse * synapses
-                     + gb_per_replayed_synapse * replayed + lfp_weights_factor * LFP weights)
-nodes    = max(ceil(split / (usable_fraction * M - per_node)), ceil(min_gb_per_cell * cells / M))
+per_node = peak_memory_safety_factor * R * (gb_per_rank + gb_per_replay_spike_per_rank * spikes + gb_per_rank_with_lfp if LFP)
+split    = peak_memory_safety_factor * (gb_per_cell * cells + gb_per_synapse * synapses
+                                        + gb_per_replayed_synapse * replayed + lfp_weights_factor * LFP weights)
+nodes    = max(ceil(split / ((1 - reserved_node_memory_fraction) * M - per_node)), ceil(min_gb_per_cell * cells / M))
 ```
 
 The terms are the fields of the frozen pydantic model `MemoryModel`, whose defaults are the values below; `MEMORY_MODEL` is the instance the estimator uses, and its methods `per_node_gb` and `split_gb` compute the two parts.
@@ -57,8 +57,8 @@ The terms were fitted with non-negative least squares on relative errors over 76
 | `gb_per_synapse` | 3.07 KB | A synapse, loaded and instantiated. neurodamus 4.2.11 and 4.3.0 create every synapse, replayed or not. | Fit; 288k to 4.9M synapses. |
 | `gb_per_replayed_synapse` | 2.05 KB | The spike train (`VecStim`) and `NetCon` of a replayed connection, counted per replayed synapse: a connection has one synapse or more (1.1 in the CA3 projection), so this errs on the safe side. | Fit; 0 to 100% of the CA3 (and VPM, POm) sources replayed. |
 | `lfp_weights_factor` | 1.04 | The LFP weights of the simulated cells (segments × electrodes × 8 bytes), as neurodamus copies them for CoreNEURON. | Fit; summed and per-cell LFP cost the same. |
-| `margin` | 1.15 | Headroom over the fit. | The largest measured peak was 1.09 times the fit, runs repeated in different sessions differ by 2 to 4%, and the CA1 job `01a1cb34` ran out of memory on one node at about 1.06 times the fit (about 4 GB on each of 192 ranks, against 722 GB). |
-| `usable_fraction` | 0.9 | The share of a node's memory left to the simulation, after the system, the 750 MB Slurm reserves on cell_a (`MemSpecLimit`) and MPI. | Chosen, not measured. |
+| `peak_memory_safety_factor` | 1.15 | The factor on the fitted peak memory. | The largest measured peak was 1.09 times the fit, runs repeated in different sessions differ by 2 to 4%, and the CA1 job `01a1cb34` ran out of memory on one node at about 1.06 times the fit (about 4 GB on each of 192 ranks, against 722 GB). |
+| `reserved_node_memory_fraction` | 0.1 | The share of a node's memory kept for the system, the 750 MB Slurm reserves on cell_a (`MemSpecLimit`) and MPI; the simulation gets the rest. | Chosen, not measured. |
 | `min_gb_per_cell` | 0.03 GB | A floor: the rule SSCX simulations ran with. | The lowest memory per cell of production runs was about 0.025 GB ([sheet](https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a)), with some margin. The image measured SSCX at 0.013 to 0.016 GB per cell, a gap not explained, and circuits other than rCA1 and SSCX were not measured. |
 | `uncounted_gb_per_cell` | 0.09 GB | The rule for simulations without a synapse count. | The 0.03 rule tripled for the CA3 projections of rCA1. |
 
