@@ -9,7 +9,7 @@ The nodes allocated to a neurodamus circuit simulation come from the memory it n
 
 ## Counting at generation
 
-Generation (`GenerateSimulationTask`) records three counts on the `Simulation` next to `number_neurons`, each only if the installed entitysdk's `Simulation` has the field:
+Generation (`GenerateSimulationTask`, through `simulation_synapse_counts` of `obi_one/scientific/library/simulation_synapses.py`) records three counts on the `Simulation` next to `number_neurons`, each only if the installed entitysdk's `Simulation` has the field:
 
 - `number_synapses`: the synapses of the chemical edge populations onto the biophysical cells of the node set, as neurodamus creates them (`obi_one/scientific/library/circuit_synapses.py`).
 - `number_replayed_synapses`: those whose source spikes in a spike stimulus. For each source population, its synapses times the share of its nodes that spike, times `SUBSET_FACTOR`, up to all of them (`obi_one/scientific/library/replay_inputs.py`).
