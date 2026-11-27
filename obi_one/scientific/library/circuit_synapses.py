@@ -12,11 +12,12 @@ holds.
 
 import io
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
+from types import MappingProxyType
 
 import h5py
 import libsonata
@@ -47,12 +48,12 @@ SYNAPSES_PER_CELL_CACHE: dict[str, dict[str, "CellSynapses"]] = {}
 SYNAPSES_PER_CELL_CACHE_LOCK = Lock()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CellSynapses:
     """The synapses onto the cells of a population of biophysical cells, by source population.
 
     Kept by source because replay drives the synapses of some sources only, and each replayed
-    connection costs memory.
+    connection costs memory. Read-only: it is cached and shared by the simulations of a circuit.
 
     Attributes:
         size: The cells of the population.
@@ -62,34 +63,30 @@ class CellSynapses:
     """
 
     size: int
-    exact: dict[str, np.ndarray] = field(default_factory=dict)
-    estimated: dict[str, int] = field(default_factory=dict)
+    exact: Mapping[str, np.ndarray] = field(default_factory=dict)
+    estimated: Mapping[str, int] = field(default_factory=dict)
 
-    def add_exact(self, source: str, counts: np.ndarray) -> None:
-        if source not in self.exact:
-            self.exact[source] = np.zeros(self.size, dtype=np.uint32)
-        self.exact[source] += counts.astype(np.uint32)
+    def __post_init__(self) -> None:
+        """Make the mappings and the per-cell arrays read-only too."""
+        for counts in self.exact.values():
+            counts.flags.writeable = False
+        object.__setattr__(self, "exact", MappingProxyType(dict(self.exact)))
+        object.__setattr__(self, "estimated", MappingProxyType(dict(self.estimated)))
 
-    def add_estimated(self, source: str, synapses: int) -> None:
-        self.estimated[source] = self.estimated.get(source, 0) + synapses
 
-    def count_by_source(self, ids: list[int] | np.ndarray) -> dict[str, float]:
-        """The synapses onto the cells ``ids`` from each source, estimated in part.
+def synapses_by_source(cells: CellSynapses, ids: list[int] | np.ndarray) -> dict[str, float]:
+    """The synapses onto the cells ``ids`` of a population from each source, estimated in part.
 
-        The synapses of a source counted in total give the cells their share of them, times
-        ``SUBSET_FACTOR``, up to the total.
-        """
-        ids = np.unique(np.asarray(ids, dtype=np.int64))
-        ids = ids[(ids >= 0) & (ids < self.size)]
-        counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
-        share = min(1.0, SUBSET_FACTOR * len(ids) / self.size) if self.size else 0.0
-        for source, synapses in self.estimated.items():
-            counts[source] = counts.get(source, 0.0) + synapses * share
-        return counts
-
-    def count(self, ids: list[int] | np.ndarray) -> float:
-        """The synapses onto the cells ``ids``, estimated in part (see ``count_by_source``)."""
-        return sum(self.count_by_source(ids).values())
+    The synapses of a source counted in total give the cells their share of them, times
+    ``SUBSET_FACTOR``, up to the total.
+    """
+    ids = np.unique(np.asarray(ids, dtype=np.int64))
+    ids = ids[(ids >= 0) & (ids < cells.size)]
+    counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in cells.exact.items()}
+    share = min(1.0, SUBSET_FACTOR * len(ids) / cells.size) if cells.size else 0.0
+    for source, synapses in cells.estimated.items():
+        counts[source] = counts.get(source, 0.0) + synapses * share
+    return counts
 
 
 def _exact_synapses_per_cell(group: h5py.Group, size: int, n_edges: int) -> np.ndarray | None:
@@ -150,8 +147,8 @@ def read_synapses_per_cell(
         or read raises, since a count without it would be too low.
     """
     config = libsonata.CircuitConfig.from_file(str(circuit_config_path))
-    synapses = {
-        name: CellSynapses(size)
+    sizes = {
+        name: size
         for name in config.node_populations
         if config.node_population_properties(name).type in TYPES_OF_BIOPHYS_NODES
         and (size := config.node_population(name).size)
@@ -162,6 +159,8 @@ def read_synapses_per_cell(
         if properties.type in TYPES_OF_CHEMICAL_SYNS:
             populations_by_file.setdefault(properties.elements_path, []).append(name)
 
+    exact: dict[str, dict[str, np.ndarray]] = {target: {} for target in sizes}
+    estimated: dict[str, dict[str, int]] = {target: {} for target in sizes}
     for path, names in populations_by_file.items():
         opened = open_edges_file(path) if open_edges_file else nullcontext(path)
         with opened as edges_file, h5py.File(edges_file, "r") as f:
@@ -174,16 +173,19 @@ def read_synapses_per_cell(
                 except (KeyError, OSError, ValueError) as e:
                     L.warning("Edge population %s of %s is not counted: %s", name, path, e)
                     continue
-                if target not in synapses:
+                if target not in sizes:
                     continue
-                cells = synapses[target]
-                counts = _exact_synapses_per_cell(group, cells.size, n_edges)
+                counts = _exact_synapses_per_cell(group, sizes[target], n_edges)
                 if counts is None:
                     L.info("Edge population %s: %d synapses, not counted per cell", name, n_edges)
-                    cells.add_estimated(source, n_edges)
+                    estimated[target][source] = estimated[target].get(source, 0) + n_edges
                 else:
-                    cells.add_exact(source, counts)
-    return synapses
+                    total = exact[target].get(source, 0)
+                    exact[target][source] = (total + counts).astype(np.uint32)
+    return {
+        target: CellSynapses(size, exact[target], estimated[target])
+        for target, size in sizes.items()
+    }
 
 
 def cached_synapses_per_cell(
@@ -210,7 +212,7 @@ def count_synapses_by_source(
     counts: dict[str, float] = {}
     for pop, ids in node_ids.items():
         if pop in synapses:
-            for source, n in synapses[pop].count_by_source(ids).items():
+            for source, n in synapses_by_source(synapses[pop], ids).items():
                 counts[source] = counts.get(source, 0.0) + n
     return counts
 
