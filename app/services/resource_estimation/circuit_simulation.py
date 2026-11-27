@@ -10,18 +10,23 @@ from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
 from obi_one.scientific.library.circuit_synapses import SUBSET_FACTOR
 
+# The estimate is in GiB, as memory_per_instance_gb.
+BYTES_PER_KIB = 2**10
+BYTES_PER_MIB = 2**20
+BYTES_PER_GIB = 2**30
+
 
 class MemoryModel(BaseModel):
     """Peak memory of a neurodamus simulation, in GB. See docs/circuit-simulation-resources.md."""
 
     model_config = ConfigDict(frozen=True)
 
-    gb_per_rank: float = 34.9 / 1024
-    gb_per_replay_spike_per_rank: float = 41.4 / 2**30
-    gb_per_rank_with_lfp: float = 6.5 / 1024
-    gb_per_cell: float = 5.55 / 1024
-    gb_per_synapse: float = 3.07 / 2**20
-    gb_per_replayed_synapse: float = 2.05 / 2**20
+    gb_per_rank: float = 34.9 * BYTES_PER_MIB / BYTES_PER_GIB
+    gb_per_replay_spike_per_rank: float = 41.4 / BYTES_PER_GIB
+    gb_per_rank_with_lfp: float = 6.5 * BYTES_PER_MIB / BYTES_PER_GIB
+    gb_per_cell: float = 5.55 * BYTES_PER_MIB / BYTES_PER_GIB
+    gb_per_synapse: float = 3.07 * BYTES_PER_KIB / BYTES_PER_GIB
+    gb_per_replayed_synapse: float = 2.05 * BYTES_PER_KIB / BYTES_PER_GIB
     lfp_weights_factor: float = 1.04
     peak_memory_safety_factor: float = 1.15
     reserved_node_memory_fraction: float = 0.1
@@ -64,7 +69,7 @@ def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
             array, {"label": AssetLabel.electrode_array_weight_matrix}
         )
         weights += sum(asset.size or 0 for asset in matrices)
-    return share * weights / 2**30
+    return share * weights / BYTES_PER_GIB
 
 
 def nodes_per_cell(gb_per_cell: float, cells: int, instance: ClusterInstanceInfo) -> int:
