@@ -436,11 +436,16 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=16,
+            ranks_per_instance=4,  # t3a.xlarge, hardware threads (pcs-queue-small)
+            max_instances=12,  # aws-terraform-deployment launch_system/pcs.tf
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=768,
+            ranks_per_instance=192,  # hpc7a.96xlarge (pcs-queue-large)
+            # pcs_large_nodes_max_instance_count in aws-terraform-deployment main.tf
+            max_instances=20,
         ),
     ],
     "cell_b": [
@@ -448,11 +453,14 @@ CLUSTER_INSTANCES_INFO = {
             name="small",
             max_neurons=100,
             memory_per_instance_gb=8,
+            # Not checked: the vm size of the small pool is not in azure-terraform-deployment.
+            ranks_per_instance=2,
         ),
         ClusterInstanceInfo(
             name="large",
             max_neurons=1_000_000,
             memory_per_instance_gb=788,
+            ranks_per_instance=176,  # Standard_HB176rs_v4
         ),
     ],
 }

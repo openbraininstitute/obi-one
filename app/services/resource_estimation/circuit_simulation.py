@@ -5,41 +5,118 @@ from entitysdk.types import AssetLabel
 
 from app.errors import ApiError, ApiErrorCode
 from app.mappings import CLUSTER_INSTANCES_INFO
+from app.schemas.cluster import ClusterInstanceInfo
 from app.schemas.task import ClusterResources, LaunchableTaskDefinition, TaskLaunchSubmit
-from obi_one.db_sdk import db_sdk
+from obi_one.scientific.library.circuit_synapses import SUBSET_FACTOR
 
 # This was chosen based off the simulations run and recorded here:
 # https://openbraininstitute.sharepoint.com/:x:/s/OpenBrainInstitute/IQBgZ53Oe1GhQZQOjc6b_NqlAfobEWCRSznthvhc3X4CHZA?e=ayfe1a
 # The lowest `Mem(GB) / cell` was ~ 0.025, so a bit of margin was chosen
 # to allow for the variations in connectivity.
-# TODO: Temporary 3x (0.03 -> 0.09) until a better CA3-projections heuristic exists.
+# Tripled (0.03 -> 0.09) for the CA3 projections, and kept for the simulations whose synapses were
+# not counted: those generated before the counts existed.
 MEM_GB_PER_CELL = 0.09
-# With the synapses of the simulation counted, the per-cell rule of SSCX is only a floor.
+
+# Peak memory of a neurodamus simulation, fitted on 76 runs in the simulation image: neurodamus
+# 4.2.11 and 4.3.0, NEURON and CoreNEURON, rCA1 and SSCX cells, 1 to 16 ranks, with and without
+# replay, reports and LFP (openbraininstitute/prod-circuit-simulation#265).
+#
+# Held by every rank, so paid on every node whatever the number of nodes:
+GB_PER_RANK = 34.9 / 1024
+# Every rank reads all the replay spike files while it sets the replay up: 41.4 bytes per spike at
+# the exact peak of a rank, with 16 ranks.
+GB_PER_REPLAY_SPIKE_PER_RANK = 41.4 / 2**30
+GB_PER_RANK_WITH_LFP = 6.5 / 1024
+# Split over the nodes:
+GB_PER_CELL = 5.55 / 1024
+GB_PER_SYNAPSE = 3.07 / 2**20
+# The spike train and NetCon of a replayed connection. Counted per synapse: a connection has one
+# synapse or more (1.1 in the CA3 projection), so this errs on the safe side.
+GB_PER_REPLAYED_SYNAPSE = 2.05 / 2**20
+# The LFP weights of the simulated cells, as neurodamus copies them for CoreNEURON.
+LFP_WEIGHTS_FACTOR = 1.04
+# The largest measured peak was 1.09 times the fit, and the CA1 job 01a1cb34 ran out of memory on
+# one node at 1.06 times it.
+MARGIN = 1.15
+# The share of a node's memory left to the simulation, after the system and MPI.
+USABLE_FRACTION = 0.9
+# The SSCX rule, which production ran with, stays a floor: the cells of other circuits were not
+# measured, and some may cost more than those of rCA1 and SSCX.
 MIN_GB_PER_CELL = 0.03
 
-# Peak memory per item in the simulation image, measured on 5 to 60 cells of an rCA1 slice
-# within 4% (openbraininstitute/prod-circuit-simulation#265).
-GB_PER_CELL = 0.0055  # A cell without its synapses
-GB_PER_SYNAPSE = 3.5e-6  # A synapse, with the replay of its connection
-# Neurodamus frees the NEURON model before CoreNEURON loads its copy, so CoreNEURON only adds
-# to the peak while it writes its input: 1% to 11% in the measurements.
-CORENEURON_FACTOR = 1.1
-MARGIN = 1.15  # Headroom over the fit, for what it leaves out: LFP weights, buffers of the ranks
-USABLE_FRACTION = 0.85  # The share of a node's memory left to the simulation
+
+def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
+    """The LFP weights of the simulated cells, from the weight matrices of the recording arrays.
+
+    A weight matrix holds every cell of its circuit and neurodamus reads the rows of the simulated
+    ones: the matrix counts for the simulated share of the circuit's cells, times
+    ``SUBSET_FACTOR`` for node sets of larger cells than the mean, up to all of it.
+    """
+    total = 0.0
+    for linked in config.recording_arrays:
+        array = db_client.get_entity(
+            entity_id=linked.id, entity_type=models.SimulatableExtracellularRecordingArray
+        )
+        size = sum(
+            a.size or 0 for a in array.assets if a.label == AssetLabel.electrode_array_weight_matrix
+        )
+        circuit = db_client.get_entity(entity_id=array.circuit_id, entity_type=models.Circuit)
+        share = SUBSET_FACTOR * config.number_neurons / max(circuit.number_neurons, 1)
+        total += size / 2**30 * min(1.0, share)
+    return total
 
 
-def _synapse_memory_gb(config: models.Simulation, db_client: Client) -> float | None:
-    """The memory of a simulation from its synapses, or None if they were not counted."""
-    number_synapses = getattr(config, "number_synapses", None)
-    if number_synapses is None:
-        return None
-    simulation_config = db_sdk.select_json_asset_content(
-        client=db_client, entity=config, selection={"label": AssetLabel.sonata_simulation_config}
+def simulation_nodes(
+    config: models.Simulation, instance: ClusterInstanceInfo, db_client: Client
+) -> int:
+    """The nodes a simulation needs, from its cells, synapses, replay and LFP if counted."""
+    cells = config.number_neurons
+    # 0 is what entitycore gives the simulations generated before the synapses were counted.
+    synapses = getattr(config, "number_synapses", 0)
+    if not synapses:
+        return math.ceil(MEM_GB_PER_CELL * cells / instance.memory_per_instance_gb)
+    spikes = getattr(config, "number_replay_spikes", 0)
+    replayed = getattr(config, "number_replayed_synapses", 0)
+    lfp_gb = lfp_weights_gb(config, db_client) if config.recording_arrays else 0.0
+
+    per_rank = GB_PER_RANK + GB_PER_REPLAY_SPIKE_PER_RANK * spikes
+    if config.recording_arrays:
+        per_rank += GB_PER_RANK_WITH_LFP
+    per_node = MARGIN * instance.ranks_per_instance * per_rank
+    split = MARGIN * (
+        GB_PER_CELL * cells
+        + GB_PER_SYNAPSE * synapses
+        + GB_PER_REPLAYED_SYNAPSE * replayed
+        + LFP_WEIGHTS_FACTOR * lfp_gb
     )
-    factor = CORENEURON_FACTOR if simulation_config.get("target_simulator") == "CORENEURON" else 1
-    return (
-        MARGIN * factor * (GB_PER_CELL * config.number_neurons + GB_PER_SYNAPSE * number_synapses)
+    room = USABLE_FRACTION * instance.memory_per_instance_gb - per_node
+    if room <= 0:
+        raise ApiError(
+            message=(
+                f"The spike inputs of the simulation hold {spikes:,} spikes. Every one of the "
+                f"{instance.ranks_per_instance} processes of a node reads them all, which needs "
+                f"{per_node:,.0f} GB of the {instance.memory_per_instance_gb} GB of a node, "
+                "however many nodes run it. Lower the rate, the duration or the sources of the "
+                "spike stimuli."
+            ),
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+        )
+    nodes = max(
+        1,
+        math.ceil(split / room),
+        math.ceil(MIN_GB_PER_CELL * cells / instance.memory_per_instance_gb),
     )
+    if instance.max_instances is not None and nodes > instance.max_instances:
+        raise ApiError(
+            message=(
+                f"The simulation needs {nodes} nodes of {instance.memory_per_instance_gb} GB for "
+                f"its {cells:,} neurons and {synapses:,} synapses, and at most "
+                f"{instance.max_instances} are available. Simulate fewer neurons, or replay fewer "
+                "sources."
+            ),
+            error_code=ApiErrorCode.RESOURCE_ESTIMATION_ERROR,
+        )
+    return nodes
 
 
 def estimate_task_resources(
@@ -82,14 +159,7 @@ def estimate_task_resources(
         )
 
     instance = instances[0]
-    memory_gb = _synapse_memory_gb(config, db_client)
-    if memory_gb is None:
-        n_nodes = math.ceil(MEM_GB_PER_CELL * number_of_neurons / instance.memory_per_instance_gb)
-    else:
-        n_nodes = max(
-            math.ceil(MIN_GB_PER_CELL * number_of_neurons / instance.memory_per_instance_gb),
-            math.ceil(memory_gb / (USABLE_FRACTION * instance.memory_per_instance_gb)),
-        )
+    n_nodes = simulation_nodes(config, instance, db_client)
     instance_type = instance.name
 
     return task_definition.resources.model_copy(

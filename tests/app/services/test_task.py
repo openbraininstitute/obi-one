@@ -982,8 +982,12 @@ def test_estimate_task_resources_circuit_simulation(db_client, config_id, httpx_
     )
     mocked_instances = {
         "cell_a": [
-            ClusterInstanceInfo(name="big", max_neurons=1_000_000, memory_per_instance_gb=100),
-            ClusterInstanceInfo(name="small", max_neurons=100, memory_per_instance_gb=10),
+            ClusterInstanceInfo(
+                name="big", max_neurons=1_000_000, memory_per_instance_gb=100, ranks_per_instance=4
+            ),
+            ClusterInstanceInfo(
+                name="small", max_neurons=100, memory_per_instance_gb=10, ranks_per_instance=4
+            ),
         ]
     }
 
