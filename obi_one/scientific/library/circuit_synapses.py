@@ -48,6 +48,9 @@ class CellSynapses(BaseModel):
         ids = np.unique(np.asarray(ids, dtype=np.int64))
         ids = ids[(ids >= 0) & (ids < self.size)]
         counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
+        # Populations counted in total have no per-cell counts. Their total is split by the node
+        # set's share of the cells, scaled up in case its cells are denser than average, so that
+        # the memory of the simulation is not underestimated.
         worst_case_fraction_of_total = (
             min(1.0, WORST_CASE_SUBSET_DENSITY_VS_AVERAGE * len(ids) / self.size)
             if self.size
