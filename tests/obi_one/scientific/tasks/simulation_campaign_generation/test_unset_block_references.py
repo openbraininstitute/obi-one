@@ -71,7 +71,11 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
 # the default construction. Required-target blocks are kept out of the untargeted sweeps below.
 CIRCUIT_STIMULI = sorted(union_member_names(CircuitStimulusUnion))
 RECORDINGS = sorted(union_member_names(RecordingUnion))
-SYNAPTIC_MANIPULATIONS = sorted(union_member_names(SynapticManipulationsUnion))
+# Kept only so old configs load; it refuses to generate.
+DEPRECATED_SYNAPTIC_MANIPULATIONS = {"ScaleAcetylcholineUSESynapticManipulation"}
+SYNAPTIC_MANIPULATIONS = sorted(
+    union_member_names(SynapticManipulationsUnion) - DEPRECATED_SYNAPTIC_MANIPULATIONS
+)
 # Per-neuron explicit locations name their own node ids, so they carry no neuron-set reference
 # for these tests to fill in.
 LOCATIONS_WITHOUT_A_TARGET = {"PerNeuronExplicitMorphologyLocations"}

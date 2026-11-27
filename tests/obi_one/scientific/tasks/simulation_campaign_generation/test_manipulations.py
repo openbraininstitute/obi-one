@@ -7,8 +7,9 @@ responsibility rather than the blocks'.
 """
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
+from obi_one.core.exception import ConfigValidationError
 from obi_one.core.tuple import NamedTuple
 from obi_one.scientific.blocks.neuron_sets.id import BiophysicalPopulationIDNeuronSet
 from obi_one.scientific.blocks.neuronal_manipulations.neuronal_manipulations import (
@@ -21,6 +22,9 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
     ConnectSynapticManipulation,
     DisconnectSynapticManipulation,
     ScaleWeightSynapticManipulation,
+)
+from obi_one.scientific.blocks.synaptic_manipulations.deprecated import (
+    ScaleAcetylcholineUSESynapticManipulation,
 )
 from obi_one.scientific.tasks.generate_simulations.config.neuron.neuron_circuit import (
     CircuitSimulationSingleConfig,
@@ -48,7 +52,9 @@ SYNAPTIC_MANIPULATIONS = {
 
 class TestUnionCoverage:
     def test_every_synaptic_manipulation_is_exercised(self):
-        assert union_member_names(SynapticManipulationsUnion) == set(SYNAPTIC_MANIPULATIONS)
+        assert union_member_names(SynapticManipulationsUnion) == set(SYNAPTIC_MANIPULATIONS) | {
+            "ScaleAcetylcholineUSESynapticManipulation"
+        }
 
     def test_every_neuronal_manipulation_is_exercised(self):
         assert union_member_names(NeuronalManipulationUnion) == {
@@ -98,6 +104,24 @@ class TestSynapticManipulations:
                 "weight": 1.5,
             }
         ]
+
+    def test_deprecated_acetylcholine_block_loads_but_does_not_generate(self, circuit, tmp_path):
+        # As saved by the public "MS input" campaign before #1205.
+        block = TypeAdapter(SynapticManipulationsUnion).validate_python(
+            {
+                "type": "ScaleAcetylcholineUSESynapticManipulation",
+                "presynaptic_neuron_set": None,
+                "postsynaptic_neuron_set": None,
+                "use_scaling": 0.95,
+            }
+        )
+        assert isinstance(block, ScaleAcetylcholineUSESynapticManipulation)
+
+        config = build_config(
+            CircuitSimulationSingleConfig, circuit=circuit, blocks={"ACh synapses": block}
+        )
+        with pytest.raises(ConfigValidationError, match="deprecated"):
+            generate(config, tmp_path)
 
     @pytest.mark.parametrize("weight_scaling", [-0.5, [1.0, -0.5]])
     def test_scale_weight_refuses_a_negative_factor(self, weight_scaling):

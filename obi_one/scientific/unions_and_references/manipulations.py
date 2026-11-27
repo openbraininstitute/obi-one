@@ -8,9 +8,15 @@ from obi_one.scientific.blocks.synaptic_manipulations.connect_disconnect import 
     DisconnectSynapticManipulation,
     ScaleWeightSynapticManipulation,
 )
+from obi_one.scientific.blocks.synaptic_manipulations.deprecated import (
+    ScaleAcetylcholineUSESynapticManipulation,
+)
 
 _SYNAPTIC_MANIPULATIONS = (
-    DisconnectSynapticManipulation | ConnectSynapticManipulation | ScaleWeightSynapticManipulation
+    DisconnectSynapticManipulation
+    | ConnectSynapticManipulation
+    | ScaleWeightSynapticManipulation
+    | ScaleAcetylcholineUSESynapticManipulation
 )
 
 SynapticManipulationsUnion = Annotated[
