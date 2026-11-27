@@ -9,6 +9,7 @@ from obi_one.core.exception import ConfigValidationError
 from obi_one.core.schema import SchemaKey, UIElement
 from obi_one.scientific.blocks.neuron_sets.specific import AllPointNeurons
 from obi_one.scientific.library.circuit import Circuit
+from obi_one.scientific.library.circuit_constants import TYPES_OF_NEST_POINT_NODES
 from obi_one.scientific.library.constants import (
     SIMULATION_TIMESTEP_MILLISECONDS,
 )
@@ -100,13 +101,25 @@ class Brian2SimulationScanConfig(BaseSimulationScanConfig, abc.ABC):
         """Refuse a circuit the Brian2 runner cannot build a network from.
 
         ``simulate_brian2`` asserts a single node population, so a circuit with none or several
-        would only fail once the simulation ran.
+        would only fail once the simulation ran. A NEST circuit's ``nest_point`` population counts
+        as a point population, so it is refused by its type.
         """
         if circuit is None:
             return
         populations = Circuit.get_node_population_names(
             circuit.sonata_circuit, incl_virtual=False, incl_biophysical=False
         )
+        nest_populations = [
+            population
+            for population in populations
+            if circuit.sonata_circuit.nodes[population].type in TYPES_OF_NEST_POINT_NODES
+        ]
+        if nest_populations:
+            msg = (
+                f"Circuit '{circuit.name}' is a NEST circuit: its populations {nest_populations} "
+                "are of type 'nest_point', which the Brian2 runner cannot simulate."
+            )
+            raise ConfigValidationError(msg)
         if len(populations) != 1:
             msg = (
                 f"A Brian2 simulation needs exactly one point node population; "

@@ -137,6 +137,8 @@ the 20-neuron `sugar` set is the natural target.
 A Brian2 configuration also refuses, before generating anything, a circuit that does not have
 exactly one point node population, since the runner cannot build a network from it.
 
+It also refuses a NEST circuit, whose `nest_point` population counts as a point population but which only the NEST runner simulates.
+
 ## Progress
 
 While simulated time advances, `simulate_brian2.py` prints its progress to stdout in the same form as neurodamus, so a Brian2 job's log reads like a NEURON job's:

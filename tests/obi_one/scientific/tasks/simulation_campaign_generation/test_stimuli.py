@@ -6,6 +6,9 @@ cover every stimulus type reachable from a simulation config, plus the timestamp
 targeting rules that apply across them.
 """
 
+import json
+import shutil
+
 import h5py
 import numpy as np
 import pytest
@@ -30,6 +33,7 @@ from obi_one.scientific.blocks.stimuli.stimulus import (
 )
 from obi_one.scientific.blocks.timestamps.regular import RegularTimestamps
 from obi_one.scientific.blocks.timestamps.single import SingleTimestamp
+from obi_one.scientific.library.circuit import Circuit
 from obi_one.scientific.tasks.generate_simulations.config.brian2.brian2_circuit import (
     Brian2CircuitSimulationSingleConfig,
 )
@@ -48,6 +52,7 @@ from tests.obi_one.scientific.tasks.simulation_campaign_generation.conftest impo
     BIOPHYSICAL_POPULATION,
     DEFAULT_BIOPHYSICAL_NODE_SET,
     DEFAULT_POINT_NODE_SET,
+    POINT_CIRCUIT_PATH,
     POINT_POPULATION,
     VIRTUAL_POPULATION,
     build_config,
@@ -452,6 +457,26 @@ class TestBrian2DirectPoissonStimulus:
 
         with pytest.raises(ConfigValidationError, match="needs exactly one point node population"):
             generate(config, tmp_path)
+
+    def test_a_nest_circuit_is_refused(self, tmp_path):
+        """A ``nest_point`` population is a point population, but only the NEST runner runs it."""
+        circuit_dir = tmp_path / "nest_circuit"
+        shutil.copytree(POINT_CIRCUIT_PATH.parent, circuit_dir)
+        circuit_config = circuit_dir / POINT_CIRCUIT_PATH.name
+        sonata = json.loads(circuit_config.read_text())
+        sonata["target_simulator"] = "NEST"
+        sonata["networks"]["nodes"][0]["populations"][POINT_POPULATION]["type"] = "nest_point"
+        for edge_population in sonata["networks"]["edges"][0]["populations"].values():
+            edge_population["type"] = "nest_chemical"
+        circuit_config.write_text(json.dumps(sonata))
+        config = build_config(
+            Brian2CircuitSimulationSingleConfig,
+            circuit=Circuit(name="nest", path=str(circuit_config)),
+            blocks={"DirectPoisson": Brian2DirectPoissonStimulus()},
+        )
+
+        with pytest.raises(ConfigValidationError, match="is a NEST circuit"):
+            generate(config, tmp_path / "output")
 
     def test_the_stimulus_default_is_the_simulation_default(self, brian2_config, tmp_path):
         """Brian2 has one default neuron set, shared by every untargeted block."""
