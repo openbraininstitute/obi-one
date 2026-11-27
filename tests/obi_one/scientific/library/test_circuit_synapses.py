@@ -16,7 +16,6 @@ from obi_one.scientific.library.circuit_synapses import (
     count_synapses,
     count_synapses_by_source,
     read_synapses_per_cell,
-    synapses_by_source,
 )
 
 from tests.utils import CIRCUIT_DIR
@@ -186,10 +185,6 @@ class TestReadSynapsesPerCell:
             read_synapses_per_cell(circuit, refuse)
 
 
-def total(cells, ids):
-    return sum(synapses_by_source(cells, ids).values())
-
-
 def exact(cells):
     """The exact synapses of each cell, summed over the source populations, or None."""
     return sum(cells.exact.values()) if cells.exact else None
@@ -298,16 +293,16 @@ class TestEstimatedSynapses:
     )
 
     def test_all_the_cells_get_the_total(self):
-        assert total(self.CELLS, [0, 1, 2, 3]) == 1010
+        assert self.CELLS.count([0, 1, 2, 3]) == 1010
 
     def test_a_subset_gets_its_share_times_the_margin(self):
-        assert total(self.CELLS, [0]) == 1 + 1000 * module.SUBSET_FACTOR / 4
+        assert self.CELLS.count([0]) == 1 + 1000 * module.SUBSET_FACTOR / 4
 
     def test_the_share_is_capped_at_the_total(self):
-        assert total(self.CELLS, [0, 1]) == 3 + 1000
+        assert self.CELLS.count([0, 1]) == 3 + 1000
 
     def test_each_source_keeps_its_own_count(self):
-        assert synapses_by_source(self.CELLS, [0]) == {
+        assert self.CELLS.count_by_source([0]) == {
             "cells": 1,
             "virtual": 1000 * module.SUBSET_FACTOR / 4,
         }

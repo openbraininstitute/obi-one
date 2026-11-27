@@ -73,20 +73,23 @@ class CellSynapses:
         object.__setattr__(self, "exact", MappingProxyType(dict(self.exact)))
         object.__setattr__(self, "estimated", MappingProxyType(dict(self.estimated)))
 
+    def count_by_source(self, ids: list[int] | np.ndarray) -> dict[str, float]:
+        """The synapses onto the cells ``ids`` from each source, estimated in part.
 
-def synapses_by_source(cells: CellSynapses, ids: list[int] | np.ndarray) -> dict[str, float]:
-    """The synapses onto the cells ``ids`` of a population from each source, estimated in part.
+        The synapses of a source counted in total give the cells their share of them, times
+        ``SUBSET_FACTOR``, up to the total.
+        """
+        ids = np.unique(np.asarray(ids, dtype=np.int64))
+        ids = ids[(ids >= 0) & (ids < self.size)]
+        counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
+        share = min(1.0, SUBSET_FACTOR * len(ids) / self.size) if self.size else 0.0
+        for source, synapses in self.estimated.items():
+            counts[source] = counts.get(source, 0.0) + synapses * share
+        return counts
 
-    The synapses of a source counted in total give the cells their share of them, times
-    ``SUBSET_FACTOR``, up to the total.
-    """
-    ids = np.unique(np.asarray(ids, dtype=np.int64))
-    ids = ids[(ids >= 0) & (ids < cells.size)]
-    counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in cells.exact.items()}
-    share = min(1.0, SUBSET_FACTOR * len(ids) / cells.size) if cells.size else 0.0
-    for source, synapses in cells.estimated.items():
-        counts[source] = counts.get(source, 0.0) + synapses * share
-    return counts
+    def count(self, ids: list[int] | np.ndarray) -> float:
+        """The synapses onto the cells ``ids``, estimated in part (see ``count_by_source``)."""
+        return sum(self.count_by_source(ids).values())
 
 
 def _exact_synapses_per_cell(group: h5py.Group, size: int, n_edges: int) -> np.ndarray | None:
@@ -212,7 +215,7 @@ def count_synapses_by_source(
     counts: dict[str, float] = {}
     for pop, ids in node_ids.items():
         if pop in synapses:
-            for source, n in synapses_by_source(synapses[pop], ids).items():
+            for source, n in synapses[pop].count_by_source(ids).items():
                 counts[source] = counts.get(source, 0.0) + n
     return counts
 
