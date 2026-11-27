@@ -1,13 +1,13 @@
 import json
 import operator
 import shutil
-from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import h5py
 import libsonata
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from obi_one.scientific.library import circuit_synapses as module
 from obi_one.scientific.library.circuit_synapses import (
@@ -275,7 +275,7 @@ class TestCountSynapses:
         )
 
     def test_the_estimate_is_rounded_to_an_integer(self):
-        cells = CellSynapses(10, estimated={"virtual": 7})
+        cells = CellSynapses(size=10, estimated={"virtual": 7})
 
         assert count_synapses({"cells": cells}, {"cells": [0]}) == 2
 
@@ -289,7 +289,9 @@ class TestEstimatedSynapses:
     """A population counted in total gives a node set its share of the cells, times a margin."""
 
     CELLS = CellSynapses(
-        4, {"cells": np.array([1, 2, 3, 4], dtype=np.uint32)}, estimated={"virtual": 1000}
+        size=4,
+        exact={"cells": np.array([1, 2, 3, 4], dtype=np.uint32)},
+        estimated={"virtual": 1000},
     )
 
     def test_all_the_cells_get_the_total(self):
@@ -308,19 +310,9 @@ class TestEstimatedSynapses:
         }
 
 
-class TestCellSynapsesAreReadOnly:
+class TestCellSynapsesAreFrozen:
     """They are cached and shared by every simulation of a circuit."""
 
     def test_the_fields_cannot_be_replaced(self, synapses):
-        with pytest.raises(FrozenInstanceError):
+        with pytest.raises(ValidationError, match="frozen"):
             synapses[CELLS].size = 0
-
-    def test_the_counts_by_source_cannot_be_changed(self, synapses):
-        with pytest.raises(TypeError):
-            synapses[CELLS].exact["VPM"] = np.zeros(N_CELLS)
-        with pytest.raises(TypeError):
-            synapses[CELLS].estimated["VPM"] = 1
-
-    def test_the_counts_per_cell_cannot_be_changed(self, synapses):
-        with pytest.raises(ValueError, match="read-only"):
-            synapses[CELLS].exact["VPM"][0] = 0

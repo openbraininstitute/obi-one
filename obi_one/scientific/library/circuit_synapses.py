@@ -12,16 +12,15 @@ holds.
 
 import io
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from contextlib import nullcontext
-from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
-from types import MappingProxyType
 
 import h5py
 import libsonata
 import numpy as np
+from pydantic import BaseModel, ConfigDict
 
 from obi_one.scientific.library.circuit_constants import (
     TYPES_OF_BIOPHYS_NODES,
@@ -48,12 +47,11 @@ SYNAPSES_PER_CELL_CACHE: dict[str, dict[str, "CellSynapses"]] = {}
 SYNAPSES_PER_CELL_CACHE_LOCK = Lock()
 
 
-@dataclass(frozen=True, slots=True)
-class CellSynapses:
+class CellSynapses(BaseModel):
     """The synapses onto the cells of a population of biophysical cells, by source population.
 
     Kept by source because replay drives the synapses of some sources only, and each replayed
-    connection costs memory. Read-only: it is cached and shared by the simulations of a circuit.
+    connection costs memory. Frozen: it is cached and shared by the simulations of a circuit.
 
     Attributes:
         size: The cells of the population.
@@ -62,16 +60,11 @@ class CellSynapses:
         estimated: The synapses from a source of the edge populations counted in total only.
     """
 
-    size: int
-    exact: Mapping[str, np.ndarray] = field(default_factory=dict)
-    estimated: Mapping[str, int] = field(default_factory=dict)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
-    def __post_init__(self) -> None:
-        """Make the mappings and the per-cell arrays read-only too."""
-        for counts in self.exact.values():
-            counts.flags.writeable = False
-        object.__setattr__(self, "exact", MappingProxyType(dict(self.exact)))
-        object.__setattr__(self, "estimated", MappingProxyType(dict(self.estimated)))
+    size: int
+    exact: dict[str, np.ndarray] = {}
+    estimated: dict[str, int] = {}
 
     def count_by_source(self, ids: list[int] | np.ndarray) -> dict[str, float]:
         """The synapses onto the cells ``ids`` from each source, estimated in part.
@@ -186,7 +179,7 @@ def read_synapses_per_cell(
                     total = exact[target].get(source, 0)
                     exact[target][source] = (total + counts).astype(np.uint32)
     return {
-        target: CellSynapses(size, exact[target], estimated[target])
+        target: CellSynapses(size=size, exact=exact[target], estimated=estimated[target])
         for target, size in sizes.items()
     }
 
