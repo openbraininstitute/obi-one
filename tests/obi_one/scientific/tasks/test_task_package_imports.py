@@ -3,12 +3,17 @@
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 
+import pytest
 
-def test_simulation_execution_neuron_config_import_does_not_load_task_module():
-    script = """
+
+@pytest.mark.parametrize("package", ["", ".neuron", ".nest"])
+def test_simulation_execution_config_import_does_not_load_task_modules(package):
+    script = f"""
 import sys
-import obi_one.scientific.tasks.simulation_execution.neuron.config
-assert "obi_one.scientific.tasks.simulation_execution.neuron.task" not in sys.modules
+import obi_one.scientific.tasks.simulation_execution{package}.config
+loaded = [m for m in sys.modules if m.startswith("obi_one.scientific.tasks.simulation_execution")
+          and m.endswith(".task")]
+assert not loaded, loaded
 """
     subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
         [sys.executable, "-c", script],
