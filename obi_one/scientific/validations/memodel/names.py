@@ -20,4 +20,7 @@ class ValidationName(StrEnum):
     INPUT_RESISTANCE = "Input Resistance Validation"
     SPIKING = "Spiking Validation"
     REBOUND_BURST = "Rebound Burst Validation"
+    # Not a validation: the platform's thumbnail generation looks up the
+    # ValidationResult by this exact name, as written by the legacy validation.
+    THUMBNAIL = "thumbnail"
     ION_CHANNEL_MODEL_BUILD = "Suitable For Ion Channel Model Build"

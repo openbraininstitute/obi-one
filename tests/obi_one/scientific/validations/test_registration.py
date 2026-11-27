@@ -267,6 +267,33 @@ class TestOverwriteExisting:
 
 
 class TestAssetUpload:
+    def test_thumbnail_is_registered_as_a_png_figure(self, mock_client, tmp_path):
+        # The platform's thumbnail generation looks up ValidationResult(name="thumbnail")
+        # and its figure asset, as written by the legacy validation.
+        thumbnail = tmp_path / "thumbnail.png"
+        thumbnail.write_text("fake png")
+        test_result = TestResult(name="thumbnail", passed=True, details="", figures=[thumbnail])
+        search_iter = MagicMock()
+        search_iter.all.return_value = []
+        mock_client.search_entity.return_value = search_iter
+        mock_client.register_entity.return_value = MagicMock(id="thumb-id")
+
+        register_outcome(
+            client=mock_client,
+            test_result=test_result,
+            validated_entity_id="3f4e8f5e-2a6e-4b40-9a1d-1f4e5f6a7b8c",
+            out_dir=tmp_path,
+        )
+
+        registered = mock_client.register_entity.call_args.kwargs["entity"]
+        assert registered.name == "thumbnail"
+        assert registered.passed is True
+        # Only the figure is uploaded; empty details produce no details asset.
+        mock_client.upload_file.assert_called_once()
+        kwargs = mock_client.upload_file.call_args.kwargs
+        assert kwargs["file_content_type"] == ContentType.image_png
+        assert kwargs["asset_label"] == AssetLabel.validation_result_figure
+
     def test_png_figure_uses_image_content_type(self, mock_client, tmp_path):
         png = tmp_path / "trace.png"
         png.write_text("fake png")
