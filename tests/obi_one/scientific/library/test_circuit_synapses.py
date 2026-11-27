@@ -12,10 +12,12 @@ from pydantic import ValidationError
 from obi_one.scientific.library import circuit_synapses as module
 from obi_one.scientific.library.circuit_synapses import (
     CellSynapses,
-    cached_synapses_per_cell,
     count_synapses,
     count_synapses_by_source,
+    load_synapses_per_cell,
     read_synapses_per_cell,
+    save_synapses_per_cell,
+    staged_synapses_per_cell,
 )
 
 from tests.utils import CIRCUIT_DIR
@@ -207,51 +209,58 @@ def rewrite_node_ranges(circuit, change):
         index["node_id_to_ranges"] = ranges
 
 
-@pytest.fixture
-def empty_cache():
-    module.SYNAPSES_PER_CELL_CACHE.clear()
-    yield
-    module.SYNAPSES_PER_CELL_CACHE.clear()
+class TestStagedSynapsesPerCell:
+    """The simulations of a campaign share the staged circuit, and read its edges once."""
 
-
-@pytest.mark.usefixtures("empty_cache")
-class TestCachedSynapsesPerCell:
-    def test_a_circuit_is_read_once(self):
+    def test_a_circuit_is_read_once_and_kept_beside_its_config(self, circuit):
         reads = []
 
         def read():
             reads.append(1)
-            return {CELLS: np.ones(3)}
+            return read_synapses_per_cell(circuit)
 
-        first = cached_synapses_per_cell("circuit-1", read)
-        second = cached_synapses_per_cell("circuit-1", read)
+        first = staged_synapses_per_cell(circuit, read)
+        second = staged_synapses_per_cell(circuit, read)
 
         assert len(reads) == 1
-        assert first is second
+        assert (circuit.parent / module.SYNAPSES_FILE_NAME).exists()
+        assert np.array_equal(exact(second[CELLS]), exact(first[CELLS]))
 
-    def test_circuits_are_kept_apart(self):
-        a = cached_synapses_per_cell("a", lambda: {CELLS: np.zeros(1)})
-        b = cached_synapses_per_cell("b", lambda: {CELLS: np.ones(1)})
-
-        assert a[CELLS][0] == 0
-        assert b[CELLS][0] == 1
-
-    def test_a_failed_read_is_not_kept(self):
+    def test_a_failed_read_leaves_no_file(self, circuit):
         def fail():
             msg = "refused"
             raise OSError(msg)
 
         with pytest.raises(OSError, match="refused"):
-            cached_synapses_per_cell("circuit-1", fail)
+            staged_synapses_per_cell(circuit, fail)
 
-        assert cached_synapses_per_cell("circuit-1", lambda: {CELLS: np.ones(1)})[CELLS][0] == 1
+        assert not (circuit.parent / module.SYNAPSES_FILE_NAME).exists()
 
-    def test_the_oldest_circuit_is_dropped_beyond_the_limit(self, monkeypatch):
-        monkeypatch.setattr(module, "MAX_CACHED_CIRCUITS", 2)
-        for key in ("a", "b", "c"):
-            cached_synapses_per_cell(key, lambda: {CELLS: np.ones(1)})
+    @pytest.mark.parametrize("max_index_bytes", [module.MAX_INDEX_BYTES, 0])
+    def test_the_file_holds_the_counts_per_cell_and_in_total(
+        self, circuit, tmp_path, monkeypatch, max_index_bytes
+    ):
+        monkeypatch.setattr(module, "MAX_INDEX_BYTES", max_index_bytes)
+        synapses = read_synapses_per_cell(circuit)
+        path = tmp_path / "synapses.npz"
 
-        assert list(module.SYNAPSES_PER_CELL_CACHE) == ["b", "c"]
+        save_synapses_per_cell(path, synapses)
+        loaded = load_synapses_per_cell(path)
+
+        assert loaded.keys() == synapses.keys()
+        for population, cells in synapses.items():
+            assert loaded[population].size == cells.size
+            assert dict(loaded[population].estimated) == dict(cells.estimated)
+            assert loaded[population].exact.keys() == cells.exact.keys()
+            for source, counts in cells.exact.items():
+                assert np.array_equal(loaded[population].exact[source], counts)
+
+    def test_a_circuit_without_synapses_saves_and_loads(self, tmp_path):
+        path = tmp_path / "synapses.npz"
+
+        save_synapses_per_cell(path, {})
+
+        assert load_synapses_per_cell(path) == {}
 
 
 class TestCountSynapses:

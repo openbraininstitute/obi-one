@@ -61,7 +61,6 @@ def replayed_synapses(
     """The synapses whose source spikes, estimated from each source's share of spiking nodes."""
     total = 0.0
     for source, synapses in synapses_by_source.items():
-        size = population_sizes.get(source)
-        if size:
+        if size := population_sizes.get(source):
             total += synapses * min(1.0, SUBSET_FACTOR * replayed_sources.get(source, 0) / size)
     return round(total)

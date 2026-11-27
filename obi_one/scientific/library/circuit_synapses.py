@@ -8,7 +8,6 @@ import logging
 from collections.abc import Callable
 from contextlib import nullcontext
 from pathlib import Path
-from threading import Lock
 
 import h5py
 import libsonata
@@ -25,10 +24,8 @@ L = logging.getLogger(__name__)
 MAX_INDEX_BYTES = 32 * 1024 * 1024
 SUBSET_FACTOR = 2.5
 
-# By the id of the circuit's sonata_circuit asset.
-MAX_CACHED_CIRCUITS = 16
-SYNAPSES_PER_CELL_CACHE: dict[str, dict[str, "CellSynapses"]] = {}
-SYNAPSES_PER_CELL_CACHE_LOCK = Lock()
+# Kept next to the staged circuit config, which the simulations of a campaign share.
+SYNAPSES_FILE_NAME = "synapses_per_cell.npz"
 
 
 class CellSynapses(BaseModel):
@@ -149,19 +146,42 @@ def read_synapses_per_cell(
     }
 
 
-def cached_synapses_per_cell(
-    circuit_key: str, read: Callable[[], dict[str, CellSynapses]]
+def save_synapses_per_cell(path: Path, synapses: dict[str, CellSynapses]) -> None:
+    """Write the result of ``read_synapses_per_cell`` to an ``.npz`` file."""
+    arrays = {}
+    for target, cells in synapses.items():
+        arrays[f"size/{target}"] = np.array(cells.size)
+        for source, counts in cells.exact.items():
+            arrays[f"exact/{target}/{source}"] = counts
+        for source, total in cells.estimated.items():
+            arrays[f"estimated/{target}/{source}"] = np.array(total)
+    np.savez(path, allow_pickle=False, **arrays)
+
+
+def load_synapses_per_cell(path: Path) -> dict[str, CellSynapses]:
+    """Read a file written by ``save_synapses_per_cell``."""
+    with np.load(path) as f:
+        parts = [(tuple(key.split("/")), f[key]) for key in f.files]
+    return {
+        key[1]: CellSynapses(
+            size=int(value),
+            exact={k[2]: v for k, v in parts if k[:2] == ("exact", key[1])},
+            estimated={k[2]: int(v) for k, v in parts if k[:2] == ("estimated", key[1])},
+        )
+        for key, value in parts
+        if key[0] == "size"
+    }
+
+
+def staged_synapses_per_cell(
+    circuit_config_path: Path, read: Callable[[], dict[str, CellSynapses]]
 ) -> dict[str, CellSynapses]:
-    """The synapses per cell of a circuit, read with ``read`` the first time only."""
-    with SYNAPSES_PER_CELL_CACHE_LOCK:
-        if circuit_key in SYNAPSES_PER_CELL_CACHE:
-            SYNAPSES_PER_CELL_CACHE[circuit_key] = SYNAPSES_PER_CELL_CACHE.pop(circuit_key)
-            return SYNAPSES_PER_CELL_CACHE[circuit_key]
+    """The synapses per cell of a staged circuit, read with ``read`` once and kept beside it."""
+    path = circuit_config_path.parent / SYNAPSES_FILE_NAME
+    if path.exists():
+        return load_synapses_per_cell(path)
     synapses = read()
-    with SYNAPSES_PER_CELL_CACHE_LOCK:
-        if len(SYNAPSES_PER_CELL_CACHE) >= MAX_CACHED_CIRCUITS:
-            del SYNAPSES_PER_CELL_CACHE[next(iter(SYNAPSES_PER_CELL_CACHE))]
-        SYNAPSES_PER_CELL_CACHE[circuit_key] = synapses
+    save_synapses_per_cell(path, synapses)
     return synapses
 
 

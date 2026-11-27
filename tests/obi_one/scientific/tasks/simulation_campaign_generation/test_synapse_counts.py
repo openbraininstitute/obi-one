@@ -83,7 +83,6 @@ def full_circuit(tmp_path):
 @pytest.fixture
 def db_client(full_circuit, tmp_path, monkeypatch):
     """A client for a circuit from entitycore, staged with its nodes only."""
-    monkeypatch.setattr(circuit_synapses, "SYNAPSES_PER_CELL_CACHE", {})
     staged = tmp_path / "staged"
     shutil.copytree(full_circuit.parent, staged)
     for edges_file in staged.rglob("edges.h5"):
@@ -224,9 +223,15 @@ def test_a_circuit_that_cannot_be_read_records_the_neurons_only(db_client, tmp_p
     assert "are not counted" in caplog.text
 
 
-def test_another_circuit_is_read_again(db_client, tmp_path):
+def test_another_circuit_is_read_again(db_client, full_circuit, tmp_path, monkeypatch):
+    """Each circuit is staged into a directory of its own, where its counts are kept."""
     generate(config(), tmp_path / "out", db_client=db_client, subdirectory="0")
-    db_client.asset = SimpleNamespace(id=uuid4())
+    other = tmp_path / "other"
+    shutil.copytree(full_circuit.parent, other)
+    for edges_file in other.rglob("edges.h5"):
+        edges_file.unlink()
+    other_circuit = Circuit(name="other", path=str(other / "circuit_config.json"))
+    monkeypatch.setattr(CircuitFromID, "stage_circuit", lambda _self, **_: other_circuit)
 
     generate(config(), tmp_path / "out", db_client=db_client, subdirectory="1")
 

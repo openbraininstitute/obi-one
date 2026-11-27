@@ -17,9 +17,9 @@ from obi_one.scientific.library.circuit_staging import (
 )
 from obi_one.scientific.library.circuit_synapses import (
     CellSynapses,
-    cached_synapses_per_cell,
     count_synapses_by_source,
     read_synapses_per_cell,
+    staged_synapses_per_cell,
 )
 from obi_one.scientific.library.constants import SONATA
 from obi_one.scientific.library.replay_inputs import count_replay, replayed_synapses
@@ -61,7 +61,9 @@ def simulation_synapse_counts(
             )
         return read_synapses_per_cell(staged.path, open_edges_file)
 
-    by_source = count_synapses_by_source(cached_synapses_per_cell(str(asset.id), read), node_ids)
+    by_source = count_synapses_by_source(
+        staged_synapses_per_cell(Path(staged.path), read), node_ids
+    )
     replayed, spikes = 0, 0
     if spike_files:
         config = libsonata.CircuitConfig.from_file(staged.path)

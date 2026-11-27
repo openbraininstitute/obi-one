@@ -454,9 +454,9 @@ One layer of an SSCX circuit holds up to 2.2 times the mean synapses per cell, h
 
 ## Cost of the estimate
 
-The first simulation of a circuit reads its edge indices in the API service (production, a fresh process per circuit). The next simulations of the circuit read nothing: the synapses per cell are cached, at most 16 circuits.
+The first simulation of a campaign reads the edge indices of its circuit in the API service (production, a fresh process per circuit), and writes the synapses per cell next to the staged circuit; the next simulations of the campaign load that file (5.2 MB for the whole rCA1 circuit, 9 ms).
 
-| Circuit | Cells | Staging the nodes (already done) | Reading the indices | Range requests | Added peak memory | Kept in cache |
+| Circuit | Cells | Staging the nodes (already done) | Reading the indices | Range requests | Added peak memory | Synapses per cell kept |
 |---|---|---|---|---|---|---|
 | nbS1-HEX0-L4 | 4,870 | 9.6 s | 5.1 s | 16 | 7 MB | 0.07 MB |
 | rCA1-SLICE-L0.69-THICK300 | 9,587 | 4.4 s | 4.5 s | 13 | 7 MB | 0.11 MB |
