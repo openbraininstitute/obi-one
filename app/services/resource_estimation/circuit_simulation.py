@@ -59,7 +59,7 @@ def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
     if not config.recording_arrays:
         return 0.0
     circuit = db_client.get_entity(entity_id=config.entity_id, entity_type=models.Circuit)
-    share = min(
+    worst_case_fraction_of_weights = min(
         1.0,
         WORST_CASE_SUBSET_DENSITY_VS_AVERAGE
         * config.number_neurons
@@ -74,7 +74,7 @@ def lfp_weights_gb(config: models.Simulation, db_client: Client) -> float:
             array, {"label": AssetLabel.electrode_array_weight_matrix}
         )
         weights += sum(asset.size or 0 for asset in matrices)
-    return share * weights * BYTE
+    return worst_case_fraction_of_weights * weights * BYTE
 
 
 def nodes_per_cell(gb_per_cell: float, cells: int, instance: ClusterInstanceInfo) -> int:

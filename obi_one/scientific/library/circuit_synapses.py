@@ -48,13 +48,13 @@ class CellSynapses(BaseModel):
         ids = np.unique(np.asarray(ids, dtype=np.int64))
         ids = ids[(ids >= 0) & (ids < self.size)]
         counts = {source: float(c[ids].sum(dtype=np.int64)) for source, c in self.exact.items()}
-        share = (
+        worst_case_fraction_of_total = (
             min(1.0, WORST_CASE_SUBSET_DENSITY_VS_AVERAGE * len(ids) / self.size)
             if self.size
             else 0.0
         )
         for source, synapses in self.estimated.items():
-            counts[source] = counts.get(source, 0.0) + synapses * share
+            counts[source] = counts.get(source, 0.0) + synapses * worst_case_fraction_of_total
         return counts
 
     def count(self, ids: list[int] | np.ndarray) -> float:
