@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from entitysdk.client import Client
-from entitysdk.models import IonChannelModel, NeuronBlock, UseIon
+from entitysdk.models import IonChannelModel, NeuronBlock
 from entitysdk.types import AssetLabel, ContentType
 
 from obi_one.core.task import Task
@@ -42,6 +42,7 @@ except ImportError:
         stim_timings: dict,
         stim_timings_corrections: dict,
         output_folder: Path,
+        **kwargs: Any,
     ) -> None:
         pass
 
@@ -57,6 +58,8 @@ except ImportError:
         m_power: int,
         h_power: int,
         output_name: str,
+        channel_type: str = "kv",
+        erev: float | None = None,
     ) -> None:
         pass
 
@@ -70,6 +73,7 @@ except ImportError:
         output_folder: Path,
         savefig: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
         show: bool,  # ruff: ignore[boolean-type-hint-positional-argument]
+        **kwargs: Any,
     ) -> None:
         pass
 
@@ -231,18 +235,10 @@ class IonChannelFittingTask(Task):
         properties: ResolvedModelProperties,
     ) -> uuid.UUID:
         # reproduce here what is being done in ion_channel_builder.io.write_output
-        useion = UseIon(
-            ion_name="k",  # TODO: fix this
-            read=["ek"],
-            write=["ik"],
-            valence=1,  # putting 1 for K for now. TODO: fix this
-            main_ion=True,
-        )
         neuron_block = NeuronBlock(
             **{"global": [{"celsius": "degree C"}]},
             range=range_vars,
-            useion=[useion],
-            nonspecific=[],
+            **self.config.model_type.neuron_block_currents(),
         )
 
         recording_names = ", ".join(
@@ -312,12 +308,7 @@ class IonChannelFittingTask(Task):
             trace_paths, trace_ljps = self.download_input(db_client=db_client)
 
             model = self.config.model_type
-            eq_names: dict[str, str] = {
-                "minf": model.minf_eq,
-                "mtau": model.mtau_eq,
-                "hinf": model.hinf_eq,
-                "htau": model.htau_eq,
-            }
+            eq_names = model.eq_names()
             # run ion_channel_builder main function to get optimised parameters
             eq_popt = extract_all_equations(
                 data_paths=trace_paths,
@@ -327,6 +318,7 @@ class IonChannelFittingTask(Task):
                 stim_timings=STIM_TIMINGS,
                 stim_timings_corrections=STIM_TIMINGS_CORRECTIONS,
                 output_folder=self.config.coordinate_output_root,
+                **model.fitting_options(),
             )
 
             # create new mod file
@@ -339,10 +331,8 @@ class IonChannelFittingTask(Task):
                 eq_names=eq_names,
                 eq_popt=eq_popt,  # ty:ignore[invalid-argument-type]
                 suffix=properties.ion_channel_name,
-                ion="k",
-                m_power=model.m_power,  # ty:ignore[invalid-argument-type]
-                h_power=model.h_power,  # ty:ignore[invalid-argument-type]
                 output_name=output_name,  # ty:ignore[invalid-argument-type]
+                **model.mod_file_options(),
             )
 
             # Compile into the coordinate folder rather than the process cwd, which concurrent
@@ -359,23 +349,21 @@ class IonChannelFittingTask(Task):
                 mech_suffix=mech_suffix,
                 # current is defined like this in mod file, see
                 # ion_channel_builder.io.write_output
-                mech_current="ik",
+                mech_current=model.current,
                 temperature=properties.temperature,
                 mech_conductance_name=self.conductance_name(mech_suffix),
                 output_folder=self.config.coordinate_output_root,
                 savefig=True,
                 show=False,
+                **model.plot_options,
             )
 
             # those are hardcoded in ion-channel-builder.io.templates.mod_template.jinja2
             range_vars = [
                 {f"g{mech_suffix}bar": "S/cm2"},
                 {f"g{mech_suffix}": "S/cm2"},
-                {"ik": "mA/cm2"},
-                {"mInf": None},
-                {"mTau": "ms"},
-                {"hInf": None},
-                {"hTau": "ms"},
+                {model.current: "mA/cm2"},
+                *model.gating_range_vars,
             ]
             range_vars += get_range_params_with_units(eq_names)
 

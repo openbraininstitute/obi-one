@@ -8,7 +8,7 @@ from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
 from entitysdk.client import Client
-from entitysdk.models import BrainRegion, Subject
+from entitysdk.models import BrainRegion, Subject, UseIon
 from entitysdk.types import Sex
 from pydantic import Discriminator, Field, StringConstraints
 
@@ -221,10 +221,146 @@ class HodgkinHuxleyIonChannelModel(Block):
         json_schema_extra=equation_schema_extra,
     )
 
+    # The ion of the channel current: the recordings fitted with this model are of potassium
+    # channels.
+    ion: ClassVar[str] = "k"
+    # Keyword arguments of ion_channel_builder's run_ion_channel_model.
+    plot_options: ClassVar[dict[str, Any]] = {}
+    # RANGE variables of the gates, as written by ion_channel_builder's mod template.
+    gating_range_vars: ClassVar[list[dict[str, str | None]]] = [
+        {"mInf": None},
+        {"mTau": "ms"},
+        {"hInf": None},
+        {"hTau": "ms"},
+    ]
 
-# One member, but a discriminated union rather than a bare block: the editor draws it as a
-# block_union, so a second channel formalism becomes another member and nothing else changes.
-IonChannelModelUnion = Annotated[HodgkinHuxleyIonChannelModel, Discriminator("type")]
+    @property
+    def current(self) -> str:
+        return f"i{self.ion}"
+
+    def eq_names(self) -> dict[str, str]:
+        return {
+            "minf": self.minf_eq,
+            "mtau": self.mtau_eq,
+            "hinf": self.hinf_eq,
+            "htau": self.htau_eq,
+        }
+
+    @staticmethod
+    def fitting_options() -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's extract_all_equations."""
+        return {}
+
+    def mod_file_options(self) -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's write_vgate_output."""
+        return {"ion": self.ion, "m_power": self.m_power, "h_power": self.h_power}
+
+    def neuron_block_currents(self) -> dict[str, list]:
+        """The useion and nonspecific entries of the model's NEURON block."""
+        return {
+            "useion": [
+                UseIon(
+                    ion_name=self.ion,
+                    read=[f"e{self.ion}"],
+                    write=[self.current],
+                    valence=1,
+                    main_ion=True,
+                )
+            ],
+            "nonspecific": [],
+        }
+
+
+class HyperpolarizationActivatedIonChannelModel(Block):
+    """A channel opened by hyperpolarization, like HCN: an activation gate only, carrying a mixed
+    cation current, with its reversal potential set rather than read from an ion.
+    """
+
+    title: ClassVar[str] = "Hyperpolarization-activated (HCN) ion channel model"
+
+    m_power: Annotated[int, Field(ge=1, le=4)] | list[Annotated[int, Field(ge=1, le=4)]] = Field(
+        title=r"$m$ exponent in channel equation",
+        default=1,
+        description=(
+            r"Exponent $p$ of $m$ in the channel equation: $g = \bar{g} \cdot m^p$. "
+            "These channels do not inactivate, so there is no $h$."
+        ),
+        json_schema_extra={SchemaKey.UI_ELEMENT: UIElement.INT_PARAMETER_SWEEP},
+    )
+    reversal_potential: float | list[float] = Field(
+        title="Reversal potential",
+        default=-30.0,
+        description=(
+            "Reversal potential of the channel current. It cannot be measured from the "
+            "activation protocol, where the current is inward at every step, so it is set: "
+            "-30 mV is typical of HCN channels in physiological solutions."
+        ),
+        json_schema_extra={
+            SchemaKey.UI_ELEMENT: UIElement.FLOAT_PARAMETER_SWEEP,
+            SchemaKey.UNITS: Units.MILLIVOLTS,
+        },
+    )
+
+    minf_eq: Literal[EquationKey.SIG_FIT_MINF] = Field(
+        title=r"$m_\infty$ equation",
+        description=(
+            r"Steady state activation parameter $m_{\infty}$ equation, decreasing with voltage. "
+            r"This equation will be used for solving the differential equation: "
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
+        ),
+        default=EquationKey.SIG_FIT_MINF,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    mtau_eq: Literal[EquationKey.BELL_FIT_MTAU, EquationKey.THERMO_FIT_MTAU] = Field(
+        title=r"$\tau_m$ equation",
+        description=(
+            r"Activation time constant $\tau_m$ equation. The recordings only give $\tau_m$ "
+            r"below the half-activation voltage, so the equation peaks there, as for a two-state "
+            r"channel. This equation will be used for solving the differential equation: "
+            r"$\frac{dm}{dt} = \frac{m_{\infty} - m}{\tau_{m}}$"
+        ),
+        default=EquationKey.BELL_FIT_MTAU,
+        json_schema_extra=equation_schema_extra,
+    )
+
+    # The channel current, a NONSPECIFIC_CURRENT rather than the current of one ion.
+    ion: ClassVar[str] = "hcn"
+    # Keyword arguments of ion_channel_builder's run_ion_channel_model.
+    plot_options: ClassVar[dict[str, Any]] = {"channel_type": "hcn"}
+    # RANGE variables of the gates, as written by ion_channel_builder's mod template.
+    gating_range_vars: ClassVar[list[dict[str, str | None]]] = [{"mInf": None}, {"mTau": "ms"}]
+
+    @property
+    def current(self) -> str:
+        return f"i{self.ion}"
+
+    def eq_names(self) -> dict[str, str]:
+        return {"minf": self.minf_eq, "mtau": self.mtau_eq}
+
+    def fitting_options(self) -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's extract_all_equations."""
+        return {"channel_type": "hcn", "erev": self.reversal_potential}
+
+    def mod_file_options(self) -> dict[str, Any]:
+        """Keyword arguments of ion_channel_builder's write_vgate_output."""
+        return {
+            "ion": self.ion,
+            "m_power": self.m_power,
+            "h_power": 0,
+            "channel_type": "hcn",
+            "erev": self.reversal_potential,
+        }
+
+    def neuron_block_currents(self) -> dict[str, list]:
+        """The useion and nonspecific entries of the model's NEURON block."""
+        return {"useion": [], "nonspecific": [{self.current: "mA/cm2"}]}
+
+
+IonChannelModelUnion = Annotated[
+    HodgkinHuxleyIonChannelModel | HyperpolarizationActivatedIonChannelModel,
+    Discriminator("type"),
+]
 
 
 class IonChannelFittingScanConfig(InfoScanConfig):
@@ -277,9 +413,11 @@ class IonChannelFittingScanConfig(InfoScanConfig):
     model_type: IonChannelModelUnion = Field(
         title="Ion channel model",
         description=(
-            "The Hodgkin-Huxley channel model to fit: an equation per gating variable, and "
-            r"the exponents $p$ and $q$ of $m$ and $h$ in the channel equation "
-            r"$g = \bar{g} \cdot m^p \cdot h^q$."
+            "The channel model to fit: an equation per gating variable, and the exponents of "
+            r"the gates in the channel equation $g = \bar{g} \cdot m^p \cdot h^q$. "
+            "Hodgkin-Huxley for channels opened by depolarization, like Kv channels; "
+            "hyperpolarization-activated for channels opened by hyperpolarization, like HCN "
+            "channels, that have no inactivation gate $h$."
         ),
         json_schema_extra={
             SchemaKey.UI_ELEMENT: UIElement.BLOCK_UNION,
@@ -293,8 +431,27 @@ class IonChannelFittingScanConfig(InfoScanConfig):
             recording.entity(db_client=db_client) for recording in self.initialize.recordings
         ]
         # Fails at generation, before anything is registered, when a property can't be resolved.
+        self.check_model_type(entities)
         self.resolve_model_properties(entities, db_client=db_client)
         return entities
+
+    def check_model_type(self, recordings: list) -> None:
+        """HCN recordings fitted as a depolarization-activated, inactivating channel would give
+        a model that runs, but is wrong.
+        """
+        hcn_channels = sorted(
+            {
+                recording.ion_channel.name
+                for recording in recordings
+                if recording.ion_channel.name.upper().startswith("HCN")
+            }
+        )
+        if hcn_channels and isinstance(self.model_type, HodgkinHuxleyIonChannelModel):
+            msg = (
+                f"The recordings are of {', '.join(hcn_channels)}, opened by hyperpolarization, "
+                f"so fit them with the {HyperpolarizationActivatedIonChannelModel.title}."
+            )
+            raise ConfigValidationError(msg)
 
     def resolve_model_properties(
         self, recordings: list, db_client: Client
