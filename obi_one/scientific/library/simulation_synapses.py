@@ -9,12 +9,10 @@ import libsonata
 from entitysdk.client import Client
 from entitysdk.models import Simulation
 
+from obi_one.db_sdk.circuit import circuit_file_opener
 from obi_one.scientific.from_id.circuit_from_id import CircuitFromID
 from obi_one.scientific.library.circuit import Circuit
-from obi_one.scientific.library.circuit_staging import (
-    SONATA_CIRCUIT_ASSET_SELECTION,
-    circuit_file_opener,
-)
+from obi_one.scientific.library.circuit_staging import SONATA_CIRCUIT_ASSET_SELECTION
 from obi_one.scientific.library.circuit_synapses import (
     CellSynapses,
     count_synapses_by_source,

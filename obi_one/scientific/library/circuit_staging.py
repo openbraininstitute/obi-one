@@ -19,11 +19,9 @@ from typing import TYPE_CHECKING
 
 import libsonata
 from entitysdk.models.circuit import Circuit
-from entitysdk.types import FetchFileStrategy, OpenFileStrategy
+from entitysdk.types import FetchFileStrategy
 
 if TYPE_CHECKING:
-    import io
-    from collections.abc import Callable
     from uuid import UUID
 
     import entitysdk.client
@@ -32,8 +30,6 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 CIRCUIT_CONFIG_FILE_NAME = "circuit_config.json"
-
-REMOTE_BLOCK_SIZE = 256 * 1024
 
 # Matches what ``entitysdk.staging.circuit.stage_circuit`` selects, so the partial and full
 # staging paths always operate on the same asset.
@@ -44,7 +40,7 @@ SONATA_CIRCUIT_ASSET_SELECTION = {
 }
 
 
-def _asset_path_in(declared_path: str, dest_dir: Path) -> str:
+def asset_path_in(declared_path: str, dest_dir: Path) -> str:
     """The path of a file declared in the circuit config, relative to the staging directory.
 
     ``expanded_json`` reflects the config's manifest. With the usual ``"$BASE_DIR": "./"`` the
@@ -88,7 +84,7 @@ def _files_to_stage(config: dict, dest_dir: Path) -> list[str]:
 
     asset_paths = []
     for declared_path in declared:
-        asset_path = _asset_path_in(declared_path, dest_dir)
+        asset_path = asset_path_in(declared_path, dest_dir)
         if asset_path not in asset_paths:
             asset_paths.append(asset_path)
     return asset_paths
@@ -139,29 +135,3 @@ def stage_circuit_nodes(
         )
 
     return config_path
-
-
-def circuit_file_opener(
-    db_client: entitysdk.client.Client, *, entity_id: UUID, asset: Asset, dest_dir: Path
-) -> Callable[[str], io.BufferedReader]:
-    """A function opening a file of the circuit, given its path in the staged config.
-
-    From the local asset store if it has the file, otherwise with range requests.
-    """
-    sizes = db_client.list_directory(
-        entity_id=entity_id, entity_type=Circuit, asset_id=asset.id
-    ).files
-
-    def open_file(path: str) -> io.BufferedReader:
-        asset_path = _asset_path_in(path, dest_dir)
-        return db_client.open_file(
-            entity_id=entity_id,
-            entity_type=Circuit,
-            asset_id=asset.id,
-            asset_path=asset_path,
-            strategy=OpenFileStrategy.local_or_remote,
-            size=sizes[Path(asset_path)].size,
-            block_size=REMOTE_BLOCK_SIZE,
-        )
-
-    return open_file
